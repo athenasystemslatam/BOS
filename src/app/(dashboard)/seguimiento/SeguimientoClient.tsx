@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useRef, useTransition } from "react";
 import clsx from "clsx";
 import {
   AlertTriangle,
@@ -11,12 +10,15 @@ import {
   ChevronRight,
   Building2,
   ShieldCheck,
+  Loader2,
 } from "lucide-react";
 import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
 import {
   toggleManual,
   updateLegajos,
   updateObservaciones,
+  fetchPeriodo,
+  fetchTareas,
   CampoManual,
 } from "./actions";
 
@@ -28,11 +30,8 @@ interface Props {
   periodos: Periodo[];
   periodo: Periodo | null;
   liquidadoras: Pick<Liquidadora, "id" | "nombre">[];
-  isAdmin: boolean;
-  miLiquidadoraId: string | null;
 }
 
-// Effective tarea state merging server data with local optimistic overrides
 type TareaState = {
   rec_q1_manual: boolean;
   rec_q1_drive: boolean;
@@ -50,7 +49,7 @@ type TareaState = {
   observaciones: string;
 };
 
-const defaultTareaState: TareaState = {
+const DEFAULTS: TareaState = {
   rec_q1_manual: false, rec_q1_drive: false,
   recibos_manual: false, recibos_drive: false,
   f931_manual: false, f931_drive: false,
@@ -70,7 +69,7 @@ function getCheckState(manual: boolean, drive: boolean): CheckState {
   return "empty";
 }
 
-// ─── CheckboxCell ────────────────────────────────────────────────────────────
+// ─── CheckboxCell ─────────────────────────────────────────────────────────────
 
 function CheckboxCell({
   manual,
@@ -82,19 +81,17 @@ function CheckboxCell({
   onToggle: () => void;
 }) {
   const state = getCheckState(manual, drive);
-
-  const titles: Record<CheckState, string> = {
-    empty: "Sin marcar — hacer clic para marcar",
-    warning: "Marcado manualmente (Drive no confirmó el archivo)",
+  const labels: Record<CheckState, string> = {
+    empty: "Sin marcar — clic para marcar",
+    warning: "Marcado (Drive no confirmó el archivo)",
     drive: "Drive detectó el archivo — clic para confirmar",
     confirmed: "Completado y confirmado por Drive",
   };
-
   return (
     <button
       type="button"
       onClick={onToggle}
-      title={titles[state]}
+      title={labels[state]}
       className={clsx(
         "w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all mx-auto",
         state === "empty" &&
@@ -114,40 +111,36 @@ function CheckboxCell({
   );
 }
 
-// ─── DashCell: shows "—" for non-applicable columns ──────────────────────────
-
 function DashCell() {
-  return (
-    <span className="text-gray-200 text-base font-light select-none">—</span>
-  );
+  return <span className="text-gray-200 text-base font-light select-none">—</span>;
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function SeguimientoClient({
   clientes,
-  tareas,
-  periodo,
+  tareas: initialTareas,
+  periodo: initialPeriodo,
   liquidadoras,
-  isAdmin,
 }: Props) {
-  const router = useRouter();
+  // Period state — managed client-side to avoid URL params (which make the route dynamic)
+  const [currentPeriodo, setCurrentPeriodo] = useState<Periodo | null>(initialPeriodo);
+  const [currentTareas, setCurrentTareas] = useState<Tarea[]>(initialTareas);
+  const [isPending, startTransition] = useTransition();
 
-  // Local overrides for optimistic updates
-  const [overrides, setOverrides] = useState<Map<string, Partial<TareaState>>>(
-    new Map()
-  );
+  // Optimistic overrides for instant checkbox feedback
+  const [overrides, setOverrides] = useState<Map<string, Partial<TareaState>>>(new Map());
 
-  // Admin: filter by liquidadora
+  // Admin filter
   const [filtroLiq, setFiltroLiq] = useState<string>("todas");
 
-  // Debounce timers for text/number inputs
+  // Debounce timers
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Build tareas map from server data
+  // Build tareas map from current data
   const tareasMap = useMemo(() => {
     const m = new Map<string, TareaState>();
-    for (const t of tareas) {
+    for (const t of currentTareas) {
       m.set(t.cliente_id, {
         rec_q1_manual: t.rec_q1_manual,
         rec_q1_drive: t.rec_q1_drive,
@@ -166,107 +159,107 @@ export function SeguimientoClient({
       });
     }
     return m;
-  }, [tareas]);
+  }, [currentTareas]);
 
   function getEffective(clienteId: string): TareaState {
-    const server = tareasMap.get(clienteId) ?? defaultTareaState;
+    const server = tareasMap.get(clienteId) ?? DEFAULTS;
     const override = overrides.get(clienteId) ?? {};
     return { ...server, ...override };
   }
 
-  // Filtered clients list
   const clientesFiltrados = useMemo(() => {
-    if (!isAdmin || filtroLiq === "todas") return clientes;
-    return clientes.filter((c) => c.liquidador_id === filtroLiq);
-  }, [clientes, isAdmin, filtroLiq]);
+    if (filtroLiq === "todas") return clientes;
+    return clientes.filter((c) => c.liquidadora?.id === filtroLiq);
+  }, [clientes, filtroLiq]);
 
-  // Column visibility
   const tieneQuincenales = useMemo(
     () => clientes.some((c) => c.tipo === "quincenal"),
     [clientes]
   );
-  const esMesSAC = periodo ? periodo.mes === 6 || periodo.mes === 12 : false;
+  const esMesSAC = currentPeriodo
+    ? currentPeriodo.mes === 6 || currentPeriodo.mes === 12
+    : false;
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
-
-  const handleToggle = useCallback(
-    (clienteId: string, campo: CampoManual) => {
-      if (!periodo) return;
-      const current = getEffective(clienteId);
-      const newValue = !current[`${campo}_manual`];
-
-      // Optimistic update
-      setOverrides((prev) => {
-        const next = new Map(prev);
-        const existing = next.get(clienteId) ?? {};
-        next.set(clienteId, { ...existing, [`${campo}_manual`]: newValue });
-        return next;
-      });
-
-      // Background save — no revalidatePath, local state is truth for this session
-      toggleManual(clienteId, periodo.id, campo, newValue);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [periodo, overrides, tareasMap]
-  );
-
-  const handleLegajos = useCallback(
-    (clienteId: string, valor: string) => {
-      if (!periodo) return;
-      const num = Math.max(0, parseInt(valor) || 0);
-
-      setOverrides((prev) => {
-        const next = new Map(prev);
-        const existing = next.get(clienteId) ?? {};
-        next.set(clienteId, { ...existing, legajos_cantidad: num });
-        return next;
-      });
-
-      const key = `${clienteId}-legajos`;
-      clearTimeout(debounceTimers.current.get(key));
-      debounceTimers.current.set(
-        key,
-        setTimeout(() => updateLegajos(clienteId, periodo.id, num), 700)
-      );
-    },
-    [periodo]
-  );
-
-  const handleObservaciones = useCallback(
-    (clienteId: string, valor: string) => {
-      if (!periodo) return;
-
-      setOverrides((prev) => {
-        const next = new Map(prev);
-        const existing = next.get(clienteId) ?? {};
-        next.set(clienteId, { ...existing, observaciones: valor });
-        return next;
-      });
-
-      const key = `${clienteId}-obs`;
-      clearTimeout(debounceTimers.current.get(key));
-      debounceTimers.current.set(
-        key,
-        setTimeout(() => updateObservaciones(clienteId, periodo.id, valor), 700)
-      );
-    },
-    [periodo]
-  );
-
-  // ── Period navigation ────────────────────────────────────────────────────────
+  // ── Period navigation (client-side, no URL change) ────────────────────────
 
   function navPeriodo(delta: -1 | 1) {
-    if (!periodo) return;
-    let newMes = periodo.mes + delta;
-    let newAnio = periodo.anio;
+    if (!currentPeriodo || isPending) return;
+    let newMes = currentPeriodo.mes + delta;
+    let newAnio = currentPeriodo.anio;
     if (newMes < 1) { newMes = 12; newAnio--; }
     if (newMes > 12) { newMes = 1; newAnio++; }
-    router.push(`/seguimiento?periodo=${newAnio}-${newMes}`);
+
+    startTransition(async () => {
+      const newPeriodo = await fetchPeriodo(newAnio, newMes);
+      if (newPeriodo) {
+        const newTareas = await fetchTareas(newPeriodo.id);
+        setCurrentPeriodo(newPeriodo);
+        setCurrentTareas(newTareas);
+        setOverrides(new Map());
+      }
+    });
   }
 
-  // ── Progress counts ──────────────────────────────────────────────────────────
+  // ── Checkbox toggle (optimistic) ──────────────────────────────────────────
 
-  const { totalDone, totalPending } = useMemo(() => {
+  function handleToggle(clienteId: string, campo: CampoManual) {
+    if (!currentPeriodo) return;
+    const current = getEffective(clienteId);
+    const newValue = !current[`${campo}_manual`];
+
+    setOverrides((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(clienteId) ?? {};
+      next.set(clienteId, { ...existing, [`${campo}_manual`]: newValue });
+      return next;
+    });
+
+    toggleManual(clienteId, currentPeriodo.id, campo, newValue);
+  }
+
+  // ── Legajos (debounced) ───────────────────────────────────────────────────
+
+  function handleLegajos(clienteId: string, valor: string) {
+    if (!currentPeriodo) return;
+    const num = Math.max(0, parseInt(valor) || 0);
+    setOverrides((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(clienteId) ?? {};
+      next.set(clienteId, { ...existing, legajos_cantidad: num });
+      return next;
+    });
+    const key = `${clienteId}-legajos`;
+    clearTimeout(debounceTimers.current.get(key));
+    debounceTimers.current.set(
+      key,
+      setTimeout(() => updateLegajos(clienteId, currentPeriodo.id, num), 700)
+    );
+  }
+
+  // ── Observaciones (debounced) ─────────────────────────────────────────────
+
+  function handleObservaciones(clienteId: string, valor: string) {
+    if (!currentPeriodo) return;
+    setOverrides((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(clienteId) ?? {};
+      next.set(clienteId, { ...existing, observaciones: valor });
+      return next;
+    });
+    const key = `${clienteId}-obs`;
+    clearTimeout(debounceTimers.current.get(key));
+    debounceTimers.current.set(
+      key,
+      setTimeout(
+        () => updateObservaciones(clienteId, currentPeriodo.id, valor),
+        700
+      )
+    );
+  }
+
+  // ── Progress ──────────────────────────────────────────────────────────────
+
+  const { totalDone } = useMemo(() => {
     let done = 0;
     for (const c of clientesFiltrados) {
       const t = getEffective(c.id);
@@ -279,11 +272,13 @@ export function SeguimientoClient({
       ];
       if (checks.every(Boolean)) done++;
     }
-    return { totalDone: done, totalPending: clientesFiltrados.length - done };
+    return { totalDone: done };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientesFiltrados, overrides, tareasMap, esMesSAC]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const totalPending = clientesFiltrados.length - totalDone;
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-8 max-w-[1600px]">
@@ -295,12 +290,10 @@ export function SeguimientoClient({
           </p>
           <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight flex items-center gap-3">
             Seguimiento
-            {isAdmin && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-bordo/10 text-bordo px-2 py-0.5 rounded-full">
-                <ShieldCheck size={11} />
-                Vista admin
-              </span>
-            )}
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-bordo/10 text-bordo px-2 py-0.5 rounded-full">
+              <ShieldCheck size={11} />
+              Vista admin
+            </span>
           </h1>
           <p className="text-sm text-gray-400 mt-1">
             {clientesFiltrados.length} empresas ·{" "}
@@ -320,24 +313,27 @@ export function SeguimientoClient({
         <div className="flex items-center gap-2">
           <button
             onClick={() => navPeriodo(-1)}
-            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-400 hover:text-gray-700"
+            disabled={isPending}
+            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
           >
             <ChevronLeft size={16} />
           </button>
-          <div className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 min-w-[130px] text-center">
-            {periodo?.nombre_mes ?? "Sin período"}
+          <div className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 min-w-[130px] text-center flex items-center justify-center gap-2">
+            {isPending && <Loader2 size={12} className="animate-spin text-gray-400" />}
+            {currentPeriodo?.nombre_mes ?? "Sin período"}
           </div>
           <button
             onClick={() => navPeriodo(1)}
-            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors text-gray-400 hover:text-gray-700"
+            disabled={isPending}
+            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
           >
             <ChevronRight size={16} />
           </button>
         </div>
       </div>
 
-      {/* Admin: filter by liquidadora */}
-      {isAdmin && liquidadoras.length > 0 && (
+      {/* Admin filter by liquidadora */}
+      {liquidadoras.length > 0 && (
         <div className="flex items-center gap-2 mb-5 flex-wrap">
           <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wide mr-1">
             Ver:
@@ -402,56 +398,50 @@ export function SeguimientoClient({
       </div>
 
       {/* No period */}
-      {!periodo && (
+      {!currentPeriodo && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 text-center text-gray-400 text-sm">
-          No se encontró el período seleccionado.
+          No se encontró el período.
         </div>
       )}
 
       {/* No clients */}
-      {periodo && clientesFiltrados.length === 0 && (
+      {currentPeriodo && clientesFiltrados.length === 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 text-center">
           <Building2 size={32} className="text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">
-            No hay empresas asignadas para este período.
-          </p>
+          <p className="text-sm text-gray-400">No hay empresas para mostrar.</p>
         </div>
       )}
 
       {/* Table */}
-      {periodo && clientesFiltrados.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      {currentPeriodo && clientesFiltrados.length > 0 && (
+        <div
+          className={clsx(
+            "bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-opacity",
+            isPending && "opacity-60"
+          )}
+        >
           <div className="overflow-x-auto">
             <table className="w-full" style={{ minWidth: 720 }}>
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  {/* Empresa */}
                   <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[180px]">
                     Empresa
                   </th>
-
-                  {/* Liquidadora (admin) */}
-                  {isAdmin && (
-                    <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[110px]">
-                      Liquidadora
-                    </th>
-                  )}
-
-                  {/* Rec Q1 (quincenal only) */}
+                  <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[110px]">
+                    Liquidadora
+                  </th>
                   {tieneQuincenales && (
                     <th className="px-2 py-3 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-[72px]">
                       Rec.Q1
                     </th>
                   )}
-
-                  {/* Fixed columns */}
                   {(
                     [
-                      { key: "recibos", label: "Recibos" },
-                      { key: "f931", label: "F.931" },
-                      { key: "bol_sind", label: "Bol.Sind" },
-                      { key: "rub_lsd", label: "Rúb.LSD" },
-                    ] as { key: CampoManual; label: string }[]
+                      { key: "recibos" as CampoManual, label: "Recibos" },
+                      { key: "f931" as CampoManual, label: "F.931" },
+                      { key: "bol_sind" as CampoManual, label: "Bol.Sind" },
+                      { key: "rub_lsd" as CampoManual, label: "Rúb.LSD" },
+                    ]
                   ).map(({ key, label }) => (
                     <th
                       key={key}
@@ -460,20 +450,14 @@ export function SeguimientoClient({
                       {label}
                     </th>
                   ))}
-
-                  {/* SAC (June/December) */}
                   {esMesSAC && (
                     <th className="px-2 py-3 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-[72px]">
                       SAC
                     </th>
                   )}
-
-                  {/* Legajos */}
                   <th className="px-3 py-3 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-[76px]">
                     Legajos
                   </th>
-
-                  {/* Observaciones */}
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[180px]">
                     Observaciones
                   </th>
@@ -483,8 +467,6 @@ export function SeguimientoClient({
               <tbody className="divide-y divide-gray-50">
                 {clientesFiltrados.map((cliente) => {
                   const t = getEffective(cliente.id);
-
-                  // Row completion state for subtle highlight
                   const checks = [
                     t.recibos_manual || t.recibos_drive,
                     t.f931_manual || t.f931_drive,
@@ -502,7 +484,7 @@ export function SeguimientoClient({
                     <tr
                       key={cliente.id}
                       className={clsx(
-                        "transition-colors group",
+                        "transition-colors",
                         isComplete
                           ? "bg-green-50/30 hover:bg-green-50/50"
                           : "hover:bg-gray-50/60"
@@ -532,14 +514,12 @@ export function SeguimientoClient({
                         </div>
                       </td>
 
-                      {/* Liquidadora (admin) */}
-                      {isAdmin && (
-                        <td className="px-3 py-2.5">
-                          <span className="text-[12px] text-gray-500 truncate block max-w-[100px]">
-                            {cliente.liquidadora?.nombre ?? "—"}
-                          </span>
-                        </td>
-                      )}
+                      {/* Liquidadora */}
+                      <td className="px-3 py-2.5">
+                        <span className="text-[12px] text-gray-500 truncate block max-w-[100px]">
+                          {cliente.liquidadora?.nombre ?? "—"}
+                        </span>
+                      </td>
 
                       {/* Rec Q1 */}
                       {tieneQuincenales && (
@@ -644,11 +624,11 @@ export function SeguimientoClient({
             </table>
           </div>
 
-          {/* Footer with progress */}
+          {/* Footer */}
           <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
             <p className="text-[11px] text-gray-400">
               {clientesFiltrados.length} empresas en{" "}
-              <span className="font-medium">{periodo.nombre_mes}</span>
+              <span className="font-medium">{currentPeriodo.nombre_mes}</span>
             </p>
             <div className="flex items-center gap-3">
               <div className="h-1.5 w-36 bg-gray-200 rounded-full overflow-hidden">

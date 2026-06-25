@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
@@ -6,42 +5,16 @@ import { SeguimientoClient } from "./SeguimientoClient";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
-export default async function SeguimientoPage({
-  searchParams,
-}: {
-  searchParams: { periodo?: string };
-}) {
-  const sessionClient = await createClient();
+// Static route: no createClient() (cookies) and no searchParams access.
+// This ensures Next.js pre-renders the HTML shell including the CSS <link> tag.
+export default async function SeguimientoPage() {
   const supabase = createAdminClient();
 
-  // Auth user → match liquidadora by email
-  const {
-    data: { user },
-  } = await sessionClient.auth.getUser();
-
-  let miLiquidadora: Liquidadora | null = null;
-  if (user?.email) {
-    const { data } = await supabase
-      .from("liquidadoras")
-      .select("*")
-      .eq("email", user.email)
-      .maybeSingle();
-    miLiquidadora = data as Liquidadora | null;
-  }
-
-  // Admin = no matched liquidadora OR rol admin/supervisor
-  const isAdmin =
-    !miLiquidadora ||
-    miLiquidadora.rol === "admin" ||
-    miLiquidadora.rol === "supervisor";
-
-  // Determine period from URL param or current month
   const hoy = new Date();
-  const [anio, mes] = searchParams.periodo
-    ? searchParams.periodo.split("-").map(Number)
-    : [hoy.getFullYear(), hoy.getMonth() + 1];
+  const anio = hoy.getFullYear();
+  const mes = hoy.getMonth() + 1;
 
-  // Fetch or auto-create period
+  // Fetch or create current period
   let { data: periodo } = await supabase
     .from("periodos")
     .select("*")
@@ -61,7 +34,7 @@ export default async function SeguimientoPage({
     periodo = nuevo;
   }
 
-  // Fetch all periods for navigation
+  // All periods for reference
   const { data: periodos } = await supabase
     .from("periodos")
     .select("*")
@@ -69,35 +42,24 @@ export default async function SeguimientoPage({
     .order("mes", { ascending: false })
     .limit(24);
 
-  // Fetch clientes (filtered by liquidadora for non-admin)
-  let clientesQuery = supabase
+  // All active clients
+  const { data: clientes } = await supabase
     .from("clientes")
     .select("*, liquidadora:liquidadoras!liquidador_id(id, nombre)")
     .eq("estado", "activo")
     .order("nombre");
 
-  if (!isAdmin && miLiquidadora) {
-    clientesQuery = clientesQuery.eq("liquidador_id", miLiquidadora.id);
-  }
-
-  const { data: clientes } = await clientesQuery;
-
-  // Fetch tareas for this period
+  // Tareas for current period
   const { data: tareas } = periodo
-    ? await supabase
-        .from("tareas")
-        .select("*")
-        .eq("periodo_id", periodo.id)
+    ? await supabase.from("tareas").select("*").eq("periodo_id", periodo.id)
     : { data: [] };
 
-  // Fetch all active liquidadoras (for admin filter)
-  const { data: liquidadoras } = isAdmin
-    ? await supabase
-        .from("liquidadoras")
-        .select("id, nombre")
-        .eq("activa", true)
-        .order("nombre")
-    : { data: [] };
+  // All active liquidadoras for admin filter
+  const { data: liquidadoras } = await supabase
+    .from("liquidadoras")
+    .select("id, nombre")
+    .eq("activa", true)
+    .order("nombre");
 
   return (
     <SeguimientoClient
@@ -106,8 +68,6 @@ export default async function SeguimientoPage({
       periodos={(periodos as Periodo[]) ?? []}
       periodo={periodo as Periodo | null}
       liquidadoras={(liquidadoras as Pick<Liquidadora, "id" | "nombre">[]) ?? []}
-      isAdmin={isAdmin}
-      miLiquidadoraId={miLiquidadora?.id ?? null}
     />
   );
 }
