@@ -1,0 +1,112 @@
+export type Rol = "admin" | "supervisor" | "liquidadora" | "viewer";
+export type EstadoCliente = "activo" | "inactivo";
+export type TipoLiquidacion = "mensual" | "quincenal";
+
+export interface ClaveAcceso {
+  sistema: string;
+  usuario: string;
+  contrasena: string;
+}
+
+export interface Liquidadora {
+  id: string;
+  nombre: string;
+  email: string | null;
+  rol: Rol;
+  activa: boolean;
+  fecha_alta: string;
+  fecha_baja?: string | null;
+  user_id?: string;
+}
+
+export interface Cliente {
+  id: string;
+  nombre: string;
+  cuit: string;
+  terminacion_cuit: number;
+  liquidador_id: string;
+  tipo: TipoLiquidacion;
+  tiene_sindicato: boolean;
+  sindicato_nombre?: string;
+  tiene_rubrica_lsd: boolean;
+  jurisdiccion?: string;
+  art?: string;
+  vep_banco?: string;
+  estado: EstadoCliente;
+  observaciones?: string;
+  claves_acceso?: ClaveAcceso[];
+  fecha_alta: string;
+  fecha_baja?: string;
+  fecha_modificacion: string;
+  creado_por?: string;
+  liquidadora?: Liquidadora;
+}
+
+export interface Periodo {
+  id: string;
+  anio: number;
+  mes: number;
+  nombre_mes: string;
+}
+
+export interface Tarea {
+  id: string;
+  cliente_id: string;
+  periodo_id: string;
+  rec_q1: boolean;
+  recibos: boolean;
+  f931: boolean;
+  bol_sind: boolean;
+  rub_lsd: boolean;
+  sac: boolean;
+  legajos_cantidad: number;
+  rec_q1_manual: boolean;
+  recibos_manual: boolean;
+  f931_manual: boolean;
+  bol_sind_manual: boolean;
+  rub_lsd_manual: boolean;
+  sac_manual: boolean;
+  rec_q1_drive: boolean;
+  recibos_drive: boolean;
+  f931_drive: boolean;
+  bol_sind_drive: boolean;
+  rub_lsd_drive: boolean;
+  sac_drive: boolean;
+  observaciones?: string;
+  cliente?: Cliente;
+  periodo?: Periodo;
+}
+
+export interface HistorialAsignacion {
+  id: string;
+  cliente_id: string;
+  liquidador_anterior_id?: string;
+  liquidador_nuevo_id: string;
+  fecha_cambio: string;
+  cambiado_por: string;
+  motivo?: string;
+}
+
+export interface DriveLog {
+  id: string;
+  cliente_id: string;
+  periodo_id: string;
+  archivo_nombre: string;
+  archivo_url?: string;
+  tarea_detectada: string;
+  fecha_deteccion: string;
+}
+
+export interface ResumenLiquidadora {
+  liquidadora: Liquidadora;
+  total_empresas: number;
+  recibos_ok: number;
+  f931_ok: number;
+  pendientes: number;
+}
+
+export interface VencimientoF931 {
+  cliente: Cliente;
+  fecha_vencimiento: Date;
+  dias_restantes: number;
+}
