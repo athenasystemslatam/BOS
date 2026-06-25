@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Cliente, Tarea } from "@/types";
-import { CALENDAR_2026, MESES_NOMBRES } from "@/lib/vencimientos";
+import { Cliente } from "@/types";
+import { CALENDAR_2026 } from "@/lib/vencimientos";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
 
@@ -25,35 +25,6 @@ export default async function VencimientosPage() {
     countGrupo(4, 6),
     countGrupo(7, 9),
   ];
-
-  // Tareas por período para mostrar F.931 completados
-  const { data: periodos } = await supabase.from("periodos").select("id, anio, mes").eq("anio", 2026);
-  const { data: tareas } = await supabase
-    .from("tareas")
-    .select("cliente_id, periodo_id, f931_manual, f931_drive");
-
-  const periodoMap = new Map(
-    ((periodos ?? []) as { id: string; anio: number; mes: number }[]).map((p) => [
-      `${p.anio}-${p.mes}`,
-      p.id,
-    ])
-  );
-
-  const tareasMap = new Map<string, { f931: boolean }[]>();
-  for (const t of (tareas ?? []) as Tarea[]) {
-    const list = tareasMap.get(t.periodo_id) ?? [];
-    list.push({ f931: t.f931_manual || t.f931_drive });
-    tareasMap.set(t.periodo_id, list);
-  }
-
-  function getF931Ok(mes: number, grupoIdx: number): number {
-    const periodoId = periodoMap.get(`2026-${mes}`);
-    if (!periodoId) return 0;
-    const grupTareas = tareasMap.get(periodoId) ?? [];
-    // simplificación: conta total f931 ok del período (no por grupo de terminación)
-    if (grupoIdx === 0) return grupTareas.filter((t) => t.f931).length;
-    return 0; // datos exactos requieren join de cliente para filtrar por terminacion
-  }
 
   return (
     <div className="p-8">
@@ -140,7 +111,7 @@ export default async function VencimientosPage() {
                     </div>
                   </td>
 
-                  {grupos.map((g, i) => {
+                  {grupos.map((g) => {
                     const dias = Math.ceil((g.fecha.getTime() - hoy.getTime()) / 86400000);
                     const vencido = dias < 0;
                     const urgente = !vencido && dias <= 2;

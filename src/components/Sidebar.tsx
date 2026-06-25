@@ -10,10 +10,12 @@ import {
   CalendarDays,
   Calendar,
   LogOut,
+  ClipboardList,
 } from "lucide-react";
 import clsx from "clsx";
 
 const navItems = [
+  { href: "/seguimiento",  label: "Seguimiento",  icon: ClipboardList },
   { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
   { href: "/empresas",     label: "Empresas",     icon: Building2 },
   { href: "/liquidadoras", label: "Liquidadoras", icon: Users },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { X, Eye, EyeOff } from "lucide-react";
+import { X } from "lucide-react";
 import { editarLiquidadora } from "./actions";
 import { Liquidadora } from "@/types";
 
