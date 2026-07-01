@@ -393,11 +393,13 @@ export function SeguimientoClient({
           ) : (
             <>
               <CheckCircle2 size={14} />
-              Drive sincronizado — {syncResult.archivosDetectados} archivos detectados en{" "}
+              Drive sincronizado — {syncResult.archivosDetectados} archivos en{" "}
               {syncResult.clientesConArchivos} empresas
-              {syncResult.clientesSinCarpeta > 0 && (
-                <span className="ml-2 text-green-500">
-                  ({syncResult.clientesSinCarpeta} sin carpeta en Drive)
+              {Object.keys(syncResult.errorCodes).length > 0 && (
+                <span className="ml-2 text-green-500 font-normal">
+                  ({Object.entries(syncResult.errorCodes)
+                    .map(([k, v]) => `${v} ${k}`)
+                    .join(", ")})
                 </span>
               )}
             </>

@@ -125,11 +125,14 @@ async function concurrent<T, R>(
 // ─── Drive API helpers ────────────────────────────────────────────────────────
 
 function createDriveClient(): drive_v3.Drive {
-  const auth = new google.auth.JWT({
-    email: process.env.GOOGLE_CLIENT_EMAIL,
-    key: (process.env.GOOGLE_PRIVATE_KEY ?? "").replace(/\\n/g, "\n"),
-    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
-  });
+  const email = process.env.GOOGLE_CLIENT_EMAIL;
+  const rawKey = process.env.GOOGLE_PRIVATE_KEY ?? "";
+  const key = rawKey.replace(/\\n/g, "\n");
+
+  console.log("[Drive] createDriveClient — email:", email ?? "(no configurado)");
+  console.log("[Drive] GOOGLE_PRIVATE_KEY longitud:", rawKey.length, "| empieza con:", rawKey.slice(0, 27));
+
+  const auth = new google.auth.JWT({ email, key, scopes: ["https://www.googleapis.com/auth/drive.readonly"] });
   return google.drive({ version: "v3", auth });
 }
 
@@ -147,7 +150,9 @@ async function listChildren(
       pageSize: 1000,
     });
     return res.data.files ?? [];
-  } catch {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[Drive] listChildren ERROR parentId=${parentId}:`, msg);
     return [];
   }
 }
@@ -201,30 +206,29 @@ async function collectClientFolders(drive: drive_v3.Drive): Promise<FolderEntry[
   const all: FolderEntry[] = [];
 
   for (const root of DRIVE_ROOTS) {
+    console.log(`[Drive] collectClientFolders — root ${root.id} (depth=${root.depth})`);
+
     if (root.depth === 1) {
-      // Root → clients directly
       const items = await listChildren(drive, root.id, true);
-      all.push(
-        ...items
-          .filter((f) => f.id && f.name)
-          .map((f) => ({ id: f.id!, name: f.name! }))
-      );
+      console.log(`[Drive] root ${root.id} → ${items.length} carpetas directas`);
+      if (items.length > 0) console.log("[Drive] primeras 5:", items.slice(0, 5).map((f) => f.name));
+      all.push(...items.filter((f) => f.id && f.name).map((f) => ({ id: f.id!, name: f.name! })));
     } else {
-      // Root → category folders → clients
       const categories = await listChildren(drive, root.id, true);
+      console.log(`[Drive] root ${root.id} → ${categories.length} categorías:`, categories.map((c) => c.name));
       const clientLists = await Promise.all(
         categories.map((cat) => listChildren(drive, cat.id!, true))
       );
-      for (const list of clientLists) {
-        all.push(
-          ...list
-            .filter((f) => f.id && f.name)
-            .map((f) => ({ id: f.id!, name: f.name! }))
-        );
+      for (let i = 0; i < categories.length; i++) {
+        const list = clientLists[i];
+        console.log(`[Drive] categoría "${categories[i].name}" → ${list.length} clientes`);
+        if (list.length > 0) console.log("[Drive] primeros 3:", list.slice(0, 3).map((f) => f.name));
+        all.push(...list.filter((f) => f.id && f.name).map((f) => ({ id: f.id!, name: f.name! })));
       }
     }
   }
 
+  console.log(`[Drive] collectClientFolders total: ${all.length} carpetas`);
   return all;
 }
 
@@ -257,15 +261,19 @@ export async function scanClientesForMonth(
     throw new Error("GOOGLE_CLIENT_EMAIL o GOOGLE_PRIVATE_KEY no configuradas");
   }
 
-  const drive = createDriveClient();
+  console.log(`[Drive] scanClientesForMonth — mes=${mes} anio=${anio} clientes=${clientes.length}`);
 
-  // One-time: build folder map for all clients
+  const drive = createDriveClient();
   const allFolders = await collectClientFolders(drive);
 
-  // Scan each client (up to 15 in parallel to stay within Drive API quota)
+  if (allFolders.length === 0) {
+    console.error("[Drive] ALERTA: collectClientFolders devolvió 0 carpetas — probable problema de auth o permisos");
+  }
+
   const settled = await concurrent(clientes, 15, async (cliente) => {
     const folder = findBestFolder(cliente.nombre, allFolders);
     if (!folder) {
+      console.log(`[Drive] no-folder: "${cliente.nombre}"`);
       return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-folder" } as ClienteScanResult;
     }
 
@@ -273,6 +281,7 @@ export async function scanClientesForMonth(
       SUELDOS_KEYS.some((k) => norm(n).includes(k))
     );
     if (!sueldosId) {
+      console.log(`[Drive] no-sueldos: "${cliente.nombre}" (carpeta Drive: "${folder.name}")`);
       return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-sueldos" } as ClienteScanResult;
     }
 
@@ -281,13 +290,13 @@ export async function scanClientesForMonth(
       return nn === String(anio) || nn === String(anio).slice(-2);
     });
     if (!anioId) {
+      console.log(`[Drive] no-anio: "${cliente.nombre}" — buscando "${anio}" dentro de sueldos`);
       return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-anio" } as ClienteScanResult;
     }
 
-    const mesId = await findFolder(drive, anioId, (n) =>
-      matchesMonth(n, mes, anio)
-    );
+    const mesId = await findFolder(drive, anioId, (n) => matchesMonth(n, mes, anio));
     if (!mesId) {
+      console.log(`[Drive] no-mes: "${cliente.nombre}" — buscando mes ${mes} dentro de ${anio}`);
       return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-mes" } as ClienteScanResult;
     }
 
@@ -300,10 +309,20 @@ export async function scanClientesForMonth(
       }
     }
 
+    console.log(`[Drive] OK: "${cliente.nombre}" — ${encontrados.size} archivos: [${Array.from(encontrados.keys()).join(", ")}]`);
     return { clienteId: cliente.id, encontrados } as ClienteScanResult;
   });
 
-  return settled
+  const results = settled
     .filter((r) => r.status === "fulfilled")
     .map((r) => (r as PromiseFulfilledResult<ClienteScanResult>).value);
+
+  const errorCounts = results.reduce((acc, r) => {
+    const k = r.errorCode ?? "ok";
+    acc[k] = (acc[k] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  console.log("[Drive] resumen errorCodes:", JSON.stringify(errorCounts));
+
+  return results;
 }

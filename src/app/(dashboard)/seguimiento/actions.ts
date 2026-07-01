@@ -103,7 +103,7 @@ export async function fetchTareas(periodoId: string): Promise<Tarea[]> {
 export type SyncDriveResult = {
   archivosDetectados: number;
   clientesConArchivos: number;
-  clientesSinCarpeta: number;
+  errorCodes: Record<string, number>;
   error?: string;
 };
 
@@ -123,7 +123,7 @@ export async function syncDrive(
     return {
       archivosDetectados: 0,
       clientesConArchivos: 0,
-      clientesSinCarpeta: 0,
+      errorCodes: {},
       error: clientesError?.message ?? "No se pudieron cargar los clientes",
     };
   }
@@ -135,14 +135,14 @@ export async function syncDrive(
     return {
       archivosDetectados: 0,
       clientesConArchivos: 0,
-      clientesSinCarpeta: 0,
+      errorCodes: {},
       error: e instanceof Error ? e.message : "Error al conectar con Google Drive",
     };
   }
 
   let archivosDetectados = 0;
   let clientesConArchivos = 0;
-  let clientesSinCarpeta = 0;
+  const errorCodes: Record<string, number> = {};
 
   const tareaUpserts: Record<string, unknown>[] = [];
   const driveLogRows: Record<string, unknown>[] = [];
@@ -150,7 +150,7 @@ export async function syncDrive(
 
   for (const result of results) {
     if (result.errorCode) {
-      clientesSinCarpeta++;
+      errorCodes[result.errorCode] = (errorCodes[result.errorCode] ?? 0) + 1;
     }
 
     const updates: Record<string, boolean> = {};
@@ -196,5 +196,5 @@ export async function syncDrive(
     }
   }
 
-  return { archivosDetectados, clientesConArchivos, clientesSinCarpeta };
+  return { archivosDetectados, clientesConArchivos, errorCodes };
 }
