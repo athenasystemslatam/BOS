@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(node -e ' *)",
+      "Bash(mkdir -p /private/tmp/claude-501/-Users-giulianatignanelli-Downloads-drive-download-20260625T113747Z-3-001/d95ba084-92f0-46f2-8177-71c5f1b95b01/scratchpad)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(node *)",
+      "Bash(npm list *)",
+      "Bash(git config *)",
+      "Bash(git reset *)",
+      "Bash(ssh-keygen -t ed25519 -C \"athenasystems.latam@gmail.com\" -f ~/.ssh/id_ed25519_github -N \"\")",
+      "Read(//Users/giulianatignanelli/.ssh/**)",
+      "Bash(git remote *)",
+      "Bash(ssh-keyscan -t ed25519 github.com)",
+      "Bash(ssh *)",
+      "Bash(git push *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(vercel --version)"
+    ]
+  }
+}

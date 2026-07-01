@@ -11,6 +11,9 @@ import {
   Building2,
   ShieldCheck,
   Loader2,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
 import {
@@ -19,7 +22,9 @@ import {
   updateObservaciones,
   fetchPeriodo,
   fetchTareas,
+  syncDrive,
   CampoManual,
+  SyncDriveResult,
 } from "./actions";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
@@ -136,6 +141,27 @@ export function SeguimientoClient({
 
   // Debounce timers
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Drive sync
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncDriveResult | null>(null);
+
+  async function handleSync() {
+    if (!currentPeriodo || isSyncing) return;
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await syncDrive(currentPeriodo.id, currentPeriodo.mes, currentPeriodo.anio);
+      setSyncResult(result);
+      if (!result.error) {
+        const newTareas = await fetchTareas(currentPeriodo.id);
+        setCurrentTareas(newTareas);
+        setOverrides(new Map());
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  }
 
   // Build tareas map from current data
   const tareasMap = useMemo(() => {
@@ -309,28 +335,81 @@ export function SeguimientoClient({
           </p>
         </div>
 
-        {/* Period navigation */}
-        <div className="flex items-center gap-2">
+        {/* Right side: sync + period nav */}
+        <div className="flex items-center gap-3">
+          {/* Sincronizar Drive */}
           <button
-            onClick={() => navPeriodo(-1)}
-            disabled={isPending}
-            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
+            onClick={handleSync}
+            disabled={isSyncing || isPending || !currentPeriodo}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 transition-colors"
           >
-            <ChevronLeft size={16} />
+            {isSyncing ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <RefreshCw size={13} />
+            )}
+            {isSyncing ? "Sincronizando…" : "Sincronizar Drive"}
           </button>
-          <div className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 min-w-[130px] text-center flex items-center justify-center gap-2">
-            {isPending && <Loader2 size={12} className="animate-spin text-gray-400" />}
-            {currentPeriodo?.nombre_mes ?? "Sin período"}
+
+          {/* Period navigation */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navPeriodo(-1)}
+              disabled={isPending}
+              className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <div className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 min-w-[130px] text-center flex items-center justify-center gap-2">
+              {isPending && <Loader2 size={12} className="animate-spin text-gray-400" />}
+              {currentPeriodo?.nombre_mes ?? "Sin período"}
+            </div>
+            <button
+              onClick={() => navPeriodo(1)}
+              disabled={isPending}
+              className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
-          <button
-            onClick={() => navPeriodo(1)}
-            disabled={isPending}
-            className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
-          >
-            <ChevronRight size={16} />
-          </button>
         </div>
       </div>
+
+      {/* Sync result banner */}
+      {syncResult && (
+        <div
+          className={clsx(
+            "mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-[12px] font-medium border",
+            syncResult.error
+              ? "bg-red-50 border-red-200 text-red-700"
+              : "bg-green-50 border-green-200 text-green-700"
+          )}
+        >
+          {syncResult.error ? (
+            <>
+              <XCircle size={14} />
+              Error: {syncResult.error}
+            </>
+          ) : (
+            <>
+              <CheckCircle2 size={14} />
+              Drive sincronizado — {syncResult.archivosDetectados} archivos detectados en{" "}
+              {syncResult.clientesConArchivos} empresas
+              {syncResult.clientesSinCarpeta > 0 && (
+                <span className="ml-2 text-green-500">
+                  ({syncResult.clientesSinCarpeta} sin carpeta en Drive)
+                </span>
+              )}
+            </>
+          )}
+          <button
+            onClick={() => setSyncResult(null)}
+            className="ml-auto text-current opacity-50 hover:opacity-100"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Admin filter by liquidadora */}
       {liquidadoras.length > 0 && (
