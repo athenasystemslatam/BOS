@@ -112,12 +112,18 @@ export async function syncDrive(
   mes: number,
   anio: number
 ): Promise<SyncDriveResult> {
+  console.log("[syncDrive] inicio — periodoId:", periodoId, "mes:", mes, "anio:", anio);
+  console.log("[syncDrive] GOOGLE_CLIENT_EMAIL:", process.env.GOOGLE_CLIENT_EMAIL ?? "(no definida)");
+  console.log("[syncDrive] GOOGLE_PRIVATE_KEY definida:", !!process.env.GOOGLE_PRIVATE_KEY, "longitud:", (process.env.GOOGLE_PRIVATE_KEY ?? "").length);
+
   const supabase = createAdminClient();
 
   const { data: clientes, error: clientesError } = await supabase
     .from("clientes")
     .select("id, nombre")
     .eq("estado", "activo");
+
+  console.log("[syncDrive] clientes:", clientes?.length ?? 0, "error:", clientesError?.message ?? "ninguno");
 
   if (clientesError || !clientes) {
     return {
@@ -130,13 +136,17 @@ export async function syncDrive(
 
   let results;
   try {
+    console.log("[syncDrive] llamando scanClientesForMonth...");
     results = await scanClientesForMonth(clientes, mes, anio);
+    console.log("[syncDrive] scanClientesForMonth completó, resultados:", results.length);
   } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[syncDrive] ERROR en scanClientesForMonth:", msg);
     return {
       archivosDetectados: 0,
       clientesConArchivos: 0,
       errorCodes: {},
-      error: e instanceof Error ? e.message : "Error al conectar con Google Drive",
+      error: msg,
     };
   }
 
