@@ -3,7 +3,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Periodo, Tarea } from "@/types";
-import { scanClientesForMonth } from "@/lib/drive";
 import type { CampoManual } from "@/lib/drive";
 export type { CampoManual } from "@/lib/drive";
 
@@ -136,6 +135,8 @@ export async function syncDrive(
 
   let results;
   try {
+    console.log("[syncDrive] importando drive module...");
+    const { scanClientesForMonth } = await import("@/lib/drive");
     console.log("[syncDrive] llamando scanClientesForMonth...");
     results = await scanClientesForMonth(clientes, mes, anio);
     console.log("[syncDrive] scanClientesForMonth completó, resultados:", results.length);
