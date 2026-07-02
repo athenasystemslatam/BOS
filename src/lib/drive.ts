@@ -120,17 +120,20 @@ function similarity(clientName: string, folderName: string): number {
 /** Map filename to task field */
 function classifyFile(filename: string): CampoManual | null {
   const n = norm(filename);
+  // Specific types first (most distinctive patterns)
   if (/f\.?9\.?3\.?1|formulario.?931|form.?931/.test(n)) return "f931";
   if (/\bsac\b|aguinaldo/.test(n)) return "sac";
   if (/\bq1\b|quincena.?1|primera.?quincena|1ra.?quincena/.test(n)) return "rec_q1";
   if (/rubric|rub.?lsd|\blsd\b/.test(n)) return "rub_lsd";
-  if (
-    /boleta|sindicato|\bsmata\b|\buocra\b|\bfatlyf\b|\bugl\b|\batilra\b|\bsatsaid\b|camionero|gastronomic|textil|aceitero/.test(
-      n
-    )
-  )
+  if (/boleta|sindicato|\bsmata\b|\buocra\b|\bfatlyf\b|\bugl\b|\batilra\b|\bsatsaid\b|camionero|gastronomic|textil|aceitero/.test(n))
     return "bol_sind";
-  if (/\brecibo|\brecibos/.test(n)) return "recibos";
+  // Recibos — explicit patterns
+  if (/\brecibo|\brecibos|\bhaberes\b|\blegajo\b/.test(n)) return "recibos";
+  // File named after a month (ej: "JULIO 2026", "07 2026", "julio")
+  if (/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/.test(n)) return "recibos";
+  if (/\b(0[1-9]|1[0-2])\s*[\-_]?\s*20\d\d\b/.test(n)) return "recibos";
+  // Catch-all: any document file in the month folder that wasn't classified → likely a salary receipt
+  if (/\b(pdf|xlsx|xls|doc|docx)\b/.test(n)) return "recibos";
   return null;
 }
 
