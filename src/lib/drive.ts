@@ -127,7 +127,12 @@ async function concurrent<T, R>(
 function createDriveClient(): drive_v3.Drive {
   const email = process.env.GOOGLE_CLIENT_EMAIL;
   const rawKey = process.env.GOOGLE_PRIVATE_KEY ?? "";
-  const key = rawKey.replace(/\\n/g, "\n").trim();
+  const key = rawKey
+    .replace(/\\n/g, "\n")
+    .split("\n")
+    .map((line: string) => line.trim())
+    .join("\n")
+    .trim();
 
   console.log("[Drive] createDriveClient — email:", email ?? "(no configurado)");
   console.log("[Drive] GOOGLE_PRIVATE_KEY longitud:", rawKey.length, "| empieza con:", JSON.stringify(rawKey.slice(0, 30)));
