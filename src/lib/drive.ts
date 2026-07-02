@@ -69,18 +69,52 @@ function matchesMonth(name: string, mes: number, anio: number): boolean {
   return false;
 }
 
+/** Bigram similarity on concatenated chars (handles typos & partial matches) */
+function bigramSim(a: string, b: string): number {
+  const sa = a.replace(/\s/g, "");
+  const sb = b.replace(/\s/g, "");
+  if (sa === sb) return 1;
+  if (sa.length < 2 || sb.length < 2) return 0;
+  const bg = new Map<string, number>();
+  for (let i = 0; i < sa.length - 1; i++) {
+    const k = sa.slice(i, i + 2);
+    bg.set(k, (bg.get(k) ?? 0) + 1);
+  }
+  let intersect = 0;
+  for (let i = 0; i < sb.length - 1; i++) {
+    const k = sb.slice(i, i + 2);
+    const c = bg.get(k) ?? 0;
+    if (c > 0) { intersect++; bg.set(k, c - 1); }
+  }
+  return (2 * intersect) / (sa.length - 1 + sb.length - 1);
+}
+
 /** Fuzzy similarity [0..1] between client name and folder name */
 function similarity(clientName: string, folderName: string): number {
   const cn = norm(clientName);
   const fn = norm(folderName);
   if (cn === fn) return 1;
-  if (fn.includes(cn) || cn.includes(fn)) return 0.85;
 
+  // Word overlap (handles extra words like SA/SRL)
   const cnWords = cn.split(" ").filter((w) => w.length > 2);
   const fnSet = new Set(fn.split(" ").filter((w) => w.length > 2));
-  if (cnWords.length === 0 || fnSet.size === 0) return 0;
-  const overlap = cnWords.filter((w) => fnSet.has(w)).length;
-  return overlap / Math.max(cnWords.length, fnSet.size);
+  const wordScore =
+    cnWords.length > 0 && fnSet.size > 0
+      ? cnWords.filter((w) => fnSet.has(w)).length / Math.max(cnWords.length, fnSet.size)
+      : 0;
+
+  // Bigram character similarity (handles typos & tiebreaks same wordScore)
+  const charScore = bigramSim(cn, fn);
+
+  // Includes check — only if shorter string is meaningful (>=5 chars)
+  const shorter = cn.length <= fn.length ? cn : fn;
+  const longer = cn.length <= fn.length ? fn : cn;
+  if (shorter.length >= 5 && longer.includes(shorter)) {
+    return Math.max(0.75, charScore);
+  }
+
+  // Combine: word overlap weighted + char similarity as tiebreaker
+  return Math.max(wordScore * 0.9 + charScore * 0.1, charScore * 0.5);
 }
 
 /** Map filename to task field */
@@ -315,15 +349,18 @@ export async function scanClientesForMonth(
       const nn = norm(n);
       return nn === String(anio) || nn === String(anio).slice(-2);
     });
+
+    // Fallback: si no hay carpeta de año, buscar el mes directamente en SUELDOS
+    const searchBase = anioId ?? sueldosId;
     if (!anioId) {
-      console.log(`[Drive] no-anio: "${cliente.nombre}" — buscando "${anio}" dentro de sueldos`);
-      return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-anio" } as ClienteScanResult;
+      console.log(`[Drive] no-anio fallback: "${cliente.nombre}" — buscando mes directo en SUELDOS`);
     }
 
-    const mesId = await findFolder(drive, anioId, (n) => matchesMonth(n, mes, anio));
+    const mesId = await findFolder(drive, searchBase, (n) => matchesMonth(n, mes, anio));
     if (!mesId) {
-      console.log(`[Drive] no-mes: "${cliente.nombre}" — buscando mes ${mes} dentro de ${anio}`);
-      return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-mes" } as ClienteScanResult;
+      const code = anioId ? "no-mes" : "no-mes-ni-anio";
+      console.log(`[Drive] ${code}: "${cliente.nombre}" — buscando mes ${mes}`);
+      return { clienteId: cliente.id, encontrados: new Map(), errorCode: code } as ClienteScanResult;
     }
 
     const files = await listFilesRecursive(drive, mesId);
