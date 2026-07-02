@@ -243,17 +243,33 @@ async function collectClientFolders(drive: drive_v3.Drive): Promise<FolderEntry[
 
 function findBestFolder(
   clientName: string,
-  folders: FolderEntry[]
+  folders: FolderEntry[],
+  logMiss = false
 ): FolderEntry | null {
   let best: FolderEntry | null = null;
-  let bestScore = 0.4; // minimum acceptable similarity
+  let bestScore = 0.4;
+  let bestName = "";
 
   for (const folder of folders) {
     const score = similarity(clientName, folder.name);
     if (score > bestScore) {
       bestScore = score;
       best = folder;
+      bestName = folder.name;
     }
+  }
+
+  if (!best && logMiss) {
+    // find top candidate even below threshold
+    let topScore = 0;
+    let topName = "";
+    for (const folder of folders) {
+      const score = similarity(clientName, folder.name);
+      if (score > topScore) { topScore = score; topName = folder.name; }
+    }
+    console.log(`[Drive] no-match: "${clientName}" → mejor candidato: "${topName}" (score=${topScore.toFixed(2)})`);
+  } else if (best) {
+    console.log(`[Drive] match: "${clientName}" → "${bestName}" (score=${bestScore.toFixed(2)})`);
   }
 
   return best;
@@ -277,12 +293,13 @@ export async function scanClientesForMonth(
 
   if (allFolders.length === 0) {
     console.error("[Drive] ALERTA: collectClientFolders devolvió 0 carpetas — probable problema de auth o permisos");
+  } else {
+    console.log("[Drive] carpetas en Drive:", JSON.stringify(allFolders.map(f => f.name)));
   }
 
   const settled = await concurrent(clientes, 15, async (cliente) => {
-    const folder = findBestFolder(cliente.nombre, allFolders);
+    const folder = findBestFolder(cliente.nombre, allFolders, true);
     if (!folder) {
-      console.log(`[Drive] no-folder: "${cliente.nombre}"`);
       return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-folder" } as ClienteScanResult;
     }
 
