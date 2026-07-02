@@ -112,8 +112,7 @@ export async function syncDrive(
   anio: number
 ): Promise<SyncDriveResult> {
   console.log("[syncDrive] inicio — periodoId:", periodoId, "mes:", mes, "anio:", anio);
-  console.log("[syncDrive] GOOGLE_CLIENT_EMAIL:", process.env.GOOGLE_CLIENT_EMAIL ?? "(no definida)");
-  console.log("[syncDrive] GOOGLE_PRIVATE_KEY definida:", !!process.env.GOOGLE_PRIVATE_KEY, "longitud:", (process.env.GOOGLE_PRIVATE_KEY ?? "").length);
+  console.log("[syncDrive] GOOGLE_SERVICE_ACCOUNT_JSON definida:", !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON, "longitud:", (process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? "").length);
 
   const supabase = createAdminClient();
 

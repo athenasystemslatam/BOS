@@ -125,19 +125,23 @@ async function concurrent<T, R>(
 // ─── Drive API helpers ────────────────────────────────────────────────────────
 
 function createDriveClient(): drive_v3.Drive {
-  const email = process.env.GOOGLE_CLIENT_EMAIL;
-  const rawKey = process.env.GOOGLE_PRIVATE_KEY ?? "";
-  const key = rawKey
-    .replace(/\\n/g, "\n")
-    .split("\n")
-    .map((line: string) => line.trim())
-    .join("\n")
-    .trim();
+  const credJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!credJson) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no configurada");
 
-  console.log("[Drive] createDriveClient — email:", email ?? "(no configurado)");
-  console.log("[Drive] GOOGLE_PRIVATE_KEY longitud:", rawKey.length, "| empieza con:", JSON.stringify(rawKey.slice(0, 30)));
+  let credentials: Record<string, string>;
+  try {
+    credentials = JSON.parse(credJson);
+  } catch {
+    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no es JSON válido");
+  }
 
-  const auth = new google.auth.JWT({ email, key, scopes: ["https://www.googleapis.com/auth/drive.readonly"] });
+  console.log("[Drive] createDriveClient — email:", credentials.client_email ?? "(no encontrado)");
+  console.log("[Drive] private_key empieza con:", JSON.stringify((credentials.private_key ?? "").slice(0, 30)));
+
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"],
+  });
   return google.drive({ version: "v3", auth });
 }
 
@@ -262,8 +266,8 @@ export async function scanClientesForMonth(
   mes: number,
   anio: number
 ): Promise<ClienteScanResult[]> {
-  if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
-    throw new Error("GOOGLE_CLIENT_EMAIL o GOOGLE_PRIVATE_KEY no configuradas");
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no configurada");
   }
 
   console.log(`[Drive] scanClientesForMonth — mes=${mes} anio=${anio} clientes=${clientes.length}`);
