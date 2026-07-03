@@ -163,13 +163,25 @@ async function concurrent<T, R>(
 
 function createDriveClient(): drive_v3.Drive {
   const credJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!credJson) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no configurada");
 
   let credentials: Record<string, string>;
-  try {
-    credentials = JSON.parse(credJson);
-  } catch {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no es JSON válido");
+
+  if (credJson) {
+    try {
+      credentials = JSON.parse(credJson);
+    } catch {
+      throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no es JSON válido");
+    }
+  } else {
+    // Fallback para desarrollo local con variables individuales
+    const privateKey = (process.env.GOOGLE_PRIVATE_KEY ?? "")
+      .trim()
+      .replace(/\\n/g, "\n");
+    const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+    if (!privateKey || !clientEmail) {
+      throw new Error("Configurar GOOGLE_SERVICE_ACCOUNT_JSON o GOOGLE_CLIENT_EMAIL + GOOGLE_PRIVATE_KEY");
+    }
+    credentials = { type: "service_account", client_email: clientEmail, private_key: privateKey };
   }
 
   console.log("[Drive] createDriveClient — email:", credentials.client_email ?? "(no encontrado)");
@@ -348,12 +360,16 @@ export async function scanClientesForMonth(
       return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-sueldos" } as ClienteScanResult;
     }
 
+    const MES_WORDS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     const anioId = await findFolder(drive, sueldosId, (n) => {
       const nn = norm(n);
       const y4 = String(anio);
       const y2 = y4.slice(-2);
-      // matches "2026", "26", "AÑO 2026", "2025-2026", "2025 2026", etc.
-      return nn === y4 || nn === y2 || nn.includes(y4);
+      // Exact match
+      if (nn === y4 || nn === y2) return true;
+      // Contains year (e.g. "AÑO 2026", "2025-2026") but is NOT also a month folder (e.g. "JUNIO 2026")
+      if (nn.includes(y4)) return !MES_WORDS.some((m) => nn.includes(m));
+      return false;
     });
 
     // Fallback: si no hay carpeta de año, buscar el mes directamente en SUELDOS

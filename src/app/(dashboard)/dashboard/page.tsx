@@ -1,16 +1,30 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente, Liquidadora, Tarea } from "@/types";
-import { getVencimientosGrupos, MESES_NOMBRES } from "@/lib/vencimientos";
-import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays } from "lucide-react";
+import { getVencimientosGrupos, getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
+import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { mes?: string; anio?: string };
+}) {
   const supabase = createAdminClient();
   const hoy = new Date();
-  const mesActual = hoy.getMonth() + 1;
-  const anioActual = hoy.getFullYear();
+
+  const { mes: mesTrabajo, anio: anioTrabajo } = getMesTrabajoActual();
+  const mesActual = parseInt(searchParams.mes ?? "") || mesTrabajo;
+  const anioActual = parseInt(searchParams.anio ?? "") || anioTrabajo;
+
   const esMesSAC = mesActual === 6 || mesActual === 12;
+
+  // Prev / next month links
+  const prevMes = mesActual === 1 ? 12 : mesActual - 1;
+  const prevAnio = mesActual === 1 ? anioActual - 1 : anioActual;
+  const nextMes = mesActual === 12 ? 1 : mesActual + 1;
+  const nextAnio = mesActual === 12 ? anioActual + 1 : anioActual;
+  const esMesActual = mesActual === mesTrabajo && anioActual === anioTrabajo;
 
   const [{ data: liquidadoras }, { data: clientes }] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
@@ -76,7 +90,7 @@ export default async function DashboardPage() {
     return { liq, total: mis.length, recibosOk, f931Ok, sacOk, pendientes };
   });
 
-  // F.931 por grupo de CUIT
+  // F.931 por grupo de CUIT — vencimientos del mes de trabajo
   const gruposF931 = getVencimientosGrupos(anioActual, mesActual).map((g) => {
     const clientesGrupo = clientesList.filter(
       (c) => c.terminacion_cuit >= g.min && c.terminacion_cuit <= g.max
@@ -92,11 +106,35 @@ export default async function DashboardPage() {
 
   return (
     <div className="p-8 max-w-[1400px]">
-      <div className="mb-7">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">{anioActual}</p>
-        <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight">
-          {MESES_NOMBRES[mesActual]} — Resumen del mes
-        </h1>
+      <div className="mb-7 flex items-center justify-between">
+        <div>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">{anioActual}</p>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/dashboard?mes=${prevMes}&anio=${prevAnio}`}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors"
+            >
+              <ChevronLeft size={15} />
+            </Link>
+            <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight">
+              {MESES_NOMBRES[mesActual]} — Resumen del mes
+            </h1>
+            <Link
+              href={`/dashboard?mes=${nextMes}&anio=${nextAnio}`}
+              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors"
+            >
+              <ChevronRight size={15} />
+            </Link>
+          </div>
+        </div>
+        {!esMesActual && (
+          <Link
+            href="/dashboard"
+            className="text-[12px] text-bordo font-medium hover:underline"
+          >
+            Volver al mes actual
+          </Link>
+        )}
       </div>
 
       {/* Stat cards */}

@@ -45,6 +45,31 @@ export const MESES_NOMBRES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
+/**
+ * Mes de trabajo = mes anterior al actual, hasta 2 días después del
+ * último vencimiento F.931 de ese mes. Ej: último venc. junio = 14/07
+ * → sigue siendo "junio" hasta el 16/07 inclusive. El 17/07 cambia a julio.
+ */
+export function getMesTrabajoActual(): { mes: number; anio: number } {
+  const hoy = new Date();
+  const mesHoy = hoy.getMonth() + 1;
+  const anioHoy = hoy.getFullYear();
+
+  const mesPrevio = mesHoy === 1 ? 12 : mesHoy - 1;
+  const anioPrevio = mesHoy === 1 ? anioHoy - 1 : anioHoy;
+
+  // Último vencimiento del mes previo = CUIT 7-9 (siempre el más tardío)
+  const ultimoVenc = getVencimientoF931(9, anioPrevio, mesPrevio);
+
+  // Hasta 2 días después del último vencimiento, el mes de trabajo sigue siendo el previo
+  const umbral = new Date(ultimoVenc);
+  umbral.setDate(umbral.getDate() + 2);
+
+  return hoy <= umbral
+    ? { mes: mesPrevio, anio: anioPrevio }
+    : { mes: mesHoy, anio: anioHoy };
+}
+
 export const CALENDAR_2026 = Object.entries(FECHAS_2026).map(([mesStr, fechas]) => {
   const mes = parseInt(mesStr);
   return {

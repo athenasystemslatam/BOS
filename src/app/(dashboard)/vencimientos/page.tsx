@@ -1,13 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente } from "@/types";
-import { CALENDAR_2026 } from "@/lib/vencimientos";
+import { CALENDAR_2026, getMesTrabajoActual } from "@/lib/vencimientos";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
 
 export default async function VencimientosPage() {
   const supabase = createAdminClient();
   const hoy = new Date();
-  const mesActual = hoy.getMonth() + 1;
+  const { mes: mesActual } = getMesTrabajoActual();
 
   const { data: clientes } = await supabase
     .from("clientes")

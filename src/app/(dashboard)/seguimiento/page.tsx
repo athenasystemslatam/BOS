@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
-import { MESES_NOMBRES } from "@/lib/vencimientos";
+import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
 import { SeguimientoClient } from "./SeguimientoClient";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
@@ -10,9 +10,7 @@ type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 export default async function SeguimientoPage() {
   const supabase = createAdminClient();
 
-  const hoy = new Date();
-  const anio = hoy.getFullYear();
-  const mes = hoy.getMonth() + 1;
+  const { mes, anio } = getMesTrabajoActual();
 
   // Fetch or create current period
   let { data: periodo } = await supabase
