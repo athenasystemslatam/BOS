@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { X, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { X, Plus, Trash2, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { editarEmpresa } from "./actions";
 import { Cliente, Liquidadora, ClaveAcceso } from "@/types";
 
@@ -31,12 +31,16 @@ function formatCuit(raw: string) {
   return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`;
 }
 
+const JURISDICCIONES = ["CABA", "PBA", "Otra"];
+
 function ClavesAccesoEditor({
   claves,
   onChange,
+  sugerencias,
 }: {
   claves: ClaveAcceso[];
   onChange: (c: ClaveAcceso[]) => void;
+  sugerencias: string[];
 }) {
   const [showPass, setShowPass] = useState<Record<number, boolean>>({});
 
@@ -49,10 +53,18 @@ function ClavesAccesoEditor({
     onChange(claves.filter((_, idx) => idx !== i));
   }
 
+  function quickAdd(sistema: string) {
+    onChange([...claves, { sistema, usuario: "", contrasena: "", url: "" }]);
+  }
+
+  const faltantes = sugerencias.filter(
+    (s) => !claves.some((c) => c.sistema.trim().toLowerCase() === s.toLowerCase())
+  );
+
   return (
     <div className="space-y-2">
       {claves.map((c, i) => (
-        <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+        <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 items-center">
           <input
             type="text"
             placeholder="Sistema (ARCA, TAD…)"
@@ -83,6 +95,25 @@ function ClavesAccesoEditor({
               {showPass[i] ? <EyeOff size={13} /> : <Eye size={13} />}
             </button>
           </div>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="URL"
+              value={c.url ?? ""}
+              onChange={(e) => update(i, "url", e.target.value)}
+              className="text-xs border border-gray-200 rounded-md px-2.5 py-2 pr-7 focus:outline-none focus:border-bordo bg-white w-full"
+            />
+            {c.url && (
+              <a
+                href={/^https?:\/\//.test(c.url) ? c.url : `https://${c.url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-bordo"
+              >
+                <ExternalLink size={13} />
+              </a>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => remove(i)}
@@ -92,13 +123,26 @@ function ClavesAccesoEditor({
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={() => onChange([...claves, { sistema: "", usuario: "", contrasena: "" }])}
-        className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-bordo transition-colors"
-      >
-        <Plus size={13} /> Agregar clave
-      </button>
+
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => quickAdd("")}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-bordo transition-colors"
+        >
+          <Plus size={13} /> Agregar clave
+        </button>
+        {faltantes.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => quickAdd(s)}
+            className="text-[11px] font-medium text-bordo bg-bordo/5 hover:bg-bordo/10 px-2 py-1 rounded-full transition-colors"
+          >
+            + {s}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -115,19 +159,35 @@ export function EditarEmpresaModal({
   const [cuit, setCuit] = useState(formatCuit(cliente.cuit));
   const [tieneSindicato, setTieneSindicato] = useState(cliente.tiene_sindicato);
   const [tieneRubrica, setTieneRubrica] = useState(cliente.tiene_rubrica_lsd);
-  const [claves, setClaves] = useState<ClaveAcceso[]>(cliente.claves_acceso ?? []);
+  const [esQuincenal, setEsQuincenal] = useState(cliente.es_quincenal);
+  const [jurisdiccion, setJurisdiccion] = useState(
+    JURISDICCIONES.includes(cliente.jurisdiccion ?? "") ? (cliente.jurisdiccion as string) : "Otra"
+  );
+  const [claves, setClaves] = useState<ClaveAcceso[]>(
+    (cliente.claves_acceso ?? []).map((c) => ({ ...c, url: c.url ?? "" }))
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const terminacion =
     cuit.replace(/\D/g, "").length === 11 ? cuit.replace(/\D/g, "")[10] : "—";
 
+  const sugerenciasClaves = [
+    "ARCA",
+    ...(jurisdiccion === "CABA" ? ["TAD"] : []),
+    ...(jurisdiccion === "PBA" ? ["SITRADIB"] : []),
+    ...(tieneSindicato && cliente.sindicato_nombre ? [cliente.sindicato_nombre] : []),
+    ...(tieneRubrica ? ["Rúbrica"] : []),
+  ];
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     formData.set("tiene_sindicato", String(tieneSindicato));
     formData.set("tiene_rubrica_lsd", String(tieneRubrica));
+    formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
+    if (jurisdiccion !== "Otra") formData.set("jurisdiccion", jurisdiccion);
     setError(null);
     startTransition(async () => {
       const result = await editarEmpresa(formData);
@@ -189,15 +249,29 @@ export function EditarEmpresaModal({
               </div>
             </div>
 
+            {/* CUIL de ARCA */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                CUIL de acceso a ARCA
+              </label>
+              <input
+                name="cuil_arca"
+                type="text"
+                defaultValue={cliente.cuil_arca ?? ""}
+                className={inputCls}
+              />
+            </div>
+
             {/* Tipo + Liquidadora */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                  Tipo <span className="text-danger">*</span>
+                  Tipo de contribuyente <span className="text-danger">*</span>
                 </label>
-                <select name="tipo" defaultValue={cliente.tipo} className={inputCls}>
-                  <option value="mensual">Mensual</option>
-                  <option value="quincenal">Quincenal</option>
+                <select name="tipo_contribuyente" defaultValue={cliente.tipo_contribuyente} className={inputCls}>
+                  <option value="empresa">Empresa</option>
+                  <option value="monotributista">Monotributista</option>
+                  <option value="inscripto">Inscripto</option>
                 </select>
               </div>
               <div>
@@ -213,11 +287,36 @@ export function EditarEmpresaModal({
               </div>
             </div>
 
+            {/* Quincenal */}
+            <div className="border border-gray-100 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-700">Es quincenal</span>
+                <Toggle value={esQuincenal} onChange={setEsQuincenal} />
+              </div>
+            </div>
+
             {/* Jurisdicción + Estado */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Jurisdicción</label>
-                <input name="jurisdiccion" type="text" defaultValue={cliente.jurisdiccion ?? ""} className={inputCls} />
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Jurisdicción laboral</label>
+                <select
+                  value={jurisdiccion}
+                  onChange={(e) => setJurisdiccion(e.target.value)}
+                  className={inputCls}
+                >
+                  {JURISDICCIONES.map((j) => (
+                    <option key={j} value={j}>{j}</option>
+                  ))}
+                </select>
+                {jurisdiccion === "Otra" && (
+                  <input
+                    name="jurisdiccion"
+                    type="text"
+                    defaultValue={JURISDICCIONES.includes(cliente.jurisdiccion ?? "") ? "" : cliente.jurisdiccion ?? ""}
+                    placeholder="Especificar jurisdicción"
+                    className={`${inputCls} mt-2`}
+                  />
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Estado</label>
@@ -226,6 +325,31 @@ export function EditarEmpresaModal({
                   <option value="inactivo">Inactiva</option>
                 </select>
               </div>
+            </div>
+
+            {/* ART + Red bancaria */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">ART</label>
+                <input name="art" type="text" defaultValue={cliente.art ?? ""} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Red bancaria</label>
+                <input name="red_bancaria" type="text" defaultValue={cliente.red_bancaria ?? ""} className={inputCls} />
+              </div>
+            </div>
+
+            {/* Fecha alta empleador */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Fecha de alta como empleador
+              </label>
+              <input
+                name="fecha_alta_empleador"
+                type="date"
+                defaultValue={cliente.fecha_alta_empleador ?? ""}
+                className={inputCls}
+              />
             </div>
 
             {/* Sindicato */}
@@ -267,7 +391,7 @@ export function EditarEmpresaModal({
             {/* Claves de acceso */}
             <div className="border border-gray-100 rounded-lg p-4">
               <p className="text-xs font-medium text-gray-700 mb-3">Claves de acceso</p>
-              <ClavesAccesoEditor claves={claves} onChange={setClaves} />
+              <ClavesAccesoEditor claves={claves} onChange={setClaves} sugerencias={sugerenciasClaves} />
             </div>
 
             {error && (

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { X } from "lucide-react";
-import { editarLiquidadora } from "./actions";
+import { X, Send } from "lucide-react";
+import { editarLiquidadora, reenviarInvitacion } from "./actions";
 import { Liquidadora } from "@/types";
 
 const ROLES = [
@@ -41,6 +41,16 @@ export function EditarLiquidadoraModal({
   const [activa, setActiva] = useState(liquidadora.activa);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isSending, setIsSending] = useState(false);
+  const [sendResult, setSendResult] = useState<string | null>(null);
+
+  async function handleResend() {
+    setIsSending(true);
+    setSendResult(null);
+    const result = await reenviarInvitacion(liquidadora.id);
+    setSendResult(result.error ? `Error: ${result.error}` : "Acceso reenviado.");
+    setIsSending(false);
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -97,6 +107,18 @@ export function EditarLiquidadoraModal({
               placeholder="liquidadora@kma.com.ar"
               className={inputCls}
             />
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isSending || !liquidadora.email}
+              className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-bordo hover:text-bordo-dark disabled:opacity-50 transition-colors"
+            >
+              <Send size={12} />
+              {isSending ? "Enviando…" : "Reenviar acceso"}
+            </button>
+            {sendResult && (
+              <p className="text-[11px] text-gray-500 mt-1">{sendResult}</p>
+            )}
           </div>
 
           <div>

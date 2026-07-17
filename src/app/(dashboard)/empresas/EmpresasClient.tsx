@@ -3,18 +3,26 @@
 import { useState, useMemo } from "react";
 import { Search, Pencil } from "lucide-react";
 import clsx from "clsx";
-import { Cliente, Liquidadora } from "@/types";
+import { Cliente, Liquidadora, TipoContribuyente } from "@/types";
 import { NuevaEmpresaModal } from "./NuevaEmpresaModal";
 import { EditarEmpresaModal } from "./EditarEmpresaModal";
 
 type ClienteConLiq = Cliente & { liquidadora?: Liquidadora };
 
+const TIPO_CONTRIB_LABELS: Record<TipoContribuyente, { label: string; cls: string }> = {
+  empresa: { label: "Empresa", cls: "bg-blue-50 text-blue-700" },
+  monotributista: { label: "Monotributista", cls: "bg-amber-50 text-amber-700" },
+  inscripto: { label: "Inscripto", cls: "bg-teal-50 text-teal-700" },
+};
+
 export function EmpresasClient({
   clientes,
   liquidadoras,
+  isAdmin,
 }: {
   clientes: ClienteConLiq[];
   liquidadoras: Liquidadora[];
+  isAdmin: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [filtroLiq, setFiltroLiq] = useState("");
@@ -127,7 +135,9 @@ export function EmpresasClient({
                     <th className="px-4 py-3 text-center font-medium">Rúb.LSD</th>
                     <th className="px-4 py-3 text-left font-medium">Jurisdicción</th>
                     <th className="px-4 py-3 text-center font-medium">Estado</th>
-                    <th className="px-4 py-3 text-center font-medium">Acciones</th>
+                    {isAdmin && (
+                      <th className="px-4 py-3 text-center font-medium">Acciones</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -161,16 +171,25 @@ export function EmpresasClient({
                         )}
                       </td>
                       <td className="px-4 py-3.5 text-center">
-                        <span
-                          className={clsx(
-                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap",
-                            c.tipo === "quincenal"
-                              ? "bg-purple-50 text-purple-700"
-                              : "bg-blue-50 text-blue-700"
+                        <div className="inline-flex items-center gap-1">
+                          <span
+                            className={clsx(
+                              "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap",
+                              TIPO_CONTRIB_LABELS[c.tipo_contribuyente]?.cls ??
+                                "bg-gray-100 text-gray-600"
+                            )}
+                          >
+                            {TIPO_CONTRIB_LABELS[c.tipo_contribuyente]?.label ?? c.tipo_contribuyente}
+                          </span>
+                          {c.es_quincenal && (
+                            <span
+                              title="Quincenal"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700"
+                            >
+                              Q
+                            </span>
                           )}
-                        >
-                          {c.tipo === "quincenal" ? "Quincenal" : "Mensual"}
-                        </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3.5 text-center text-[13px]">
                         {c.tiene_sindicato ? (
@@ -203,15 +222,17 @@ export function EmpresasClient({
                           {c.estado === "activo" ? "Activa" : "Inactiva"}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <button
-                          onClick={() => setEditando(c)}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap"
-                        >
-                          <Pencil size={12} />
-                          Editar
-                        </button>
-                      </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3.5 text-center">
+                          <button
+                            onClick={() => setEditando(c)}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap"
+                          >
+                            <Pencil size={12} />
+                            Editar
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

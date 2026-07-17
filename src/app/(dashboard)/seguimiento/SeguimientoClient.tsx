@@ -35,6 +35,7 @@ interface Props {
   periodos: Periodo[];
   periodo: Periodo | null;
   liquidadoras: Pick<Liquidadora, "id" | "nombre">[];
+  isAdmin: boolean;
 }
 
 type TareaState = {
@@ -127,6 +128,7 @@ export function SeguimientoClient({
   tareas: initialTareas,
   periodo: initialPeriodo,
   liquidadoras,
+  isAdmin,
 }: Props) {
   // Period state — managed client-side to avoid URL params (which make the route dynamic)
   const [currentPeriodo, setCurrentPeriodo] = useState<Periodo | null>(initialPeriodo);
@@ -199,7 +201,7 @@ export function SeguimientoClient({
   }, [clientes, filtroLiq]);
 
   const tieneQuincenales = useMemo(
-    () => clientes.some((c) => c.tipo === "quincenal"),
+    () => clientes.some((c) => c.es_quincenal),
     [clientes]
   );
   const esMesSAC = currentPeriodo
@@ -316,10 +318,12 @@ export function SeguimientoClient({
           </p>
           <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight flex items-center gap-3">
             Seguimiento
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-bordo/10 text-bordo px-2 py-0.5 rounded-full">
-              <ShieldCheck size={11} />
-              Vista admin
-            </span>
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-bordo/10 text-bordo px-2 py-0.5 rounded-full">
+                <ShieldCheck size={11} />
+                Vista admin
+              </span>
+            )}
           </h1>
           <p className="text-sm text-gray-400 mt-1">
             {clientesFiltrados.length} empresas ·{" "}
@@ -605,7 +609,7 @@ export function SeguimientoClient({
                       {/* Rec Q1 */}
                       {tieneQuincenales && (
                         <td className="px-2 py-2.5 text-center">
-                          {cliente.tipo === "quincenal" ? (
+                          {cliente.es_quincenal ? (
                             <CheckboxCell
                               manual={t.rec_q1_manual}
                               drive={t.rec_q1_drive}

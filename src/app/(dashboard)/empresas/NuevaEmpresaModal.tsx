@@ -27,12 +27,30 @@ function Field({
 const inputCls =
   "w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo focus:ring-1 focus:ring-bordo/20 transition-colors bg-white";
 
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!value)}
+      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${value ? "bg-bordo" : "bg-gray-200"}`}
+    >
+      <span
+        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+          value ? "translate-x-4" : "translate-x-0.5"
+        }`}
+      />
+    </button>
+  );
+}
+
 function formatCuit(raw: string) {
   const d = raw.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 2) return d;
   if (d.length <= 10) return `${d.slice(0, 2)}-${d.slice(2)}`;
   return `${d.slice(0, 2)}-${d.slice(2, 10)}-${d.slice(10)}`;
 }
+
+const JURISDICCIONES = ["CABA", "PBA", "Otra"];
 
 export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[] }) {
   const [open, setOpen] = useState(false);
@@ -41,6 +59,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
   const [cuit, setCuit] = useState("");
   const [tieneSindicato, setTieneSindicato] = useState(false);
   const [tieneRubrica, setTieneRubrica] = useState(false);
+  const [esQuincenal, setEsQuincenal] = useState(false);
+  const [jurisdiccion, setJurisdiccion] = useState("CABA");
 
   const terminacion = cuit.replace(/\D/g, "").length === 11
     ? cuit.replace(/\D/g, "")[10]
@@ -52,6 +72,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     setCuit("");
     setTieneSindicato(false);
     setTieneRubrica(false);
+    setEsQuincenal(false);
+    setJurisdiccion("CABA");
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -59,6 +81,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     const formData = new FormData(e.currentTarget);
     formData.set("tiene_sindicato", String(tieneSindicato));
     formData.set("tiene_rubrica_lsd", String(tieneRubrica));
+    formData.set("es_quincenal", String(esQuincenal));
+    if (jurisdiccion !== "Otra") formData.set("jurisdiccion", jurisdiccion);
     setError(null);
     startTransition(async () => {
       const result = await crearEmpresa(formData);
@@ -132,11 +156,21 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                   </Field>
                 </div>
 
+                <Field label="CUIL de acceso a ARCA">
+                  <input
+                    name="cuil_arca"
+                    type="text"
+                    placeholder="20-12345678-9"
+                    className={inputCls}
+                  />
+                </Field>
+
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="Tipo de liquidación" required>
-                    <select name="tipo" defaultValue="mensual" className={inputCls}>
-                      <option value="mensual">Mensual</option>
-                      <option value="quincenal">Quincenal</option>
+                  <Field label="Tipo de contribuyente" required>
+                    <select name="tipo_contribuyente" defaultValue="empresa" className={inputCls}>
+                      <option value="empresa">Empresa</option>
+                      <option value="monotributista">Monotributista</option>
+                      <option value="inscripto">Inscripto</option>
                     </select>
                   </Field>
 
@@ -150,23 +184,19 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                   </Field>
                 </div>
 
+                {/* Quincenal */}
+                <div className="border border-gray-100 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-700">Es quincenal</span>
+                    <Toggle value={esQuincenal} onChange={setEsQuincenal} />
+                  </div>
+                </div>
+
                 {/* Sindicato */}
                 <div className="border border-gray-100 rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-gray-700">Sindicato</span>
-                    <button
-                      type="button"
-                      onClick={() => setTieneSindicato(!tieneSindicato)}
-                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
-                        tieneSindicato ? "bg-bordo" : "bg-gray-200"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${
-                          tieneSindicato ? "translate-x-4.5" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
+                    <Toggle value={tieneSindicato} onChange={setTieneSindicato} />
                   </div>
                   {tieneSindicato && (
                     <input
@@ -182,30 +212,47 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                 <div className="border border-gray-100 rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-gray-700">Rúbrica LSD</span>
-                    <button
-                      type="button"
-                      onClick={() => setTieneRubrica(!tieneRubrica)}
-                      className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${
-                        tieneRubrica ? "bg-bordo" : "bg-gray-200"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${
-                          tieneRubrica ? "translate-x-4.5" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
+                    <Toggle value={tieneRubrica} onChange={setTieneRubrica} />
                   </div>
                 </div>
 
-                <Field label="Jurisdicción">
-                  <input
-                    name="jurisdiccion"
-                    type="text"
-                    placeholder="Ej: Buenos Aires"
-                    className={inputCls}
-                  />
-                </Field>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Jurisdicción laboral" required>
+                    <select
+                      value={jurisdiccion}
+                      onChange={(e) => setJurisdiccion(e.target.value)}
+                      className={inputCls}
+                    >
+                      {JURISDICCIONES.map((j) => (
+                        <option key={j} value={j}>{j}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  {jurisdiccion === "Otra" ? (
+                    <Field label="Especificar jurisdicción">
+                      <input name="jurisdiccion" type="text" placeholder="Ej: Córdoba" className={inputCls} />
+                    </Field>
+                  ) : (
+                    <Field label="ART">
+                      <input name="art" type="text" placeholder="Ej: Galeno ART" className={inputCls} />
+                    </Field>
+                  )}
+                </div>
+
+                {jurisdiccion === "Otra" && (
+                  <Field label="ART">
+                    <input name="art" type="text" placeholder="Ej: Galeno ART" className={inputCls} />
+                  </Field>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Red bancaria">
+                    <input name="red_bancaria" type="text" placeholder="Ej: Banco Galicia" className={inputCls} />
+                  </Field>
+                  <Field label="Fecha de alta como empleador">
+                    <input name="fecha_alta_empleador" type="date" className={inputCls} />
+                  </Field>
+                </div>
 
                 <Field label="Observaciones">
                   <textarea

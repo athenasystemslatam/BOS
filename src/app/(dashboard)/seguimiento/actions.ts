@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Periodo, Tarea } from "@/types";
 import type { CampoManual } from "@/lib/drive";
@@ -21,7 +22,7 @@ export async function toggleManual(
   campo: CampoManual,
   valor: boolean
 ) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("tareas")
     .upsert(
@@ -40,7 +41,7 @@ export async function updateLegajos(
   periodoId: string,
   cantidad: number
 ) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("tareas")
     .upsert(
@@ -55,7 +56,7 @@ export async function updateObservaciones(
   periodoId: string,
   observaciones: string
 ) {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("tareas")
     .upsert(
@@ -69,7 +70,7 @@ export async function fetchPeriodo(
   anio: number,
   mes: number
 ): Promise<Periodo | null> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   let { data } = await supabase
     .from("periodos")
     .select("*")
@@ -91,7 +92,7 @@ export async function fetchPeriodo(
 }
 
 export async function fetchTareas(periodoId: string): Promise<Tarea[]> {
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("tareas")
     .select("*")

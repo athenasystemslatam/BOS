@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Building2,
   Users,
-  CalendarDays,
   Calendar,
   LogOut,
   ClipboardList,
@@ -15,15 +14,14 @@ import {
 import clsx from "clsx";
 
 const navItems = [
-  { href: "/seguimiento",  label: "Seguimiento",  icon: ClipboardList },
-  { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard },
-  { href: "/empresas",     label: "Empresas",     icon: Building2 },
-  { href: "/liquidadoras", label: "Liquidadoras", icon: Users },
-  { href: "/vencimientos", label: "Vencimientos", icon: Calendar },
-  { href: "/periodos",     label: "Períodos",     icon: CalendarDays },
+  { href: "/seguimiento",  label: "Seguimiento",  icon: ClipboardList, adminOnly: false },
+  { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
+  { href: "/empresas",     label: "Empresas",     icon: Building2, adminOnly: false },
+  { href: "/liquidadoras", label: "Liquidadoras", icon: Users, adminOnly: true },
+  { href: "/vencimientos", label: "Vencimientos", icon: Calendar, adminOnly: false },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -58,7 +56,7 @@ export function Sidebar() {
         <p className="text-white/40 text-[10px] font-semibold tracking-widest uppercase px-2 mb-2.5">
           Navegación
         </p>
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.filter((item) => !item.adminOnly || isAdmin).map(({ href, label, icon: Icon }) => {
           const isActive =
             pathname === href ||
             (href !== "/dashboard" && pathname.startsWith(href));

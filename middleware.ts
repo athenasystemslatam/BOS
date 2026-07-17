@@ -29,8 +29,11 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Si no hay sesión y no está en /login → redirigir al login
-  if (!user && !request.nextUrl.pathname.startsWith("/login")) {
+  // /auth/callback intercambia el code por sesión — no tiene user todavía
+  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
+
+  // Si no hay sesión y no está en /login ni en el callback → redirigir al login
+  if (!user && !request.nextUrl.pathname.startsWith("/login") && !isAuthCallback) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

@@ -1,11 +1,12 @@
 export type Rol = "admin" | "supervisor" | "liquidadora" | "viewer";
 export type EstadoCliente = "activo" | "inactivo";
-export type TipoLiquidacion = "mensual" | "quincenal";
+export type TipoContribuyente = "empresa" | "monotributista" | "inscripto";
 
 export interface ClaveAcceso {
   sistema: string;
   usuario: string;
   contrasena: string;
+  url: string;
 }
 
 export interface Liquidadora {
@@ -24,18 +25,21 @@ export interface Cliente {
   nombre: string;
   cuit: string;
   terminacion_cuit: number;
+  cuil_arca?: string;
   liquidador_id: string;
-  tipo: TipoLiquidacion;
+  tipo_contribuyente: TipoContribuyente;
+  es_quincenal: boolean;
   tiene_sindicato: boolean;
   sindicato_nombre?: string;
   tiene_rubrica_lsd: boolean;
   jurisdiccion?: string;
   art?: string;
-  vep_banco?: string;
+  red_bancaria?: string;
   estado: EstadoCliente;
   observaciones?: string;
   claves_acceso?: ClaveAcceso[];
   fecha_alta: string;
+  fecha_alta_empleador?: string;
   fecha_baja?: string;
   fecha_modificacion: string;
   creado_por?: string;
