@@ -112,7 +112,7 @@ function CheckboxCell({
       className={clsx(
         "w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all mx-auto",
         state === "empty" &&
-          "border-dashed border-gray-200 hover:border-gray-300 hover:bg-gray-50",
+          "border-dashed border-gray-400 hover:border-gray-500 hover:bg-gray-50",
         state === "warning" &&
           "bg-amber-50 border-amber-300 text-amber-600 hover:bg-amber-100",
         state === "drive" &&
