@@ -381,19 +381,6 @@ export async function scanClientesForMonth(
     const mesId = await findFolder(drive, searchBase, (n) => matchesMonth(n, mes, anio));
     if (!mesId) {
       const code = anioId ? "no-mes" : "no-mes-ni-anio";
-      // Último recurso: archivos sueltos directamente en SUELDOS (sin estructura año/mes)
-      const directFiles = await listFilesRecursive(drive, sueldosId, 0, 0);
-      if (directFiles.length > 0) {
-        const encontrados = new Map<CampoManual, DriveFile>();
-        for (const file of directFiles) {
-          const campo = classifyFile(file.name);
-          if (campo && !encontrados.has(campo)) encontrados.set(campo, file);
-        }
-        if (encontrados.size > 0) {
-          console.log(`[Drive] fallback-directo: "${cliente.nombre}" — ${encontrados.size} archivos en raíz SUELDOS`);
-          return { clienteId: cliente.id, encontrados } as ClienteScanResult;
-        }
-      }
       console.log(`[Drive] ${code}: "${cliente.nombre}" — buscando mes ${mes}`);
       return { clienteId: cliente.id, encontrados: new Map(), errorCode: code } as ClienteScanResult;
     }
