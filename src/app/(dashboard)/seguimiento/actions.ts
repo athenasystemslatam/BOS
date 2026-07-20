@@ -279,6 +279,18 @@ export async function syncDrive(
         });
       });
     }
+
+    // Loguear extras (ej: recibos_vac) sin contar como archivo detectado para checkboxes
+    result.extras?.forEach((file, campo) => {
+      driveLogRows.push({
+        cliente_id: result.clienteId,
+        periodo_id: periodoId,
+        archivo_nombre: file.name,
+        archivo_url: file.url,
+        tarea_detectada: campo,
+        fecha_deteccion: now,
+      });
+    });
   }
 
   // Upsert tareas in batches of 100

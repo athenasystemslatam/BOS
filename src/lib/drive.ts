@@ -36,7 +36,8 @@ type DriveFile = { id: string; name: string; url: string };
 
 export type ClienteScanResult = {
   clienteId: string;
-  encontrados: Map<CampoManual, DriveFile>;
+  encontrados: Map<CampoManual, DriveFile>; // actualiza checkboxes
+  extras: Map<string, DriveFile>;           // se loguea pero no marca checkbox
   errorCode?: string;
 };
 
@@ -117,8 +118,11 @@ function similarity(clientName: string, folderName: string): number {
   return Math.max(wordScore * 0.9 + charScore * 0.1, charScore * 0.5);
 }
 
-/** Map filename to task field. Returns null for files that should be ignored. */
-function classifyFile(filename: string): CampoManual | null {
+/** Map filename to task field. Returns null for files to ignore entirely. */
+function classifyFile(filename: string): CampoManual | "recibos_vac" | null {
+  // Excluir tipos de archivo no relevantes
+  if (/\.msg$/i.test(filename)) return null;
+
   const n = norm(filename);
 
   // Ignorar documentos que no son tareas de liquidación mensual
@@ -132,8 +136,9 @@ function classifyFile(filename: string): CampoManual | null {
   // SAC / aguinaldo
   if (/\bsac\b|aguinaldo/.test(n)) return "sac";
 
-  // Rec Q1 — primera quincena
-  if (/\bq1\b|quincena.?1|primera.?quincena|1[er]?a.?quincena/.test(n)) return "rec_q1";
+  // Rec Q1 — primera quincena (1ra, 1era, 1a, Q1)
+  // Fix: 1(?:e?ra?|a) cubre "1ra", "1era", "1a", "1r"
+  if (/\bq1\b|quincena.?1|primera.?quincena|1(?:e?ra?|a).?quincena/.test(n)) return "rec_q1";
 
   // Rúbrica LSD
   if (/rubric|rub.?lsd|\blsd\b/.test(n)) return "rub_lsd";
@@ -145,8 +150,11 @@ function classifyFile(filename: string): CampoManual | null {
   // Recibos — segunda quincena
   if (/\bq2\b|quincena.?2|segunda.?quincena|2da.?quincena/.test(n)) return "recibos";
 
-  // Recibos — patrones explícitos únicamente (sin catch-all de mes ni extensión)
-  if (/\brecibo|\brecibos|\bhaberes\b|\bsueldos?\b|liquidacion/.test(n)) return "recibos";
+  // Vacaciones — se loguea pero NO marca el checkbox Recibos
+  if (/vacacion/.test(n)) return "recibos_vac";
+
+  // Recibos de sueldo mensual — solo patrones de remuneración confirmada
+  if (/\brecibo|\brecibos|\bhaberes\b|\bsueldos?\b|liquidacion|remuneracion/.test(n)) return "recibos";
 
   return null;
 }
@@ -363,7 +371,7 @@ export async function scanClientesForMonth(
   const settled = await concurrent(clientes, 15, async (cliente) => {
     const folder = findBestFolder(cliente.nombre, allFolders, true);
     if (!folder) {
-      return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-folder" } as ClienteScanResult;
+      return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: "no-folder" } as ClienteScanResult;
     }
 
     const sueldosId = await findFolder(drive, folder.id, (n) =>
@@ -371,7 +379,7 @@ export async function scanClientesForMonth(
     );
     if (!sueldosId) {
       console.log(`[Drive] no-sueldos: "${cliente.nombre}" (carpeta Drive: "${folder.name}")`);
-      return { clienteId: cliente.id, encontrados: new Map(), errorCode: "no-sueldos" } as ClienteScanResult;
+      return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: "no-sueldos" } as ClienteScanResult;
     }
 
     const MES_WORDS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -396,20 +404,24 @@ export async function scanClientesForMonth(
     if (!mesId) {
       const code = anioId ? "no-mes" : "no-mes-ni-anio";
       console.log(`[Drive] ${code}: "${cliente.nombre}" — buscando mes ${mes}`);
-      return { clienteId: cliente.id, encontrados: new Map(), errorCode: code } as ClienteScanResult;
+      return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: code } as ClienteScanResult;
     }
 
     const files = await listFilesRecursive(drive, mesId);
     const encontrados = new Map<CampoManual, DriveFile>();
+    const extras = new Map<string, DriveFile>();
     for (const file of files) {
       const campo = classifyFile(file.name);
-      if (campo && !encontrados.has(campo)) {
+      if (!campo) continue;
+      if (campo === "recibos_vac") {
+        if (!extras.has(campo)) extras.set(campo, file);
+      } else if (!encontrados.has(campo)) {
         encontrados.set(campo, file);
       }
     }
 
-    console.log(`[Drive] OK: "${cliente.nombre}" — ${encontrados.size} archivos: [${Array.from(encontrados.keys()).join(", ")}]`);
-    return { clienteId: cliente.id, encontrados } as ClienteScanResult;
+    console.log(`[Drive] OK: "${cliente.nombre}" — ${encontrados.size} archivos: [${Array.from(encontrados.keys()).join(", ")}]${extras.size > 0 ? ` + extras: [${Array.from(extras.keys()).join(", ")}]` : ""}`);
+    return { clienteId: cliente.id, encontrados, extras } as ClienteScanResult;
   });
 
   const results = settled
