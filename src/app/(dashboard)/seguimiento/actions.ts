@@ -290,10 +290,11 @@ export async function syncDrive(
       });
   }
 
-  // Insert drive_logs
+  // Insert drive_log
   if (driveLogRows.length > 0) {
     for (let i = 0; i < driveLogRows.length; i += 100) {
-      await supabase.from("drive_logs").insert(driveLogRows.slice(i, i + 100));
+      const { error: logError } = await supabase.from("drive_log").insert(driveLogRows.slice(i, i + 100));
+      if (logError) console.error("[syncDrive] drive_log insert error:", logError.message);
     }
   }
 

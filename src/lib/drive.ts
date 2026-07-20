@@ -127,8 +127,10 @@ function classifyFile(filename: string): CampoManual | null {
   if (/rubric|rub.?lsd|\blsd\b/.test(n)) return "rub_lsd";
   if (/boleta|sindicato|\bsmata\b|\buocra\b|\bfatlyf\b|\bugl\b|\batilra\b|\bsatsaid\b|camionero|gastronomic|textil|aceitero/.test(n))
     return "bol_sind";
+  // Recibos — segunda quincena explícito antes que catch-all
+  if (/\bq2\b|quincena.?2|segunda.?quincena|2da.?quincena/.test(n)) return "recibos";
   // Recibos — explicit patterns
-  if (/\brecibo|\brecibos|\bhaberes\b|\blegajo\b/.test(n)) return "recibos";
+  if (/\brecibo|\brecibos|\bhaberes\b|\blegajo\b|\bsueldos?\b/.test(n)) return "recibos";
   // File named after a month (ej: "JULIO 2026", "07 2026", "julio")
   if (/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/.test(n)) return "recibos";
   if (/\b(0[1-9]|1[0-2])\s*[\-_]?\s*20\d\d\b/.test(n)) return "recibos";
