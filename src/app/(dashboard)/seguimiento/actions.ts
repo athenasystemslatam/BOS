@@ -77,6 +77,9 @@ export async function fetchPeriodo(
     .eq("anio", anio)
     .eq("mes", mes)
     .maybeSingle();
+
+  const isNew = !data;
+
   if (!data) {
     const { data: nuevo } = await supabase
       .from("periodos")
@@ -88,6 +91,39 @@ export async function fetchPeriodo(
       .single();
     data = nuevo;
   }
+
+  // Al crear un período nuevo, copiar legajos_cantidad del mes anterior
+  if (isNew && data) {
+    const mesPrev = mes === 1 ? 12 : mes - 1;
+    const anioPrev = mes === 1 ? anio - 1 : anio;
+    const { data: periodoAnterior } = await supabase
+      .from("periodos")
+      .select("id")
+      .eq("anio", anioPrev)
+      .eq("mes", mesPrev)
+      .maybeSingle();
+
+    if (periodoAnterior) {
+      const { data: tareasAnteriores } = await supabase
+        .from("tareas")
+        .select("cliente_id, legajos_cantidad")
+        .eq("periodo_id", periodoAnterior.id)
+        .gt("legajos_cantidad", 0);
+
+      if (tareasAnteriores && tareasAnteriores.length > 0) {
+        const periodoId = (data as Periodo).id;
+        await supabase.from("tareas").upsert(
+          tareasAnteriores.map((t) => ({
+            cliente_id: t.cliente_id,
+            periodo_id: periodoId,
+            legajos_cantidad: t.legajos_cantidad,
+          })),
+          { onConflict: "cliente_id,periodo_id" }
+        );
+      }
+    }
+  }
+
   return data as Periodo | null;
 }
 

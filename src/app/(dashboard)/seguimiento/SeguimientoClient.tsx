@@ -14,8 +14,13 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
+  Search,
+  KeyRound,
+  Copy,
+  X,
+  Bell,
 } from "lucide-react";
-import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
+import { Cliente, ClaveAcceso, Liquidadora, Periodo, Tarea } from "@/types";
 import {
   toggleManual,
   updateLegajos,
@@ -26,6 +31,7 @@ import {
   CampoManual,
   SyncDriveResult,
 } from "./actions";
+import { getVencimientosGrupos } from "@/lib/vencimientos";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -121,6 +127,126 @@ function DashCell() {
   return <span className="text-gray-200 text-base font-light select-none">—</span>;
 }
 
+// ─── CopyButton ───────────────────────────────────────────────────────────────
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title="Copiar"
+      className="ml-1.5 text-gray-300 hover:text-bordo transition-colors"
+    >
+      {copied ? <Check size={12} strokeWidth={3} className="text-success" /> : <Copy size={12} />}
+    </button>
+  );
+}
+
+// ─── ClavesModal ──────────────────────────────────────────────────────────────
+
+function ClavesModal({
+  cliente,
+  onClose,
+}: {
+  cliente: ClienteConLiq;
+  onClose: () => void;
+}) {
+  const claves: ClaveAcceso[] = cliente.claves_acceso ?? [];
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-xl border border-gray-100 w-full max-w-sm mx-4 p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-[13px] font-semibold text-gray-800">{cliente.nombre}</p>
+            <p className="text-[10px] text-gray-400 font-mono">{cliente.cuit}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* CUIL ARCA */}
+        {cliente.cuil_arca && (
+          <div className="mb-4">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              CUIL ARCA
+            </p>
+            <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 font-mono text-[13px] text-gray-700">
+              {cliente.cuil_arca}
+              <CopyButton value={cliente.cuil_arca} />
+            </div>
+          </div>
+        )}
+
+        {/* Claves de acceso */}
+        {claves.length > 0 ? (
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              Claves de acceso
+            </p>
+            <div className="space-y-2">
+              {claves.map((clave, i) => (
+                <div key={i} className="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px]">
+                  <p className="font-semibold text-gray-600 mb-1.5">{clave.sistema}</p>
+                  <div className="space-y-1">
+                    {clave.usuario && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400 text-[11px]">Usuario</span>
+                        <div className="flex items-center font-mono text-gray-700">
+                          {clave.usuario}
+                          <CopyButton value={clave.usuario} />
+                        </div>
+                      </div>
+                    )}
+                    {clave.contrasena && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400 text-[11px]">Contraseña</span>
+                        <div className="flex items-center font-mono text-gray-700">
+                          {clave.contrasena}
+                          <CopyButton value={clave.contrasena} />
+                        </div>
+                      </div>
+                    )}
+                    {clave.url && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400 text-[11px]">URL</span>
+                        <div className="flex items-center font-mono text-[11px] text-gray-500">
+                          <span className="truncate max-w-[140px]">{clave.url}</span>
+                          <CopyButton value={clave.url} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          !cliente.cuil_arca && (
+            <p className="text-[12px] text-gray-400 text-center py-4">
+              Sin CUIL ARCA ni claves registradas para esta empresa.
+            </p>
+          )
+        )}
+
+        {!cliente.cuil_arca && claves.length === 0 && null}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function SeguimientoClient({
@@ -140,6 +266,12 @@ export function SeguimientoClient({
 
   // Admin filter
   const [filtroLiq, setFiltroLiq] = useState<string>("todas");
+
+  // Búsqueda por nombre
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Modal de claves
+  const [clienteClaves, setClienteClaves] = useState<ClienteConLiq | null>(null);
 
   // Debounce timers
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -196,9 +328,13 @@ export function SeguimientoClient({
   }
 
   const clientesFiltrados = useMemo(() => {
-    if (filtroLiq === "todas") return clientes;
-    return clientes.filter((c) => c.liquidadora?.id === filtroLiq);
-  }, [clientes, filtroLiq]);
+    const q = searchQuery.toLowerCase().trim();
+    return clientes.filter((c) => {
+      if (filtroLiq !== "todas" && c.liquidadora?.id !== filtroLiq) return false;
+      if (q && !c.nombre.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [clientes, filtroLiq, searchQuery]);
 
   const tieneQuincenales = useMemo(
     () => clientes.some((c) => c.es_quincenal),
@@ -207,6 +343,22 @@ export function SeguimientoClient({
   const esMesSAC = currentPeriodo
     ? currentPeriodo.mes === 6 || currentPeriodo.mes === 12
     : false;
+
+  // Vencimientos del mes siguiente al período activo
+  const vencimientosProximos = useMemo(() => {
+    if (!currentPeriodo) return null;
+    const mesNext = currentPeriodo.mes === 12 ? 1 : currentPeriodo.mes + 1;
+    const anioNext = currentPeriodo.mes === 12 ? currentPeriodo.anio + 1 : currentPeriodo.anio;
+    const grupos = getVencimientosGrupos(anioNext, currentPeriodo.mes);
+    const hoy = new Date();
+    const proximosDias = grupos
+      .map((g) => {
+        const diff = Math.ceil((g.fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+        return { label: g.label, fecha: g.fecha, dias: diff };
+      })
+      .filter((g) => g.dias <= 14 && g.dias >= 0);
+    return proximosDias.length > 0 ? { grupos: proximosDias, mesNext, anioNext } : null;
+  }, [currentPeriodo]);
 
   // ── Period navigation (client-side, no URL change) ────────────────────────
 
@@ -310,6 +462,9 @@ export function SeguimientoClient({
 
   return (
     <div className="p-8 max-w-[1600px]">
+      {clienteClaves && (
+        <ClavesModal cliente={clienteClaves} onClose={() => setClienteClaves(null)} />
+      )}
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -417,6 +572,24 @@ export function SeguimientoClient({
         </div>
       )}
 
+      {/* Alerta vencimientos próximos */}
+      {vencimientosProximos && (
+        <div className="mb-4 flex items-start gap-2.5 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
+          <Bell size={14} className="mt-0.5 shrink-0 text-amber-500" />
+          <div>
+            <span className="font-semibold">Próximos vencimientos F.931 — </span>
+            {vencimientosProximos.grupos.map((g, i) => (
+              <span key={i}>
+                {i > 0 && " · "}
+                <span className="font-medium">CUITs {g.label}</span>{" "}
+                {g.fecha.toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+                <span className="text-amber-600"> ({g.dias === 0 ? "hoy" : `en ${g.dias}d`})</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Admin filter by liquidadora */}
       {liquidadoras.length > 0 && (
         <div className="flex items-center gap-2 mb-5 flex-wrap">
@@ -455,6 +628,26 @@ export function SeguimientoClient({
           })}
         </div>
       )}
+
+      {/* Búsqueda por empresa */}
+      <div className="relative mb-4 max-w-xs">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Buscar empresa..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-8 pr-3 py-1.5 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo placeholder:text-gray-300 bg-white"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
 
       {/* Legend */}
       <div className="flex items-center gap-5 mb-4 text-[11px] text-gray-400">
@@ -509,7 +702,7 @@ export function SeguimientoClient({
             <table className="w-full" style={{ minWidth: 720 }}>
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[180px]">
+                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[210px]">
                     Empresa
                   </th>
                   <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[110px]">
@@ -588,14 +781,24 @@ export function SeguimientoClient({
                           >
                             {cliente.nombre.charAt(0).toUpperCase()}
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-[13px] font-medium text-gray-800 truncate max-w-[160px]">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[13px] font-medium text-gray-800 truncate max-w-[150px]">
                               {cliente.nombre}
                             </p>
                             <p className="text-[10px] text-gray-400 font-mono">
                               {cliente.cuit}
                             </p>
                           </div>
+                          {(cliente.cuil_arca || (cliente.claves_acceso && cliente.claves_acceso.length > 0)) && (
+                            <button
+                              type="button"
+                              title="Ver CUIL ARCA y claves"
+                              onClick={() => setClienteClaves(cliente)}
+                              className="shrink-0 text-gray-300 hover:text-bordo transition-colors"
+                            >
+                              <KeyRound size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
 
