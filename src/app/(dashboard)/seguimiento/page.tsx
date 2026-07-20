@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
@@ -11,7 +10,6 @@ type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 // Ruta dinámica: usa cookies para saber qué empresas mostrar.
 // Las operaciones de sistema (periodos) usan admin client para evitar bloqueos RLS.
 export default async function SeguimientoPage() {
-  const supabase = await createClient();
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
 
