@@ -227,8 +227,15 @@ function ClavesModal({
                     {clave.url && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-400 text-[11px]">URL</span>
-                        <div className="flex items-center font-mono text-[11px] text-gray-500">
-                          <span className="truncate max-w-[140px]">{clave.url}</span>
+                        <div className="flex items-center gap-1 text-[11px]">
+                          <a
+                            href={clave.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-blue-500 hover:underline truncate max-w-[130px]"
+                          >
+                            {clave.url}
+                          </a>
                           <CopyButton value={clave.url} />
                         </div>
                       </div>
@@ -239,14 +246,10 @@ function ClavesModal({
             </div>
           </div>
         ) : (
-          !cliente.cuil_arca && (
-            <p className="text-[12px] text-gray-400 text-center py-4">
-              Sin CUIL ARCA ni claves registradas para esta empresa.
-            </p>
-          )
+          <p className="text-[12px] text-gray-400 text-center py-4">
+            Sin claves de acceso registradas.
+          </p>
         )}
-
-        {!cliente.cuil_arca && claves.length === 0 && null}
       </div>
     </div>
   );
@@ -837,16 +840,19 @@ export function SeguimientoClient({
                               </p>
                             )}
                           </div>
-                          {(cliente.cuil_arca || (cliente.claves_acceso && cliente.claves_acceso.length > 0)) && (
-                            <button
-                              type="button"
-                              title="Ver CUIL ARCA y claves"
-                              onClick={() => setClienteClaves(cliente)}
-                              className="shrink-0 text-gray-300 hover:text-bordo transition-colors"
-                            >
-                              <KeyRound size={13} />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            title="Ver CUIL ARCA y claves"
+                            onClick={() => setClienteClaves(cliente)}
+                            className={clsx(
+                              "shrink-0 transition-colors hover:text-bordo",
+                              cliente.cuil_arca || (cliente.claves_acceso && cliente.claves_acceso.length > 0)
+                                ? "text-gray-400"
+                                : "text-gray-200"
+                            )}
+                          >
+                            <KeyRound size={13} />
+                          </button>
                         </div>
                       </td>
 
