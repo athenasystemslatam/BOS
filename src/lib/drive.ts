@@ -119,13 +119,22 @@ function similarity(clientName: string, folderName: string): number {
 }
 
 /** Map filename to task field. Returns null for files to ignore entirely. */
-function classifyFile(filename: string): CampoManual | "recibos_vac" | null {
+function classifyFile(filename: string): CampoManual | "recibos_vac" | "planilla_interna" | null {
   // Excluir tipos de archivo no relevantes
   if (/\.msg$/i.test(filename)) return null;
 
   const n = norm(filename);
+  const isXlsx = /\.xlsx?$/i.test(filename);
 
-  // Ignorar documentos que no son tareas de liquidación mensual
+  // .xlsx: manejar antes que el resto para evitar falsos positivos en recibos.
+  // Los Excel de sueldos son planillas de cálculo, no recibos firmados.
+  if (isXlsx) {
+    if (/\brecibo/.test(n)) return "recibos"; // excepción: xlsx con "recibo" explícito
+    if (/\bsueldos?\b|liquidacion|\bcalculo\b|\bcontrol\b/.test(n)) return "planilla_interna";
+    return null; // cualquier otro .xlsx: ignorar
+  }
+
+  // Ignorar documentos administrativos de empleados
   if (/\balta\b|alta.?afip|alta.?adm|alta.?emp|\bbaja\b|contrato|planilla|control|\blegajo\b/.test(n)) return null;
 
   // F.931 — nombre explícito o número AFIP formato CUIL_tipo_secuencia
@@ -137,7 +146,6 @@ function classifyFile(filename: string): CampoManual | "recibos_vac" | null {
   if (/\bsac\b|aguinaldo/.test(n)) return "sac";
 
   // Rec Q1 — primera quincena (1ra, 1era, 1a, Q1)
-  // Fix: 1(?:e?ra?|a) cubre "1ra", "1era", "1a", "1r"
   if (/\bq1\b|quincena.?1|primera.?quincena|1(?:e?ra?|a).?quincena/.test(n)) return "rec_q1";
 
   // Rúbrica LSD
@@ -153,7 +161,7 @@ function classifyFile(filename: string): CampoManual | "recibos_vac" | null {
   // Vacaciones — se loguea pero NO marca el checkbox Recibos
   if (/vacacion/.test(n)) return "recibos_vac";
 
-  // Recibos de sueldo mensual — solo patrones de remuneración confirmada
+  // Recibos de sueldo mensual — solo archivos no-Excel con keywords de remuneración
   if (/\brecibo|\brecibos|\bhaberes\b|\bsueldos?\b|liquidacion|remuneracion/.test(n)) return "recibos";
 
   return null;
@@ -413,7 +421,7 @@ export async function scanClientesForMonth(
     for (const file of files) {
       const campo = classifyFile(file.name);
       if (!campo) continue;
-      if (campo === "recibos_vac") {
+      if (campo === "recibos_vac" || campo === "planilla_interna") {
         if (!extras.has(campo)) extras.set(campo, file);
       } else if (!encontrados.has(campo)) {
         encontrados.set(campo, file);
