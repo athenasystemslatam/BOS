@@ -25,8 +25,10 @@ import {
   toggleManual,
   updateLegajos,
   updateObservaciones,
+  updateRecordatorio,
   fetchPeriodo,
   fetchTareas,
+  fetchRecordatoriosPrevios,
   syncDrive,
   CampoManual,
   SyncDriveResult,
@@ -42,6 +44,7 @@ interface Props {
   periodo: Periodo | null;
   liquidadoras: Pick<Liquidadora, "id" | "nombre">[];
   isAdmin: boolean;
+  recordatoriosPrevios: Record<string, string>;
 }
 
 type TareaState = {
@@ -59,6 +62,7 @@ type TareaState = {
   sac_drive: boolean;
   legajos_cantidad: number;
   observaciones: string;
+  recordatorio: string;
 };
 
 const DEFAULTS: TareaState = {
@@ -70,6 +74,7 @@ const DEFAULTS: TareaState = {
   sac_manual: false, sac_drive: false,
   legajos_cantidad: 0,
   observaciones: "",
+  recordatorio: "",
 };
 
 type CheckState = "empty" | "warning" | "drive" | "confirmed";
@@ -255,6 +260,7 @@ export function SeguimientoClient({
   periodo: initialPeriodo,
   liquidadoras,
   isAdmin,
+  recordatoriosPrevios: initialRecordatoriosPrevios,
 }: Props) {
   // Period state — managed client-side to avoid URL params (which make the route dynamic)
   const [currentPeriodo, setCurrentPeriodo] = useState<Periodo | null>(initialPeriodo);
@@ -272,6 +278,11 @@ export function SeguimientoClient({
 
   // Modal de claves
   const [clienteClaves, setClienteClaves] = useState<ClienteConLiq | null>(null);
+
+  // Recordatorios del período anterior
+  const [recordatoriosPrevios, setRecordatoriosPrevios] = useState<Record<string, string>>(
+    initialRecordatoriosPrevios
+  );
 
   // Debounce timers
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -316,6 +327,7 @@ export function SeguimientoClient({
         sac_drive: t.sac_drive,
         legajos_cantidad: t.legajos_cantidad,
         observaciones: t.observaciones ?? "",
+        recordatorio: t.recordatorio ?? "",
       });
     }
     return m;
@@ -372,9 +384,13 @@ export function SeguimientoClient({
     startTransition(async () => {
       const newPeriodo = await fetchPeriodo(newAnio, newMes);
       if (newPeriodo) {
-        const newTareas = await fetchTareas(newPeriodo.id);
+        const [newTareas, newRecordatorios] = await Promise.all([
+          fetchTareas(newPeriodo.id),
+          fetchRecordatoriosPrevios(newPeriodo.id),
+        ]);
         setCurrentPeriodo(newPeriodo);
         setCurrentTareas(newTareas);
+        setRecordatoriosPrevios(newRecordatorios);
         setOverrides(new Map());
       }
     });
@@ -432,6 +448,27 @@ export function SeguimientoClient({
       key,
       setTimeout(
         () => updateObservaciones(clienteId, currentPeriodo.id, valor),
+        700
+      )
+    );
+  }
+
+  // ── Recordatorio (debounced) ──────────────────────────────────────────────
+
+  function handleRecordatorio(clienteId: string, valor: string) {
+    if (!currentPeriodo) return;
+    setOverrides((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(clienteId) ?? {};
+      next.set(clienteId, { ...existing, recordatorio: valor });
+      return next;
+    });
+    const key = `${clienteId}-rec`;
+    clearTimeout(debounceTimers.current.get(key));
+    debounceTimers.current.set(
+      key,
+      setTimeout(
+        () => updateRecordatorio(clienteId, currentPeriodo.id, valor),
         700
       )
     );
@@ -736,8 +773,11 @@ export function SeguimientoClient({
                   <th className="px-3 py-3 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-[76px]">
                     Legajos
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[180px]">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[160px]">
                     Observaciones
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-amber-400 uppercase tracking-wider min-w-[160px]">
+                    Nota → Sig. mes
                   </th>
                 </tr>
               </thead>
@@ -788,6 +828,14 @@ export function SeguimientoClient({
                             <p className="text-[10px] text-gray-400 font-mono">
                               {cliente.cuit}
                             </p>
+                            {recordatoriosPrevios[cliente.id] && (
+                              <p
+                                className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mt-1 max-w-[150px] truncate"
+                                title={`Nota del mes anterior: ${recordatoriosPrevios[cliente.id]}`}
+                              >
+                                ↩ {recordatoriosPrevios[cliente.id]}
+                              </p>
+                            )}
                           </div>
                           {(cliente.cuil_arca || (cliente.claves_acceso && cliente.claves_acceso.length > 0)) && (
                             <button
@@ -903,6 +951,19 @@ export function SeguimientoClient({
                             handleObservaciones(cliente.id, e.target.value)
                           }
                           className="w-full text-[12px] text-gray-600 border border-transparent rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo focus:bg-white hover:border-gray-200 bg-transparent placeholder:text-gray-300 transition-colors"
+                        />
+                      </td>
+
+                      {/* Recordatorio para el mes siguiente */}
+                      <td className="px-4 py-2.5">
+                        <input
+                          type="text"
+                          value={t.recordatorio}
+                          placeholder="Recordar el mes que viene..."
+                          onChange={(e) =>
+                            handleRecordatorio(cliente.id, e.target.value)
+                          }
+                          className="w-full text-[12px] text-amber-700 border border-transparent rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-300 focus:bg-amber-50/50 hover:border-amber-200 bg-transparent placeholder:text-amber-300 transition-colors"
                         />
                       </td>
                     </tr>

@@ -1,21 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
 import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
 import { SeguimientoClient } from "./SeguimientoClient";
+import { fetchRecordatoriosPrevios } from "./actions";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
-// Ruta dinámica: depende de la sesión del usuario (cookies) para saber qué
-// empresas le corresponde ver — admin ve todo, liquidadora ve solo lo suyo.
+// Ruta dinámica: usa cookies para saber qué empresas mostrar.
+// Las operaciones de sistema (periodos) usan admin client para evitar bloqueos RLS.
 export default async function SeguimientoPage() {
   const supabase = await createClient();
+  const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
 
   const { mes, anio } = getMesTrabajoActual();
 
-  // Fetch or create current period
-  let { data: periodo } = await supabase
+  // Fetch or create current period — admin client para evitar bloqueos RLS en INSERT
+  let { data: periodo } = await admin
     .from("periodos")
     .select("*")
     .eq("anio", anio)
@@ -23,7 +26,7 @@ export default async function SeguimientoPage() {
     .maybeSingle();
 
   if (!periodo) {
-    const { data: nuevo } = await supabase
+    const { data: nuevo } = await admin
       .from("periodos")
       .upsert(
         { anio, mes, nombre_mes: `${MESES_NOMBRES[mes]} ${anio}` },
@@ -35,7 +38,7 @@ export default async function SeguimientoPage() {
   }
 
   // All periods for reference
-  const { data: periodos } = await supabase
+  const { data: periodos } = await admin
     .from("periodos")
     .select("*")
     .order("anio", { ascending: false })
@@ -58,6 +61,11 @@ export default async function SeguimientoPage() {
     ? await supabase.from("tareas").select("*").eq("periodo_id", periodo.id)
     : { data: [] };
 
+  // Recordatorios del período anterior (para mostrar como alertas)
+  const recordatoriosPrevios = periodo
+    ? await fetchRecordatoriosPrevios(periodo.id)
+    : {};
+
   // Liquidadoras activas — solo hace falta para el selector de admin
   const { data: liquidadoras } = yo?.isAdmin
     ? await supabase.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre")
@@ -71,6 +79,7 @@ export default async function SeguimientoPage() {
       periodo={periodo as Periodo | null}
       liquidadoras={(liquidadoras as Pick<Liquidadora, "id" | "nombre">[]) ?? []}
       isAdmin={yo?.isAdmin ?? false}
+      recordatoriosPrevios={recordatoriosPrevios}
     />
   );
 }

@@ -77,6 +77,7 @@ export interface Tarea {
   rub_lsd_drive: boolean;
   sac_drive: boolean;
   observaciones?: string;
+  recordatorio?: string;
   cliente?: Cliente;
   periodo?: Periodo;
 }

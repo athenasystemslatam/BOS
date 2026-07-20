@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Periodo, Tarea } from "@/types";
 import type { CampoManual } from "@/lib/drive";
@@ -70,8 +71,8 @@ export async function fetchPeriodo(
   anio: number,
   mes: number
 ): Promise<Periodo | null> {
-  const supabase = await createClient();
-  let { data } = await supabase
+  const admin = createAdminClient();
+  let { data } = await admin
     .from("periodos")
     .select("*")
     .eq("anio", anio)
@@ -81,7 +82,7 @@ export async function fetchPeriodo(
   const isNew = !data;
 
   if (!data) {
-    const { data: nuevo } = await supabase
+    const { data: nuevo } = await admin
       .from("periodos")
       .upsert(
         { anio, mes, nombre_mes: `${MESES_NOMBRES[mes]} ${anio}` },
@@ -96,7 +97,7 @@ export async function fetchPeriodo(
   if (isNew && data) {
     const mesPrev = mes === 1 ? 12 : mes - 1;
     const anioPrev = mes === 1 ? anio - 1 : anio;
-    const { data: periodoAnterior } = await supabase
+    const { data: periodoAnterior } = await admin
       .from("periodos")
       .select("id")
       .eq("anio", anioPrev)
@@ -104,7 +105,7 @@ export async function fetchPeriodo(
       .maybeSingle();
 
     if (periodoAnterior) {
-      const { data: tareasAnteriores } = await supabase
+      const { data: tareasAnteriores } = await admin
         .from("tareas")
         .select("cliente_id, legajos_cantidad")
         .eq("periodo_id", periodoAnterior.id)
@@ -112,7 +113,7 @@ export async function fetchPeriodo(
 
       if (tareasAnteriores && tareasAnteriores.length > 0) {
         const periodoId = (data as Periodo).id;
-        await supabase.from("tareas").upsert(
+        await admin.from("tareas").upsert(
           tareasAnteriores.map((t) => ({
             cliente_id: t.cliente_id,
             periodo_id: periodoId,
@@ -125,6 +126,60 @@ export async function fetchPeriodo(
   }
 
   return data as Periodo | null;
+}
+
+export async function updateRecordatorio(
+  clienteId: string,
+  periodoId: string,
+  recordatorio: string
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tareas")
+    .upsert(
+      { cliente_id: clienteId, periodo_id: periodoId, recordatorio },
+      { onConflict: "cliente_id,periodo_id" }
+    );
+  return error ? { error: error.message } : { success: true };
+}
+
+// Devuelve un mapa clienteId → recordatorio del período anterior al dado
+export async function fetchRecordatoriosPrevios(
+  periodoId: string
+): Promise<Record<string, string>> {
+  const admin = createAdminClient();
+
+  const { data: periodo } = await admin
+    .from("periodos")
+    .select("mes, anio")
+    .eq("id", periodoId)
+    .single();
+
+  if (!periodo) return {};
+
+  const mesPrev = periodo.mes === 1 ? 12 : periodo.mes - 1;
+  const anioPrev = periodo.mes === 1 ? periodo.anio - 1 : periodo.anio;
+
+  const { data: periodoAnterior } = await admin
+    .from("periodos")
+    .select("id")
+    .eq("anio", anioPrev)
+    .eq("mes", mesPrev)
+    .maybeSingle();
+
+  if (!periodoAnterior) return {};
+
+  const { data: tareas } = await admin
+    .from("tareas")
+    .select("cliente_id, recordatorio")
+    .eq("periodo_id", periodoAnterior.id)
+    .not("recordatorio", "is", null)
+    .neq("recordatorio", "");
+
+  if (!tareas) return {};
+  return Object.fromEntries(
+    tareas.map((t) => [t.cliente_id, t.recordatorio as string])
+  );
 }
 
 export async function fetchTareas(periodoId: string): Promise<Tarea[]> {
