@@ -117,25 +117,37 @@ function similarity(clientName: string, folderName: string): number {
   return Math.max(wordScore * 0.9 + charScore * 0.1, charScore * 0.5);
 }
 
-/** Map filename to task field */
+/** Map filename to task field. Returns null for files that should be ignored. */
 function classifyFile(filename: string): CampoManual | null {
   const n = norm(filename);
-  // Specific types first (most distinctive patterns)
-  if (/f\.?9\.?3\.?1|formulario.?931|form.?931/.test(n)) return "f931";
+
+  // Ignorar documentos que no son tareas de liquidación mensual
+  if (/\balta\b|alta.?afip|alta.?adm|alta.?emp|\bbaja\b|contrato|planilla|control|\blegajo\b/.test(n)) return null;
+
+  // F.931 — nombre explícito o número AFIP formato CUIL_tipo_secuencia
+  if (/f\.?9\.?3\.?1|formulario.?931|form.?931|carga.?social/.test(n)) return "f931";
+  // Formato numérico AFIP: 11 dígitos CUIL _ 3 dígitos _ secuencia (ej: 20326761304_011_00001_...)
+  if (/\d{11}[_\-]\d{3}[_\-]\d{5}/.test(filename)) return "f931";
+
+  // SAC / aguinaldo
   if (/\bsac\b|aguinaldo/.test(n)) return "sac";
-  if (/\bq1\b|quincena.?1|primera.?quincena|1ra.?quincena/.test(n)) return "rec_q1";
+
+  // Rec Q1 — primera quincena
+  if (/\bq1\b|quincena.?1|primera.?quincena|1[er]?a.?quincena/.test(n)) return "rec_q1";
+
+  // Rúbrica LSD
   if (/rubric|rub.?lsd|\blsd\b/.test(n)) return "rub_lsd";
+
+  // Boleta sindical
   if (/boleta|sindicato|\bsmata\b|\buocra\b|\bfatlyf\b|\bugl\b|\batilra\b|\bsatsaid\b|camionero|gastronomic|textil|aceitero/.test(n))
     return "bol_sind";
-  // Recibos — segunda quincena explícito antes que catch-all
+
+  // Recibos — segunda quincena
   if (/\bq2\b|quincena.?2|segunda.?quincena|2da.?quincena/.test(n)) return "recibos";
-  // Recibos — explicit patterns
-  if (/\brecibo|\brecibos|\bhaberes\b|\blegajo\b|\bsueldos?\b/.test(n)) return "recibos";
-  // File named after a month (ej: "JULIO 2026", "07 2026", "julio")
-  if (/\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\b/.test(n)) return "recibos";
-  if (/\b(0[1-9]|1[0-2])\s*[\-_]?\s*20\d\d\b/.test(n)) return "recibos";
-  // Catch-all: any document file in the month folder that wasn't classified → likely a salary receipt
-  if (/\b(pdf|xlsx|xls|doc|docx)\b/.test(n)) return "recibos";
+
+  // Recibos — patrones explícitos únicamente (sin catch-all de mes ni extensión)
+  if (/\brecibo|\brecibos|\bhaberes\b|\bsueldos?\b|liquidacion/.test(n)) return "recibos";
+
   return null;
 }
 

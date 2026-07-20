@@ -290,7 +290,9 @@ export async function syncDrive(
       });
   }
 
-  // Insert drive_log
+  // Limpiar drive_log anterior para este período antes de insertar (evita duplicados)
+  await supabase.from("drive_log").delete().eq("periodo_id", periodoId);
+
   if (driveLogRows.length > 0) {
     for (let i = 0; i < driveLogRows.length; i += 100) {
       const { error: logError } = await supabase.from("drive_log").insert(driveLogRows.slice(i, i + 100));
