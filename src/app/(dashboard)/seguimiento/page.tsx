@@ -45,8 +45,9 @@ export default async function SeguimientoPage() {
     .order("mes", { ascending: false })
     .limit(24);
 
-  // Empresas: admin ve todas las activas, liquidadora solo las suyas
-  let clientesQuery = supabase
+  // Empresas: admin ve todas las activas (via admin client, sin RLS),
+  // liquidadora solo las suyas filtradas por código
+  let clientesQuery = admin
     .from("clientes")
     .select("*, liquidadora:liquidadoras!liquidador_id(id, nombre)")
     .eq("estado", "activo")
@@ -58,7 +59,7 @@ export default async function SeguimientoPage() {
 
   // Tareas for current period
   const { data: tareas } = periodo
-    ? await supabase.from("tareas").select("*").eq("periodo_id", periodo.id)
+    ? await admin.from("tareas").select("*").eq("periodo_id", periodo.id)
     : { data: [] };
 
   // Recordatorios del período anterior (para mostrar como alertas)
@@ -66,9 +67,9 @@ export default async function SeguimientoPage() {
     ? await fetchRecordatoriosPrevios(periodo.id)
     : {};
 
-  // Liquidadoras activas — solo hace falta para el selector de admin
+  // Liquidadoras activas — solo para el selector de admin
   const { data: liquidadoras } = yo?.isAdmin
-    ? await supabase.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre")
+    ? await admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre")
     : { data: [] };
 
   return (

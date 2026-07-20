@@ -1,7 +1,6 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Periodo, Tarea } from "@/types";
@@ -23,8 +22,8 @@ export async function toggleManual(
   campo: CampoManual,
   valor: boolean
 ) {
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("tareas")
     .upsert(
       {
@@ -42,8 +41,8 @@ export async function updateLegajos(
   periodoId: string,
   cantidad: number
 ) {
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("tareas")
     .upsert(
       { cliente_id: clienteId, periodo_id: periodoId, legajos_cantidad: cantidad },
@@ -57,8 +56,8 @@ export async function updateObservaciones(
   periodoId: string,
   observaciones: string
 ) {
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("tareas")
     .upsert(
       { cliente_id: clienteId, periodo_id: periodoId, observaciones },
@@ -133,8 +132,8 @@ export async function updateRecordatorio(
   periodoId: string,
   recordatorio: string
 ) {
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("tareas")
     .upsert(
       { cliente_id: clienteId, periodo_id: periodoId, recordatorio },
@@ -183,8 +182,8 @@ export async function fetchRecordatoriosPrevios(
 }
 
 export async function fetchTareas(periodoId: string): Promise<Tarea[]> {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const admin = createAdminClient();
+  const { data } = await admin
     .from("tareas")
     .select("*")
     .eq("periodo_id", periodoId);
