@@ -1,0 +1,46 @@
+name: Drive Sync
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # 9:00 UTC = 6:00 ART
+  workflow_dispatch:        # disparo manual desde GitHub Actions
+
+jobs:
+  activo-tanda-0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync mes activo — tanda 0/2
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=0&total=2&mes=activo"
+
+  activo-tanda-1:
+    needs: activo-tanda-0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync mes activo — tanda 1/2
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=1&total=2&mes=activo"
+
+  anterior-tanda-0:
+    needs: activo-tanda-1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync mes anterior — tanda 0/2
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=0&total=2&mes=anterior"
+
+  anterior-tanda-1:
+    needs: anterior-tanda-0
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync mes anterior — tanda 1/2
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=1&total=2&mes=anterior"
