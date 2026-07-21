@@ -19,7 +19,12 @@
       "Bash(npm run *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(vercel --version)"
+      "Bash(vercel --version)",
+      "Bash(npx next *)",
+      "Bash(git -C /Users/giulianatignanelli/Downloads/drive-download-20260625T113747Z-3-001 add src/app/\\\\\\(dashboard\\\\\\)/seguimiento/actions.ts src/app/\\\\\\(dashboard\\\\\\)/seguimiento/SeguimientoClient.tsx)",
+      "Bash(git -C /Users/giulianatignanelli/Downloads/drive-download-20260625T113747Z-3-001 diff --staged --stat)",
+      "Bash(git -C /Users/giulianatignanelli/Downloads/drive-download-20260625T113747Z-3-001 log --oneline --all)",
+      "Bash(git *)"
     ]
   }
 }
