@@ -33,7 +33,7 @@ import {
   CampoManual,
   SyncDriveResult,
 } from "./actions";
-import { getVencimientosGrupos } from "@/lib/vencimientos";
+import { getVencimientosGrupos, getVencimientoF931 } from "@/lib/vencimientos";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -374,6 +374,23 @@ export function SeguimientoClient({
       .filter((g) => g.dias <= 14 && g.dias >= 0);
     return proximosDias.length > 0 ? { grupos: proximosDias, mesNext, anioNext } : null;
   }, [currentPeriodo]);
+
+  // Días al vencimiento F.931 por empresa (solo cuando está pendiente)
+  const semaforoF931 = useMemo(() => {
+    if (!currentPeriodo) return new Map<string, number>();
+    const hoy = new Date();
+    const map = new Map<string, number>();
+    for (const c of clientesFiltrados) {
+      const fecha = getVencimientoF931(
+        c.terminacion_cuit,
+        currentPeriodo.anio,
+        currentPeriodo.mes
+      );
+      const dias = Math.ceil((fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+      map.set(c.id, dias);
+    }
+    return map;
+  }, [clientesFiltrados, currentPeriodo]);
 
   // ── Period navigation (client-side, no URL change) ────────────────────────
 
@@ -831,6 +848,46 @@ export function SeguimientoClient({
                             <p className="text-[10px] text-gray-400 font-mono">
                               {cliente.cuit}
                             </p>
+                            {(() => {
+                              // Estado 1: Drive confirmó
+                              if (t.f931_drive) {
+                                return (
+                                  <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none border bg-green-100 text-green-700 border-green-300">
+                                    ✓ Presentado
+                                  </span>
+                                );
+                              }
+                              // Estado 2: tildado manual, sin confirmación Drive
+                              if (t.f931_manual) {
+                                return (
+                                  <span
+                                    title="Tildado manualmente, Drive no encontró el archivo"
+                                    className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none border bg-orange-100 text-orange-700 border-orange-300"
+                                  >
+                                    ⚠ Sin confirmar
+                                  </span>
+                                );
+                              }
+                              // Estado 3: semáforo de días (ambos false)
+                              const dias = semaforoF931.get(cliente.id) ?? 99;
+                              if (dias > 7) return null;
+                              const critico = dias === 0;
+                              const rojo = dias < 3;
+                              return (
+                                <span
+                                  className={clsx(
+                                    "inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none border",
+                                    critico
+                                      ? "bg-red-100 text-red-700 border-red-300 animate-pulse"
+                                      : rojo
+                                      ? "bg-red-100 text-red-700 border-red-300"
+                                      : "bg-amber-100 text-amber-700 border-amber-200"
+                                  )}
+                                >
+                                  {critico ? "¡HOY!" : dias < 0 ? "VENCIDO" : `F.931 en ${dias}d`}
+                                </span>
+                              );
+                            })()}
                             {recordatoriosPrevios[cliente.id] && (
                               <p
                                 className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mt-1 max-w-[150px] truncate"
