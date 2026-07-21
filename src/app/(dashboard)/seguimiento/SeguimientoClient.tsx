@@ -20,7 +20,7 @@ import {
   X,
   Bell,
 } from "lucide-react";
-import { Cliente, ClaveAcceso, Liquidadora, Periodo, Tarea } from "@/types";
+import { AlertaPostcierre, Cliente, ClaveAcceso, Liquidadora, Periodo, Tarea } from "@/types";
 import {
   toggleManual,
   updateLegajos,
@@ -45,6 +45,7 @@ interface Props {
   liquidadoras: Pick<Liquidadora, "id" | "nombre">[];
   isAdmin: boolean;
   recordatoriosPrevios: Record<string, string>;
+  alertasPostcierre: AlertaPostcierre[];
 }
 
 type TareaState = {
@@ -257,6 +258,11 @@ function ClavesModal({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+const CAMPO_LABELS: Record<string, string> = {
+  f931: "F.931", recibos: "Recibos", rec_q1: "Recibos Q1",
+  bol_sind: "Boleta sindical", rub_lsd: "Rúbrica LSD", sac: "SAC",
+};
+
 export function SeguimientoClient({
   clientes,
   tareas: initialTareas,
@@ -264,6 +270,7 @@ export function SeguimientoClient({
   liquidadoras,
   isAdmin,
   recordatoriosPrevios: initialRecordatoriosPrevios,
+  alertasPostcierre,
 }: Props) {
   // Period state — managed client-side to avoid URL params (which make the route dynamic)
   const [currentPeriodo, setCurrentPeriodo] = useState<Periodo | null>(initialPeriodo);
@@ -644,6 +651,31 @@ export function SeguimientoClient({
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Modificaciones fuera de término */}
+      {alertasPostcierre.length > 0 && (
+        <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 text-[12px] text-orange-900">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-orange-200">
+            <AlertTriangle size={13} className="shrink-0 text-orange-500" />
+            <span className="font-semibold">Modificaciones fuera de término</span>
+            <span className="ml-auto text-orange-400 font-normal">últimos 60 días</span>
+          </div>
+          <table className="w-full">
+            <tbody>
+              {alertasPostcierre.map((a) => (
+                <tr key={a.id} className="border-b border-orange-100 last:border-0">
+                  <td className="px-4 py-2 font-medium">{a.cliente?.nombre ?? "—"}</td>
+                  <td className="px-4 py-2 text-orange-700">{CAMPO_LABELS[a.campo] ?? a.campo}</td>
+                  <td className="px-4 py-2 text-orange-500">{a.periodo?.nombre_mes ?? "—"}</td>
+                  <td className="px-4 py-2 text-orange-400 text-right">
+                    {new Date(a.modificado_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

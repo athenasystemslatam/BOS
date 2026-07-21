@@ -47,6 +47,16 @@ export interface Cliente {
   liquidadora?: Liquidadora;
 }
 
+export interface AlertaPostcierre {
+  id: string;
+  cliente_id: string;
+  periodo_id: string;
+  campo: string;
+  modificado_at: string;
+  cliente?: { nombre: string };
+  periodo?: { nombre_mes: string };
+}
+
 export interface Periodo {
   id: string;
   anio: number;

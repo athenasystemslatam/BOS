@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
-import { MESES_NOMBRES } from "@/lib/vencimientos";
+import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
 import { Periodo, Tarea } from "@/types";
 import type { CampoManual } from "@/lib/drive";
 export type { CampoManual } from "@/lib/drive";
@@ -33,6 +33,28 @@ export async function toggleManual(
       },
       { onConflict: "cliente_id,periodo_id" }
     );
+
+  if (!error) {
+    const { mes: mesActivo, anio: anioActivo } = getMesTrabajoActual();
+    const { data: periodo } = await admin
+      .from("periodos")
+      .select("mes, anio")
+      .eq("id", periodoId)
+      .single();
+    if (periodo) {
+      const esCerrado =
+        periodo.anio < anioActivo ||
+        (periodo.anio === anioActivo && periodo.mes < mesActivo);
+      if (esCerrado) {
+        await admin.from("alertas_postcierre").insert({
+          cliente_id: clienteId,
+          periodo_id: periodoId,
+          campo,
+        });
+      }
+    }
+  }
+
   return error ? { error: error.message } : { success: true };
 }
 
