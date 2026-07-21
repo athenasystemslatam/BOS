@@ -300,7 +300,7 @@ async function collectClientFolders(drive: drive_v3.Drive): Promise<FolderEntry[
       const items = await listChildren(drive, root.id, true);
       console.log(`[Drive] root ${root.id} → ${items.length} carpetas directas`);
       if (items.length > 0) console.log("[Drive] primeras 5:", items.slice(0, 5).map((f) => f.name));
-      all.push(...items.filter((f) => f.id && f.name).map((f) => ({ id: f.id!, name: f.name! })));
+      all.push(...items.filter((f) => f.id && f.name && !f.name.startsWith("Z)")).map((f) => ({ id: f.id!, name: f.name! })));
     } else {
       const categories = await listChildren(drive, root.id, true);
       console.log(`[Drive] root ${root.id} → ${categories.length} categorías:`, categories.map((c) => c.name));
@@ -311,7 +311,7 @@ async function collectClientFolders(drive: drive_v3.Drive): Promise<FolderEntry[
         const list = clientLists[i];
         console.log(`[Drive] categoría "${categories[i].name}" → ${list.length} clientes`);
         if (list.length > 0) console.log("[Drive] primeros 3:", list.slice(0, 3).map((f) => f.name));
-        all.push(...list.filter((f) => f.id && f.name).map((f) => ({ id: f.id!, name: f.name! })));
+        all.push(...list.filter((f) => f.id && f.name && !f.name.startsWith("Z)")).map((f) => ({ id: f.id!, name: f.name! })));
       }
     }
   }
@@ -357,7 +357,7 @@ function findBestFolder(
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function scanClientesForMonth(
-  clientes: { id: string; nombre: string }[],
+  clientes: { id: string; nombre: string; drive_folder_id?: string | null }[],
   mes: number,
   anio: number
 ): Promise<ClienteScanResult[]> {
@@ -377,16 +377,23 @@ export async function scanClientesForMonth(
   }
 
   const settled = await concurrent(clientes, 15, async (cliente) => {
-    const folder = findBestFolder(cliente.nombre, allFolders, true);
-    if (!folder) {
-      return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: "no-folder" } as ClienteScanResult;
+    let clienteFolderId: string;
+    if (cliente.drive_folder_id) {
+      clienteFolderId = cliente.drive_folder_id;
+      console.log(`[Drive] direct-folder: "${cliente.nombre}" → ${cliente.drive_folder_id}`);
+    } else {
+      const folder = findBestFolder(cliente.nombre, allFolders, true);
+      if (!folder) {
+        return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: "no-folder" } as ClienteScanResult;
+      }
+      clienteFolderId = folder.id;
     }
 
-    const sueldosId = await findFolder(drive, folder.id, (n) =>
+    const sueldosId = await findFolder(drive, clienteFolderId, (n) =>
       SUELDOS_KEYS.some((k) => norm(n).includes(k))
     );
     if (!sueldosId) {
-      console.log(`[Drive] no-sueldos: "${cliente.nombre}" (carpeta Drive: "${folder.name}")`);
+      console.log(`[Drive] no-sueldos: "${cliente.nombre}"`);
       return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: "no-sueldos" } as ClienteScanResult;
     }
 

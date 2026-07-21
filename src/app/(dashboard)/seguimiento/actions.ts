@@ -209,7 +209,7 @@ export async function syncDrive(
 
   const { data: clientes, error: clientesError } = await supabase
     .from("clientes")
-    .select("id, nombre")
+    .select("id, nombre, drive_folder_id")
     .eq("estado", "activo");
 
   console.log("[syncDrive] clientes:", clientes?.length ?? 0, "error:", clientesError?.message ?? "ninguno");

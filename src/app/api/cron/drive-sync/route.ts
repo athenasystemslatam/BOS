@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   const { data: todos } = await admin
     .from("clientes")
-    .select("id, nombre")
+    .select("id, nombre, drive_folder_id")
     .eq("estado", "activo")
     .order("id");
 
