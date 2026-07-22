@@ -44,3 +44,13 @@ jobs:
           curl -sf \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=1&total=2&mes=anterior"
+
+  generar-reporte:
+    needs: anterior-tanda-1
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generar reporte mensual PDF
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bos-plum.vercel.app/api/cron/reporte-mensual"

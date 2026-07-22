@@ -1,4 +1,5 @@
 import { google, drive_v3 } from "googleapis";
+import { Readable } from "stream";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -364,6 +365,71 @@ function findBestFolder(
   }
 
   return best;
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
+// ─── Drive write helpers ──────────────────────────────────────────────────────
+
+function createDriveWriteClient(): drive_v3.Drive {
+  const credJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!credJson) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON no configurada");
+  const credentials = JSON.parse(credJson);
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ["https://www.googleapis.com/auth/drive"],
+  });
+  return google.drive({ version: "v3", auth });
+}
+
+async function findOrCreateFolder(
+  drive: drive_v3.Drive,
+  name: string,
+  parentId: string
+): Promise<string> {
+  const res = await drive.files.list({
+    q: `name = '${name.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`,
+    fields: "files(id)",
+    pageSize: 1,
+  });
+  if (res.data.files?.[0]?.id) return res.data.files[0].id;
+  const created = await drive.files.create({
+    requestBody: { name, mimeType: FOLDER_MIME, parents: [parentId] },
+    fields: "id",
+  });
+  return created.data.id!;
+}
+
+export async function uploadPDFToDrive(
+  pdfBuffer: Buffer,
+  filename: string,
+  rootFolderId: string,
+  anio: number,
+  mes: string
+): Promise<string> {
+  const drive = createDriveWriteClient();
+
+  const reportesBOSId = await findOrCreateFolder(drive, "Reportes BOS", rootFolderId);
+  const anioFolderId  = await findOrCreateFolder(drive, String(anio), reportesBOSId);
+  const mesFolderId   = await findOrCreateFolder(drive, mes, anioFolderId);
+
+  // Eliminar versión anterior si existe
+  const existing = await drive.files.list({
+    q: `name = '${filename.replace(/'/g, "\\'")}' and '${mesFolderId}' in parents and trashed = false`,
+    fields: "files(id)",
+    pageSize: 1,
+  });
+  if (existing.data.files?.[0]?.id) {
+    await drive.files.delete({ fileId: existing.data.files[0].id });
+  }
+
+  const uploaded = await drive.files.create({
+    requestBody: { name: filename, mimeType: "application/pdf", parents: [mesFolderId] },
+    media: { mimeType: "application/pdf", body: Readable.from(pdfBuffer) },
+    fields: "id, webViewLink",
+  });
+
+  return uploaded.data.webViewLink ?? uploaded.data.id ?? "";
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
