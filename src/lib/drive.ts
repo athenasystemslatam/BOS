@@ -60,6 +60,7 @@ function matchesMonth(name: string, mes: number, anio: number): boolean {
   const mp = String(mes).padStart(2, "0");
   const mu = String(mes);
 
+  // Exact and compact patterns
   for (const v of MONTHS[mes] ?? []) {
     if (n === v) return true;
     if (n === `${v} ${y4}` || n === `${v} ${y2}`) return true;
@@ -67,6 +68,17 @@ function matchesMonth(name: string, mes: number, anio: number): boolean {
   }
   if (n === `${mp} ${y4}` || n === `${mu} ${y4}`) return true;
   if (n === `${y4} ${mp}` || n === `${y4} ${mu}`) return true;
+
+  // Flexible: month word as a token anywhere in the name
+  // handles "MES JULIO 2026", "07 JULIO 2026", "SUELDOS JULIO", etc.
+  const words = n.split(/\s+/);
+  const hasWrongYear = (w: string[]) => w.some((t) => /^20\d{2}$/.test(t) && t !== y4);
+  for (const v of MONTHS[mes] ?? []) {
+    if (words.includes(v) && !hasWrongYear(words)) return true;
+  }
+  // Numeric month token: "07 JULIO 2026", "MES 07"
+  if (words.includes(mp) && !hasWrongYear(words)) return true;
+
   return false;
 }
 
