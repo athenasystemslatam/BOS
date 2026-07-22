@@ -1,9 +1,29 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente, Liquidadora, Tarea } from "@/types";
 import { getVencimientosGrupos, getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
-import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
+import { MonthSelector } from "./MonthSelector";
+
+const CAMPO_LABELS: Record<string, string> = {
+  f931: "F.931", recibos: "Recibos", rec_q1: "Recibos Q1",
+  bol_sind: "Boleta sindical", rub_lsd: "Rúbrica LSD", sac: "SAC",
+};
+
+function generateMonthOptions(mesTrabajo: number, anioTrabajo: number) {
+  let mes = mesTrabajo;
+  let anio = anioTrabajo;
+  for (let i = 0; i < 12; i++) {
+    if (mes === 1) { mes = 12; anio--; } else mes--;
+  }
+  const options = [];
+  for (let i = 0; i < 15; i++) {
+    options.push({ label: `${MESES_NOMBRES[mes]} ${anio}`, mes, anio });
+    if (mes === 12) { mes = 1; anio++; } else mes++;
+  }
+  return options;
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -19,12 +39,8 @@ export default async function DashboardPage({
 
   const esMesSAC = mesActual === 6 || mesActual === 12;
 
-  // Prev / next month links
-  const prevMes = mesActual === 1 ? 12 : mesActual - 1;
-  const prevAnio = mesActual === 1 ? anioActual - 1 : anioActual;
-  const nextMes = mesActual === 12 ? 1 : mesActual + 1;
-  const nextAnio = mesActual === 12 ? anioActual + 1 : anioActual;
   const esMesActual = mesActual === mesTrabajo && anioActual === anioTrabajo;
+  const monthOptions = generateMonthOptions(mesTrabajo, anioTrabajo);
 
   const [{ data: liquidadoras }, { data: clientes }] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
@@ -48,6 +64,13 @@ export default async function DashboardPage({
   const { data: tareas } = periodoActual
     ? await supabase.from("tareas").select("*").eq("periodo_id", periodoActual.id)
     : { data: [] };
+
+  const { data: alertasPostcierre } = await supabase
+    .from("alertas_postcierre")
+    .select("*, cliente:clientes(nombre), periodo:periodos(nombre_mes)")
+    .gte("modificado_at", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
+    .order("modificado_at", { ascending: false })
+    .limit(50);
 
   const clientesList = (clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? [];
   const liquidadorasList = (liquidadoras as Liquidadora[]) ?? [];
@@ -108,23 +131,12 @@ export default async function DashboardPage({
     <div className="p-8 max-w-[1400px]">
       <div className="mb-7 flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">{anioActual}</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Resumen mensual</p>
           <div className="flex items-center gap-3">
-            <Link
-              href={`/dashboard?mes=${prevMes}&anio=${prevAnio}`}
-              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors"
-            >
-              <ChevronLeft size={15} />
-            </Link>
             <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight">
-              {MESES_NOMBRES[mesActual]} — Resumen del mes
+              {MESES_NOMBRES[mesActual]} {anioActual}
             </h1>
-            <Link
-              href={`/dashboard?mes=${nextMes}&anio=${nextAnio}`}
-              className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors"
-            >
-              <ChevronRight size={15} />
-            </Link>
+            <MonthSelector options={monthOptions} currentMes={mesActual} currentAnio={anioActual} />
           </div>
         </div>
         {!esMesActual && (
@@ -317,6 +329,39 @@ export default async function DashboardPage({
           </div>
         </div>
       </div>
+
+      {/* Modificaciones fuera de término */}
+      {alertasPostcierre && alertasPostcierre.length > 0 && (
+        <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-orange-200">
+            <AlertTriangle size={13} className="shrink-0 text-orange-500" />
+            <span className="text-[13px] font-semibold text-orange-900">Modificaciones fuera de término</span>
+            <span className="ml-auto text-[11px] text-orange-400">últimos 60 días</span>
+          </div>
+          <table className="w-full text-[12px] text-orange-900">
+            <thead>
+              <tr className="border-b border-orange-100">
+                <th className="px-5 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Empresa</th>
+                <th className="px-4 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Ítem</th>
+                <th className="px-4 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Período</th>
+                <th className="px-4 py-2 text-right text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              {alertasPostcierre.map((a) => (
+                <tr key={a.id} className="border-b border-orange-100 last:border-0 hover:bg-orange-100/40 transition-colors">
+                  <td className="px-5 py-2.5 font-medium">{(a.cliente as { nombre: string })?.nombre ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-orange-700">{CAMPO_LABELS[a.campo] ?? a.campo}</td>
+                  <td className="px-4 py-2.5 text-orange-500">{(a.periodo as { nombre_mes: string })?.nombre_mes ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-orange-400 text-right">
+                    {new Date(a.modificado_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

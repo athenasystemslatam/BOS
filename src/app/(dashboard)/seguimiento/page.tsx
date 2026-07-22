@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
-import { AlertaPostcierre, Cliente, Liquidadora, Periodo, Tarea } from "@/types";
+import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
 import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
 import { SeguimientoClient } from "./SeguimientoClient";
 import { fetchRecordatoriosPrevios } from "./actions";
@@ -65,14 +65,6 @@ export default async function SeguimientoPage() {
     ? await fetchRecordatoriosPrevios(periodo.id)
     : {};
 
-  // Modificaciones fuera de término (últimos 60 días)
-  const { data: alertasPostcierre } = await admin
-    .from("alertas_postcierre")
-    .select("*, cliente:clientes(nombre), periodo:periodos(nombre_mes)")
-    .gte("modificado_at", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
-    .order("modificado_at", { ascending: false })
-    .limit(50);
-
   // Liquidadoras activas con al menos 1 cliente asignado (para el selector de admin)
   const clienteLiqIds = new Set((clientes ?? []).map((c) => c.liquidador_id).filter(Boolean));
   const { data: liquidadorasRaw } = yo?.isAdmin
@@ -89,7 +81,6 @@ export default async function SeguimientoPage() {
       liquidadoras={(liquidadoras as Pick<Liquidadora, "id" | "nombre">[]) ?? []}
       isAdmin={yo?.isAdmin ?? false}
       recordatoriosPrevios={recordatoriosPrevios}
-      alertasPostcierre={(alertasPostcierre as AlertaPostcierre[]) ?? []}
     />
   );
 }

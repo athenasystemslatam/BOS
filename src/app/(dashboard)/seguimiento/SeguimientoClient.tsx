@@ -20,7 +20,7 @@ import {
   X,
   Bell,
 } from "lucide-react";
-import { AlertaPostcierre, Cliente, ClaveAcceso, Liquidadora, Periodo, Tarea } from "@/types";
+import { Cliente, ClaveAcceso, Liquidadora, Periodo, Tarea } from "@/types";
 import {
   toggleManual,
   updateLegajos,
@@ -33,7 +33,7 @@ import {
   CampoManual,
   SyncDriveResult,
 } from "./actions";
-import { getVencimientosGrupos, getVencimientoF931 } from "@/lib/vencimientos";
+import { getVencimientosGrupos, getVencimientoF931, MESES_NOMBRES } from "@/lib/vencimientos";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -45,7 +45,6 @@ interface Props {
   liquidadoras: Pick<Liquidadora, "id" | "nombre">[];
   isAdmin: boolean;
   recordatoriosPrevios: Record<string, string>;
-  alertasPostcierre: AlertaPostcierre[];
 }
 
 type TareaState = {
@@ -270,7 +269,6 @@ export function SeguimientoClient({
   liquidadoras,
   isAdmin,
   recordatoriosPrevios: initialRecordatoriosPrevios,
-  alertasPostcierre,
 }: Props) {
   // Period state — managed client-side to avoid URL params (which make the route dynamic)
   const [currentPeriodo, setCurrentPeriodo] = useState<Periodo | null>(initialPeriodo);
@@ -401,15 +399,25 @@ export function SeguimientoClient({
 
   // ── Period navigation (client-side, no URL change) ────────────────────────
 
-  function navPeriodo(delta: -1 | 1) {
-    if (!currentPeriodo || isPending) return;
-    let newMes = currentPeriodo.mes + delta;
-    let newAnio = currentPeriodo.anio;
-    if (newMes < 1) { newMes = 12; newAnio--; }
-    if (newMes > 12) { newMes = 1; newAnio++; }
+  const periodoOptions = useMemo(() => {
+    const now = new Date();
+    let mes = now.getMonth() + 1;
+    let anio = now.getFullYear();
+    for (let i = 0; i < 12; i++) {
+      if (mes === 1) { mes = 12; anio--; } else mes--;
+    }
+    const options: { label: string; value: string; mes: number; anio: number }[] = [];
+    for (let i = 0; i < 15; i++) {
+      options.push({ label: `${MESES_NOMBRES[mes]} ${anio}`, value: `${anio}-${mes}`, mes, anio });
+      if (mes === 12) { mes = 1; anio++; } else mes++;
+    }
+    return options;
+  }, []);
 
+  function jumpPeriodo(anio: number, mes: number) {
+    if (isPending) return;
     startTransition(async () => {
-      const newPeriodo = await fetchPeriodo(newAnio, newMes);
+      const newPeriodo = await fetchPeriodo(anio, mes);
       if (newPeriodo) {
         const [newTareas, newRecordatorios] = await Promise.all([
           fetchTareas(newPeriodo.id),
@@ -421,6 +429,15 @@ export function SeguimientoClient({
         setOverrides(new Map());
       }
     });
+  }
+
+  function navPeriodo(delta: -1 | 1) {
+    if (!currentPeriodo || isPending) return;
+    let newMes = currentPeriodo.mes + delta;
+    let newAnio = currentPeriodo.anio;
+    if (newMes < 1) { newMes = 12; newAnio--; }
+    if (newMes > 12) { newMes = 1; newAnio++; }
+    jumpPeriodo(newAnio, newMes);
   }
 
   // ── Checkbox toggle (optimistic) ──────────────────────────────────────────
@@ -583,9 +600,26 @@ export function SeguimientoClient({
             >
               <ChevronLeft size={16} />
             </button>
-            <div className="px-4 py-1.5 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 min-w-[130px] text-center flex items-center justify-center gap-2">
-              {isPending && <Loader2 size={12} className="animate-spin text-gray-400" />}
-              {currentPeriodo?.nombre_mes ?? "Sin período"}
+            <div className="relative">
+              {isPending && (
+                <Loader2 size={12} className="animate-spin text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10" />
+              )}
+              <select
+                value={currentPeriodo ? `${currentPeriodo.anio}-${currentPeriodo.mes}` : ""}
+                onChange={(e) => {
+                  const [anio, mes] = e.target.value.split("-").map(Number);
+                  jumpPeriodo(anio, mes);
+                }}
+                disabled={isPending}
+                className={clsx(
+                  "py-1.5 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo disabled:opacity-40 cursor-pointer min-w-[150px]",
+                  isPending ? "pl-8 pr-3" : "px-4"
+                )}
+              >
+                {periodoOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
             <button
               onClick={() => navPeriodo(1)}
@@ -651,31 +685,6 @@ export function SeguimientoClient({
               </span>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Modificaciones fuera de término */}
-      {alertasPostcierre.length > 0 && (
-        <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 text-[12px] text-orange-900">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-orange-200">
-            <AlertTriangle size={13} className="shrink-0 text-orange-500" />
-            <span className="font-semibold">Modificaciones fuera de término</span>
-            <span className="ml-auto text-orange-400 font-normal">últimos 60 días</span>
-          </div>
-          <table className="w-full">
-            <tbody>
-              {alertasPostcierre.map((a) => (
-                <tr key={a.id} className="border-b border-orange-100 last:border-0">
-                  <td className="px-4 py-2 font-medium">{a.cliente?.nombre ?? "—"}</td>
-                  <td className="px-4 py-2 text-orange-700">{CAMPO_LABELS[a.campo] ?? a.campo}</td>
-                  <td className="px-4 py-2 text-orange-500">{a.periodo?.nombre_mes ?? "—"}</td>
-                  <td className="px-4 py-2 text-orange-400 text-right">
-                    {new Date(a.modificado_at).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 
