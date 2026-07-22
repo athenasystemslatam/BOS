@@ -65,6 +65,32 @@ export default async function SeguimientoPage() {
     ? await fetchRecordatoriosPrevios(periodo.id)
     : {};
 
+  // Resolver liquidadora por período usando tabla asignaciones
+  if (clientes && clientes.length > 0) {
+    const { data: asignaciones } = await admin
+      .from("asignaciones")
+      .select("cliente_id, liquidador_id, desde_anio, desde_mes, liquidadora:liquidadoras!liquidador_id(id, nombre)")
+      .lte("desde_anio", anio);
+
+    if (asignaciones && asignaciones.length > 0) {
+      const porCliente = new Map<string, typeof asignaciones[0]>();
+      for (const a of asignaciones) {
+        if (a.desde_anio * 100 + a.desde_mes > anio * 100 + mes) continue;
+        const prev = porCliente.get(a.cliente_id);
+        if (!prev || a.desde_anio * 100 + a.desde_mes > prev.desde_anio * 100 + prev.desde_mes) {
+          porCliente.set(a.cliente_id, a);
+        }
+      }
+      for (const c of clientes) {
+        const asig = porCliente.get(c.id);
+        if (asig) {
+          c.liquidador_id = asig.liquidador_id;
+          (c as Record<string, unknown>).liquidadora = asig.liquidadora;
+        }
+      }
+    }
+  }
+
   // Liquidadoras activas con al menos 1 cliente asignado (para el selector de admin)
   const clienteLiqIds = new Set((clientes ?? []).map((c) => c.liquidador_id).filter(Boolean));
   const { data: liquidadorasRaw } = yo?.isAdmin

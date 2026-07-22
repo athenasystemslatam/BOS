@@ -136,3 +136,69 @@ export async function editarEmpresa(formData: FormData) {
   revalidatePath("/seguimiento");
   return { success: true };
 }
+
+export async function getAsignaciones(clienteId: string) {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("asignaciones")
+    .select("*, liquidadora:liquidadoras!liquidador_id(id, nombre)")
+    .eq("cliente_id", clienteId)
+    .order("desde_anio", { ascending: false })
+    .order("desde_mes", { ascending: false });
+  return data ?? [];
+}
+
+export async function crearAsignacion(
+  clienteId: string,
+  liquidadorId: string,
+  desdeAnio: number,
+  desdeMes: number,
+  motivo: string | null,
+  creadoPor: string | null
+) {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("asignaciones").insert({
+    cliente_id: clienteId,
+    liquidador_id: liquidadorId,
+    desde_anio: desdeAnio,
+    desde_mes: desdeMes,
+    motivo: motivo || null,
+    creado_por: creadoPor,
+  });
+
+  if (error) return { error: error.message };
+
+  // Sincronizar clientes.liquidador_id con la asignación vigente más reciente
+  const hoy = new Date();
+  const mesHoy = hoy.getMonth() + 1;
+  const anioHoy = hoy.getFullYear();
+  const esVigente = desdeAnio * 100 + desdeMes <= anioHoy * 100 + mesHoy;
+  if (esVigente) {
+    const { data: masReciente } = await admin
+      .from("asignaciones")
+      .select("liquidador_id")
+      .eq("cliente_id", clienteId)
+      .or(`desde_anio.lt.${anioHoy},and(desde_anio.eq.${anioHoy},desde_mes.lte.${mesHoy})`)
+      .order("desde_anio", { ascending: false })
+      .order("desde_mes", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (masReciente) {
+      await admin
+        .from("clientes")
+        .update({ liquidador_id: masReciente.liquidador_id, fecha_modificacion: new Date().toISOString() })
+        .eq("id", clienteId);
+    }
+  }
+
+  revalidatePath("/empresas");
+  revalidatePath("/seguimiento");
+  return { success: true };
+}

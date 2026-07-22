@@ -20,6 +20,7 @@ export default async function EmpresasPage() {
       clientes={(clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? []}
       liquidadoras={(liquidadoras as Liquidadora[]) ?? []}
       isAdmin={yo?.isAdmin ?? false}
+      creadoPor={yo?.id ?? null}
     />
   );
 }

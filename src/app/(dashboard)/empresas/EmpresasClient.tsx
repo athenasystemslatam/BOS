@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Pencil } from "lucide-react";
+import { Search, Pencil, History } from "lucide-react";
 import clsx from "clsx";
 import { Cliente, Liquidadora, TipoContribuyente } from "@/types";
 import { NuevaEmpresaModal } from "./NuevaEmpresaModal";
 import { EditarEmpresaModal } from "./EditarEmpresaModal";
+import { AsignacionModal } from "./AsignacionModal";
 
 type ClienteConLiq = Cliente & { liquidadora?: Liquidadora };
 
@@ -19,15 +20,18 @@ export function EmpresasClient({
   clientes,
   liquidadoras,
   isAdmin,
+  creadoPor,
 }: {
   clientes: ClienteConLiq[];
   liquidadoras: Liquidadora[];
   isAdmin: boolean;
+  creadoPor: string | null;
 }) {
   const [search, setSearch] = useState("");
   const [filtroLiq, setFiltroLiq] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("activo");
   const [editando, setEditando] = useState<ClienteConLiq | null>(null);
+  const [asignando, setAsignando] = useState<ClienteConLiq | null>(null);
 
   const filtrados = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -165,6 +169,15 @@ export function EmpresasClient({
                             <span className="text-[13px] text-gray-700">
                               {c.liquidadora.nombre}
                             </span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setAsignando(c)}
+                                title="Ver historial / reasignar"
+                                className="text-gray-300 hover:text-bordo transition-colors"
+                              >
+                                <History size={13} />
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <span className="text-[13px] text-gray-300">—</span>
@@ -247,6 +260,14 @@ export function EmpresasClient({
           cliente={editando}
           liquidadoras={liquidadoras}
           onClose={() => setEditando(null)}
+        />
+      )}
+      {asignando && (
+        <AsignacionModal
+          cliente={asignando}
+          liquidadoras={liquidadoras}
+          creadoPor={creadoPor}
+          onClose={() => setAsignando(null)}
         />
       )}
     </>

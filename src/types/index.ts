@@ -93,14 +93,16 @@ export interface Tarea {
   periodo?: Periodo;
 }
 
-export interface HistorialAsignacion {
+export interface Asignacion {
   id: string;
   cliente_id: string;
-  liquidador_anterior_id?: string;
-  liquidador_nuevo_id: string;
-  fecha_cambio: string;
-  cambiado_por: string;
-  motivo?: string;
+  liquidador_id: string;
+  desde_anio: number;
+  desde_mes: number;
+  creado_por: string | null;
+  creado_en: string;
+  motivo: string | null;
+  liquidadora?: Pick<Liquidadora, "id" | "nombre">;
 }
 
 export interface DriveLog {
