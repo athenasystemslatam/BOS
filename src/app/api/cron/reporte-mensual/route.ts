@@ -1,21 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMesTrabajoActual, getVencimientoF931, MESES_NOMBRES } from "@/lib/vencimientos";
+import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { ReporteData, ReportePDF } from "@/lib/pdf-reporte";
-
-function dentroDeVentanaTransicion(): boolean {
-  const { mes, anio } = getMesTrabajoActual();
-  const mesPrev = mes === 1 ? 12 : mes - 1;
-  const anioPrev = mes === 1 ? anio - 1 : anio;
-  const ultimoVenc = getVencimientoF931(9, anioPrev, mesPrev);
-  const transicion = new Date(ultimoVenc);
-  transicion.setDate(transicion.getDate() + 3);
-  transicion.setHours(0, 0, 0, 0);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const dias = Math.floor((hoy.getTime() - transicion.getTime()) / (1000 * 60 * 60 * 24));
-  return dias >= 0 && dias < 5;
-}
 
 const ROOT_FOLDER_ID = "10R1pk2tMweltaWwhkej-gX_XQ3K5riAz";
 
@@ -24,10 +10,6 @@ export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  if (!dentroDeVentanaTransicion()) {
-    return NextResponse.json({ skipped: true, motivo: "Fuera de ventana de transición" });
   }
 
   const { mes: mesActivo, anio: anioActivo } = getMesTrabajoActual();
