@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { ReporteData, ReportePDF } from "@/lib/pdf-reporte";
 
-const ROOT_FOLDER_ID = "10R1pk2tMweltaWwhkej-gX_XQ3K5riAz";
+const REPORTE_EMAIL = "estudiokma@gmail.com";
+const FROM = "onboarding@resend.dev";
 
 export async function GET(req: NextRequest) {
   console.log("[Reporte] endpoint llamado");
@@ -12,6 +14,10 @@ export async function GET(req: NextRequest) {
     const secret = process.env.CRON_SECRET;
     if (!secret || auth !== `Bearer ${secret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json({ error: "RESEND_API_KEY no configurada" }, { status: 500 });
     }
 
     const { mes: mesActivo, anio: anioActivo } = getMesTrabajoActual();
@@ -134,11 +140,59 @@ export async function GET(req: NextRequest) {
     console.log(`[Reporte] PDF generado — ${pdfBuffer.length} bytes`);
 
     const filename = `Reporte-Liquidaciones-${mesNombre}-${anio}.pdf`;
-    const { uploadPDFToDrive } = await import("@/lib/drive");
-    const url = await uploadPDFToDrive(pdfBuffer, filename, ROOT_FOLDER_ID, anio, mesNombre);
-    console.log(`[Reporte] subido a Drive: ${url}`);
 
-    return NextResponse.json({ ok: true, periodo: nombrePeriodo, total, completadas, avance, url });
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const { error: emailError } = await resend.emails.send({
+      from: FROM,
+      to: REPORTE_EMAIL,
+      subject: `Reporte de liquidaciones — ${nombrePeriodo}`,
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
+          <h2 style="font-size:16px;color:#7A2B2B">KMA Consultores — Reporte ${nombrePeriodo}</h2>
+          <p style="font-size:14px">
+            Adjunto encontrás el reporte de liquidaciones de <strong>${nombrePeriodo}</strong>
+            generado automáticamente por BOS.
+          </p>
+          <p style="font-size:14px">
+            📁 Por favor guardarlo en Drive:<br>
+            <strong>Recursos Humanos → Reportes BOS → ${anio} → ${mesNombre}</strong>
+          </p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;background:#f9fafb;border-radius:6px">
+            <tr>
+              <td style="padding:8px 12px;color:#666">Total empresas</td>
+              <td style="padding:8px 12px;font-weight:bold">${total}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 12px;color:#666">Completadas</td>
+              <td style="padding:8px 12px;font-weight:bold;color:#16a34a">${completadas}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 12px;color:#666">Pendientes</td>
+              <td style="padding:8px 12px;font-weight:bold;color:${pendientes > 0 ? "#dc2626" : "#16a34a"}">${pendientes}</td>
+            </tr>
+            <tr>
+              <td style="padding:8px 12px;color:#666">Avance</td>
+              <td style="padding:8px 12px;font-weight:bold">${avance}%</td>
+            </tr>
+          </table>
+          <p style="font-size:12px;color:#aaa;margin-top:24px">BOS · Sistema de seguimiento de liquidaciones</p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename,
+          content: pdfBuffer,
+        },
+      ],
+    });
+
+    if (emailError) {
+      console.error("[Reporte] error enviando email:", emailError);
+      return NextResponse.json({ error: emailError.message }, { status: 500 });
+    }
+
+    console.log(`[Reporte] email enviado a ${REPORTE_EMAIL}`);
+    return NextResponse.json({ ok: true, periodo: nombrePeriodo, total, completadas, avance, email: REPORTE_EMAIL });
   } catch (err) {
     console.error("[Reporte] ERROR:", err);
     return NextResponse.json(
