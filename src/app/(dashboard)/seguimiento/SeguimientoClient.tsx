@@ -257,11 +257,6 @@ function ClavesModal({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const CAMPO_LABELS: Record<string, string> = {
-  f931: "F.931", recibos: "Recibos", rec_q1: "Recibos Q1",
-  bol_sind: "Boleta sindical", rub_lsd: "Rúbrica LSD", sac: "SAC",
-};
-
 export function SeguimientoClient({
   clientes,
   tareas: initialTareas,
