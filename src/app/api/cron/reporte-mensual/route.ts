@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { ReporteData, ReportePDF } from "@/lib/pdf-reporte";
 
-const REPORTE_EMAIL = "estudiokma@gmail.com";
+const REPORTE_EMAIL = "athenasystems.latam@gmail.com";
 const FROM = "onboarding@resend.dev";
 
 export async function GET(req: NextRequest) {
