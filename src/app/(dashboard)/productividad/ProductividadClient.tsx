@@ -52,9 +52,8 @@ function DeltaDias({ avg }: { avg: number | null }) {
   );
 }
 
-export function ProductividadClient({ filas, periodos }: {
+export function ProductividadClient({ filas }: {
   filas: FilaLiquidadora[];
-  periodos: { id: string; anio: number; mes: number }[];
 }) {
   const [liqSeleccionada, setLiqSeleccionada] = useState<string>(filas[0]?.id ?? "");
 

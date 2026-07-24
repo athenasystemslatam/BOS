@@ -83,7 +83,6 @@ export default async function ProductividadPage() {
   }
 
   // Construir filas por liquidadora
-  const periodoMap = new Map(periodos.map((p) => [p.id, p]));
   const tareasMap = new Map<string, typeof tareas[0]>();
   for (const t of tareas) tareasMap.set(`${t.cliente_id}:${t.periodo_id}`, t);
 
@@ -170,7 +169,6 @@ export default async function ProductividadPage() {
   return (
     <ProductividadClient
       filas={filas}
-      periodos={periodos}
     />
   );
 }
