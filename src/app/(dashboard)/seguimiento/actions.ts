@@ -23,6 +23,12 @@ export async function toggleManual(
   valor: boolean
 ) {
   const admin = createAdminClient();
+  const camposConTimestamp = ["f931", "recibos"] as const;
+  type CampoTs = typeof camposConTimestamp[number];
+  const timestampField = camposConTimestamp.includes(campo as CampoTs)
+    ? { [`${campo}_manual_en`]: valor ? new Date().toISOString() : null }
+    : {};
+
   const { error } = await admin
     .from("tareas")
     .upsert(
@@ -30,6 +36,7 @@ export async function toggleManual(
         cliente_id: clienteId,
         periodo_id: periodoId,
         [`${campo}_manual`]: valor,
+        ...timestampField,
       },
       { onConflict: "cliente_id,periodo_id" }
     );

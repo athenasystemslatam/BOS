@@ -89,6 +89,8 @@ export interface Tarea {
   sac_drive: boolean;
   observaciones?: string;
   recordatorio?: string;
+  f931_manual_en?: string | null;
+  recibos_manual_en?: string | null;
   cliente?: Cliente;
   periodo?: Periodo;
 }

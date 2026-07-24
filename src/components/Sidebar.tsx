@@ -10,15 +10,17 @@ import {
   Calendar,
   LogOut,
   ClipboardList,
+  TrendingUp,
 } from "lucide-react";
 import clsx from "clsx";
 
 const navItems = [
-  { href: "/seguimiento",  label: "Seguimiento",  icon: ClipboardList, adminOnly: false },
-  { href: "/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
-  { href: "/empresas",     label: "Empresas",     icon: Building2, adminOnly: false },
-  { href: "/liquidadoras", label: "Liquidadoras", icon: Users, adminOnly: true },
-  { href: "/vencimientos", label: "Vencimientos", icon: Calendar, adminOnly: false },
+  { href: "/seguimiento",    label: "Seguimiento",    icon: ClipboardList,   adminOnly: false },
+  { href: "/dashboard",      label: "Dashboard",      icon: LayoutDashboard, adminOnly: false },
+  { href: "/empresas",       label: "Empresas",       icon: Building2,       adminOnly: false },
+  { href: "/liquidadoras",   label: "Liquidadoras",   icon: Users,           adminOnly: true  },
+  { href: "/vencimientos",   label: "Vencimientos",   icon: Calendar,        adminOnly: false },
+  { href: "/productividad",  label: "Productividad",  icon: TrendingUp,      adminOnly: true  },
 ];
 
 export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
