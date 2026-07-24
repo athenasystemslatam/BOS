@@ -73,7 +73,8 @@ export default async function DashboardPage({
     .limit(50);
 
   const clientesList = (clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? [];
-  const liquidadorasList = (liquidadoras as Liquidadora[]) ?? [];
+  const clienteLiqIds = new Set(clientesList.map((c) => c.liquidador_id).filter(Boolean));
+  const liquidadorasList = ((liquidadoras as Liquidadora[]) ?? []).filter((l) => clienteLiqIds.has(l.id));
   const tareasList = (tareas as Tarea[]) ?? [];
   const tareasMap = new Map(tareasList.map((t) => [t.cliente_id, t]));
 
