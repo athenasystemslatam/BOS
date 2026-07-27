@@ -45,20 +45,20 @@ export function EmpresasClient({
 
   return (
     <>
-      <div className="p-8">
-        <div className="mb-8 flex items-start justify-between">
+      <div className="p-4 md:p-8">
+        <div className="mb-6 md:mb-8 flex items-start justify-between">
           <div>
             <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">
               Módulo Sueldos
             </p>
             <h1 className="text-2xl font-semibold text-gray-900 mt-1">Empresas</h1>
           </div>
-          <NuevaEmpresaModal liquidadoras={liquidadoras} />
+          {isAdmin && <NuevaEmpresaModal liquidadoras={liquidadoras} />}
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6 px-5 py-4">
-          <div className="flex flex-wrap items-end gap-4">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4">
+          <div className="flex flex-wrap items-end gap-3 md:gap-4">
             {/* Búsqueda */}
             <div className="flex-1 min-w-[200px]">
               <label className="text-xs text-gray-500 font-medium block mb-1">
@@ -116,19 +116,82 @@ export function EmpresasClient({
           </div>
         </div>
 
-        {/* Tabla con scroll horizontal */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            {filtrados.length === 0 ? (
-              <div className="px-6 py-16 text-center">
-                <p className="text-gray-400 text-sm">
-                  {search || filtroLiq || filtroEstado !== "activo"
-                    ? "No hay empresas que coincidan con los filtros"
-                    : "No hay empresas cargadas aún"}
-                </p>
-              </div>
-            ) : (
-              <table className="w-full min-w-[960px]">
+        {/* Mobile cards */}
+        {filtrados.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-6 py-16 text-center">
+            <p className="text-gray-400 text-sm">
+              {search || filtroLiq || filtroEstado !== "activo"
+                ? "No hay empresas que coincidan con los filtros"
+                : "No hay empresas cargadas aún"}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="md:hidden space-y-2">
+              {filtrados.map((c) => (
+                <div key={c.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[14px] font-semibold text-gray-800 truncate">{c.nombre}</p>
+                      <p className="text-[11px] text-gray-400 font-mono mt-0.5">
+                        {c.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
+                      </p>
+                    </div>
+                    <span className={clsx(
+                      "shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      c.estado === "activo" ? "bg-green-50 text-success" : "bg-gray-100 text-gray-500"
+                    )}>
+                      {c.estado === "activo" ? "Activa" : "Inactiva"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {c.liquidadora && (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-bordo/10 flex items-center justify-center text-[10px] font-semibold text-bordo shrink-0">
+                          {c.liquidadora.nombre.charAt(0)}
+                        </div>
+                        <span className="text-[12px] text-gray-600">{c.liquidadora.nombre}</span>
+                      </div>
+                    )}
+                    <span className={clsx(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      TIPO_CONTRIB_LABELS[c.tipo_contribuyente]?.cls ?? "bg-gray-100 text-gray-600"
+                    )}>
+                      {TIPO_CONTRIB_LABELS[c.tipo_contribuyente]?.label ?? c.tipo_contribuyente}
+                    </span>
+                    {c.es_quincenal && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700">Q</span>
+                    )}
+                    {c.tiene_sindicato && (
+                      <span className="text-[11px] text-gray-500">Sind. {c.sindicato_nombre}</span>
+                    )}
+                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-50">
+                      <button
+                        onClick={() => setEditando(c)}
+                        className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-bordo transition-colors"
+                      >
+                        <Pencil size={12} /> Editar
+                      </button>
+                      {c.liquidadora && (
+                        <button
+                          onClick={() => setAsignando(c)}
+                          className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-bordo transition-colors"
+                        >
+                          <History size={12} /> Reasignar
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Tabla desktop */}
+            <div className="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[960px]">
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs text-gray-400 uppercase tracking-wide">
                     <th className="px-6 py-3 text-left font-medium">Empresa</th>
@@ -250,9 +313,10 @@ export function EmpresasClient({
                   ))}
                 </tbody>
               </table>
-            )}
-          </div>
-        </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {editando && (
