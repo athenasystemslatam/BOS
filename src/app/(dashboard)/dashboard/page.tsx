@@ -129,36 +129,33 @@ export default async function DashboardPage({
   });
 
   return (
-    <div className="p-8 max-w-[1400px]">
-      <div className="mb-7 flex items-center justify-between">
+    <div className="p-4 md:p-8 max-w-[1400px]">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Resumen mensual</p>
           <div className="flex items-center gap-3">
-            <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight">
+            <h1 className="text-xl md:text-[22px] font-semibold text-gray-900 tracking-tight">
               {MESES_NOMBRES[mesActual]} {anioActual}
             </h1>
             <MonthSelector options={monthOptions} currentMes={mesActual} currentAnio={anioActual} />
           </div>
         </div>
         {!esMesActual && (
-          <Link
-            href="/dashboard"
-            className="text-[12px] text-bordo font-medium hover:underline"
-          >
-            Volver al mes actual
+          <Link href="/dashboard" className="text-[12px] text-bordo font-medium hover:underline shrink-0">
+            Mes actual
           </Link>
         )}
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-4 mb-7">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-5 md:mb-7">
         <StatCard label="Total empresas" value={total} icon={<Building2 size={16} className="text-gray-400" />} />
         <StatCard
           label="Completadas"
           value={completadas}
           icon={<CheckCircle2 size={16} className="text-success" />}
           valueColor="text-success"
-          sub={total > 0 ? `${pctAvance}% del total` : undefined}
+          sub={total > 0 ? `${pctAvance}%` : undefined}
         />
         <StatCard
           label="En proceso"
@@ -169,9 +166,9 @@ export default async function DashboardPage({
         <ProgressCard pct={pctAvance} completadas={completadas} total={total} />
       </div>
 
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         {/* Avance por liquidadora */}
-        <div className="col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-[14px] font-semibold text-gray-900">Avance por liquidadora</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
@@ -371,30 +368,30 @@ function StatCard({ label, value, icon, valueColor = "text-gray-900", sub }: {
   label: string; value: number; icon: React.ReactNode; valueColor?: string; sub?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 md:px-5 md:py-4">
+      <div className="flex items-center justify-between mb-2 md:mb-3">
+        <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider leading-tight">{label}</p>
         {icon}
       </div>
-      <p className={clsx("text-[28px] font-bold leading-none tracking-tight", valueColor)}>{value}</p>
-      {sub && <p className="text-[11px] text-gray-400 mt-1.5">{sub}</p>}
+      <p className={clsx("text-[22px] md:text-[28px] font-bold leading-none tracking-tight", valueColor)}>{value}</p>
+      {sub && <p className="text-[10px] md:text-[11px] text-gray-400 mt-1">{sub}</p>}
     </div>
   );
 }
 
 function ProgressCard({ pct, completadas, total }: { pct: number; completadas: number; total: number }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Avance global</p>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 md:px-5 md:py-4">
+      <div className="flex items-center justify-between mb-2 md:mb-3">
+        <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Avance global</p>
         <TrendingUp size={16} className="text-bordo" />
       </div>
-      <p className={clsx("text-[28px] font-bold leading-none tracking-tight",
+      <p className={clsx("text-[22px] md:text-[28px] font-bold leading-none tracking-tight",
         pct >= 80 ? "text-success" : pct >= 40 ? "text-warning" : "text-danger"
       )}>
         {pct}%
       </p>
-      <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div className="mt-2 md:mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div
           className={clsx("h-full rounded-full transition-all",
             pct >= 80 ? "bg-success" : pct >= 40 ? "bg-warning" : "bg-danger"
@@ -402,7 +399,7 @@ function ProgressCard({ pct, completadas, total }: { pct: number; completadas: n
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-[11px] text-gray-400 mt-1.5">{completadas} de {total} empresas</p>
+      <p className="text-[10px] md:text-[11px] text-gray-400 mt-1">{completadas}/{total} empresas</p>
     </div>
   );
 }
