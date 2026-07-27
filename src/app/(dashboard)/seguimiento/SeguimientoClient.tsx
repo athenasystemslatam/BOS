@@ -537,12 +537,12 @@ export function SeguimientoClient({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-8 max-w-[1600px]">
+    <div className="p-4 md:p-8 max-w-[1600px]">
       {clienteClaves && (
         <ClavesModal cliente={clienteClaves} onClose={() => setClienteClaves(null)} />
       )}
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
         <div>
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">
             Liquidaciones mensuales
@@ -571,12 +571,12 @@ export function SeguimientoClient({
         </div>
 
         {/* Right side: sync + period nav */}
-        <div className="flex items-center gap-3">
-          {/* Sincronizar Drive */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Sincronizar Drive — hidden on mobile */}
           <button
             onClick={handleSync}
             disabled={isSyncing || isPending || !currentPeriodo}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 transition-colors"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 transition-colors"
           >
             {isSyncing ? (
               <Loader2 size={13} className="animate-spin" />
@@ -591,7 +591,7 @@ export function SeguimientoClient({
             <button
               onClick={() => navPeriodo(-1)}
               disabled={isPending}
-              className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
+              className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
             >
               <ChevronLeft size={16} />
             </button>
@@ -607,7 +607,7 @@ export function SeguimientoClient({
                 }}
                 disabled={isPending}
                 className={clsx(
-                  "py-1.5 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo disabled:opacity-40 cursor-pointer min-w-[150px]",
+                  "py-2 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo disabled:opacity-40 cursor-pointer min-w-[145px]",
                   isPending ? "pl-8 pr-3" : "px-4"
                 )}
               >
@@ -619,7 +619,7 @@ export function SeguimientoClient({
             <button
               onClick={() => navPeriodo(1)}
               disabled={isPending}
-              className="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
+              className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
             >
               <ChevronRight size={16} />
             </button>
@@ -783,11 +783,136 @@ export function SeguimientoClient({
         </div>
       )}
 
-      {/* Table */}
+      {/* Mobile cards */}
+      {currentPeriodo && clientesFiltrados.length > 0 && (
+        <div className={clsx("md:hidden space-y-2 transition-opacity", isPending && "opacity-60")}>
+          {clientesFiltrados.map((cliente) => {
+            const t = getEffective(cliente.id);
+            const checks = [
+              t.recibos_manual || t.recibos_drive,
+              t.f931_manual || t.f931_drive,
+              cliente.tiene_sindicato ? t.bol_sind_manual || t.bol_sind_drive : true,
+              cliente.tiene_rubrica_lsd ? t.rub_lsd_manual || t.rub_lsd_drive : true,
+              esMesSAC ? t.sac_manual || t.sac_drive : true,
+            ];
+            const isComplete = checks.every(Boolean);
+            const dias = semaforoF931.get(cliente.id) ?? 99;
+
+            const campos: { key: CampoManual; label: string; aplica: boolean; manual: boolean; drive: boolean }[] = [
+              ...(cliente.es_quincenal ? [{ key: "rec_q1" as CampoManual, label: "Q1", aplica: true, manual: t.rec_q1_manual, drive: t.rec_q1_drive }] : []),
+              { key: "recibos", label: "Rec", aplica: true, manual: t.recibos_manual, drive: t.recibos_drive },
+              { key: "f931", label: "F931", aplica: true, manual: t.f931_manual, drive: t.f931_drive },
+              { key: "bol_sind", label: "Sind", aplica: cliente.tiene_sindicato, manual: t.bol_sind_manual, drive: t.bol_sind_drive },
+              { key: "rub_lsd", label: "LSD", aplica: cliente.tiene_rubrica_lsd, manual: t.rub_lsd_manual, drive: t.rub_lsd_drive },
+              ...(esMesSAC ? [{ key: "sac" as CampoManual, label: "SAC", aplica: true, manual: t.sac_manual, drive: t.sac_drive }] : []),
+            ];
+
+            return (
+              <div
+                key={cliente.id}
+                className={clsx(
+                  "bg-white rounded-xl border shadow-sm px-4 py-3",
+                  isComplete ? "border-green-100" : "border-gray-100"
+                )}
+              >
+                {/* Top row: name + status */}
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-semibold text-gray-800 truncate">{cliente.nombre}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">{cliente.liquidadora?.nombre ?? "—"}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isComplete ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-success bg-green-50 border border-green-200 px-2 py-0.5 rounded-full">
+                        <Check size={10} strokeWidth={3} /> Lista
+                      </span>
+                    ) : (
+                      !t.f931_drive && !t.f931_manual && dias <= 7 && dias >= 0 && (
+                        <span className={clsx(
+                          "text-[11px] font-semibold px-2 py-0.5 rounded-full border",
+                          dias === 0 ? "bg-red-100 text-red-700 border-red-300 animate-pulse"
+                            : dias < 3 ? "bg-red-100 text-red-700 border-red-300"
+                            : "bg-amber-100 text-amber-700 border-amber-200"
+                        )}>
+                          {dias === 0 ? "¡HOY!" : `F931 ${dias}d`}
+                        </span>
+                      )
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setClienteClaves(cliente)}
+                      className={clsx(
+                        "transition-colors",
+                        cliente.cuil_arca || (cliente.claves_acceso && cliente.claves_acceso.length > 0)
+                          ? "text-gray-400 hover:text-bordo"
+                          : "text-gray-200"
+                      )}
+                    >
+                      <KeyRound size={15} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Recordatorio previo */}
+                {recordatoriosPrevios[cliente.id] && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-2 truncate">
+                    ↩ {recordatoriosPrevios[cliente.id]}
+                  </p>
+                )}
+
+                {/* Checkboxes row */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {campos.map(({ key, label, aplica, manual, drive }) =>
+                    aplica ? (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleToggle(cliente.id, key)}
+                        className={clsx(
+                          "flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg border-2 transition-all min-w-[44px]",
+                          manual && drive ? "bg-green-50 border-green-400 text-success"
+                            : manual ? "bg-amber-50 border-amber-300 text-amber-600"
+                            : drive ? "bg-blue-50 border-blue-300 text-blue-500"
+                            : "border-dashed border-gray-300 text-gray-300"
+                        )}
+                      >
+                        <span className="text-[9px] font-semibold uppercase tracking-wide leading-none">
+                          {label}
+                        </span>
+                        <span className="text-[13px] leading-none">
+                          {manual && drive ? <Check size={13} strokeWidth={3} />
+                            : manual ? <AlertTriangle size={12} strokeWidth={2.5} />
+                            : drive ? <Cloud size={12} strokeWidth={2.5} />
+                            : "·"}
+                        </span>
+                      </button>
+                    ) : null
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Mobile footer */}
+          <div className="pt-2 pb-4 flex items-center gap-3 px-1">
+            <div className="h-1.5 flex-1 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-success rounded-full transition-all duration-300"
+                style={{ width: `${clientesFiltrados.length > 0 ? Math.round((totalDone / clientesFiltrados.length) * 100) : 0}%` }}
+              />
+            </div>
+            <span className="text-[12px] font-medium text-gray-500 shrink-0">
+              {totalDone}/{clientesFiltrados.length} completas
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Table — desktop only */}
       {currentPeriodo && clientesFiltrados.length > 0 && (
         <div
           className={clsx(
-            "bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-opacity",
+            "hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-opacity",
             isPending && "opacity-60"
           )}
         >

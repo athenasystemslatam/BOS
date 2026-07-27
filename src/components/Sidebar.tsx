@@ -23,7 +23,7 @@ const navItems = [
   { href: "/productividad",  label: "Productividad",  icon: TrendingUp,      adminOnly: true  },
 ];
 
-export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
+export function Sidebar({ isAdmin, onClose }: { isAdmin: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -66,6 +66,7 @@ export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={clsx(
                 "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium transition-all duration-150",
                 isActive
