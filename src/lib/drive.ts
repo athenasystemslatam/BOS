@@ -500,6 +500,8 @@ export async function scanClientesForMonth(
     const files = await listFilesRecursive(drive, mesId);
     const encontrados = new Map<CampoManual, DriveFile>();
     const extras = new Map<string, DriveFile>();
+
+    // Primero: archivos individuales
     for (const file of files) {
       const campo = classifyFile(file.name);
       if (!campo) continue;
@@ -507,6 +509,22 @@ export async function scanClientesForMonth(
         if (!extras.has(campo)) extras.set(campo, file);
       } else if (!encontrados.has(campo)) {
         encontrados.set(campo, file);
+      }
+    }
+
+    // Segundo: si hay una subcarpeta llamada "RECIBOS" (u otro campo), se cuenta como presente
+    // aunque los archivos adentro no tengan nombres reconocibles
+    const subfolders = await listChildren(drive, mesId, true);
+    for (const sf of subfolders) {
+      if (!sf.id || !sf.name) continue;
+      const campo = classifyFile(sf.name);
+      if (!campo || campo === "recibos_vac" || campo === "planilla_interna") continue;
+      if (!encontrados.has(campo)) {
+        encontrados.set(campo, {
+          id: sf.id,
+          name: sf.name,
+          url: `https://drive.google.com/drive/folders/${sf.id}`,
+        });
       }
     }
 
