@@ -1,10 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { Cliente, Liquidadora } from "@/types";
 import { EmpresasClient } from "./EmpresasClient";
 
 export default async function EmpresasPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const yo = await getCurrentLiquidadora();
 
   const [{ data: liquidadoras }, { data: clientes }] = await Promise.all([

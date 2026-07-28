@@ -572,18 +572,19 @@ export function SeguimientoClient({
 
         {/* Right side: sync + period nav */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Sincronizar Drive — hidden on mobile */}
+          {/* Sincronizar Drive */}
           <button
             onClick={handleSync}
             disabled={isSyncing || isPending || !currentPeriodo}
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 transition-colors"
+            title="Sincronizar Drive"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 disabled:opacity-40 transition-colors"
           >
             {isSyncing ? (
-              <Loader2 size={13} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <RefreshCw size={13} />
+              <RefreshCw size={14} />
             )}
-            {isSyncing ? "Sincronizando…" : "Sincronizar Drive"}
+            <span className="hidden md:inline">{isSyncing ? "Sincronizando…" : "Sincronizar Drive"}</span>
           </button>
 
           {/* Period navigation */}
