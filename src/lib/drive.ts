@@ -312,18 +312,15 @@ async function collectClientFolders(drive: drive_v3.Drive): Promise<FolderEntry[
     if (root.depth === 1) {
       const items = await listChildren(drive, root.id, true);
       console.log(`[Drive] root ${root.id} → ${items.length} carpetas directas`);
-      if (items.length > 0) console.log("[Drive] primeras 5:", items.slice(0, 5).map((f) => f.name));
       all.push(...items.filter((f) => f.id && f.name && !f.name.startsWith("Z)")).map((f) => ({ id: f.id!, name: f.name! })));
     } else {
       const categories = await listChildren(drive, root.id, true);
-      console.log(`[Drive] root ${root.id} → ${categories.length} categorías:`, categories.map((c) => c.name));
+      console.log(`[Drive] root ${root.id} → ${categories.length} categorías`);
       const clientLists = await Promise.all(
         categories.map((cat) => listChildren(drive, cat.id!, true))
       );
       for (let i = 0; i < categories.length; i++) {
         const list = clientLists[i];
-        console.log(`[Drive] categoría "${categories[i].name}" → ${list.length} clientes`);
-        if (list.length > 0) console.log("[Drive] primeros 3:", list.slice(0, 3).map((f) => f.name));
         all.push(...list.filter((f) => f.id && f.name && !f.name.startsWith("Z)")).map((f) => ({ id: f.id!, name: f.name! })));
       }
     }
@@ -450,9 +447,9 @@ export async function scanClientesForMonth(
 
   if (allFolders.length === 0) {
     console.error("[Drive] ALERTA: collectClientFolders devolvió 0 carpetas — probable problema de auth o permisos");
-  } else {
-    console.log("[Drive] carpetas en Drive:", JSON.stringify(allFolders.map(f => f.name)));
   }
+
+  const MES_WORDS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 
   const settled = await concurrent(clientes, 15, async (cliente) => {
     let clienteFolderId: string;
@@ -475,14 +472,12 @@ export async function scanClientesForMonth(
       return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: "no-sueldos" } as ClienteScanResult;
     }
 
-    const MES_WORDS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     const anioId = await findFolder(drive, sueldosId, (n) => {
       const nn = norm(n);
       const y4 = String(anio);
       const y2 = y4.slice(-2);
-      // Exact match
       if (nn === y4 || nn === y2) return true;
-      // Contains year (e.g. "AÑO 2026", "2025-2026") but is NOT also a month folder (e.g. "JUNIO 2026")
+      // "AÑO 2026", "2025-2026" — contiene el año pero no es carpeta de mes
       if (nn.includes(y4)) return !MES_WORDS.some((m) => nn.includes(m));
       return false;
     });
@@ -490,14 +485,15 @@ export async function scanClientesForMonth(
     // Fallback: si no hay carpeta de año, buscar el mes directamente en SUELDOS
     const searchBase = anioId ?? sueldosId;
     if (!anioId) {
-      console.log(`[Drive] no-anio fallback: "${cliente.nombre}" — buscando mes directo en SUELDOS`);
+      console.log(`[Drive] no-anio: "${cliente.nombre}" — buscando mes directo en SUELDOS`);
     }
 
     const mesId = await findFolder(drive, searchBase, (n) => matchesMonth(n, mes, anio));
     if (!mesId) {
       const code = anioId ? "no-mes" : "no-mes-ni-anio";
       const subcarpetas = await listChildren(drive, searchBase, true);
-      console.log(`[Drive] ${code}: "${cliente.nombre}" — buscando mes ${mes} — subcarpetas en ${anioId ? "2026" : "SUELDOS"}: [${subcarpetas.map(f => f.name).join(", ")}]`);
+      const label = anioId ? String(anio) : "SUELDOS";
+      console.log(`[Drive] ${code}: "${cliente.nombre}" — mes ${mes} — en ${label}: [${subcarpetas.map(f => f.name).join(", ")}]`);
       return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: code } as ClienteScanResult;
     }
 
