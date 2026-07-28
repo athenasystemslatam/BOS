@@ -91,6 +91,11 @@ export async function editarEmpresa(formData: FormData) {
   const observaciones = (formData.get("observaciones") as string)?.trim() || null;
   const estado = formData.get("estado") as string;
   const claves_raw = (formData.get("claves_acceso") as string) || "[]";
+  // Acepta URL completa de Drive o ID directo
+  const driveFolderRaw = (formData.get("drive_folder_id") as string)?.trim() || null;
+  const drive_folder_id = driveFolderRaw
+    ? (driveFolderRaw.match(/\/folders\/([-\w]+)/)?.[1] ?? driveFolderRaw)
+    : null;
 
   if (!id || !nombre || !cuit || !liquidador_id || !tipo_contribuyente) {
     return { error: "Nombre, CUIT, tipo y liquidadora son obligatorios." };
@@ -120,6 +125,7 @@ export async function editarEmpresa(formData: FormData) {
     observaciones,
     estado,
     claves_acceso,
+    drive_folder_id,
     fecha_modificacion: new Date().toISOString(),
   }).eq("id", id);
 

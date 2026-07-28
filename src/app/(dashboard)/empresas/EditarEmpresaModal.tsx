@@ -388,6 +388,23 @@ export function EditarEmpresaModal({
               />
             </div>
 
+            {/* Carpeta Drive */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Carpeta Drive (URL o ID)
+              </label>
+              <input
+                name="drive_folder_id"
+                type="text"
+                defaultValue={cliente.drive_folder_id ?? ""}
+                placeholder="https://drive.google.com/drive/folders/… o ID directo"
+                className={inputCls}
+              />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Usalo cuando el nombre en Drive no coincide con el nombre del sistema (ej: carpeta &quot;RA&quot; para &quot;Rodrigo Acosta&quot;).
+              </p>
+            </div>
+
             {/* Claves de acceso */}
             <div className="border border-gray-100 rounded-lg p-4">
               <p className="text-xs font-medium text-gray-700 mb-3">Claves de acceso</p>
