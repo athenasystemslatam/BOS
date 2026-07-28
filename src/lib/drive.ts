@@ -496,7 +496,8 @@ export async function scanClientesForMonth(
     const mesId = await findFolder(drive, searchBase, (n) => matchesMonth(n, mes, anio));
     if (!mesId) {
       const code = anioId ? "no-mes" : "no-mes-ni-anio";
-      console.log(`[Drive] ${code}: "${cliente.nombre}" — buscando mes ${mes}`);
+      const subcarpetas = await listChildren(drive, searchBase, true);
+      console.log(`[Drive] ${code}: "${cliente.nombre}" — buscando mes ${mes} — subcarpetas en ${anioId ? "2026" : "SUELDOS"}: [${subcarpetas.map(f => f.name).join(", ")}]`);
       return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: code } as ClienteScanResult;
     }
 
