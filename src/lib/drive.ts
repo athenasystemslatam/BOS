@@ -464,9 +464,12 @@ export async function scanClientesForMonth(
       clienteFolderId = folder.id;
     }
 
-    const sueldosId = await findFolder(drive, clienteFolderId, (n) =>
+    const sueldosFound = await findFolder(drive, clienteFolderId, (n) =>
       SUELDOS_KEYS.some((k) => norm(n).includes(k))
     );
+    // Si se configuró drive_folder_id manualmente y no tiene subcarpeta SUELDOS,
+    // se asume que el folder apunta directamente a la raíz de sueldos
+    const sueldosId = sueldosFound ?? (cliente.drive_folder_id ? clienteFolderId : null);
     if (!sueldosId) {
       console.log(`[Drive] no-sueldos: "${cliente.nombre}"`);
       return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: "no-sueldos" } as ClienteScanResult;
