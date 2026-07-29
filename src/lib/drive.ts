@@ -514,11 +514,13 @@ export async function scanClientesForMonth(
 
     // Recorrer carpeta del mes: archivos directos + subcarpetas con reglas por tipo
     const mesChildren = await listChildren(drive, mesId);
+    const _dbg: string[] = [];
     for (const child of mesChildren) {
       if (!child.id || !child.name) continue;
 
       if (child.mimeType !== FOLDER_MIME) {
         // Archivo directo en la carpeta del mes: clasificar por nombre
+        _dbg.push(`  archivo: "${child.name}" → ${classifyFile(child.name) ?? "null"}`);
         record(
           { id: child.id, name: child.name, url: `https://drive.google.com/file/d/${child.id}/view` },
           classifyFile(child.name)
@@ -531,6 +533,7 @@ export async function scanClientesForMonth(
           : null;
 
         const innerFiles = await listFilesRecursive(drive, child.id);
+        _dbg.push(`  carpeta: "${child.name}" (campo=${folderCampo ?? "null"}) → [${innerFiles.map(f => `"${f.name}"`).join(", ")}]`);
         for (const file of innerFiles) {
           const byName = classifyFile(file.name);
           if (byName) {
@@ -551,6 +554,9 @@ export async function scanClientesForMonth(
           }
         }
       }
+    }
+    if (encontrados.size === 0) {
+      console.log(`[Drive] DEBUG-0 "${cliente.nombre}" — mes folder contents:\n${_dbg.join("\n") || "  (vacío)"}`);
     }
 
     console.log(`[Drive] OK: "${cliente.nombre}" — ${encontrados.size} archivos: [${Array.from(encontrados.keys()).join(", ")}]${extras.size > 0 ? ` + extras: [${Array.from(extras.keys()).join(", ")}]` : ""}`);
