@@ -121,10 +121,12 @@ export async function fetchPeriodo(
     data = nuevo;
   }
 
-  // Al crear un período nuevo, copiar legajos_cantidad del mes anterior
-  if (isNew && data) {
+  // Copiar legajos_cantidad del mes anterior para clientes que aún no lo tienen en este período
+  if (data) {
+    const periodoId = (data as Periodo).id;
     const mesPrev = mes === 1 ? 12 : mes - 1;
     const anioPrev = mes === 1 ? anio - 1 : anio;
+
     const { data: periodoAnterior } = await admin
       .from("periodos")
       .select("id")
@@ -133,16 +135,24 @@ export async function fetchPeriodo(
       .maybeSingle();
 
     if (periodoAnterior) {
+      // Legajos ya guardados en este período (no sobreescribir)
+      const { data: yaExistentes } = await admin
+        .from("tareas")
+        .select("cliente_id")
+        .eq("periodo_id", periodoId)
+        .gt("legajos_cantidad", 0);
+      const conLegajos = new Set((yaExistentes ?? []).map((t) => t.cliente_id));
+
       const { data: tareasAnteriores } = await admin
         .from("tareas")
         .select("cliente_id, legajos_cantidad")
         .eq("periodo_id", periodoAnterior.id)
         .gt("legajos_cantidad", 0);
 
-      if (tareasAnteriores && tareasAnteriores.length > 0) {
-        const periodoId = (data as Periodo).id;
+      const toCopy = (tareasAnteriores ?? []).filter((t) => !conLegajos.has(t.cliente_id));
+      if (toCopy.length > 0) {
         await admin.from("tareas").upsert(
-          tareasAnteriores.map((t) => ({
+          toCopy.map((t) => ({
             cliente_id: t.cliente_id,
             periodo_id: periodoId,
             legajos_cantidad: t.legajos_cantidad,

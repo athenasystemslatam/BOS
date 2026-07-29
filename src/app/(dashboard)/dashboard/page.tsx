@@ -78,24 +78,17 @@ export default async function DashboardPage({
   const tareasList = (tareas as Tarea[]) ?? [];
   const tareasMap = new Map(tareasList.map((t) => [t.cliente_id, t]));
 
-  let completadas = 0;
-  let enProceso = 0;
+  let recibosOk = 0;
+  let cargasOk = 0;
   for (const c of clientesList) {
     const t = tareasMap.get(c.id);
     if (!t) continue;
-    const checks = [
-      t.recibos_manual || t.recibos_drive,
-      t.f931_manual || t.f931_drive,
-      c.tiene_sindicato ? (t.bol_sind_manual || t.bol_sind_drive) : true,
-      c.tiene_rubrica_lsd ? (t.rub_lsd_manual || t.rub_lsd_drive) : true,
-      esMesSAC ? (t.sac_manual || t.sac_drive) : true,
-    ];
-    if (checks.every(Boolean)) completadas++;
-    else if (checks.some(Boolean)) enProceso++;
+    if (t.recibos_manual || t.recibos_drive) recibosOk++;
+    if (t.f931_manual || t.f931_drive) cargasOk++;
   }
 
   const total = clientesList.length;
-  const pctAvance = total > 0 ? Math.round((completadas / total) * 100) : 0;
+  const pctAvance = total > 0 ? Math.round(((recibosOk + cargasOk) / (total * 2)) * 100) : 0;
 
   const resumen = liquidadorasList.map((liq) => {
     const mis = clientesList.filter((c) => c.liquidador_id === liq.id);
@@ -151,19 +144,20 @@ export default async function DashboardPage({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-5 md:mb-7">
         <StatCard label="Total empresas" value={total} icon={<Building2 size={16} className="text-gray-400" />} />
         <StatCard
-          label="Completadas"
-          value={completadas}
+          label="Recibos"
+          value={recibosOk}
           icon={<CheckCircle2 size={16} className="text-success" />}
           valueColor="text-success"
-          sub={total > 0 ? `${pctAvance}%` : undefined}
+          sub={total > 0 ? `${Math.round((recibosOk / total) * 100)}%` : undefined}
         />
         <StatCard
-          label="En proceso"
-          value={enProceso}
+          label="Cargas F.931"
+          value={cargasOk}
           icon={<Clock size={16} className="text-warning" />}
           valueColor="text-warning"
+          sub={total > 0 ? `${Math.round((cargasOk / total) * 100)}%` : undefined}
         />
-        <ProgressCard pct={pctAvance} completadas={completadas} total={total} />
+        <ProgressCard pct={pctAvance} completadas={recibosOk + cargasOk} total={total * 2} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
@@ -399,7 +393,7 @@ function ProgressCard({ pct, completadas, total }: { pct: number; completadas: n
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-[10px] md:text-[11px] text-gray-400 mt-1">{completadas}/{total} empresas</p>
+      <p className="text-[10px] md:text-[11px] text-gray-400 mt-1">{completadas}/{total} docs</p>
     </div>
   );
 }
