@@ -500,34 +500,40 @@ export async function scanClientesForMonth(
       return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: code } as ClienteScanResult;
     }
 
-    const files = await listFilesRecursive(drive, mesId);
     const encontrados = new Map<CampoManual, DriveFile>();
     const extras = new Map<string, DriveFile>();
 
-    // Primero: archivos individuales
-    for (const file of files) {
-      const campo = classifyFile(file.name);
-      if (!campo) continue;
+    const record = (file: DriveFile, campo: ReturnType<typeof classifyFile>) => {
+      if (!campo) return;
       if (campo === "recibos_vac" || campo === "planilla_interna") {
         if (!extras.has(campo)) extras.set(campo, file);
       } else if (!encontrados.has(campo)) {
-        encontrados.set(campo, file);
+        encontrados.set(campo as CampoManual, file);
       }
-    }
+    };
 
-    // Segundo: si hay una subcarpeta llamada "RECIBOS" (u otro campo), se cuenta como presente
-    // aunque los archivos adentro no tengan nombres reconocibles
-    const subfolders = await listChildren(drive, mesId, true);
-    for (const sf of subfolders) {
-      if (!sf.id || !sf.name) continue;
-      const campo = classifyFile(sf.name);
-      if (!campo || campo === "recibos_vac" || campo === "planilla_interna") continue;
-      if (!encontrados.has(campo)) {
-        encontrados.set(campo, {
-          id: sf.id,
-          name: sf.name,
-          url: `https://drive.google.com/drive/folders/${sf.id}`,
-        });
+    // Recorrer carpeta del mes: archivos directos + subcarpetas con contexto heredado
+    const mesChildren = await listChildren(drive, mesId);
+    for (const child of mesChildren) {
+      if (!child.id || !child.name) continue;
+
+      if (child.mimeType !== FOLDER_MIME) {
+        // Archivo directo: clasificar por nombre
+        record(
+          { id: child.id, name: child.name, url: `https://drive.google.com/file/d/${child.id}/view` },
+          classifyFile(child.name)
+        );
+      } else {
+        // Subcarpeta (ej: "RECIBOS", "F931"): su nombre puede dar contexto a los archivos internos
+        const rawFolderCampo = classifyFile(child.name);
+        const folderCampo = (rawFolderCampo && rawFolderCampo !== "recibos_vac" && rawFolderCampo !== "planilla_interna")
+          ? rawFolderCampo as CampoManual
+          : null;
+        const innerFiles = await listFilesRecursive(drive, child.id);
+        for (const file of innerFiles) {
+          // Si el nombre del archivo no clasifica, heredar la categoría de la carpeta contenedora
+          record(file, classifyFile(file.name) ?? folderCampo);
+        }
       }
     }
 
