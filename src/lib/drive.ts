@@ -512,27 +512,43 @@ export async function scanClientesForMonth(
       }
     };
 
-    // Recorrer carpeta del mes: archivos directos + subcarpetas con contexto heredado
+    // Recorrer carpeta del mes: archivos directos + subcarpetas con reglas por tipo
     const mesChildren = await listChildren(drive, mesId);
     for (const child of mesChildren) {
       if (!child.id || !child.name) continue;
 
       if (child.mimeType !== FOLDER_MIME) {
-        // Archivo directo: clasificar por nombre
+        // Archivo directo en la carpeta del mes: clasificar por nombre
         record(
           { id: child.id, name: child.name, url: `https://drive.google.com/file/d/${child.id}/view` },
           classifyFile(child.name)
         );
       } else {
-        // Subcarpeta (ej: "RECIBOS", "F931"): su nombre puede dar contexto a los archivos internos
+        // Subcarpeta: su nombre indica el tipo de documentos adentro
         const rawFolderCampo = classifyFile(child.name);
         const folderCampo = (rawFolderCampo && rawFolderCampo !== "recibos_vac" && rawFolderCampo !== "planilla_interna")
           ? rawFolderCampo as CampoManual
           : null;
+
         const innerFiles = await listFilesRecursive(drive, child.id);
         for (const file of innerFiles) {
-          // Si el nombre del archivo no clasifica, heredar la categoría de la carpeta contenedora
-          record(file, classifyFile(file.name) ?? folderCampo);
+          const byName = classifyFile(file.name);
+          if (byName) {
+            // El archivo clasifica por su propio nombre → usar esa clasificación
+            record(file, byName);
+            continue;
+          }
+          // Sin clasificación por nombre: aplicar regla específica según la carpeta
+          if (folderCampo === "recibos") {
+            // Carpeta RECIBOS: el archivo debe mencionar el mes (07, julio, etc.)
+            if (matchesMonth(file.name, mes, anio)) record(file, "recibos");
+          } else if (folderCampo === "f931") {
+            // Carpeta CARGAS / F931: el archivo debe contener "931"
+            if (/931/.test(file.name)) record(file, "f931");
+          } else if (folderCampo) {
+            // Otras carpetas categorizadas (SAC, BOLETA, etc.): cualquier archivo vale
+            record(file, folderCampo);
+          }
         }
       }
     }
