@@ -107,8 +107,6 @@ export async function fetchPeriodo(
     .eq("mes", mes)
     .maybeSingle();
 
-  const isNew = !data;
-
   if (!data) {
     const { data: nuevo } = await admin
       .from("periodos")
