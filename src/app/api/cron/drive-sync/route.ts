@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     for (const campo of CAMPOS_DRIVE) {
       updates[`${campo}_drive`] = result.encontrados.has(campo);
     }
-    tareaUpserts.push({ cliente_id: result.clienteId, periodo_id: periodo.id, ...updates });
+    tareaUpserts.push({ cliente_id: result.clienteId, periodo_id: periodo.id, ...updates, drive_error: result.errorCode ?? null });
 
     if (result.encontrados.size > 0) {
       clientesConArchivos++;

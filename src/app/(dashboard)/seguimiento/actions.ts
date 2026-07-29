@@ -300,6 +300,7 @@ export async function syncDrive(
       cliente_id: result.clienteId,
       periodo_id: periodoId,
       ...updates,
+      drive_error: result.errorCode ?? null,
     });
 
     if (result.encontrados.size > 0) {
