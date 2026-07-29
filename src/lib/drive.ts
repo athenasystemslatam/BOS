@@ -546,8 +546,8 @@ export async function scanClientesForMonth(
             // Carpeta CARGAS / F931: el archivo debe contener "931"
             if (/931/.test(file.name)) record(file, "f931");
           } else if (folderCampo) {
-            // Otras carpetas categorizadas (SAC, BOLETA, etc.): cualquier archivo vale
-            record(file, folderCampo);
+            // Resto de carpetas categorizadas (SAC, BOLETA, etc.): el archivo debe mencionar el mes
+            if (matchesMonth(file.name, mes, anio)) record(file, folderCampo);
           }
         }
       }
