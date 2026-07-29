@@ -519,11 +519,14 @@ export async function scanClientesForMonth(
       if (!child.id || !child.name) continue;
 
       if (child.mimeType !== FOLDER_MIME) {
-        // Archivo directo en la carpeta del mes: clasificar por nombre
-        _dbg.push(`  archivo: "${child.name}" → ${classifyFile(child.name) ?? "null"}`);
+        // Archivo directo en la carpeta del mes: clasificar por nombre;
+        // si no clasifica pero menciona el mes → recibo genérico
+        const byName = classifyFile(child.name);
+        const campo = byName ?? (matchesMonth(child.name, mes, anio) ? "recibos" : null);
+        _dbg.push(`  archivo: "${child.name}" → ${campo ?? "null"}`);
         record(
           { id: child.id, name: child.name, url: `https://drive.google.com/file/d/${child.id}/view` },
-          classifyFile(child.name)
+          campo
         );
       } else {
         // Subcarpeta: su nombre indica el tipo de documentos adentro
