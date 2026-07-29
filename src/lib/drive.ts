@@ -54,32 +54,33 @@ function norm(s: string): string {
     .trim();
 }
 
-function matchesMonth(name: string, mes: number, anio: number): boolean {
+/** Strict check: used only for folder names representing a month.
+ *  Every word in the name must be a month or year token — no extra words allowed.
+ *  Prevents "CARGAS SOCIALES 07-26" from matching as July folder. */
+function matchesMesFolder(name: string, mes: number, anio: number): boolean {
   const n = norm(name);
   const y4 = String(anio);
   const y2 = y4.slice(-2);
   const mp = String(mes).padStart(2, "0");
   const mu = String(mes);
+  const words = n.split(/\s+/);
+  const allowed = new Set([...(MONTHS[mes] ?? []), y4, y2, mp, mu]);
+  const mesOnly = new Set([...(MONTHS[mes] ?? []), mp, mu]);
+  // All words must be allowed tokens, and at least one must be a month token (not just year)
+  return words.every((w) => allowed.has(w)) && words.some((w) => mesOnly.has(w));
+}
 
-  // Exact and compact patterns
-  for (const v of MONTHS[mes] ?? []) {
-    if (n === v) return true;
-    if (n === `${v} ${y4}` || n === `${v} ${y2}`) return true;
-    if (n === `${y4} ${v}` || n === `${y2} ${v}`) return true;
-  }
-  if (n === `${mp} ${y4}` || n === `${mu} ${y4}`) return true;
-  if (n === `${y4} ${mp}` || n === `${y4} ${mu}`) return true;
-
-  // Flexible: month word as a token anywhere in the name
-  // handles "MES JULIO 2026", "07 JULIO 2026", "SUELDOS JULIO", etc.
+/** Flexible check: used for file names inside a month folder. */
+function matchesMonth(name: string, mes: number, anio: number): boolean {
+  const n = norm(name);
+  const y4 = String(anio);
+  const mp = String(mes).padStart(2, "0");
   const words = n.split(/\s+/);
   const hasWrongYear = (w: string[]) => w.some((t) => /^20\d{2}$/.test(t) && t !== y4);
   for (const v of MONTHS[mes] ?? []) {
     if (words.includes(v) && !hasWrongYear(words)) return true;
   }
-  // Numeric month token: "07 JULIO 2026", "MES 07"
   if (words.includes(mp) && !hasWrongYear(words)) return true;
-
   return false;
 }
 
@@ -491,7 +492,7 @@ export async function scanClientesForMonth(
       console.log(`[Drive] no-anio: "${cliente.nombre}" — buscando mes directo en SUELDOS`);
     }
 
-    const mesId = await findFolder(drive, searchBase, (n) => matchesMonth(n, mes, anio));
+    const mesId = await findFolder(drive, searchBase, (n) => matchesMesFolder(n, mes, anio));
     if (!mesId) {
       const code = anioId ? "no-mes" : "no-mes-ni-anio";
       const subcarpetas = await listChildren(drive, searchBase, true);
