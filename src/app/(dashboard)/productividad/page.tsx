@@ -20,13 +20,13 @@ export default async function ProductividadPage() {
 
   const admin = createAdminClient();
 
-  // Últimos 12 períodos
+  // Períodos desde junio 2026 en adelante (antes no se usaba el sistema)
   const { data: periodos } = await admin
     .from("periodos")
     .select("id, anio, mes, nombre_mes")
+    .or("anio.gt.2026,and(anio.eq.2026,mes.gte.6)")
     .order("anio", { ascending: true })
-    .order("mes", { ascending: true })
-    .limit(24);
+    .order("mes", { ascending: true });
 
   if (!periodos || periodos.length === 0) {
     return <div className="p-8 text-gray-400 text-sm">Sin períodos registrados.</div>;
