@@ -165,6 +165,7 @@ Aplicadas en producción:
 ## Contexto del cliente
 
 - **KMA Consultores** — estudio contable, Buenos Aires
-- **Giuliana Tignanelli** — administradora técnica (Athena Systems), contacto principal
+- **Giuliana Tignanelli** — administradora técnica (Athena Systems, athenasystems.latam@gmail.com), contacto principal y dueña de los accesos
+- **Matías Serapio** — operador técnico designado por KMA Consultores (matiasserapio@kmaconsultores.com.ar); mantiene el sistema en el día a día, hace cambios y resuelve problemas
 - **Liquidadoras** — empleadas de KMA que usan el sistema diariamente
 - **María de Los Ángeles** — liquidadora cuyas empresas tienen Drive en SharePoint con estructura de categorías (diferente al resto)
