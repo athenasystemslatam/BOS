@@ -21,9 +21,9 @@ type EmpresaPendiente = {
 };
 
 type GrupoPendiente = {
-  label: string;   // "CUITs 0–3"
+  label: string;
   fecha: Date;
-  dias: number;    // negative = ya venció
+  dias: number;
   empresas: EmpresaPendiente[];
 };
 
@@ -32,11 +32,11 @@ type GrupoPendiente = {
 async function getEmpresasPendientesF931(): Promise<{
   grupos: GrupoPendiente[];
   periodoNombre: string;
+  diasAlUltimo: number;
 }> {
   const admin = createAdminClient();
   const { mes, anio } = getMesTrabajoActual();
 
-  // Obtener período actual
   const { data: periodo } = await admin
     .from("periodos")
     .select("id, nombre_mes")
@@ -45,10 +45,9 @@ async function getEmpresasPendientesF931(): Promise<{
     .maybeSingle();
 
   if (!periodo) {
-    return { grupos: [], periodoNombre: `${MESES_NOMBRES[mes]} ${anio}` };
+    return { grupos: [], periodoNombre: `${MESES_NOMBRES[mes]} ${anio}`, diasAlUltimo: 999 };
   }
 
-  // Empresas sin F.931 (ni manual ni drive)
   const { data: tareasPendientes } = await admin
     .from("tareas")
     .select(`
@@ -84,120 +83,124 @@ async function getEmpresasPendientesF931(): Promise<{
     });
 
   const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
 
   const grupos: GrupoPendiente[] = GRUPOS_CUIT.map((g) => {
     const fecha = getVencimientoF931(g.min, anio, mes);
-    const dias = Math.ceil((fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
+    const dias = Math.round((fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
     const empresasGrupo = empresas.filter(
       (e) => e.terminacion_cuit >= g.min && e.terminacion_cuit <= g.max
     );
     return { label: g.label, fecha, dias, empresas: empresasGrupo };
   });
 
-  return { grupos, periodoNombre: periodo.nombre_mes };
+  // Días hasta el último vencimiento (CUITs 7-9, siempre el último)
+  const diasAlUltimo = grupos[grupos.length - 1]?.dias ?? 999;
+
+  return { grupos, periodoNombre: periodo.nombre_mes, diasAlUltimo };
 }
 
 // ─── Email builders ───────────────────────────────────────────────────────────
 
-function buildEmailLiquidadora(
+function buildEmailPrevio(
   liquidadoraNombre: string,
-  empresas: EmpresaPendiente[],
-  fecha: Date,
-  dias: number,
+  gruposLiq: GrupoPendiente[],
+  liquidadoraEmail: string,
   periodoNombre: string
 ): { subject: string; html: string } {
-  const fechaStr = fecha.toLocaleDateString("es-AR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  const subject = `⚠ F.931 ${periodoNombre} — vencimientos próximos`;
 
-  const urgente = dias <= 0;
-  const diasLabel =
-    dias > 0 ? `en ${dias} día${dias !== 1 ? "s" : ""}` : dias === 0 ? "HOY" : "VENCIDO";
-
-  const subject = urgente
-    ? `🚨 URGENTE — F.931 ${diasLabel} — ${empresas.map((e) => e.nombre).join(", ")}`
-    : `⚠ F.931 vence ${diasLabel} — ${empresas.map((e) => e.nombre).join(", ")}`;
-
-  const listaEmpresas = empresas
-    .map(
-      (e) =>
-        `<tr>
-          <td style="padding:6px 12px;border-bottom:1px solid #f0f0f0">${e.nombre}</td>
-          <td style="padding:6px 12px;border-bottom:1px solid #f0f0f0;color:#666">CUIT termina en ${e.terminacion_cuit}</td>
-        </tr>`
-    )
-    .join("");
+  const bloques = gruposLiq.map((g) => {
+    const fechaStr = g.fecha.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" });
+    const diasLabel = g.dias === 1 ? "mañana" : `en ${g.dias} días`;
+    const empresasDelGrupo = g.empresas.filter((e) => e.liquidadora_email === liquidadoraEmail);
+    const filas = empresasDelGrupo
+      .map((e) => `<tr><td style="padding:5px 12px;border-bottom:1px solid #f0f0f0">${e.nombre}</td></tr>`)
+      .join("");
+    return `
+      <p style="font-size:13px;font-weight:600;color:#555;margin:16px 0 4px">
+        ${g.label} — vence ${diasLabel} (${fechaStr})
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${filas}</tbody></table>
+    `;
+  }).join("");
 
   const html = `
     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
       <p style="font-size:15px">Hola ${liquidadoraNombre},</p>
       <p style="font-size:15px">
-        Las siguientes empresas tienen el <strong>F.931 de ${periodoNombre}</strong> pendiente.<br>
-        Vencimiento: <strong>${fechaStr}</strong> (${diasLabel}).
+        Las siguientes empresas tienen el <strong>F.931 de ${periodoNombre}</strong> pendiente
+        y sus vencimientos se aproximan:
       </p>
-      <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px">
-        <thead>
-          <tr style="background:#f5f5f5">
-            <th style="padding:8px 12px;text-align:left">Empresa</th>
-            <th style="padding:8px 12px;text-align:left">CUIT</th>
-          </tr>
-        </thead>
-        <tbody>${listaEmpresas}</tbody>
-      </table>
-      <p style="font-size:13px;color:#888">BOS · KMA Consultores</p>
+      ${bloques}
+      <p style="font-size:12px;color:#aaa;margin-top:24px">BOS · KMA Consultores</p>
     </div>
   `;
 
   return { subject, html };
 }
 
-function buildEmailAdmin(
-  grupos: GrupoPendiente[],
+function buildEmailPost(
+  liquidadoraNombre: string,
+  empresas: EmpresaPendiente[],
   periodoNombre: string
 ): { subject: string; html: string } {
+  const subject = `🚨 F.931 ${periodoNombre} — vencimientos superados, aún pendientes`;
+
+  const filas = empresas
+    .map((e) => `<tr><td style="padding:5px 12px;border-bottom:1px solid #f0f0f0">${e.nombre}</td></tr>`)
+    .join("");
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
+      <p style="font-size:15px">Hola ${liquidadoraNombre},</p>
+      <p style="font-size:15px">
+        Los vencimientos del <strong>F.931 de ${periodoNombre}</strong> ya pasaron.
+        Las siguientes empresas todavía no tienen la presentación registrada:
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${filas}</tbody></table>
+      <p style="font-size:13px;color:#888;margin-top:16px">
+        Si ya lo presentaste, marcalo como completado en el sistema.
+      </p>
+      <p style="font-size:12px;color:#aaa;margin-top:24px">BOS · KMA Consultores</p>
+    </div>
+  `;
+
+  return { subject, html };
+}
+
+function buildEmailReporteFinal(
+  grupos: GrupoPendiente[],
+  periodoNombre: string,
+  tipo: "post" | "final"
+): { subject: string; html: string } {
   const pendientesTotal = grupos.reduce((acc, g) => acc + g.empresas.length, 0);
-  const subject = `Resumen F.931 — ${pendientesTotal} empresa${pendientesTotal !== 1 ? "s" : ""} pendiente${pendientesTotal !== 1 ? "s" : ""} al ${new Date().toLocaleDateString("es-AR")}`;
+  const fechaHoy = new Date().toLocaleDateString("es-AR");
+
+  const subject = tipo === "final"
+    ? `Reporte final F.931 ${periodoNombre} — ${pendientesTotal} pendiente${pendientesTotal !== 1 ? "s" : ""}`
+    : `Resumen post-vencimiento F.931 ${periodoNombre} — ${pendientesTotal} pendiente${pendientesTotal !== 1 ? "s" : ""} al ${fechaHoy}`;
 
   const bloques = grupos
     .filter((g) => g.empresas.length > 0)
     .map((g) => {
-      const fechaStr = g.fecha.toLocaleDateString("es-AR", {
-        day: "numeric",
-        month: "long",
-      });
-      const diasLabel =
-        g.dias > 0
-          ? `vence en ${g.dias}d (${fechaStr})`
-          : g.dias === 0
-          ? `vence HOY`
-          : `VENCIDO el ${fechaStr}`;
-
-      // Agrupar por liquidadora
       const porLiq = new Map<string, EmpresaPendiente[]>();
       for (const e of g.empresas) {
-        const key = e.liquidadora_nombre;
-        if (!porLiq.has(key)) porLiq.set(key, []);
-        porLiq.get(key)!.push(e);
+        if (!porLiq.has(e.liquidadora_nombre)) porLiq.set(e.liquidadora_nombre, []);
+        porLiq.get(e.liquidadora_nombre)!.push(e);
       }
 
       const filas = Array.from(porLiq.entries())
-        .map(([liq, emps]) =>
-          emps
-            .map(
-              (e) =>
-                `<tr>
-                  <td style="padding:5px 10px;border-bottom:1px solid #f0f0f0">${e.nombre}</td>
-                  <td style="padding:5px 10px;border-bottom:1px solid #f0f0f0;color:#666">${liq}</td>
-                </tr>`
-            )
-            .join("")
-        )
-        .join("");
+        .flatMap(([liq, emps]) =>
+          emps.map((e) => `
+            <tr>
+              <td style="padding:5px 10px;border-bottom:1px solid #f0f0f0">${e.nombre}</td>
+              <td style="padding:5px 10px;border-bottom:1px solid #f0f0f0;color:#666">${liq}</td>
+            </tr>`)
+        ).join("");
 
       return `
-        <h3 style="margin:20px 0 6px;font-size:14px;color:#555">${g.label} — ${diasLabel}</h3>
+        <h3 style="margin:20px 0 6px;font-size:14px;color:#555">${g.label}</h3>
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead>
             <tr style="background:#f5f5f5">
@@ -208,13 +211,12 @@ function buildEmailAdmin(
           <tbody>${filas}</tbody>
         </table>
       `;
-    })
-    .join("");
+    }).join("");
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#222">
       <h2 style="font-size:16px">F.931 ${periodoNombre} — ${pendientesTotal} pendiente${pendientesTotal !== 1 ? "s" : ""}</h2>
-      ${bloques || "<p style='color:#888'>Todas las empresas están al día.</p>"}
+      ${bloques || "<p style='color:#888'>Todas las empresas están al día. ✓</p>"}
       <p style="font-size:12px;color:#aaa;margin-top:24px">BOS · KMA Consultores</p>
     </div>
   `;
@@ -229,10 +231,9 @@ export async function sendTestEmail(): Promise<AlertaF931Result> {
     return { enviados: 0, omitidos: 0, detalle: [], error: "RESEND_API_KEY no configurada" };
   }
 
-  const to = ADMIN_EMAIL;
   const { error } = await resend.emails.send({
     from: FROM,
-    to,
+    to: ADMIN_EMAIL,
     subject: "Test BOS — sistema de alertas funcionando",
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;color:#222">
@@ -248,7 +249,7 @@ export async function sendTestEmail(): Promise<AlertaF931Result> {
     return { enviados: 0, omitidos: 1, detalle: [`[omitido] ${error.message}`], error: error.message };
   }
 
-  return { enviados: 1, omitidos: 0, detalle: [`Test → ${to}`] };
+  return { enviados: 1, omitidos: 0, detalle: [`Test → ${ADMIN_EMAIL}`] };
 }
 
 export type AlertaF931Result = {
@@ -263,81 +264,77 @@ export async function sendAlertaF931(): Promise<AlertaF931Result> {
     return { enviados: 0, omitidos: 0, detalle: [], error: "RESEND_API_KEY no configurada" };
   }
 
-  const { grupos, periodoNombre } = await getEmpresasPendientesF931();
+  const { grupos, periodoNombre, diasAlUltimo } = await getEmpresasPendientesF931();
   const enviados: string[] = [];
   const omitidos: string[] = [];
 
-  // Grupos relevantes: 7d, 3d, 0d (hoy), -1d (día siguiente al vencimiento)
-  const gruposRelevantes = grupos.filter(
-    (g) => g.dias === 7 || g.dias === 3 || g.dias === 0 || g.dias === -1
-  );
+  // 3 emails por mes, anclados al último vencimiento del período (CUITs 7-9):
+  //   +3 = previo      → liquidadoras (aviso anticipado)
+  //   -1 = post        → liquidadoras + admin (ya venció, pendientes)
+  //   -5 = final       → solo admin (reporte definitivo)
+  const esPrevio = diasAlUltimo === 3;
+  const esPost = diasAlUltimo === -1;
+  const esFinal = diasAlUltimo === -5;
 
-  if (gruposRelevantes.length === 0) {
+  if (!esPrevio && !esPost && !esFinal) {
     return { enviados: 0, omitidos: 0, detalle: ["Sin vencimientos relevantes hoy"] };
   }
 
-  const enviarAdminResumen = gruposRelevantes.some((g) => g.dias <= 3);
-  let adminResumenEnviado = false;
-
-  for (const grupo of gruposRelevantes) {
-    if (grupo.empresas.length === 0) {
-      omitidos.push(`${grupo.label}: sin pendientes`);
-      continue;
-    }
-
-    if (grupo.dias === -1) {
-      // Día posterior: solo resumen a admin
-      continue;
-    }
-
-    // Agrupar por liquidadora para enviar un email por liquidadora
-    const porLiq = new Map<string, EmpresaPendiente[]>();
-    for (const e of grupo.empresas) {
-      if (!e.liquidadora_email) continue;
-      if (!porLiq.has(e.liquidadora_email)) porLiq.set(e.liquidadora_email, []);
-      porLiq.get(e.liquidadora_email)!.push(e);
-    }
-
-    for (const [email, empresas] of Array.from(porLiq.entries())) {
-      const { subject, html } = buildEmailLiquidadora(
-        empresas[0].liquidadora_nombre,
-        empresas,
-        grupo.fecha,
-        grupo.dias,
-        periodoNombre
-      );
-
-      const { error } = await resend.emails.send({
-        from: FROM,
-        to: email,
-        ...(grupo.dias <= 3 ? { cc: ADMIN_EMAIL } : {}),
-        subject,
-        html,
-      });
-
-      if (error) {
-        omitidos.push(`${email}: ${error.message}`);
-      } else {
-        enviados.push(`${empresas[0].liquidadora_nombre} → ${email} (${empresas.length} empresas)`);
+  // Email previo: una liquidadora puede tener empresas en distintos grupos con distintas fechas
+  if (esPrevio) {
+    const porLiq = new Map<string, { nombre: string; grupos: GrupoPendiente[] }>();
+    for (const grupo of grupos) {
+      for (const e of grupo.empresas) {
+        if (!e.liquidadora_email) continue;
+        if (!porLiq.has(e.liquidadora_email)) {
+          porLiq.set(e.liquidadora_email, { nombre: e.liquidadora_nombre, grupos: [] });
+        }
+        const entry = porLiq.get(e.liquidadora_email)!;
+        if (!entry.grupos.includes(grupo)) entry.grupos.push(grupo);
       }
+    }
+
+    for (const [email, { nombre, grupos: gruposLiq }] of Array.from(porLiq.entries())) {
+      const { subject, html } = buildEmailPrevio(nombre, gruposLiq, email, periodoNombre);
+      const { error } = await resend.emails.send({ from: FROM, to: email, subject, html });
+      if (error) omitidos.push(`[previo] ${nombre}: ${error.message}`);
+      else enviados.push(`[previo] ${nombre} → ${email}`);
     }
   }
 
-  // Resumen a admin cuando hay vencimientos en ≤3 días o ya vencidos
-  if (enviarAdminResumen && !adminResumenEnviado) {
-    const { subject, html } = buildEmailAdmin(grupos, periodoNombre);
-    const { error } = await resend.emails.send({
-      from: FROM,
-      to: ADMIN_EMAIL,
-      subject,
-      html,
-    });
-    if (error) {
-      omitidos.push(`Admin resumen: ${error.message}`);
-    } else {
-      enviados.push(`Admin resumen → ${ADMIN_EMAIL}`);
-      adminResumenEnviado = true;
+  // Email post: todo lo que sigue pendiente después del último vencimiento
+  if (esPost) {
+    const porLiq = new Map<string, { nombre: string; empresas: EmpresaPendiente[] }>();
+    for (const grupo of grupos) {
+      for (const e of grupo.empresas) {
+        if (!e.liquidadora_email) continue;
+        if (!porLiq.has(e.liquidadora_email)) {
+          porLiq.set(e.liquidadora_email, { nombre: e.liquidadora_nombre, empresas: [] });
+        }
+        porLiq.get(e.liquidadora_email)!.empresas.push(e);
+      }
     }
+
+    for (const [email, { nombre, empresas }] of Array.from(porLiq.entries())) {
+      const { subject, html } = buildEmailPost(nombre, empresas, periodoNombre);
+      const { error } = await resend.emails.send({ from: FROM, to: email, cc: ADMIN_EMAIL, subject, html });
+      if (error) omitidos.push(`[post] ${nombre}: ${error.message}`);
+      else enviados.push(`[post] ${nombre} → ${email}`);
+    }
+
+    // Admin siempre recibe el resumen post aunque no haya pendientes
+    const { subject, html } = buildEmailReporteFinal(grupos, periodoNombre, "post");
+    const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html });
+    if (error) omitidos.push(`[post] admin: ${error.message}`);
+    else enviados.push(`[post] admin → ${ADMIN_EMAIL}`);
+  }
+
+  // Reporte final: solo admin, 5 días después del último vencimiento
+  if (esFinal) {
+    const { subject, html } = buildEmailReporteFinal(grupos, periodoNombre, "final");
+    const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject, html });
+    if (error) omitidos.push(`[final] admin: ${error.message}`);
+    else enviados.push(`[final] admin → ${ADMIN_EMAIL}`);
   }
 
   return {
