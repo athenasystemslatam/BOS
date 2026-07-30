@@ -493,13 +493,6 @@ export async function scanClientesForMonth(
     }
 
     const mesId = await findFolder(drive, searchBase, (n) => matchesMesFolder(n, mes, anio));
-    if (!mesId) {
-      const code = anioId ? "no-mes" : "no-mes-ni-anio";
-      const subcarpetas = await listChildren(drive, searchBase, true);
-      const label = anioId ? String(anio) : "SUELDOS";
-      console.log(`[Drive] ${code}: "${cliente.nombre}" — mes ${mes} — en ${label}: [${subcarpetas.map(f => f.name).join(", ")}]`);
-      return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: code } as ClienteScanResult;
-    }
 
     const encontrados = new Map<CampoManual, DriveFile>();
     const extras = new Map<string, DriveFile>();
@@ -512,6 +505,45 @@ export async function scanClientesForMonth(
         encontrados.set(campo as CampoManual, file);
       }
     };
+
+    if (!mesId) {
+      // Fallback para estructura por categorías (ej: drive_folder_id apunta a folder con
+      // RECIBOS DE SUELDO / CARGAS SOCIALES / SINDICATOS sin organización año/mes)
+      if (cliente.drive_folder_id && !anioId) {
+        const catChildren = await listChildren(drive, sueldosId);
+        for (const child of catChildren) {
+          if (!child.id || !child.name) continue;
+          if (child.mimeType === FOLDER_MIME) {
+            const rawFolderCampo = classifyFile(child.name);
+            const folderCampo = (rawFolderCampo && rawFolderCampo !== "recibos_vac" && rawFolderCampo !== "planilla_interna")
+              ? rawFolderCampo as CampoManual : null;
+            if (!folderCampo) continue;
+            const innerFiles = await listFilesRecursive(drive, child.id);
+            for (const file of innerFiles) {
+              const byName = classifyFile(file.name);
+              if (byName) { record(file, byName); continue; }
+              if (folderCampo === "f931") {
+                if (/931/.test(file.name) || matchesMonth(file.name, mes, anio)) record(file, "f931");
+              } else if (matchesMonth(file.name, mes, anio)) {
+                record(file, folderCampo);
+              }
+            }
+          } else {
+            const byName = classifyFile(child.name);
+            const campo = byName ?? (matchesMonth(child.name, mes, anio) ? "recibos" : null);
+            record({ id: child.id, name: child.name, url: `https://drive.google.com/file/d/${child.id}/view` }, campo);
+          }
+        }
+        console.log(`[Drive] cat-scan: "${cliente.nombre}" — ${encontrados.size} archivos: [${Array.from(encontrados.keys()).join(", ")}]`);
+        return { clienteId: cliente.id, encontrados, extras } as ClienteScanResult;
+      }
+
+      const code = anioId ? "no-mes" : "no-mes-ni-anio";
+      const subcarpetas = await listChildren(drive, searchBase, true);
+      const label = anioId ? String(anio) : "SUELDOS";
+      console.log(`[Drive] ${code}: "${cliente.nombre}" — mes ${mes} — en ${label}: [${subcarpetas.map(f => f.name).join(", ")}]`);
+      return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: code } as ClienteScanResult;
+    }
 
     // Recorrer carpeta del mes: archivos directos + subcarpetas con reglas por tipo
     const mesChildren = await listChildren(drive, mesId);
