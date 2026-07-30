@@ -27,8 +27,8 @@ export default async function VencimientosPage() {
   ];
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
         <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">F.931 — ARCA</p>
         <h1 className="text-2xl font-semibold text-gray-900 mt-1">
           Calendario de vencimientos 2026
@@ -39,7 +39,7 @@ export default async function VencimientosPage() {
       </div>
 
       {/* Leyenda */}
-      <div className="flex items-center gap-5 mb-6 text-xs text-gray-500">
+      <div className="flex flex-wrap items-center gap-3 md:gap-5 mb-6 text-xs text-gray-500">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full bg-success" />
           Más de 7 días
@@ -60,7 +60,8 @@ export default async function VencimientosPage() {
 
       {/* Tabla */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[480px]">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr className="text-xs text-gray-400 uppercase tracking-wide">
               <th className="px-6 py-3 text-left font-medium w-32">Mes liq.</th>
@@ -160,6 +161,7 @@ export default async function VencimientosPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       <p className="text-xs text-gray-400 mt-4 flex items-center gap-1.5">

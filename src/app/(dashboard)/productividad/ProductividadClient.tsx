@@ -60,8 +60,8 @@ export function ProductividadClient({ filas }: {
   const fila = filas.find((f) => f.id === liqSeleccionada);
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
+    <div className="p-4 md:p-8">
+      <div className="mb-6 md:mb-8">
         <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">Módulo Sueldos</p>
         <h1 className="text-2xl font-semibold text-gray-900 mt-1">Productividad</h1>
         <p className="text-sm text-gray-400 mt-1">
@@ -70,7 +70,7 @@ export function ProductividadClient({ filas }: {
       </div>
 
       {/* Selector liquidadora */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      <div className="flex gap-2 mb-4 md:mb-6 flex-wrap">
         {filas.map((f) => (
           <button
             key={f.id}
