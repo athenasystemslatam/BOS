@@ -34,7 +34,7 @@ BOS fue desarrollado y se mantiene con **Claude Code**, un asistente de intelige
 
 ```bash
 # Instalar Claude Code (una sola vez)
-npm install -g @anthropic/claude-code
+npm install -g @anthropic-ai/claude-code
 
 # Clonar el repositorio (una sola vez por máquina)
 git clone https://github.com/athenasystemslatam/BOS
