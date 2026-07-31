@@ -37,7 +37,7 @@ export default async function ProductividadPage() {
   // Tareas con timestamps y cliente
   const { data: tareas } = await admin
     .from("tareas")
-    .select("cliente_id, periodo_id, f931_manual, recibos_manual, f931_manual_en, recibos_manual_en, f931_drive, recibos_drive")
+    .select("cliente_id, periodo_id, f931_manual, recibos_manual, f931_manual_en, recibos_manual_en, f931_drive, recibos_drive, legajos_cantidad")
     .in("periodo_id", periodoIds);
 
   // Clientes activos con liquidadora
@@ -110,6 +110,7 @@ export default async function ProductividadPage() {
       let f931ATiempo = 0, f931Tarde = 0, f931SinTs = 0;
       let recibosATiempo = 0, recibosTarde = 0, recibosSinTs = 0;
       let completadas = 0;
+      let legajos = 0;
       const diasF931: number[] = [];
       const diasRecibos: number[] = [];
       const vencRecibos = vencimientoRecibos(periodo.anio, periodo.mes);
@@ -119,6 +120,7 @@ export default async function ProductividadPage() {
         const tieneF931 = tarea.f931_manual || tarea.f931_drive;
         const tieneRecibos = tarea.recibos_manual || tarea.recibos_drive;
         if (tieneF931 && tieneRecibos) completadas++;
+        if (tieneF931 && tieneRecibos) legajos += tarea.legajos_cantidad ?? 0;
 
         if (tarea.f931_manual) {
           if (tarea.f931_manual_en) {
@@ -157,6 +159,7 @@ export default async function ProductividadPage() {
         f931ATiempo, f931Tarde, f931SinTs,
         recibosATiempo, recibosTarde, recibosSinTs,
         completadas,
+        legajos,
         avgDiasF931,
         avgDiasRecibos,
       });

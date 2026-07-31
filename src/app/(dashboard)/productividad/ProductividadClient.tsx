@@ -19,6 +19,7 @@ export interface FilaLiquidadora {
     recibosTarde: number;
     recibosSinTs: number;
     completadas: number;
+    legajos: number;
     avgDiasF931: number | null;
     avgDiasRecibos: number | null;
   }[];
@@ -92,11 +93,12 @@ export function ProductividadClient({ filas }: {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px]">
+            <table className="w-full min-w-[860px]">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr className="text-[11px] text-gray-400 uppercase tracking-wide">
                   <th className="px-5 py-3 text-left font-medium">Período</th>
                   <th className="px-4 py-3 text-center font-medium">Empresas</th>
+                  <th className="px-4 py-3 text-center font-medium">Legajos liquidados</th>
                   <th className="px-4 py-3 text-center font-medium">F.931 completadas</th>
                   <th className="px-4 py-3 text-center font-medium">Días al venc. F.931</th>
                   <th className="px-4 py-3 text-center font-medium">Recibos completados</th>
@@ -114,6 +116,9 @@ export function ProductividadClient({ filas }: {
                       </td>
                       <td className="px-4 py-3 text-center text-[13px] text-gray-600">
                         {m.total}
+                      </td>
+                      <td className="px-4 py-3 text-center text-[13px] font-medium text-gray-900">
+                        {m.legajos}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Pill value={m.f931ATiempo + m.f931Tarde + m.f931SinTs} total={m.total} />

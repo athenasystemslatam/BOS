@@ -1,13 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [codigo, setCodigo] = useState("");
+  const [verificando, setVerificando] = useState(false);
+  const [errorCodigo, setErrorCodigo] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "link_invalido") {
+      setError(
+        "El link de acceso venció o ya fue usado. Pedí uno nuevo y abrilo desde el mismo dispositivo y navegador donde lo solicitaste."
+      );
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +42,26 @@ export default function LoginPage() {
       return;
     }
     setSent(true);
+  };
+
+  const handleVerificarCodigo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerificando(true);
+    setErrorCodigo(null);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: codigo.trim(),
+      type: "email",
+    });
+
+    setVerificando(false);
+    if (error) {
+      setErrorCodigo("Código incorrecto o vencido. Verificalo e intentá de nuevo.");
+      return;
+    }
+    router.push("/dashboard");
   };
 
   return (
@@ -65,6 +99,42 @@ export default function LoginPage() {
               Te enviamos un link de acceso a <span className="font-medium text-gray-600">{email}</span>.
               Abrilo desde este mismo dispositivo para ingresar.
             </p>
+
+            <div className="flex items-center gap-3 my-5">
+              <div className="h-px bg-gray-100 flex-1" />
+              <span className="text-xs text-gray-400 uppercase tracking-wide">o</span>
+              <div className="h-px bg-gray-100 flex-1" />
+            </div>
+
+            <form onSubmit={handleVerificarCodigo} className="text-left space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Ingresá el código de 6 dígitos del mail
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={codigo}
+                  onChange={(e) => setCodigo(e.target.value)}
+                  maxLength={6}
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-bordo/20 focus:border-bordo text-sm transition-all text-center tracking-[0.3em] placeholder:text-gray-300 placeholder:tracking-normal"
+                  placeholder="123456"
+                />
+              </div>
+
+              {errorCodigo && (
+                <p className="text-sm text-danger">{errorCodigo}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={verificando || codigo.trim().length === 0}
+                className="w-full bg-bordo hover:bg-bordo-dark text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+              >
+                {verificando ? "Verificando..." : "Ingresar con código"}
+              </button>
+            </form>
+
             <button
               onClick={() => setSent(false)}
               className="text-sm font-medium text-bordo hover:underline mt-5"
