@@ -159,6 +159,7 @@ Aplicadas en producción:
   - ✅ Productividad/KPIs (`/productividad`, admin only, desde junio 2026)
   - ⬜ README/documentación técnica
 - **Pendiente operativo**: configurar dominio propio en Resend para que los emails lleguen a las liquidadoras (hoy solo llegan al admin)
+- **Pendiente operativo**: configurar SMTP propio (Resend) en Supabase Auth para los emails de login/invitación. Hoy usan el servicio compartido de Supabase, que tiene un límite bajo de envíos por hora (HTTP 429 en `/auth/v1/otp` si hay varios logins/invitaciones seguidos). Depende del punto anterior (dominio verificado en Resend) para poder mandar a cualquier destinatario, no solo al admin.
 
 ---
 
