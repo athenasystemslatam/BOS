@@ -109,16 +109,16 @@ export default function LoginPage() {
             <form onSubmit={handleVerificarCodigo} className="text-left space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Ingresá el código de 6 dígitos del mail
+                  Ingresá el código del mail
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={codigo}
                   onChange={(e) => setCodigo(e.target.value)}
-                  maxLength={6}
+                  maxLength={12}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-bordo/20 focus:border-bordo text-sm transition-all text-center tracking-[0.3em] placeholder:text-gray-300 placeholder:tracking-normal"
-                  placeholder="123456"
+                  placeholder="12345678"
                 />
               </div>
 
