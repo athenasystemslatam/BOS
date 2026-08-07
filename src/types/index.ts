@@ -38,6 +38,8 @@ export interface Cliente {
   estado: EstadoCliente;
   observaciones?: string;
   claves_acceso?: ClaveAcceso[];
+  lsd_desde_anio?: number | null;
+  lsd_desde_mes?: number | null;
   drive_folder_id?: string;
   fecha_alta: string;
   fecha_alta_empleador?: string;

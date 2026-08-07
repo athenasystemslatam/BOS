@@ -7,8 +7,68 @@ import { Cliente, Liquidadora, TipoContribuyente } from "@/types";
 import { NuevaEmpresaModal } from "./NuevaEmpresaModal";
 import { EditarEmpresaModal } from "./EditarEmpresaModal";
 import { AsignacionModal } from "./AsignacionModal";
+import { MESES_NOMBRES } from "@/lib/vencimientos";
 
 type ClienteConLiq = Cliente & { liquidadora?: Liquidadora };
+
+const LSD_CUTOFFS: Record<string, { anio: number; mes: number }> = {
+  PBA: { anio: 2026, mes: 3 },
+  CABA: { anio: 2026, mes: 7 },
+};
+
+type LsdStatus = "sin-lsd" | "sin-config" | "pendiente" | "en-proceso" | "regularizada";
+
+function getLsdStatus(
+  c: ClienteConLiq,
+  lsdHasta: Record<string, { anio: number; mes: number }>
+): LsdStatus {
+  if (!c.tiene_rubrica_lsd || !c.jurisdiccion) return "sin-lsd";
+  const cutoff = LSD_CUTOFFS[c.jurisdiccion];
+  if (!cutoff) return "sin-lsd";
+  if (!c.lsd_desde_anio || !c.lsd_desde_mes) return "sin-config";
+  const hasta = lsdHasta[c.id];
+  if (!hasta) return "pendiente";
+  const hastaVal = hasta.anio * 100 + hasta.mes;
+  const cutoffVal = cutoff.anio * 100 + cutoff.mes;
+  return hastaVal >= cutoffVal ? "regularizada" : "en-proceso";
+}
+
+function LsdSemaforo({
+  status,
+  hasta,
+}: {
+  status: LsdStatus;
+  hasta?: { anio: number; mes: number };
+}) {
+  if (status === "sin-lsd") return <span className="text-gray-300">—</span>;
+  if (status === "sin-config")
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-gray-400" title="Configurar período de inicio en editar empresa">
+        <span className="w-2 h-2 rounded-full bg-gray-300 inline-block shrink-0" />
+        Sin inicio
+      </span>
+    );
+  if (status === "pendiente")
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-red-600">
+        <span className="w-2 h-2 rounded-full bg-red-500 inline-block shrink-0" />
+        Pendiente
+      </span>
+    );
+  if (status === "en-proceso")
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-amber-600">
+        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block shrink-0" />
+        {hasta ? `Hasta ${MESES_NOMBRES[hasta.mes]} ${hasta.anio}` : "En proceso"}
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] text-green-600">
+      <span className="w-2 h-2 rounded-full bg-green-500 inline-block shrink-0" />
+      Regularizada
+    </span>
+  );
+}
 
 const TIPO_CONTRIB_LABELS: Record<TipoContribuyente, { label: string; cls: string }> = {
   empresa: { label: "Empresa", cls: "bg-blue-50 text-blue-700" },
@@ -21,11 +81,13 @@ export function EmpresasClient({
   liquidadoras,
   isAdmin,
   creadoPor,
+  lsdHasta,
 }: {
   clientes: ClienteConLiq[];
   liquidadoras: Liquidadora[];
   isAdmin: boolean;
   creadoPor: string | null;
+  lsdHasta: Record<string, { anio: number; mes: number }>;
 }) {
   const [search, setSearch] = useState("");
   const [filtroLiq, setFiltroLiq] = useState("");
@@ -199,7 +261,7 @@ export function EmpresasClient({
                     <th className="px-5 py-3 text-left font-medium">Liquidadora</th>
                     <th className="px-4 py-3 text-center font-medium">Tipo</th>
                     <th className="px-4 py-3 text-center font-medium">Sindicato</th>
-                    <th className="px-4 py-3 text-center font-medium">Rúb.LSD</th>
+                    <th className="px-4 py-3 text-left font-medium">LSD</th>
                     <th className="px-4 py-3 text-left font-medium">Jurisdicción</th>
                     <th className="px-4 py-3 text-center font-medium">Estado</th>
                     {isAdmin && (
@@ -276,12 +338,11 @@ export function EmpresasClient({
                           <span className="text-gray-300">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-center text-[13px]">
-                        {c.tiene_rubrica_lsd ? (
-                          <span className="text-success">✓</span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
+                      <td className="px-4 py-3.5 text-[13px]">
+                        <LsdSemaforo
+                          status={getLsdStatus(c, lsdHasta)}
+                          hasta={lsdHasta[c.id]}
+                        />
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
                         {c.jurisdiccion ?? <span className="text-gray-300">—</span>}
