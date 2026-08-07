@@ -402,7 +402,7 @@ export function EditarEmpresaModal({
                       className={`${inputCls} flex-1`}
                     >
                       <option value="">— Año</option>
-                      {[2024, 2025, 2026].map((y) => (
+                      {Array.from({ length: 9 }, (_, i) => 2018 + i).map((y) => (
                         <option key={y} value={y}>{y}</option>
                       ))}
                     </select>
