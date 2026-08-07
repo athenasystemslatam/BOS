@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual de uso — BOS · KMA Consultores</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      color: #222;
+      background: #fff;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 48px 64px;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-bottom: 24px;
+      border-bottom: 3px solid #7a1c2e;
+      margin-bottom: 32px;
+    }
+    .logo {
+      width: 44px; height: 44px;
+      background: #7a1c2e;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 800; font-size: 18px;
+      flex-shrink: 0;
+    }
+    .header-text h1 {
+      font-size: 20px; font-weight: 700; color: #7a1c2e;
+    }
+    .header-text p {
+      font-size: 12px; color: #888; margin-top: 2px;
+    }
+
+    /* ── Secciones ── */
+    h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #7a1c2e;
+      margin: 28px 0 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #f0e0e3;
+    }
+    h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      margin: 16px 0 6px;
+    }
+    p { margin-bottom: 8px; }
+
+    /* ── Pasos numerados ── */
+    ol { padding-left: 20px; margin-bottom: 12px; }
+    ol li { margin-bottom: 6px; }
+
+    /* ── Tabla ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 12.5px;
+    }
+    th {
+      background: #7a1c2e;
+      color: white;
+      text-align: left;
+      padding: 8px 12px;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f5f5f5;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #fafafa; }
+    td strong { color: #7a1c2e; }
+
+    /* ── Nota / aviso ── */
+    .nota {
+      background: #fdf5f6;
+      border-left: 3px solid #7a1c2e;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 12px 0;
+      font-size: 12px;
+      color: #555;
+    }
+    .nota strong { color: #7a1c2e; }
+
+    /* ── Badge ── */
+    .badge {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0369a1;
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-manual {
+      background: #f0fdf4;
+      color: #16a34a;
+    }
+
+    /* ── FAQ ── */
+    .faq { margin: 8px 0 16px; }
+    .faq-q {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 2px;
+    }
+    .faq-a {
+      color: #555;
+      padding-left: 12px;
+      border-left: 2px solid #e5e7eb;
+      margin-bottom: 12px;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid #eee;
+      font-size: 11px;
+      color: #aaa;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── Imprimir ── */
+    @media print {
+      body { padding: 32px 40px; }
+      h2 { page-break-after: avoid; }
+      table { page-break-inside: avoid; }
+      .nota { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">K</div>
+    <div class="header-text">
+      <h1>Manual de uso — BOS</h1>
+      <p>KMA Consultores · Módulo Sueldos · <strong>bos-plum.vercel.app</strong></p>
+    </div>
+  </div>
+
+  <!-- Acceso -->
+  <h2>Cómo ingresar al sistema</h2>
+  <p>El sistema no usa contraseñas. El acceso es por <strong>link de un solo uso</strong> que llega a tu email.</p>
+  <ol>
+    <li>Entrá a <strong>bos-plum.vercel.app</strong></li>
+    <li>Escribí tu email y hacé click en <strong>Enviar link</strong></li>
+    <li>Revisá tu bandeja de entrada y hacé click en el link que llega</li>
+    <li>Listo — el sistema te recuerda en ese navegador, no hace falta repetirlo todos los días</li>
+  </ol>
+  <div class="nota">
+    <strong>Link no llegó?</strong> Revisá la carpeta de spam. El link expira en 1 hora; si expiró, volvé al paso 1 y pedí uno nuevo.
+  </div>
+
+  <!-- Seguimiento -->
+  <h2>La pantalla principal: Seguimiento</h2>
+  <p>Al entrar vas a ver <strong>Seguimiento</strong>, con todas tus empresas del mes actual. Las empresas están ordenadas por terminación de CUIT, que coincide con el orden de vencimiento del F.931 — las que vencen primero aparecen arriba.</p>
+
+  <h3>¿Qué significa cada columna?</h3>
+  <table>
+    <thead>
+      <tr><th>Columna</th><th>Qué representa</th><th>Cuándo aparece</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Rec Q1</strong></td><td>Recibos de primera quincena</td><td>Solo en empresas quincenales</td></tr>
+      <tr><td><strong>Recibos</strong></td><td>Recibos de sueldos del mes</td><td>Siempre</td></tr>
+      <tr><td><strong>F.931</strong></td><td>Presentación de cargas sociales (AFIP)</td><td>Siempre</td></tr>
+      <tr><td><strong>Bol. sind.</strong></td><td>Boleta sindical</td><td>Solo en empresas con sindicato</td></tr>
+      <tr><td><strong>Rúb. LSD</strong></td><td>Rúbrica del libro de sueldos digital</td><td>Solo en empresas que lo requieren</td></tr>
+      <tr><td><strong>SAC</strong></td><td>Aguinaldo</td><td>Solo en junio y diciembre</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Cómo marcar una tarea</h3>
+  <p>Hacé click en el checkbox de la columna correspondiente cuando terminaste esa tarea. Se guarda automáticamente, no hace falta hacer nada más.</p>
+
+  <h3>Qué significa el color de cada checkbox</h3>
+  <table>
+    <thead>
+      <tr><th>Color</th><th>Qué indica</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge">Fondo celeste</span></td>
+        <td>El sistema detectó el archivo automáticamente en Google Drive. No lo marcaste vos.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-manual">Fondo verde / sin color</span></td>
+        <td>Lo marcaste vos manualmente.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Observaciones -->
+  <h2>Observaciones y recordatorios</h2>
+  <p>En cada empresa hay dos campos de texto:</p>
+  <table>
+    <tbody>
+      <tr>
+        <td><strong>Observaciones</strong></td>
+        <td>Nota para el mes actual. Queda guardada pero no pasa al mes siguiente.</td>
+      </tr>
+      <tr>
+        <td><strong>→ Sig. mes</strong></td>
+        <td>Lo que escribas acá aparece como <strong>alerta destacada</strong> en el mes siguiente. Útil para avisos importantes o cosas pendientes.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Claves -->
+  <h2>Claves de acceso</h2>
+  <p>El ícono de <strong>llave</strong> al lado del nombre de cada empresa abre un panel con las claves de acceso: AFIP, sistema de sueldos, portales, etc.</p>
+  <p>Hacé click en el ícono de copiar al lado de cada dato para copiarlo al portapapeles sin tener que tipear.</p>
+
+  <!-- Cambiar mes -->
+  <h2>Cambiar de mes</h2>
+  <p>En la parte superior de Seguimiento hay un selector de mes. Podés usarlo para ver períodos anteriores.</p>
+  <div class="nota">
+    <strong>Atención:</strong> Modificar un período ya cerrado queda registrado como alerta para el administrador.
+  </div>
+
+  <!-- Dashboard -->
+  <h2>Dashboard</h2>
+  <p>Muestra un resumen del mes: cuántas empresas tienen los recibos listos, cuántas tienen el F.931 presentado, el avance general, y los días que faltan para cada vencimiento del F.931.</p>
+
+  <!-- Vencimientos -->
+  <h2>Vencimientos</h2>
+  <p>La pantalla de <strong>Vencimientos</strong> muestra el calendario de fechas de presentación del F.931 para el mes activo, organizado por terminación de CUIT.</p>
+
+  <!-- FAQ -->
+  <h2>Preguntas frecuentes</h2>
+
+  <div class="faq">
+    <div class="faq-q">¿Tengo que marcar algo si Drive ya lo detectó?</div>
+    <div class="faq-a">No. Si el checkbox ya está marcado (aunque sea por Drive), la tarea está registrada.</div>
+
+    <div class="faq-q">¿Puedo marcar aunque el archivo todavía no esté en Drive?</div>
+    <div class="faq-a">Sí. Podés marcar manualmente en cualquier momento. Si después el sistema detecta el archivo en Drive, queda registrado por los dos lados.</div>
+
+    <div class="faq-q">¿El mes cambia solo?</div>
+    <div class="faq-a">Sí. El sistema detecta automáticamente qué mes corresponde según los vencimientos del F.931. No hace falta hacer nada.</div>
+
+    <div class="faq-q">¿Solo veo mis empresas?</div>
+    <div class="faq-a">Sí. Cada liquidadora ve únicamente las empresas que tiene asignadas. El admin ve todas.</div>
+
+    <div class="faq-q">¿Qué hago si algo no funciona o hay un error?</div>
+    <div class="faq-a">Avisá a Matías Serapio (matiasserapio@kmaconsultores.com.ar).</div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>BOS · KMA Consultores</span>
+    <span>Desarrollado por Athena Systems · athenasystems.latam@gmail.com</span>
+  </div>
+
+</body>
+</html>
