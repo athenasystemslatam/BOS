@@ -918,7 +918,7 @@ export function SeguimientoClient({
           )}
         >
           <div className="overflow-x-auto">
-            <table className="w-full" style={{ minWidth: 720 }}>
+            <table className="w-full" style={{ minWidth: 860 }}>
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[210px]">
