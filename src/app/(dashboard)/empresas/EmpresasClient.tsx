@@ -18,18 +18,24 @@ const LSD_CUTOFFS: Record<string, { anio: number; mes: number }> = {
 
 type LsdStatus = "sin-lsd" | "sin-config" | "pendiente" | "en-proceso" | "regularizada";
 
-function getLsdStatus(
+function getLsdInfo(
   c: ClienteConLiq,
   lsdHasta: Record<string, { anio: number; mes: number }>
-): LsdStatus {
-  if (!c.tiene_rubrica_lsd || !c.jurisdiccion) return "sin-lsd";
+): { status: LsdStatus; hasta?: { anio: number; mes: number } } {
+  if (!c.tiene_rubrica_lsd || !c.jurisdiccion) return { status: "sin-lsd", hasta: undefined };
   const cutoff = LSD_CUTOFFS[c.jurisdiccion];
-  if (!cutoff) return "sin-lsd";
-  const hasta = lsdHasta[c.id];
-  if (!hasta) return c.lsd_desde_anio ? "pendiente" : "sin-config";
+  if (!cutoff) return { status: "sin-lsd", hasta: undefined };
+  const tareasHasta = lsdHasta[c.id];
+  const manualHasta = c.lsd_hasta_anio && c.lsd_hasta_mes
+    ? { anio: c.lsd_hasta_anio, mes: c.lsd_hasta_mes }
+    : null;
+  const hasta = tareasHasta && manualHasta
+    ? (tareasHasta.anio * 100 + tareasHasta.mes >= manualHasta.anio * 100 + manualHasta.mes ? tareasHasta : manualHasta)
+    : (tareasHasta ?? manualHasta);
+  if (!hasta) return { status: c.lsd_desde_anio ? "pendiente" : "sin-config", hasta: undefined };
   const hastaVal = hasta.anio * 100 + hasta.mes;
   const cutoffVal = cutoff.anio * 100 + cutoff.mes;
-  return hastaVal >= cutoffVal ? "regularizada" : "en-proceso";
+  return { status: hastaVal >= cutoffVal ? "regularizada" : "en-proceso", hasta };
 }
 
 function LsdSemaforo({
@@ -339,8 +345,7 @@ export function EmpresasClient({
                       </td>
                       <td className="px-4 py-3.5 text-[13px]">
                         <LsdSemaforo
-                          status={getLsdStatus(c, lsdHasta)}
-                          hasta={lsdHasta[c.id]}
+                          {...getLsdInfo(c, lsdHasta)}
                         />
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
