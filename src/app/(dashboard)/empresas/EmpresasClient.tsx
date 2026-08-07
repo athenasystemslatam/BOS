@@ -100,6 +100,13 @@ export function EmpresasClient({
   const [editando, setEditando] = useState<ClienteConLiq | null>(null);
   const [asignando, setAsignando] = useState<ClienteConLiq | null>(null);
 
+  const activosIds = useMemo(() => new Set(liquidadoras.map((l) => l.id)), [liquidadoras]);
+
+  const sinAsignacion = useMemo(
+    () => clientes.filter((c) => c.estado === "activo" && (!c.liquidador_id || !activosIds.has(c.liquidador_id))),
+    [clientes, activosIds]
+  );
+
   const filtrados = useMemo(() => {
     const q = search.toLowerCase().trim();
     return clientes.filter((c) => {
@@ -122,6 +129,23 @@ export function EmpresasClient({
           </div>
           {isAdmin && <NuevaEmpresaModal liquidadoras={liquidadoras} />}
         </div>
+
+        {/* Alerta: empresas sin liquidadora activa */}
+        {sinAsignacion.length > 0 && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+            <span className="text-amber-500 text-base mt-0.5">⚠</span>
+            <div>
+              <p className="text-sm font-medium text-amber-800">
+                {sinAsignacion.length === 1
+                  ? "1 empresa activa sin liquidadora asignada"
+                  : `${sinAsignacion.length} empresas activas sin liquidadora asignada`}
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                {sinAsignacion.map((c) => c.nombre).join(", ")}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4">
