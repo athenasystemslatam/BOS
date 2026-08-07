@@ -148,6 +148,7 @@ Aplicadas en producción:
 - `add_recordatorio.sql` — columna tareas.recordatorio
 - `add_asignaciones.sql` — tabla asignaciones (reasignación con fecha efectiva)
 - `drive_error` en tareas — `ALTER TABLE tareas ADD COLUMN IF NOT EXISTS drive_error TEXT;`
+- `add_lsd_desde.sql` — columnas `lsd_desde_anio` y `lsd_desde_mes` en clientes (tracking regularización LSD)
 
 ---
 
