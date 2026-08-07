@@ -25,9 +25,8 @@ function getLsdStatus(
   if (!c.tiene_rubrica_lsd || !c.jurisdiccion) return "sin-lsd";
   const cutoff = LSD_CUTOFFS[c.jurisdiccion];
   if (!cutoff) return "sin-lsd";
-  if (!c.lsd_desde_anio || !c.lsd_desde_mes) return "sin-config";
   const hasta = lsdHasta[c.id];
-  if (!hasta) return "pendiente";
+  if (!hasta) return c.lsd_desde_anio ? "pendiente" : "sin-config";
   const hastaVal = hasta.anio * 100 + hasta.mes;
   const cutoffVal = cutoff.anio * 100 + cutoff.mes;
   return hastaVal >= cutoffVal ? "regularizada" : "en-proceso";
