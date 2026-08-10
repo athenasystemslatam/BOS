@@ -1,6 +1,7 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireLiquidadoraOrAdmin } from "@/lib/auth";
 
 import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
 import { Periodo, Tarea } from "@/types";
@@ -22,6 +23,12 @@ export async function toggleManual(
   campo: CampoManual,
   valor: boolean
 ) {
+  try {
+    await requireLiquidadoraOrAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
   const admin = createAdminClient();
   const camposConTimestamp = ["f931", "recibos"] as const;
   type CampoTs = typeof camposConTimestamp[number];
@@ -70,6 +77,12 @@ export async function updateLegajos(
   periodoId: string,
   cantidad: number
 ) {
+  try {
+    await requireLiquidadoraOrAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
   const admin = createAdminClient();
   const { error } = await admin
     .from("tareas")
@@ -80,6 +93,9 @@ export async function updateLegajos(
   return error ? { error: error.message } : { success: true };
 }
 
+// A propósito sin requireLiquidadoraOrAdmin: cualquier usuario autenticado y
+// permitido (ver middleware.ts) puede dejar una observación, incluidos los
+// de modo consulta. Es la única escritura habilitada para ese modo.
 export async function updateObservaciones(
   clienteId: string,
   periodoId: string,
@@ -169,6 +185,12 @@ export async function updateRecordatorio(
   periodoId: string,
   recordatorio: string
 ) {
+  try {
+    await requireLiquidadoraOrAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
   const admin = createAdminClient();
   const { error } = await admin
     .from("tareas")
@@ -239,6 +261,17 @@ export async function syncDrive(
   mes: number,
   anio: number
 ): Promise<SyncDriveResult> {
+  try {
+    await requireLiquidadoraOrAdmin();
+  } catch (e) {
+    return {
+      archivosDetectados: 0,
+      clientesConArchivos: 0,
+      errorCodes: {},
+      error: e instanceof Error ? e.message : "No autorizado.",
+    };
+  }
+
   console.log("[syncDrive] inicio — periodoId:", periodoId, "mes:", mes, "anio:", anio);
   console.log("[syncDrive] GOOGLE_SERVICE_ACCOUNT_JSON definida:", !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON, "longitud:", (process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? "").length);
 

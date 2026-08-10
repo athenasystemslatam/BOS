@@ -44,6 +44,9 @@ interface Props {
   periodo: Periodo | null;
   liquidadoras: Pick<Liquidadora, "id" | "nombre">[];
   isAdmin: boolean;
+  /** false = modo consulta (sin fila activa en liquidadoras): solo lectura,
+   * salvo el campo Observaciones que queda habilitado para todos. */
+  puedeEditar: boolean;
   recordatoriosPrevios: Record<string, string>;
 }
 
@@ -92,10 +95,12 @@ function CheckboxCell({
   manual,
   drive,
   onToggle,
+  disabled,
 }: {
   manual: boolean;
   drive: boolean;
   onToggle: () => void;
+  disabled?: boolean;
 }) {
   const state = getCheckState(manual, drive);
   const labels: Record<CheckState, string> = {
@@ -108,9 +113,11 @@ function CheckboxCell({
     <button
       type="button"
       onClick={onToggle}
-      title={labels[state]}
+      disabled={disabled}
+      title={disabled ? "Modo consulta — solo lectura" : labels[state]}
       className={clsx(
         "w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all mx-auto",
+        disabled && "opacity-50 cursor-not-allowed",
         state === "empty" &&
           "border-dashed border-gray-400 hover:border-gray-500 hover:bg-gray-50",
         state === "warning" &&
@@ -263,6 +270,7 @@ export function SeguimientoClient({
   periodo: initialPeriodo,
   liquidadoras,
   isAdmin,
+  puedeEditar,
   recordatoriosPrevios: initialRecordatoriosPrevios,
 }: Props) {
   // Period state — managed client-side to avoid URL params (which make the route dynamic)
@@ -295,7 +303,7 @@ export function SeguimientoClient({
   const [syncResult, setSyncResult] = useState<SyncDriveResult | null>(null);
 
   async function handleSync() {
-    if (!currentPeriodo || isSyncing) return;
+    if (!currentPeriodo || isSyncing || !puedeEditar) return;
     setIsSyncing(true);
     setSyncResult(null);
     try {
@@ -438,7 +446,7 @@ export function SeguimientoClient({
   // ── Checkbox toggle (optimistic) ──────────────────────────────────────────
 
   function handleToggle(clienteId: string, campo: CampoManual) {
-    if (!currentPeriodo) return;
+    if (!currentPeriodo || !puedeEditar) return;
     const current = getEffective(clienteId);
     const newValue = !current[`${campo}_manual`];
 
@@ -455,7 +463,7 @@ export function SeguimientoClient({
   // ── Legajos (debounced) ───────────────────────────────────────────────────
 
   function handleLegajos(clienteId: string, valor: string) {
-    if (!currentPeriodo) return;
+    if (!currentPeriodo || !puedeEditar) return;
     const num = Math.max(0, parseInt(valor) || 0);
     setOverrides((prev) => {
       const next = new Map(prev);
@@ -495,7 +503,7 @@ export function SeguimientoClient({
   // ── Recordatorio (debounced) ──────────────────────────────────────────────
 
   function handleRecordatorio(clienteId: string, valor: string) {
-    if (!currentPeriodo) return;
+    if (!currentPeriodo || !puedeEditar) return;
     setOverrides((prev) => {
       const next = new Map(prev);
       const existing = next.get(clienteId) ?? {};
@@ -555,6 +563,11 @@ export function SeguimientoClient({
                 Vista admin
               </span>
             )}
+            {!puedeEditar && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                Modo consulta — solo lectura
+              </span>
+            )}
           </h1>
           <p className="text-sm text-gray-400 mt-1">
             {clientesFiltrados.length} empresas ·{" "}
@@ -573,6 +586,7 @@ export function SeguimientoClient({
         {/* Right side: sync + period nav */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Sincronizar Drive */}
+          {puedeEditar && (
           <button
             onClick={handleSync}
             disabled={isSyncing || isPending || !currentPeriodo}
@@ -586,6 +600,7 @@ export function SeguimientoClient({
             )}
             <span className="hidden md:inline">{isSyncing ? "Sincronizando…" : "Sincronizar Drive"}</span>
           </button>
+          )}
 
           {/* Period navigation */}
           <div className="flex items-center gap-2">
@@ -869,8 +884,10 @@ export function SeguimientoClient({
                         key={key}
                         type="button"
                         onClick={() => handleToggle(cliente.id, key)}
+                        disabled={!puedeEditar}
                         className={clsx(
                           "flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg border-2 transition-all min-w-[44px]",
+                          !puedeEditar && "opacity-50",
                           manual && drive ? "bg-green-50 border-green-400 text-success"
                             : manual ? "bg-amber-50 border-amber-300 text-amber-600"
                             : drive ? "bg-blue-50 border-blue-300 text-blue-500"
@@ -1090,6 +1107,7 @@ export function SeguimientoClient({
                               manual={t.rec_q1_manual}
                               drive={t.rec_q1_drive}
                               onToggle={() => handleToggle(cliente.id, "rec_q1")}
+                              disabled={!puedeEditar}
                             />
                           ) : (
                             <DashCell />
@@ -1103,6 +1121,7 @@ export function SeguimientoClient({
                           manual={t.recibos_manual}
                           drive={t.recibos_drive}
                           onToggle={() => handleToggle(cliente.id, "recibos")}
+                          disabled={!puedeEditar}
                         />
                       </td>
 
@@ -1112,6 +1131,7 @@ export function SeguimientoClient({
                           manual={t.f931_manual}
                           drive={t.f931_drive}
                           onToggle={() => handleToggle(cliente.id, "f931")}
+                          disabled={!puedeEditar}
                         />
                       </td>
 
@@ -1122,6 +1142,7 @@ export function SeguimientoClient({
                             manual={t.bol_sind_manual}
                             drive={t.bol_sind_drive}
                             onToggle={() => handleToggle(cliente.id, "bol_sind")}
+                            disabled={!puedeEditar}
                           />
                         ) : (
                           <DashCell />
@@ -1135,6 +1156,7 @@ export function SeguimientoClient({
                             manual={t.rub_lsd_manual}
                             drive={t.rub_lsd_drive}
                             onToggle={() => handleToggle(cliente.id, "rub_lsd")}
+                            disabled={!puedeEditar}
                           />
                         ) : (
                           <DashCell />
@@ -1148,6 +1170,7 @@ export function SeguimientoClient({
                             manual={t.sac_manual}
                             drive={t.sac_drive}
                             onToggle={() => handleToggle(cliente.id, "sac")}
+                            disabled={!puedeEditar}
                           />
                         </td>
                       )}
@@ -1159,10 +1182,11 @@ export function SeguimientoClient({
                           min={0}
                           value={t.legajos_cantidad || ""}
                           placeholder="0"
+                          disabled={!puedeEditar}
                           onChange={(e) =>
                             handleLegajos(cliente.id, e.target.value)
                           }
-                          className="w-14 text-center text-[12px] font-medium text-gray-700 border border-gray-200 rounded-md px-1 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo bg-transparent hover:border-gray-300 transition-colors"
+                          className="w-14 text-center text-[12px] font-medium text-gray-700 border border-gray-200 rounded-md px-1 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo bg-transparent hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </td>
 
@@ -1185,10 +1209,11 @@ export function SeguimientoClient({
                           type="text"
                           value={t.recordatorio}
                           placeholder="Recordar el mes que viene..."
+                          disabled={!puedeEditar}
                           onChange={(e) =>
                             handleRecordatorio(cliente.id, e.target.value)
                           }
-                          className="w-full text-[12px] text-amber-700 border border-transparent rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-300 focus:bg-amber-50/50 hover:border-amber-200 bg-transparent placeholder:text-amber-300 transition-colors"
+                          className="w-full text-[12px] text-amber-700 border border-transparent rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-300 focus:bg-amber-50/50 hover:border-amber-200 bg-transparent placeholder:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </td>
                     </tr>

@@ -16,10 +16,17 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("error") === "link_invalido") {
+    const err = params.get("error");
+    if (err === "link_invalido") {
       setError(
         "El link de acceso venció o ya fue usado. Pedí uno nuevo y abrilo desde el mismo dispositivo y navegador donde lo solicitaste."
       );
+    } else if (err === "dominio") {
+      setError(
+        "Ese email no tiene acceso a BOS. El sistema es solo para cuentas @kmaconsultores.com.ar, o para accesos dados de alta especialmente."
+      );
+    } else if (err === "bloqueado") {
+      setError("Tu acceso a BOS fue revocado. Si te parece un error, contactá al administrador del sistema.");
     }
   }, []);
 

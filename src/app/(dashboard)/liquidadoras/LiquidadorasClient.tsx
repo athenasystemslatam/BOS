@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Pencil } from "lucide-react";
 import clsx from "clsx";
-import { Liquidadora } from "@/types";
+import { AccesoBloqueado, Liquidadora } from "@/types";
 import { NuevaLiquidadoraModal } from "./NuevaLiquidadoraModal";
 import { EditarLiquidadoraModal } from "./EditarLiquidadoraModal";
+import { BloqueosPanel } from "./BloqueosPanel";
 
 const ROL_LABELS: Record<string, { label: string; cls: string }> = {
   admin:       { label: "Admin",        cls: "bg-purple-50 text-purple-700" },
@@ -16,7 +17,13 @@ const ROL_LABELS: Record<string, { label: string; cls: string }> = {
 
 type Filtro = "todas" | "activas" | "inactivas";
 
-export function LiquidadorasClient({ lista }: { lista: Liquidadora[] }) {
+export function LiquidadorasClient({
+  lista,
+  bloqueados,
+}: {
+  lista: Liquidadora[];
+  bloqueados: AccesoBloqueado[];
+}) {
   const [filtro, setFiltro] = useState<Filtro>("activas");
   const [editando, setEditando] = useState<Liquidadora | null>(null);
 
@@ -143,6 +150,8 @@ export function LiquidadorasClient({ lista }: { lista: Liquidadora[] }) {
             </table>
           )}
         </div>
+
+        <BloqueosPanel bloqueados={bloqueados} />
       </div>
 
       {editando && (

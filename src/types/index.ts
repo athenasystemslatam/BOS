@@ -9,6 +9,13 @@ export interface ClaveAcceso {
   url: string;
 }
 
+export interface AccesoBloqueado {
+  email: string;
+  motivo: string | null;
+  bloqueado_por: string | null;
+  bloqueado_en: string;
+}
+
 export interface Liquidadora {
   id: string;
   nombre: string;

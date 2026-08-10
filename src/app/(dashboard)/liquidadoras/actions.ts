@@ -124,6 +124,63 @@ export async function editarLiquidadora(formData: FormData) {
   return { success: true };
 }
 
+/** Lista de emails con el acceso a BOS revocado a mano (modo consulta). No
+ * afecta a liquidadoras/admins con fila propia — a esos se les corta con
+ * `activa: false` en editarLiquidadora. */
+export async function listarBloqueados() {
+  try {
+    await requireAdmin();
+  } catch {
+    return [];
+  }
+
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("accesos_bloqueados")
+    .select("*")
+    .order("bloqueado_en", { ascending: false });
+
+  return data ?? [];
+}
+
+export async function bloquearAcceso(email: string, motivo: string | null) {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const emailNorm = email.trim().toLowerCase();
+  if (!emailNorm) return { error: "El email es obligatorio." };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("accesos_bloqueados")
+    .upsert({ email: emailNorm, motivo, bloqueado_por: admin.nombre });
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/liquidadoras");
+  return { success: true };
+}
+
+export async function desbloquearAcceso(email: string) {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("accesos_bloqueados").delete().eq("email", email);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/liquidadoras");
+  return { success: true };
+}
+
 /** Reenvía el acceso (magic link) a una liquidadora existente. Si todavía no
  * tenía user_id vinculado, lo completa de paso. */
 export async function reenviarInvitacion(liquidadoraId: string) {

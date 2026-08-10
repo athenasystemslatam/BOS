@@ -11,7 +11,10 @@ export interface CurrentLiquidadora {
 
 /**
  * Liquidadora asociada al usuario de Supabase Auth logueado, o null si no hay
- * sesión o si el usuario no tiene una fila vinculada en `liquidadoras`.
+ * sesión, si el usuario no tiene una fila vinculada en `liquidadoras`, o si
+ * esa fila está marcada `activa: false` (baja). En ese último caso el usuario
+ * sigue autenticado pero pasa a modo consulta (o queda afuera del todo si
+ * además está en `accesos_bloqueados` — eso lo corta middleware.ts).
  */
 export async function getCurrentLiquidadora(): Promise<CurrentLiquidadora | null> {
   const supabase = await createClient();
@@ -27,7 +30,7 @@ export async function getCurrentLiquidadora(): Promise<CurrentLiquidadora | null
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!data) return null;
+  if (!data || !data.activa) return null;
 
   return { ...data, isAdmin: data.rol === "admin" };
 }
@@ -38,6 +41,17 @@ export async function requireAdmin(): Promise<CurrentLiquidadora> {
   const liquidadora = await getCurrentLiquidadora();
   if (!liquidadora?.isAdmin) {
     throw new Error("Solo un admin puede realizar esta acción.");
+  }
+  return liquidadora;
+}
+
+/** Tira error si el usuario logueado no tiene fila activa en `liquidadoras`
+ * (o sea, si está en modo consulta). Para las Server Actions de escritura de
+ * seguimiento — marcar tareas, sync de Drive, etc. */
+export async function requireLiquidadoraOrAdmin(): Promise<CurrentLiquidadora> {
+  const liquidadora = await getCurrentLiquidadora();
+  if (!liquidadora) {
+    throw new Error("No tenés permiso para editar — estás en modo consulta.");
   }
   return liquidadora;
 }

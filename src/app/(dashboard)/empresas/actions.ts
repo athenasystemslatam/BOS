@@ -1,7 +1,6 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 
@@ -12,7 +11,13 @@ function parseCuit(raw: string) {
 }
 
 export async function crearEmpresa(formData: FormData) {
-  const supabase = await createClient();
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const supabase = createAdminClient();
 
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuit = (formData.get("cuit") as string)?.trim();
