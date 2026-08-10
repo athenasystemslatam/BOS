@@ -108,6 +108,41 @@ Cuando esté configurado el dominio propio en Resend, pedirle a Claude:
 
 ---
 
+## Cómo funcionan los accesos (desde agosto 2026)
+
+BOS tiene tres niveles de acceso. Ninguno requiere que vos "des de alta" manualmente a nadie, salvo liquidadoras y admins.
+
+### 1. Modo consulta (automático)
+
+Cualquier persona con email **@kmaconsultores.com.ar** puede entrar a BOS solo, sin que nadie la cargue. Ve todo en modo lectura (dashboard, seguimiento, empresas) y puede escribir únicamente en el campo **Observaciones** de Seguimiento. No puede tildar tareas, tocar legajos, ni sincronizar Drive.
+
+Pensado para gente de otras áreas del estudio que necesita consultar quién liquida tal empresa, sin ser liquidadora.
+
+### 2. Liquidadora / Admin (manual, desde el sistema)
+
+Se da de alta **desde el sistema mismo**, no hace falta tocar Supabase:
+
+1. Entrás como admin → **Liquidadoras** → **Nueva liquidadora**
+2. Completás nombre, email y elegís el **rol** (Liquidadora, Supervisora o **Admin**)
+3. Guardás — el sistema manda la invitación por mail automáticamente
+
+Ese mismo formulario sirve para agregar un admin nuevo: solo cambiás el rol a "Admin". No hace falta ningún paso adicional en Supabase.
+
+### 3. Dar de baja a alguien
+
+- **Liquidadora o admin que se va**: entrá a **Liquidadoras**, editá su fila, marcá **Inactiva**. El corte es inmediato — aunque la persona tenga la sesión abierta en su celu, en el próximo click queda afuera.
+- **Alguien en modo consulta que se va** (no tiene fila propia, entraba solo por el dominio del mail): en **Liquidadoras**, sección **"Accesos bloqueados"**, cargás su email y motivo, click en **Bloquear**. Mismo efecto: corte inmediato, tenga o no sesión abierta.
+
+### Por qué hace falta el bloqueo manual (y no alcanza con dar de baja el mail del estudio)
+
+Una vez que alguien inicia sesión, el navegador queda con acceso indefinido — no vence solo. Si a alguien le dan de baja el mail corporativo cuando se va, eso le impide *pedir un acceso nuevo*, pero **no le corta una sesión que ya tenía abierta**. Por eso el bloqueo manual desde BOS es el único corte que funciona al toque, siempre.
+
+### Excepción: alguien que necesita acceso sin ser del dominio del estudio
+
+Si hace falta dar acceso a alguien con un mail que no sea @kmaconsultores.com.ar (por ejemplo, un asesor externo), se lo da de alta igual como liquidadora/admin desde el sistema — el filtro de dominio no le aplica a quien ya tiene fila propia en Liquidadoras.
+
+---
+
 ## Flujo de un cambio típico (paso a paso)
 
 1. Abrís Claude Code en la carpeta del proyecto
@@ -170,6 +205,9 @@ No requiere código. Desde el sistema mismo: entrá como admin → **Liquidadora
 
 **¿Cómo agrego una nueva empresa?**  
 Desde el sistema: admin → **Empresas** → **Nueva empresa**. Completá el formulario con CUIT, liquidadora asignada y configuración.
+
+**¿Cómo bloqueo a alguien que se desvinculó y entraba en modo consulta?**  
+Admin → **Liquidadoras** → sección "Accesos bloqueados" → cargar el email → **Bloquear**. Es distinto de dar de baja a una liquidadora (eso se hace marcándola "Inactiva" en su propia fila).
 
 ---
 

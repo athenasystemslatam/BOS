@@ -39,6 +39,24 @@ El control de acceso admin vs liquidadora se maneja en código de aplicación, N
 
 ---
 
+## Control de accesos (desde agosto 2026)
+
+Tres niveles, todo resuelto en `middleware.ts` + `src/lib/auth.ts` (no en RLS, mismo criterio que el resto):
+
+- **Consulta**: cualquier email `@kmaconsultores.com.ar` sin fila en `liquidadoras` entra en modo solo-lectura. Único write permitido: `updateObservaciones` en `seguimiento/actions.ts` (a propósito sin `requireLiquidadoraOrAdmin`).
+- **Liquidadora/Admin**: fila en `liquidadoras` con `user_id` vinculado. Se da de alta desde `/liquidadoras` (`crearLiquidadora` en `liquidadoras/actions.ts`), no requiere tocar Supabase a mano. El rol determina `isAdmin`.
+- **Bloqueo**: tabla `accesos_bloqueados` (email, motivo, bloqueado_por, bloqueado_en). Gestionada desde `/liquidadoras` → `BloqueosPanel.tsx` → `bloquearAcceso`/`desbloquearAcceso` en `liquidadoras/actions.ts`.
+
+`middleware.ts` chequea en **cada request** (no solo al loguearse): si el mail está en `accesos_bloqueados` → `signOut()` + redirect. Si el mail no es del dominio Y no tiene fila en `liquidadoras` → mismo corte. Esto es lo que permite cortar sesiones ya abiertas (Supabase Auth no expira sesiones solo — el refresh token se renueva indefinidamente si no se corta a mano).
+
+`getCurrentLiquidadora()` en `lib/auth.ts` respeta `activa: false` — una liquidadora/admin dada de baja (`editarLiquidadora` con `activa: false`) pierde el rol en el siguiente request, sin necesidad de tocar Supabase Auth.
+
+Dominio permitido centralizado en `src/lib/dominio.ts` (sin imports, para ser válido tanto en el runtime Edge de `middleware.ts` como en Node).
+
+`requireLiquidadoraOrAdmin()` (nuevo, en `lib/auth.ts`) gatea las Server Actions de escritura de seguimiento (`toggleManual`, `updateLegajos`, `updateRecordatorio`, `syncDrive`). `crearEmpresa` en `empresas/actions.ts` no tenía `requireAdmin()` — se agregó (gap preexistente).
+
+---
+
 ## Modelo de datos clave
 
 - **`liquidadoras`** — usuarios del sistema (`rol`: `admin` | `liquidadora` | `supervisor`)
@@ -149,6 +167,7 @@ Aplicadas en producción:
 - `add_asignaciones.sql` — tabla asignaciones (reasignación con fecha efectiva)
 - `drive_error` en tareas — `ALTER TABLE tareas ADD COLUMN IF NOT EXISTS drive_error TEXT;`
 - `add_lsd_desde.sql` — columnas `lsd_desde_anio` y `lsd_desde_mes` en clientes (tracking regularización LSD)
+- `add_accesos_bloqueados.sql` — tabla accesos_bloqueados (bloqueo manual de modo consulta)
 
 ---
 
