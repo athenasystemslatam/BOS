@@ -531,7 +531,7 @@ export function SeguimientoClient({
         t.recibos_manual || t.recibos_drive,
         t.f931_manual || t.f931_drive,
         c.tiene_sindicato ? t.bol_sind_manual || t.bol_sind_drive : true,
-        c.tiene_rubrica_lsd ? t.rub_lsd_manual || t.rub_lsd_drive : true,
+        c.tiene_rubrica_lsd && !!c.jurisdiccion ? t.rub_lsd_manual || t.rub_lsd_drive : true,
         esMesSAC ? t.sac_manual || t.sac_drive : true,
       ];
       if (checks.every(Boolean)) done++;
@@ -808,7 +808,7 @@ export function SeguimientoClient({
               t.recibos_manual || t.recibos_drive,
               t.f931_manual || t.f931_drive,
               cliente.tiene_sindicato ? t.bol_sind_manual || t.bol_sind_drive : true,
-              cliente.tiene_rubrica_lsd ? t.rub_lsd_manual || t.rub_lsd_drive : true,
+              cliente.tiene_rubrica_lsd && !!cliente.jurisdiccion ? t.rub_lsd_manual || t.rub_lsd_drive : true,
               esMesSAC ? t.sac_manual || t.sac_drive : true,
             ];
             const isComplete = checks.every(Boolean);
@@ -819,7 +819,7 @@ export function SeguimientoClient({
               { key: "recibos", label: "Rec", aplica: true, manual: t.recibos_manual, drive: t.recibos_drive },
               { key: "f931", label: "F931", aplica: true, manual: t.f931_manual, drive: t.f931_drive },
               { key: "bol_sind", label: "Sind", aplica: cliente.tiene_sindicato, manual: t.bol_sind_manual, drive: t.bol_sind_drive },
-              { key: "rub_lsd", label: "LSD", aplica: cliente.tiene_rubrica_lsd, manual: t.rub_lsd_manual, drive: t.rub_lsd_drive },
+              { key: "rub_lsd", label: "LSD", aplica: cliente.tiene_rubrica_lsd && !!cliente.jurisdiccion, manual: t.rub_lsd_manual, drive: t.rub_lsd_drive },
               ...(esMesSAC ? [{ key: "sac" as CampoManual, label: "SAC", aplica: true, manual: t.sac_manual, drive: t.sac_drive }] : []),
             ];
 
@@ -935,7 +935,7 @@ export function SeguimientoClient({
           )}
         >
           <div className="overflow-x-auto">
-            <table className="w-full" style={{ minWidth: 720 }}>
+            <table className="w-full" style={{ minWidth: 860 }}>
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[210px]">
@@ -990,7 +990,7 @@ export function SeguimientoClient({
                     cliente.tiene_sindicato
                       ? t.bol_sind_manual || t.bol_sind_drive
                       : true,
-                    cliente.tiene_rubrica_lsd
+                    cliente.tiene_rubrica_lsd && !!cliente.jurisdiccion
                       ? t.rub_lsd_manual || t.rub_lsd_drive
                       : true,
                     esMesSAC ? t.sac_manual || t.sac_drive : true,
@@ -1151,7 +1151,7 @@ export function SeguimientoClient({
 
                       {/* Rúb.LSD */}
                       <td className="px-2 py-2.5 text-center">
-                        {cliente.tiene_rubrica_lsd ? (
+                        {cliente.tiene_rubrica_lsd && !!cliente.jurisdiccion ? (
                           <CheckboxCell
                             manual={t.rub_lsd_manual}
                             drive={t.rub_lsd_drive}

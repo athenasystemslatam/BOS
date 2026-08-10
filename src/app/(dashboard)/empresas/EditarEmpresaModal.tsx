@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { X, Plus, Trash2, Eye, EyeOff, ExternalLink } from "lucide-react";
 import { editarEmpresa } from "./actions";
 import { Cliente, Liquidadora, ClaveAcceso } from "@/types";
+import { MESES_NOMBRES } from "@/lib/vencimientos";
 
 const inputCls =
   "w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo focus:ring-1 focus:ring-bordo/20 transition-colors bg-white";
@@ -159,6 +160,10 @@ export function EditarEmpresaModal({
   const [cuit, setCuit] = useState(formatCuit(cliente.cuit));
   const [tieneSindicato, setTieneSindicato] = useState(cliente.tiene_sindicato);
   const [tieneRubrica, setTieneRubrica] = useState(cliente.tiene_rubrica_lsd);
+  const [lsdDesdeAnio, setLsdDesdeAnio] = useState<number | null>(cliente.lsd_desde_anio ?? null);
+  const [lsdDesMes, setLsdDesMes] = useState<number | null>(cliente.lsd_desde_mes ?? null);
+  const [lsdHastaAnio, setLsdHastaAnio] = useState<number | null>(cliente.lsd_hasta_anio ?? null);
+  const [lsdHastaMes, setLsdHastaMes] = useState<number | null>(cliente.lsd_hasta_mes ?? null);
   const [esQuincenal, setEsQuincenal] = useState(cliente.es_quincenal);
   const [jurisdiccion, setJurisdiccion] = useState(
     JURISDICCIONES.includes(cliente.jurisdiccion ?? "") ? (cliente.jurisdiccion as string) : "Otra"
@@ -188,6 +193,12 @@ export function EditarEmpresaModal({
     formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
     if (jurisdiccion !== "Otra") formData.set("jurisdiccion", jurisdiccion);
+    if (tieneRubrica && (jurisdiccion === "PBA" || jurisdiccion === "CABA")) {
+      if (lsdDesdeAnio) formData.set("lsd_desde_anio", String(lsdDesdeAnio));
+      if (lsdDesMes) formData.set("lsd_desde_mes", String(lsdDesMes));
+      if (lsdHastaAnio) formData.set("lsd_hasta_anio", String(lsdHastaAnio));
+      if (lsdHastaMes) formData.set("lsd_hasta_mes", String(lsdHastaMes));
+    }
     setError(null);
     startTransition(async () => {
       const result = await editarEmpresa(formData);
@@ -370,11 +381,68 @@ export function EditarEmpresaModal({
             </div>
 
             {/* Rúbrica LSD */}
-            <div className="border border-gray-100 rounded-lg p-4">
+            <div className="border border-gray-100 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-gray-700">Rúbrica LSD</span>
                 <Toggle value={tieneRubrica} onChange={setTieneRubrica} />
               </div>
+              {tieneRubrica && (jurisdiccion === "PBA" || jurisdiccion === "CABA") && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">Regularización desde</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={lsdDesMes ?? ""}
+                        onChange={(e) => setLsdDesMes(e.target.value ? Number(e.target.value) : null)}
+                        className={`${inputCls} flex-1`}
+                      >
+                        <option value="">— Mes</option>
+                        {MESES_NOMBRES.slice(1).map((m, i) => (
+                          <option key={i + 1} value={i + 1}>{m}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={lsdDesdeAnio ?? ""}
+                        onChange={(e) => setLsdDesdeAnio(e.target.value ? Number(e.target.value) : null)}
+                        className={`${inputCls} flex-1`}
+                      >
+                        <option value="">— Año</option>
+                        {Array.from({ length: 9 }, (_, i) => 2018 + i).map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                      Hasta (manual, si el historial no está en el sistema)
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={lsdHastaMes ?? ""}
+                        onChange={(e) => setLsdHastaMes(e.target.value ? Number(e.target.value) : null)}
+                        className={`${inputCls} flex-1`}
+                      >
+                        <option value="">— Mes</option>
+                        {MESES_NOMBRES.slice(1).map((m, i) => (
+                          <option key={i + 1} value={i + 1}>{m}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={lsdHastaAnio ?? ""}
+                        onChange={(e) => setLsdHastaAnio(e.target.value ? Number(e.target.value) : null)}
+                        className={`${inputCls} flex-1`}
+                      >
+                        <option value="">— Año</option>
+                        {Array.from({ length: 9 }, (_, i) => 2018 + i).map((y) => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">El sistema usa el mayor entre este valor y lo detectado automáticamente.</p>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Observaciones */}

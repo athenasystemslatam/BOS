@@ -7,8 +7,73 @@ import { Cliente, Liquidadora, TipoContribuyente } from "@/types";
 import { NuevaEmpresaModal } from "./NuevaEmpresaModal";
 import { EditarEmpresaModal } from "./EditarEmpresaModal";
 import { AsignacionModal } from "./AsignacionModal";
+import { MESES_NOMBRES } from "@/lib/vencimientos";
 
 type ClienteConLiq = Cliente & { liquidadora?: Liquidadora };
+
+const LSD_CUTOFFS: Record<string, { anio: number; mes: number }> = {
+  PBA: { anio: 2026, mes: 3 },
+  CABA: { anio: 2026, mes: 7 },
+};
+
+type LsdStatus = "sin-lsd" | "sin-config" | "pendiente" | "en-proceso" | "regularizada";
+
+function getLsdInfo(
+  c: ClienteConLiq,
+  lsdHasta: Record<string, { anio: number; mes: number }>
+): { status: LsdStatus; hasta?: { anio: number; mes: number } } {
+  if (!c.tiene_rubrica_lsd || !c.jurisdiccion) return { status: "sin-lsd", hasta: undefined };
+  const cutoff = LSD_CUTOFFS[c.jurisdiccion];
+  if (!cutoff) return { status: "sin-lsd", hasta: undefined };
+  const tareasHasta = lsdHasta[c.id];
+  const manualHasta = c.lsd_hasta_anio && c.lsd_hasta_mes
+    ? { anio: c.lsd_hasta_anio, mes: c.lsd_hasta_mes }
+    : null;
+  const hasta = tareasHasta && manualHasta
+    ? (tareasHasta.anio * 100 + tareasHasta.mes >= manualHasta.anio * 100 + manualHasta.mes ? tareasHasta : manualHasta)
+    : (tareasHasta ?? manualHasta);
+  if (!hasta) return { status: c.lsd_desde_anio ? "pendiente" : "sin-config", hasta: undefined };
+  const hastaVal = hasta.anio * 100 + hasta.mes;
+  const cutoffVal = cutoff.anio * 100 + cutoff.mes;
+  return { status: hastaVal >= cutoffVal ? "regularizada" : "en-proceso", hasta };
+}
+
+function LsdSemaforo({
+  status,
+  hasta,
+}: {
+  status: LsdStatus;
+  hasta?: { anio: number; mes: number };
+}) {
+  if (status === "sin-lsd") return <span className="text-gray-300">—</span>;
+  if (status === "sin-config")
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-gray-400" title="Configurar período de inicio en editar empresa">
+        <span className="w-2 h-2 rounded-full bg-gray-300 inline-block shrink-0" />
+        Sin inicio
+      </span>
+    );
+  if (status === "pendiente")
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-red-600">
+        <span className="w-2 h-2 rounded-full bg-red-500 inline-block shrink-0" />
+        Pendiente
+      </span>
+    );
+  if (status === "en-proceso")
+    return (
+      <span className="inline-flex items-center gap-1 text-[11px] text-amber-600">
+        <span className="w-2 h-2 rounded-full bg-amber-500 inline-block shrink-0" />
+        {hasta ? `Hasta ${MESES_NOMBRES[hasta.mes]} ${hasta.anio}` : "En proceso"}
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] text-green-600">
+      <span className="w-2 h-2 rounded-full bg-green-500 inline-block shrink-0" />
+      Regularizada
+    </span>
+  );
+}
 
 const TIPO_CONTRIB_LABELS: Record<TipoContribuyente, { label: string; cls: string }> = {
   empresa: { label: "Empresa", cls: "bg-blue-50 text-blue-700" },
@@ -21,17 +86,26 @@ export function EmpresasClient({
   liquidadoras,
   isAdmin,
   creadoPor,
+  lsdHasta,
 }: {
   clientes: ClienteConLiq[];
   liquidadoras: Liquidadora[];
   isAdmin: boolean;
   creadoPor: string | null;
+  lsdHasta: Record<string, { anio: number; mes: number }>;
 }) {
   const [search, setSearch] = useState("");
   const [filtroLiq, setFiltroLiq] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("activo");
   const [editando, setEditando] = useState<ClienteConLiq | null>(null);
   const [asignando, setAsignando] = useState<ClienteConLiq | null>(null);
+
+  const activosIds = useMemo(() => new Set(liquidadoras.map((l) => l.id)), [liquidadoras]);
+
+  const sinAsignacion = useMemo(
+    () => clientes.filter((c) => c.estado === "activo" && (!c.liquidador_id || !activosIds.has(c.liquidador_id))),
+    [clientes, activosIds]
+  );
 
   const filtrados = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -55,6 +129,23 @@ export function EmpresasClient({
           </div>
           {isAdmin && <NuevaEmpresaModal liquidadoras={liquidadoras} />}
         </div>
+
+        {/* Alerta: empresas sin liquidadora activa */}
+        {sinAsignacion.length > 0 && (
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+            <span className="text-amber-500 text-base mt-0.5">⚠</span>
+            <div>
+              <p className="text-sm font-medium text-amber-800">
+                {sinAsignacion.length === 1
+                  ? "1 empresa activa sin liquidadora asignada"
+                  : `${sinAsignacion.length} empresas activas sin liquidadora asignada`}
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                {sinAsignacion.map((c) => c.nombre).join(", ")}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4">
@@ -199,7 +290,7 @@ export function EmpresasClient({
                     <th className="px-5 py-3 text-left font-medium">Liquidadora</th>
                     <th className="px-4 py-3 text-center font-medium">Tipo</th>
                     <th className="px-4 py-3 text-center font-medium">Sindicato</th>
-                    <th className="px-4 py-3 text-center font-medium">Rúb.LSD</th>
+                    <th className="px-4 py-3 text-left font-medium">LSD</th>
                     <th className="px-4 py-3 text-left font-medium">Jurisdicción</th>
                     <th className="px-4 py-3 text-center font-medium">Estado</th>
                     {isAdmin && (
@@ -276,12 +367,10 @@ export function EmpresasClient({
                           <span className="text-gray-300">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-center text-[13px]">
-                        {c.tiene_rubrica_lsd ? (
-                          <span className="text-success">✓</span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
+                      <td className="px-4 py-3.5 text-[13px]">
+                        <LsdSemaforo
+                          {...getLsdInfo(c, lsdHasta)}
+                        />
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
                         {c.jurisdiccion ?? <span className="text-gray-300">—</span>}

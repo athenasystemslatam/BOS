@@ -29,6 +29,14 @@ export async function crearEmpresa(formData: FormData) {
   const sindicato_nombre = (formData.get("sindicato_nombre") as string)?.trim() || null;
   const tiene_rubrica_lsd = formData.get("tiene_rubrica_lsd") === "true";
   const jurisdiccion = (formData.get("jurisdiccion") as string)?.trim() || null;
+  const lsd_desde_anio_raw = formData.get("lsd_desde_anio") as string;
+  const lsd_desde_mes_raw = formData.get("lsd_desde_mes") as string;
+  const lsd_desde_anio = lsd_desde_anio_raw ? parseInt(lsd_desde_anio_raw) : null;
+  const lsd_desde_mes = lsd_desde_mes_raw ? parseInt(lsd_desde_mes_raw) : null;
+  const lsd_hasta_anio_raw = formData.get("lsd_hasta_anio") as string;
+  const lsd_hasta_mes_raw = formData.get("lsd_hasta_mes") as string;
+  const lsd_hasta_anio = lsd_hasta_anio_raw ? parseInt(lsd_hasta_anio_raw) : null;
+  const lsd_hasta_mes = lsd_hasta_mes_raw ? parseInt(lsd_hasta_mes_raw) : null;
   const art = (formData.get("art") as string)?.trim() || null;
   const red_bancaria = (formData.get("red_bancaria") as string)?.trim() || null;
   const fecha_alta_empleador = (formData.get("fecha_alta_empleador") as string)?.trim() || null;
@@ -53,6 +61,10 @@ export async function crearEmpresa(formData: FormData) {
     sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
     tiene_rubrica_lsd,
     jurisdiccion,
+    lsd_desde_anio: tiene_rubrica_lsd ? lsd_desde_anio : null,
+    lsd_desde_mes: tiene_rubrica_lsd ? lsd_desde_mes : null,
+    lsd_hasta_anio: tiene_rubrica_lsd ? lsd_hasta_anio : null,
+    lsd_hasta_mes: tiene_rubrica_lsd ? lsd_hasta_mes : null,
     art,
     red_bancaria,
     fecha_alta_empleador,
@@ -90,6 +102,14 @@ export async function editarEmpresa(formData: FormData) {
   const sindicato_nombre = (formData.get("sindicato_nombre") as string)?.trim() || null;
   const tiene_rubrica_lsd = formData.get("tiene_rubrica_lsd") === "true";
   const jurisdiccion = (formData.get("jurisdiccion") as string)?.trim() || null;
+  const lsd_desde_anio_raw = formData.get("lsd_desde_anio") as string;
+  const lsd_desde_mes_raw = formData.get("lsd_desde_mes") as string;
+  const lsd_desde_anio = lsd_desde_anio_raw ? parseInt(lsd_desde_anio_raw) : null;
+  const lsd_desde_mes = lsd_desde_mes_raw ? parseInt(lsd_desde_mes_raw) : null;
+  const lsd_hasta_anio_raw = formData.get("lsd_hasta_anio") as string;
+  const lsd_hasta_mes_raw = formData.get("lsd_hasta_mes") as string;
+  const lsd_hasta_anio = lsd_hasta_anio_raw ? parseInt(lsd_hasta_anio_raw) : null;
+  const lsd_hasta_mes = lsd_hasta_mes_raw ? parseInt(lsd_hasta_mes_raw) : null;
   const art = (formData.get("art") as string)?.trim() || null;
   const red_bancaria = (formData.get("red_bancaria") as string)?.trim() || null;
   const fecha_alta_empleador = (formData.get("fecha_alta_empleador") as string)?.trim() || null;
@@ -124,6 +144,10 @@ export async function editarEmpresa(formData: FormData) {
     sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
     tiene_rubrica_lsd,
     jurisdiccion,
+    lsd_desde_anio: tiene_rubrica_lsd ? lsd_desde_anio : null,
+    lsd_desde_mes: tiene_rubrica_lsd ? lsd_desde_mes : null,
+    lsd_hasta_anio: tiene_rubrica_lsd ? lsd_hasta_anio : null,
+    lsd_hasta_mes: tiene_rubrica_lsd ? lsd_hasta_mes : null,
     art,
     red_bancaria,
     fecha_alta_empleador,
