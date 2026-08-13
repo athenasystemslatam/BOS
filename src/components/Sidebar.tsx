@@ -11,12 +11,14 @@ import {
   LogOut,
   ClipboardList,
   TrendingUp,
+  LayoutGrid,
 } from "lucide-react";
 import clsx from "clsx";
 
 const navItems = [
   { href: "/seguimiento",    label: "Seguimiento",    icon: ClipboardList,   adminOnly: false },
   { href: "/dashboard",      label: "Dashboard",      icon: LayoutDashboard, adminOnly: false },
+  { href: "/panel-general",  label: "Panel General",  icon: LayoutGrid,      adminOnly: false },
   { href: "/empresas",       label: "Empresas",       icon: Building2,       adminOnly: false },
   { href: "/liquidadoras",   label: "Liquidadoras",   icon: Users,           adminOnly: true  },
   { href: "/vencimientos",   label: "Vencimientos",   icon: Calendar,        adminOnly: false },

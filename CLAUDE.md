@@ -168,6 +168,8 @@ Aplicadas en producción:
 - `drive_error` en tareas — `ALTER TABLE tareas ADD COLUMN IF NOT EXISTS drive_error TEXT;`
 - `add_lsd_desde.sql` — columnas `lsd_desde_anio` y `lsd_desde_mes` en clientes (tracking regularización LSD)
 - `add_accesos_bloqueados.sql` — tabla accesos_bloqueados (bloqueo manual de modo consulta)
+- `add_modulos_base_maestra.sql` — tablas equipo, equipo_modulos, servicios_cliente; FK equipo_id en liquidadoras; vista vista_empresas
+- `update_vista_empresas.sql` — agrega sc.estado = true a vista_empresas para reflejar bajas de servicio
 
 ---
 

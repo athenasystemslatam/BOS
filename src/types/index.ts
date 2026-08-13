@@ -141,3 +141,22 @@ export interface VencimientoF931 {
   fecha_vencimiento: Date;
   dias_restantes: number;
 }
+
+export interface EquipoMiembro {
+  id: string;
+  nombre: string;
+  activo: boolean;
+}
+
+export interface VistEmpresa {
+  id: string;
+  nombre: string;
+  cuit: string;
+  estado: EstadoCliente;
+  responsable_sueldos: string | null;
+  responsable_impuestos_iva: string | null;
+  responsable_impuestos_iibb: string | null;
+  responsable_impuestos_seh: string | null;
+  responsable_contable: string | null;
+  responsable_libros: string | null;
+}
