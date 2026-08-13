@@ -251,7 +251,7 @@ export function PanelGeneralClient({
                     <tr>
                       {COLS.map(({ key, subLabel, impuestos }) => (
                         <th key={key} className="px-3 pb-2.5 text-center font-medium">
-                          {impuestos && subLabel !== "Responsable" ? (
+                          {impuestos ? (
                             <div>
                               <div className="font-semibold">{subLabel}</div>
                               <div className="text-[9px] font-normal text-gray-400 normal-case tracking-normal">
