@@ -7,14 +7,22 @@ import { EquipoMiembro, VistEmpresa } from "@/types";
 import { NuevoClienteModal } from "./NuevoClienteModal";
 import { darDeBajaServicio, darDeBajaCliente } from "./actions";
 
+// Colores por área
+const AREA_STYLE = {
+  SUELDOS:  { header: "bg-bordo/10 text-bordo",          sub: "bg-bordo/5",       dot: "bg-bordo"        },
+  IMPUESTOS: { header: "bg-blue-50 text-blue-700",        sub: "bg-blue-50/60",    dot: "bg-blue-500"     },
+  CONTABLE:  { header: "bg-emerald-50 text-emerald-700",  sub: "bg-emerald-50/60", dot: "bg-emerald-500"  },
+  LIBROS:    { header: "bg-violet-50 text-violet-700",    sub: "bg-violet-50/60",  dot: "bg-violet-500"   },
+} as const;
+
 // Columnas de servicio en orden de renderizado
 const COLS = [
-  { key: "sueldos:general",   area: "SUELDOS",   areaSpan: 1, subLabel: "Responsable",   impuestos: false },
-  { key: "impuestos:iva",     area: "IMPUESTOS",  areaSpan: 3, subLabel: "IVA",            impuestos: true  },
-  { key: "impuestos:iibb",    area: null,          areaSpan: 0, subLabel: "IIBB",           impuestos: true  },
-  { key: "impuestos:seh",     area: null,          areaSpan: 0, subLabel: "Seg. e Hig.",    impuestos: true  },
-  { key: "contable:general",  area: "CONTABLE",   areaSpan: 1, subLabel: "Responsable",   impuestos: false },
-  { key: "libros:general",    area: "LIBROS",     areaSpan: 1, subLabel: "Responsable",   impuestos: false },
+  { key: "sueldos:general",   area: "SUELDOS"  as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
+  { key: "impuestos:iva",     area: "IMPUESTOS" as const, areaSpan: 3, subLabel: "IVA",           impuestos: true  },
+  { key: "impuestos:iibb",    area: "IMPUESTOS" as const, areaSpan: 0, subLabel: "IIBB",          impuestos: true  },
+  { key: "impuestos:seh",     area: "IMPUESTOS" as const, areaSpan: 0, subLabel: "Seg. e Hig.",   impuestos: true  },
+  { key: "contable:general",  area: "CONTABLE"  as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
+  { key: "libros:general",    area: "LIBROS"    as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
 ] as const;
 
 const VISTA_FIELD: Record<string, keyof VistEmpresa> = {
@@ -104,6 +112,14 @@ export function PanelGeneralClient({
           <div>
             <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">KMA Consultores</p>
             <h1 className="text-2xl font-semibold text-gray-900 mt-1">Panel General</h1>
+            <div className="flex items-center gap-3 mt-2">
+              {(Object.entries(AREA_STYLE) as [keyof typeof AREA_STYLE, typeof AREA_STYLE[keyof typeof AREA_STYLE]][]).map(([area, s]) => (
+                <span key={area} className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                  <span className={clsx("w-2 h-2 rounded-full shrink-0", s.dot)} />
+                  {area.charAt(0) + area.slice(1).toLowerCase()}
+                </span>
+              ))}
+            </div>
           </div>
           {isAdmin && (
             <button
@@ -224,45 +240,58 @@ export function PanelGeneralClient({
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[900px] text-[13px]">
                   <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
-                    {/* Fila 1: áreas */}
+                    {/* Fila 1: áreas con color por módulo */}
                     <tr>
-                      <th rowSpan={2} className="px-5 py-2.5 text-left font-medium align-bottom pb-3">
+                      <th rowSpan={2} className="px-5 py-2.5 text-left font-medium align-bottom pb-3 bg-gray-50">
                         Empresa
                       </th>
-                      {COLS.filter((c) => c.areaSpan > 0).map(({ key, area, areaSpan }) => (
-                        <th
-                          key={key}
-                          colSpan={areaSpan}
-                          className="px-3 pt-2.5 pb-1 text-center font-semibold border-b border-gray-200 text-[10px] tracking-widest"
-                        >
-                          {area}
-                        </th>
-                      ))}
-                      <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3">
+                      {COLS.filter((c) => c.areaSpan > 0).map(({ key, area, areaSpan }) => {
+                        const s = AREA_STYLE[area];
+                        return (
+                          <th
+                            key={key}
+                            colSpan={areaSpan}
+                            className={clsx(
+                              "px-3 pt-2.5 pb-1.5 text-center font-semibold text-[10px] tracking-widest border-b-2",
+                              s.header,
+                              area === "SUELDOS"   && "border-bordo/30",
+                              area === "IMPUESTOS"  && "border-blue-200",
+                              area === "CONTABLE"   && "border-emerald-200",
+                              area === "LIBROS"     && "border-violet-200",
+                            )}
+                          >
+                            {area}
+                          </th>
+                        );
+                      })}
+                      <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3 bg-gray-50">
                         Estado
                       </th>
                       {isAdmin && (
-                        <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3">
+                        <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3 bg-gray-50">
                           Acciones
                         </th>
                       )}
                     </tr>
-                    {/* Fila 2: sub-labels por columna */}
+                    {/* Fila 2: sub-labels con fondo suave por área */}
                     <tr>
-                      {COLS.map(({ key, subLabel, impuestos }) => (
-                        <th key={key} className="px-3 pb-2.5 text-center font-medium">
-                          {impuestos ? (
-                            <div>
-                              <div className="font-semibold">{subLabel}</div>
-                              <div className="text-[9px] font-normal text-gray-400 normal-case tracking-normal">
-                                Responsable
+                      {COLS.map(({ key, subLabel, area, impuestos }) => {
+                        const s = AREA_STYLE[area];
+                        return (
+                          <th key={key} className={clsx("px-3 pb-2.5 pt-1.5 text-center font-medium", s.sub)}>
+                            {impuestos ? (
+                              <div>
+                                <div className="font-semibold">{subLabel}</div>
+                                <div className="text-[9px] font-normal opacity-60 normal-case tracking-normal">
+                                  Responsable
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            subLabel
-                          )}
-                        </th>
-                      ))}
+                            ) : (
+                              subLabel
+                            )}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
 
