@@ -32,10 +32,10 @@ const SECTIONS = [
     items: [
       { href: "/seguimiento",   label: "Seguimiento",   icon: ClipboardList,   adminOnly: false },
       { href: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard, adminOnly: false },
-      { href: "/empresas",      label: "Empresas",      icon: Building2,       adminOnly: false },
+      { href: "/empresas",      label: "Clientes",      icon: Building2,       adminOnly: false },
       { href: "/vencimientos",  label: "Vencimientos",  icon: Calendar,        adminOnly: false },
       { href: "/productividad", label: "Productividad", icon: TrendingUp,      adminOnly: true  },
-      { href: "/liquidadoras",  label: "Liquidadoras",  icon: Users,           adminOnly: true  },
+      { href: "/liquidadoras",  label: "Equipo",        icon: Users,           adminOnly: true  },
     ],
   },
   {
