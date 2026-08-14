@@ -12,6 +12,9 @@ export async function upsertMonotributoTarea(
     cuota_fecha?: string | null;
     recategorizacion?: "no_corresponde" | "pendiente" | "realizada";
     categoria?: string | null;
+    deuda_monto?: number | null;
+    deuda_aviso?: boolean;
+    deuda_aviso_fecha?: string | null;
     observaciones?: string | null;
   }
 ) {

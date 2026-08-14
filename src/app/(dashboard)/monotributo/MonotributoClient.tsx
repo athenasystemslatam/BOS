@@ -7,7 +7,7 @@ import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { upsertMonotributoTarea } from "./actions";
 
-const RECATEGORIZACION_MESES = new Set([1, 5, 9]);
+const RECATEGORIZACION_MESES = new Set([2, 8]);
 const CATEGORIAS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 
 type Tarea = {
@@ -18,6 +18,9 @@ type Tarea = {
   cuota_fecha: string | null;
   recategorizacion: "no_corresponde" | "pendiente" | "realizada";
   categoria: string | null;
+  deuda_monto: number | null;
+  deuda_aviso: boolean;
+  deuda_aviso_fecha: string | null;
   observaciones: string | null;
 };
 
@@ -78,6 +81,9 @@ export function MonotributoClient({
         cuota_fecha: null,
         recategorizacion: esRecategorizacion ? "pendiente" : "no_corresponde",
         categoria: null,
+        deuda_monto: null,
+        deuda_aviso: false,
+        deuda_aviso_fecha: null,
         observaciones: null,
       }
     );
@@ -93,6 +99,9 @@ export function MonotributoClient({
         cuota_fecha: null,
         recategorizacion: (esRecategorizacion ? "pendiente" : "no_corresponde") as Tarea["recategorizacion"],
         categoria: null,
+        deuda_monto: null,
+        deuda_aviso: false,
+        deuda_aviso_fecha: null,
         observaciones: null,
       };
       const next = new Map(prev);
@@ -158,7 +167,10 @@ export function MonotributoClient({
     const recategorizadas = esRecategorizacion
       ? servicios.filter((s) => getTarea(s.cliente_id).recategorizacion === "realizada").length
       : 0;
-    return { total, pagadas, recategorizadas };
+    const conDeuda = servicios.filter(
+      (s) => (getTarea(s.cliente_id).deuda_monto ?? 0) > 0
+    ).length;
+    return { total, pagadas, recategorizadas, conDeuda };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicios, tareasMap]);
 
@@ -202,6 +214,14 @@ export function MonotributoClient({
             <span className="font-semibold text-emerald-600">{stats.pagadas}</span>
             <span className="text-gray-400"> / {stats.total} cuotas pagas</span>
           </span>
+          {stats.conDeuda > 0 && (
+            <>
+              <span className="text-gray-300">·</span>
+              <span className="text-[11px] bg-red-50 text-red-600 border border-red-200 rounded-full px-2 py-0.5 font-semibold">
+                {stats.conDeuda} con deuda
+              </span>
+            </>
+          )}
           {esRecategorizacion && (
             <>
               <span className="text-gray-300">·</span>
@@ -270,6 +290,12 @@ export function MonotributoClient({
               <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-44">
                 Recategorización
               </th>
+              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-32">
+                Deuda $
+              </th>
+              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-24">
+                Aviso
+              </th>
               <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">
                 Observaciones
               </th>
@@ -278,7 +304,7 @@ export function MonotributoClient({
           <tbody className="divide-y divide-gray-100">
             {filas.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center text-gray-400 text-sm py-16">
+                <td colSpan={9} className="text-center text-gray-400 text-sm py-16">
                   {soloPendientes || filterResp
                     ? "Sin resultados para el filtro aplicado"
                     : "No hay clientes con servicio de monotributo"}
@@ -289,7 +315,10 @@ export function MonotributoClient({
               const t = getTarea(s.cliente_id);
               const pagado = t.cuota_estado === "pagado";
               return (
-                <tr key={s.cliente_id} className="hover:bg-amber-50/20 transition-colors">
+                <tr key={s.cliente_id} className={clsx(
+                  "transition-colors",
+                  (t.deuda_monto ?? 0) > 0 ? "bg-red-50/40 hover:bg-red-50/60" : "hover:bg-amber-50/20"
+                )}>
                   {/* Cliente */}
                   <td className="px-6 py-3">
                     <p className="text-[13px] font-medium text-gray-800 leading-tight">
@@ -419,6 +448,73 @@ export function MonotributoClient({
                         {t.recategorizacion === "realizada" ? "Realizada" :
                          t.recategorizacion === "pendiente" ? "Pendiente" :
                          "—"}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Deuda $ */}
+                  <td className="px-4 py-3">
+                    {puedeEditar ? (
+                      <input
+                        type="number"
+                        defaultValue={t.deuda_monto ?? ""}
+                        placeholder="—"
+                        min={0}
+                        onBlur={(e) => {
+                          const val = e.target.value ? Number(e.target.value) : null;
+                          patchTarea(s.cliente_id, { deuda_monto: val });
+                          startTransition(async () => {
+                            await upsertMonotributoTarea(s.cliente_id, anio, mes, { deuda_monto: val });
+                          });
+                        }}
+                        className={clsx(
+                          "text-[12px] border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-red-300 rounded px-1 py-0.5 w-28 placeholder:text-gray-300",
+                          (t.deuda_monto ?? 0) > 0 ? "text-red-600 font-semibold" : "text-gray-400"
+                        )}
+                      />
+                    ) : (
+                      <span className={clsx(
+                        "text-[12px]",
+                        (t.deuda_monto ?? 0) > 0 ? "text-red-600 font-semibold" : "text-gray-300"
+                      )}>
+                        {t.deuda_monto ? "$ " + t.deuda_monto.toLocaleString("es-AR") : "—"}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Aviso deuda */}
+                  <td className="px-4 py-3">
+                    {puedeEditar ? (
+                      <button
+                        onClick={() => {
+                          const nuevoAviso = !t.deuda_aviso;
+                          const nuevaFecha = nuevoAviso ? new Date().toISOString().slice(0, 10) : null;
+                          patchTarea(s.cliente_id, { deuda_aviso: nuevoAviso, deuda_aviso_fecha: nuevaFecha });
+                          startTransition(async () => {
+                            await upsertMonotributoTarea(s.cliente_id, anio, mes, {
+                              deuda_aviso: nuevoAviso,
+                              deuda_aviso_fecha: nuevaFecha,
+                            });
+                          });
+                        }}
+                        className={clsx(
+                          "text-[11px] font-medium rounded-full px-2 py-0.5 transition-all",
+                          t.deuda_aviso
+                            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            : (t.deuda_monto ?? 0) > 0
+                            ? "bg-red-50 text-red-500 hover:bg-red-100"
+                            : "text-gray-300"
+                        )}
+                        title={t.deuda_aviso_fecha ? "Enviado " + new Date(t.deuda_aviso_fecha + "T00:00:00").toLocaleDateString("es-AR") : ""}
+                      >
+                        {t.deuda_aviso ? "Enviado" : (t.deuda_monto ?? 0) > 0 ? "Pendiente" : "—"}
+                      </button>
+                    ) : (
+                      <span className={clsx(
+                        "text-[11px]",
+                        t.deuda_aviso ? "text-emerald-600 font-medium" : "text-gray-300"
+                      )}>
+                        {t.deuda_aviso ? "Enviado" : "—"}
                       </span>
                     )}
                   </td>
