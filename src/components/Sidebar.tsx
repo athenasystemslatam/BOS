@@ -12,17 +12,53 @@ import {
   ClipboardList,
   TrendingUp,
   LayoutGrid,
+  Receipt,
+  BookOpen,
+  FileText,
 } from "lucide-react";
 import clsx from "clsx";
 
-const navItems = [
-  { href: "/seguimiento",    label: "Seguimiento",    icon: ClipboardList,   adminOnly: false },
-  { href: "/dashboard",      label: "Dashboard",      icon: LayoutDashboard, adminOnly: false },
-  { href: "/panel-general",  label: "Panel General",  icon: LayoutGrid,      adminOnly: false },
-  { href: "/empresas",       label: "Empresas",       icon: Building2,       adminOnly: false },
-  { href: "/liquidadoras",   label: "Liquidadoras",   icon: Users,           adminOnly: true  },
-  { href: "/vencimientos",   label: "Vencimientos",   icon: Calendar,        adminOnly: false },
-  { href: "/productividad",  label: "Productividad",  icon: TrendingUp,      adminOnly: true  },
+const SECTIONS = [
+  {
+    label: null,
+    accent: null,
+    items: [
+      { href: "/panel-general", label: "Panel General", icon: LayoutGrid, adminOnly: false },
+    ],
+  },
+  {
+    label: "Sueldos",
+    accent: "bg-rose-400",
+    items: [
+      { href: "/seguimiento",   label: "Seguimiento",   icon: ClipboardList,   adminOnly: false },
+      { href: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard, adminOnly: false },
+      { href: "/empresas",      label: "Empresas",      icon: Building2,       adminOnly: false },
+      { href: "/vencimientos",  label: "Vencimientos",  icon: Calendar,        adminOnly: false },
+      { href: "/productividad", label: "Productividad", icon: TrendingUp,      adminOnly: true  },
+      { href: "/liquidadoras",  label: "Liquidadoras",  icon: Users,           adminOnly: true  },
+    ],
+  },
+  {
+    label: "Impuestos",
+    accent: "bg-blue-400",
+    items: [
+      { href: "/impuestos", label: "Seguimiento", icon: Receipt, adminOnly: false },
+    ],
+  },
+  {
+    label: "Contable",
+    accent: "bg-emerald-400",
+    items: [
+      { href: "/contable", label: "Balances", icon: BookOpen, adminOnly: false },
+    ],
+  },
+  {
+    label: "Monotributo",
+    accent: "bg-amber-400",
+    items: [
+      { href: "/monotributo", label: "Seguimiento", icon: FileText, adminOnly: false },
+    ],
+  },
 ];
 
 export function Sidebar({ isAdmin, onClose }: { isAdmin: boolean; onClose?: () => void }) {
@@ -37,62 +73,69 @@ export function Sidebar({ isAdmin, onClose }: { isAdmin: boolean; onClose?: () =
   };
 
   return (
-    <aside className="w-52 bg-bordo flex flex-col h-screen sticky top-0 shrink-0">
+    <aside className="w-52 bg-bordo flex flex-col h-screen sticky top-0 shrink-0 overflow-y-auto">
       {/* Logo */}
-      <div className="px-5 pt-7 pb-6">
+      <div className="px-5 pt-7 pb-5 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 bg-white/20 rounded-md flex items-center justify-center shrink-0">
             <span className="text-white font-bold text-xs tracking-tight">K</span>
           </div>
           <div>
-            <p className="font-semibold text-white text-[13px] leading-tight">
-              KMA Consultores
-            </p>
-            <p className="text-white/50 text-[11px] mt-0.5">
-            {pathname.startsWith("/panel-general") ? "KMA Consultores" : "Módulo Sueldos"}
-          </p>
+            <p className="font-semibold text-white text-[13px] leading-tight">KMA Consultores</p>
+            <p className="text-white/50 text-[11px] mt-0.5">Sistema BOS</p>
           </div>
         </div>
       </div>
 
-      <div className="mx-4 h-px bg-white/10" />
+      <div className="mx-4 h-px bg-white/10 shrink-0" />
 
       {/* Nav */}
-      <nav className="flex-1 px-3 pt-5 pb-4 space-y-0.5">
-        <p className="text-white/40 text-[10px] font-semibold tracking-widest uppercase px-2 mb-2.5">
-          Navegación
-        </p>
-        {navItems.filter((item) => !item.adminOnly || isAdmin).map(({ href, label, icon: Icon }) => {
-          const isActive =
-            pathname === href ||
-            (href !== "/dashboard" && pathname.startsWith(href));
+      <nav className="flex-1 px-3 pt-4 pb-4 space-y-4">
+        {SECTIONS.map((section, si) => {
+          const visibleItems = section.items.filter((item) => !item.adminOnly || isAdmin);
+          if (visibleItems.length === 0) return null;
           return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={clsx(
-                "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium transition-all duration-150",
-                isActive
-                  ? "bg-white/15 text-white"
-                  : "text-white/60 hover:bg-white/10 hover:text-white/90"
+            <div key={si}>
+              {section.label && (
+                <div className="flex items-center gap-1.5 px-2 mb-1.5">
+                  <span className={clsx("w-1.5 h-1.5 rounded-full shrink-0", section.accent)} />
+                  <p className="text-white/40 text-[10px] font-semibold tracking-widest uppercase">
+                    {section.label}
+                  </p>
+                </div>
               )}
-            >
-              <Icon
-                size={14}
-                strokeWidth={isActive ? 2.25 : 1.75}
-                className="shrink-0"
-              />
-              {label}
-            </Link>
+              <div className="space-y-0.5">
+                {visibleItems.map(({ href, label, icon: Icon }) => {
+                  const isActive =
+                    pathname === href ||
+                    (href !== "/dashboard" && pathname.startsWith(href));
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={onClose}
+                      className={clsx(
+                        "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium transition-all duration-150",
+                        isActive
+                          ? "bg-white/15 text-white"
+                          : "text-white/60 hover:bg-white/10 hover:text-white/90"
+                      )}
+                    >
+                      <Icon size={14} strokeWidth={isActive ? 2.25 : 1.75} className="shrink-0" />
+                      {label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
 
-      <div className="mx-4 h-px bg-white/10" />
+      <div className="mx-4 h-px bg-white/10 shrink-0" />
 
       {/* Logout */}
-      <div className="px-3 py-4">
+      <div className="px-3 py-4 shrink-0">
         <button
           onClick={handleLogout}
           className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium text-white/50 hover:bg-white/10 hover:text-white/80 w-full transition-all duration-150"
