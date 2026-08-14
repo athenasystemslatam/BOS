@@ -48,7 +48,9 @@ export function Sidebar({ isAdmin, onClose }: { isAdmin: boolean; onClose?: () =
             <p className="font-semibold text-white text-[13px] leading-tight">
               KMA Consultores
             </p>
-            <p className="text-white/50 text-[11px] mt-0.5">Módulo Sueldos</p>
+            <p className="text-white/50 text-[11px] mt-0.5">
+            {pathname.startsWith("/panel-general") ? "KMA Consultores" : "Módulo Sueldos"}
+          </p>
           </div>
         </div>
       </div>

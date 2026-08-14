@@ -237,7 +237,7 @@ export function PanelGeneralClient({
 
             {/* Tabla desktop */}
             <div className="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto pb-2">
                 <table className="w-full min-w-[900px] text-[13px]">
                   <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                     {/* Fila 1: áreas con color por módulo */}
