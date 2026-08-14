@@ -100,7 +100,7 @@ export function ContableClient({
     return m;
   });
 
-  const balances = useMemo(() => [...balancesMap.values()], [balancesMap]);
+  const balances = useMemo(() => Array.from(balancesMap.values()), [balancesMap]);
 
   function patch(id: string, updates: Partial<Balance>) {
     setBalancesMap((prev) => {
