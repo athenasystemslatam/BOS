@@ -20,7 +20,7 @@ export async function getAsignacionesServicio(
   const admin = createAdminClient();
   const { data } = await admin
     .from("asignaciones_servicio")
-    .select("id, desde_anio, desde_mes, motivo, responsable:equipo!responsable_id(id, nombre)")
+    .select("id, desde_anio, desde_mes, motivo, responsable:liquidadoras!responsable_id(id, nombre)")
     .eq("cliente_id", clienteId)
     .eq("servicio", servicio)
     .eq("subtipo", subtipo)
@@ -106,7 +106,7 @@ export async function resolverResponsablesVigentes(
   const admin = createAdminClient();
   const { data } = await admin
     .from("asignaciones_servicio")
-    .select("cliente_id, desde_anio, desde_mes, responsable:equipo!responsable_id(id, nombre)")
+    .select("cliente_id, desde_anio, desde_mes, responsable:liquidadoras!responsable_id(id, nombre)")
     .eq("servicio", servicio)
     .eq("subtipo", subtipo);
 

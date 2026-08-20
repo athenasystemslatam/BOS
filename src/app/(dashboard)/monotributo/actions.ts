@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { requireAreaOrAdmin } from "@/lib/auth";
 
 export async function upsertMonotributoTarea(
   clienteId: string,
@@ -18,6 +19,12 @@ export async function upsertMonotributoTarea(
     observaciones?: string | null;
   }
 ) {
+  try {
+    await requireAreaOrAdmin("monotributo");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
   const admin = createAdminClient();
   const { error } = await admin.from("monotributo_tareas").upsert(
     {

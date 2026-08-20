@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentLiquidadora } from "@/lib/auth";
+import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
 import { ImpuestosClient } from "./ImpuestosClient";
@@ -15,6 +15,7 @@ export default async function ImpuestosPage({
 
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
+  const areas = await getAreasDelUsuario();
 
   const [
     { data: serviciosRaw },
@@ -32,7 +33,7 @@ export default async function ImpuestosPage({
       .select("*")
       .eq("anio", anio)
       .eq("mes", mes),
-    admin.from("equipo").select("id, nombre").eq("activo", true),
+    admin.from("liquidadoras").select("id, nombre").eq("activa", true),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "impuestos"),
   ]);
 
@@ -76,7 +77,7 @@ export default async function ImpuestosPage({
       mes={mes}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!!yo}
+      puedeEditar={!!yo?.isAdmin || areas.includes("impuestos")}
       creadoPor={yo?.id ?? null}
     />
   );

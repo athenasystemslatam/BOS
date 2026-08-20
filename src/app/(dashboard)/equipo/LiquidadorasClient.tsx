@@ -15,14 +15,24 @@ const ROL_LABELS: Record<string, { label: string; cls: string }> = {
   viewer:      { label: "Solo lectura", cls: "bg-gray-100 text-gray-500" },
 };
 
+const AREA_LABELS: Record<string, { label: string; cls: string }> = {
+  sueldos:     { label: "Sueldos",     cls: "bg-rose-50 text-rose-700" },
+  impuestos:   { label: "Impuestos",   cls: "bg-blue-50 text-blue-700" },
+  contable:    { label: "Contable",    cls: "bg-emerald-50 text-emerald-700" },
+  monotributo: { label: "Monotributo", cls: "bg-amber-50 text-amber-700" },
+  libros:      { label: "Libros",      cls: "bg-violet-50 text-violet-700" },
+};
+
 type Filtro = "todas" | "activas" | "inactivas";
 
 export function LiquidadorasClient({
   lista,
   bloqueados,
+  areasPorPersona,
 }: {
   lista: Liquidadora[];
   bloqueados: AccesoBloqueado[];
+  areasPorPersona: Record<string, string[]>;
 }) {
   const [filtro, setFiltro] = useState<Filtro>("activas");
   const [editando, setEditando] = useState<Liquidadora | null>(null);
@@ -40,7 +50,10 @@ export function LiquidadorasClient({
         <div className="mb-8 flex items-start justify-between">
           <div>
             <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">Configuración</p>
-            <h1 className="text-2xl font-semibold text-gray-900 mt-1">Liquidadoras</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 mt-1">Equipo</h1>
+            <p className="text-[13px] text-gray-400 mt-1">
+              Todo el personal de KMA — quién tiene acceso al sistema, con qué rol, y a qué áreas pertenece.
+            </p>
           </div>
           <NuevaLiquidadoraModal />
         </div>
@@ -75,6 +88,7 @@ export function LiquidadorasClient({
                   <th className="px-6 py-3 text-left font-medium">Nombre</th>
                   <th className="px-6 py-3 text-left font-medium">Email</th>
                   <th className="px-6 py-3 text-center font-medium">Rol</th>
+                  <th className="px-6 py-3 text-left font-medium">Áreas</th>
                   <th className="px-6 py-3 text-center font-medium">Estado</th>
                   <th className="px-6 py-3 text-left font-medium">Alta</th>
                   <th className="px-6 py-3 text-center font-medium">Acciones</th>
@@ -114,6 +128,22 @@ export function LiquidadorasClient({
                         >
                           {rol.label}
                         </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <div className="flex flex-wrap gap-1">
+                          {(areasPorPersona[liq.id] ?? []).length === 0 ? (
+                            <span className="text-gray-300 text-xs">—</span>
+                          ) : (
+                            areasPorPersona[liq.id].map((a) => {
+                              const area = AREA_LABELS[a] ?? { label: a, cls: "bg-gray-100 text-gray-500" };
+                              return (
+                                <span key={a} className={clsx("px-1.5 py-0.5 rounded-full text-[10px] font-medium", area.cls)}>
+                                  {area.label}
+                                </span>
+                              );
+                            })
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-3.5 text-center">
                         <span
@@ -157,6 +187,7 @@ export function LiquidadorasClient({
       {editando && (
         <EditarLiquidadoraModal
           liquidadora={editando}
+          areasActuales={areasPorPersona[editando.id] ?? []}
           onClose={() => setEditando(null)}
         />
       )}

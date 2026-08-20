@@ -11,6 +11,14 @@ const ROLES = [
   { value: "viewer", label: "Solo lectura" },
 ];
 
+const AREAS = [
+  { value: "sueldos", label: "Sueldos" },
+  { value: "impuestos", label: "Impuestos" },
+  { value: "contable", label: "Contable" },
+  { value: "monotributo", label: "Monotributo" },
+  { value: "libros", label: "Libros" },
+];
+
 export function NuevaLiquidadoraModal() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +45,7 @@ export function NuevaLiquidadoraModal() {
         onClick={() => { setOpen(true); setError(null); }}
         className="bg-bordo text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-bordo-dark transition-colors"
       >
-        + Nueva liquidadora
+        + Nueva persona
       </button>
 
       {open && (
@@ -50,7 +58,7 @@ export function NuevaLiquidadoraModal() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-gray-900">Nueva liquidadora</h2>
+              <h2 className="text-[15px] font-semibold text-gray-900">Nueva persona</h2>
               <button
                 onClick={() => setOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -76,12 +84,12 @@ export function NuevaLiquidadoraModal() {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">
                   Email
-                  <span className="text-gray-300 font-normal ml-1">(opcional)</span>
+                  <span className="text-gray-300 font-normal ml-1">(opcional — sin email, la persona no tiene acceso al sistema)</span>
                 </label>
                 <input
                   name="email"
                   type="email"
-                  placeholder="liquidadora@kma.com.ar"
+                  placeholder="persona@kma.com.ar"
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo focus:ring-1 focus:ring-bordo/20 transition-colors"
                 />
               </div>
@@ -99,6 +107,20 @@ export function NuevaLiquidadoraModal() {
                     <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                  Áreas <span className="text-gray-300 font-normal">(a qué módulos pertenece)</span>
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {AREAS.map((a) => (
+                    <label key={a.value} className="flex items-center gap-1.5 text-sm text-gray-600">
+                      <input type="checkbox" name="areas" value={a.value} className="rounded border-gray-300 text-bordo focus:ring-bordo/30" />
+                      {a.label}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               {error && (

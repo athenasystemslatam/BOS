@@ -27,7 +27,10 @@
       "Bash(git *)",
       "Artifact",
       "Bash(grep -v \"^$\")",
-      "Bash(grep -n \"Period selector\\\\|select$\\\\|value={\\\\`\\\\${mes}\" \"src/app/\\(dashboard\\)/monotributo/MonotributoClient.tsx\")"
+      "Bash(grep -n \"Period selector\\\\|select$\\\\|value={\\\\`\\\\${mes}\" \"src/app/\\(dashboard\\)/monotributo/MonotributoClient.tsx\")",
+      "Bash(gh api *)",
+      "PowerShell(gh api *)",
+      "WebFetch(domain:bos-plum.vercel.app)"
     ]
   }
 }

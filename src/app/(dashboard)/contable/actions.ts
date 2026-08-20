@@ -2,11 +2,18 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { requireAreaOrAdmin } from "@/lib/auth";
 
 export async function updateBalance(
   id: string,
   updates: Record<string, unknown>
 ) {
+  try {
+    await requireAreaOrAdmin("contable");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
   const admin = createAdminClient();
   const { error } = await admin
     .from("balances")
@@ -24,6 +31,12 @@ export async function crearBalance(data: {
   responsable_id: string | null;
   responsable2_id: string | null;
 }) {
+  try {
+    await requireAreaOrAdmin("contable");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
   const admin = createAdminClient();
   const { error } = await admin.from("balances").insert({
     ...data,

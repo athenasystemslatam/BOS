@@ -14,7 +14,7 @@ export default async function PanelGeneralPage() {
     { data: clientesData },
   ] = await Promise.all([
     supabase.from("vista_empresas").select("*").order("nombre"),
-    supabase.from("equipo").select("id, nombre, activo").eq("activo", true).order("nombre"),
+    supabase.from("liquidadoras").select("id, nombre, activa").eq("activa", true).order("nombre"),
     supabase.from("equipo_modulos").select("equipo_id, modulo"),
     supabase.from("servicios_cliente").select("cliente_id, servicio, subtipo, estado"),
     supabase.from("clientes").select("id, liquidador_id"),
@@ -36,10 +36,16 @@ export default async function PanelGeneralPage() {
     serviciosActivos[s.cliente_id].push(`${s.servicio}:${s.subtipo}`);
   }
 
+  const equipoNormalizado = (equipo ?? []).map((e) => ({
+    id: e.id,
+    nombre: e.nombre,
+    activo: e.activa,
+  }));
+
   return (
     <PanelGeneralClient
       empresas={empresas ?? []}
-      equipo={equipo ?? []}
+      equipo={equipoNormalizado}
       equipoModulos={equipoModulos ?? []}
       serviciosActivos={serviciosActivos}
       sueldosSinLiquidadora={sueldosSinLiquidadora}

@@ -55,3 +55,46 @@ export async function requireLiquidadoraOrAdmin(): Promise<CurrentLiquidadora> {
   }
   return liquidadora;
 }
+
+/** Áreas (equipo_modulos.modulo) a las que pertenece el usuario logueado.
+ * Fuente de verdad de "a qué módulo pertenece cada persona" — reemplaza el
+ * chequeo implícito de antes ("está en liquidadoras" = "es de Sueldos"). */
+export async function getAreasDelUsuario(): Promise<string[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: liq } = await supabase
+    .from("liquidadoras")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("activa", true)
+    .maybeSingle();
+  if (!liq) return [];
+
+  const { data } = await supabase
+    .from("equipo_modulos")
+    .select("modulo")
+    .eq("equipo_id", liq.id);
+
+  return (data ?? []).map((m) => m.modulo);
+}
+
+/** Tira error si el usuario logueado no es admin ni pertenece al área
+ * `modulo` (equipo_modulos). Mismo criterio que requireLiquidadoraOrAdmin,
+ * generalizado a Impuestos/Contable/Monotributo. */
+export async function requireAreaOrAdmin(modulo: string): Promise<CurrentLiquidadora> {
+  const liquidadora = await getCurrentLiquidadora();
+  if (!liquidadora) {
+    throw new Error("No tenés permiso para editar — estás en modo consulta.");
+  }
+  if (liquidadora.isAdmin) return liquidadora;
+
+  const areas = await getAreasDelUsuario();
+  if (!areas.includes(modulo)) {
+    throw new Error("No tenés permiso para editar en este módulo.");
+  }
+  return liquidadora;
+}

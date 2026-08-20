@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 
+const MODULOS_VALIDOS = ["sueldos", "impuestos", "contable", "monotributo", "libros"];
+
 function siteUrl() {
   return (
     process.env.NEXT_PUBLIC_SITE_URL ??
@@ -38,6 +40,17 @@ async function inviteOrResend(
   return { userId: link.data.user.id, error: null };
 }
 
+function parseAreas(formData: FormData): string[] {
+  return formData.getAll("areas").filter((a): a is string => typeof a === "string" && MODULOS_VALIDOS.includes(a));
+}
+
+async function setAreas(supabase: ReturnType<typeof createAdminClient>, equipoId: string, areas: string[]) {
+  await supabase.from("equipo_modulos").delete().eq("equipo_id", equipoId);
+  if (areas.length > 0) {
+    await supabase.from("equipo_modulos").insert(areas.map((modulo) => ({ equipo_id: equipoId, modulo })));
+  }
+}
+
 export async function crearLiquidadora(formData: FormData) {
   try {
     await requireAdmin();
@@ -50,29 +63,42 @@ export async function crearLiquidadora(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const emailRaw = (formData.get("email") as string)?.trim().toLowerCase();
   const rol = formData.get("rol") as string;
+  const areas = parseAreas(formData);
 
   if (!nombre || !rol) return { error: "El nombre es obligatorio." };
-  if (!emailRaw) return { error: "El email es obligatorio para enviar el acceso." };
 
-  const { userId, error: authError } = await inviteOrResend(
-    supabase,
-    emailRaw,
-    `${siteUrl()}/auth/callback`
-  );
-  if (authError) return { error: `No se pudo crear el acceso: ${authError}` };
+  // El email es opcional: sin email, la persona queda como etiqueta (aparece
+  // como responsable seleccionable) pero sin acceso al sistema. Se le puede
+  // invitar más adelante desde "Reenviar acceso" una vez que se le cargue
+  // un email.
+  let userId: string | null = null;
+  if (emailRaw) {
+    const { userId: uid, error: authError } = await inviteOrResend(
+      supabase,
+      emailRaw,
+      `${siteUrl()}/auth/callback`
+    );
+    if (authError) return { error: `No se pudo crear el acceso: ${authError}` };
+    userId = uid;
+  }
 
-  const { error } = await supabase
+  const { data: creada, error } = await supabase
     .from("liquidadoras")
-    .insert({ nombre, email: emailRaw, rol, user_id: userId });
+    .insert({ nombre, email: emailRaw || null, rol, user_id: userId })
+    .select("id")
+    .single();
 
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe una liquidadora con ese email." };
+    if (error.code === "23505") return { error: "Ya existe una persona con ese email." };
     return { error: error.message };
   }
 
-  revalidatePath("/liquidadoras");
+  if (areas.length > 0) await setAreas(supabase, creada.id, areas);
+
+  revalidatePath("/equipo");
   revalidatePath("/empresas");
   revalidatePath("/dashboard");
+  revalidatePath("/panel-general");
   return { success: true };
 }
 
@@ -92,6 +118,7 @@ export async function editarLiquidadora(formData: FormData) {
   const rol = formData.get("rol") as string;
   const activa = formData.get("activa") !== "false";
   const fecha_baja_raw = (formData.get("fecha_baja") as string)?.trim() || null;
+  const areas = parseAreas(formData);
 
   if (!id || !nombre || !rol) return { error: "El nombre es obligatorio." };
 
@@ -106,7 +133,7 @@ export async function editarLiquidadora(formData: FormData) {
   const { error } = await supabase.from("liquidadoras").update(update).eq("id", id);
 
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe una liquidadora con ese email." };
+    if (error.code === "23505") return { error: "Ya existe una persona con ese email." };
     if (error.message.includes("fecha_baja")) {
       // Reintentar sin fecha_baja si la columna no existe aún
       const { error: e2 } = await supabase
@@ -119,8 +146,14 @@ export async function editarLiquidadora(formData: FormData) {
     }
   }
 
-  revalidatePath("/liquidadoras");
+  await setAreas(supabase, id, areas);
+
+  revalidatePath("/equipo");
   revalidatePath("/dashboard");
+  revalidatePath("/panel-general");
+  revalidatePath("/impuestos");
+  revalidatePath("/contable");
+  revalidatePath("/monotributo");
   return { success: true };
 }
 
@@ -161,7 +194,7 @@ export async function bloquearAcceso(email: string, motivo: string | null) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/liquidadoras");
+  revalidatePath("/equipo");
   return { success: true };
 }
 
@@ -177,11 +210,11 @@ export async function desbloquearAcceso(email: string) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/liquidadoras");
+  revalidatePath("/equipo");
   return { success: true };
 }
 
-/** Reenvía el acceso (magic link) a una liquidadora existente. Si todavía no
+/** Reenvía el acceso (magic link) a una persona existente. Si todavía no
  * tenía user_id vinculado, lo completa de paso. */
 export async function reenviarInvitacion(liquidadoraId: string) {
   try {
@@ -198,7 +231,7 @@ export async function reenviarInvitacion(liquidadoraId: string) {
     .eq("id", liquidadoraId)
     .single();
 
-  if (liqError || !liq?.email) return { error: "La liquidadora no tiene email cargado." };
+  if (liqError || !liq?.email) return { error: "Esta persona no tiene email cargado." };
 
   const { userId, error } = await inviteOrResend(supabase, liq.email, `${siteUrl()}/auth/callback`);
   if (error) return { error };

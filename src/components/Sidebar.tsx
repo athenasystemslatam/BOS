@@ -24,6 +24,7 @@ const SECTIONS = [
     accent: null,
     items: [
       { href: "/panel-general", label: "Panel General", icon: LayoutGrid, adminOnly: false },
+      { href: "/equipo",        label: "Equipo",        icon: Users,      adminOnly: true  },
     ],
   },
   {
@@ -35,7 +36,6 @@ const SECTIONS = [
       { href: "/empresas",      label: "Clientes",      icon: Building2,       adminOnly: false },
       { href: "/vencimientos",  label: "Vencimientos",  icon: Calendar,        adminOnly: false },
       { href: "/productividad", label: "Productividad", icon: TrendingUp,      adminOnly: true  },
-      { href: "/liquidadoras",  label: "Equipo",        icon: Users,           adminOnly: true  },
     ],
   },
   {

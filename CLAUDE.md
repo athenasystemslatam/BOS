@@ -44,8 +44,8 @@ El control de acceso admin vs liquidadora se maneja en código de aplicación, N
 Tres niveles, todo resuelto en `middleware.ts` + `src/lib/auth.ts` (no en RLS, mismo criterio que el resto):
 
 - **Consulta**: cualquier email `@kmaconsultores.com.ar` sin fila en `liquidadoras` entra en modo solo-lectura. Único write permitido: `updateObservaciones` en `seguimiento/actions.ts` (a propósito sin `requireLiquidadoraOrAdmin`).
-- **Liquidadora/Admin**: fila en `liquidadoras` con `user_id` vinculado. Se da de alta desde `/liquidadoras` (`crearLiquidadora` en `liquidadoras/actions.ts`), no requiere tocar Supabase a mano. El rol determina `isAdmin`.
-- **Bloqueo**: tabla `accesos_bloqueados` (email, motivo, bloqueado_por, bloqueado_en). Gestionada desde `/liquidadoras` → `BloqueosPanel.tsx` → `bloquearAcceso`/`desbloquearAcceso` en `liquidadoras/actions.ts`.
+- **Liquidadora/Admin**: fila en `liquidadoras` con `user_id` vinculado. Se da de alta desde `/equipo` (`crearLiquidadora` en `equipo/actions.ts`), no requiere tocar Supabase a mano. El rol determina `isAdmin`.
+- **Bloqueo**: tabla `accesos_bloqueados` (email, motivo, bloqueado_por, bloqueado_en). Gestionada desde `/equipo` → `BloqueosPanel.tsx` → `bloquearAcceso`/`desbloquearAcceso` en `equipo/actions.ts`.
 
 `middleware.ts` chequea en **cada request** (no solo al loguearse): si el mail está en `accesos_bloqueados` → `signOut()` + redirect. Si el mail no es del dominio Y no tiene fila en `liquidadoras` → mismo corte. Esto es lo que permite cortar sesiones ya abiertas (Supabase Auth no expira sesiones solo — el refresh token se renueva indefinidamente si no se corta a mano).
 
@@ -53,13 +53,25 @@ Tres niveles, todo resuelto en `middleware.ts` + `src/lib/auth.ts` (no en RLS, m
 
 Dominio permitido centralizado en `src/lib/dominio.ts` (sin imports, para ser válido tanto en el runtime Edge de `middleware.ts` como en Node).
 
-`requireLiquidadoraOrAdmin()` (nuevo, en `lib/auth.ts`) gatea las Server Actions de escritura de seguimiento (`toggleManual`, `updateLegajos`, `updateRecordatorio`, `syncDrive`). `crearEmpresa` en `empresas/actions.ts` no tenía `requireAdmin()` — se agregó (gap preexistente).
+`requireLiquidadoraOrAdmin()` (en `lib/auth.ts`) gatea las Server Actions de escritura de seguimiento (`toggleManual`, `updateLegajos`, `updateRecordatorio`, `syncDrive`). `crearEmpresa` en `empresas/actions.ts` no tenía `requireAdmin()` — se agregó (gap preexistente).
+
+### Padrón único de personas (20-ago-2026)
+
+`liquidadoras` dejó de ser "solo Sueldos" — es el único padrón de personas del sistema, para los cuatro módulos. Se sigue llamando `liquidadoras` en la base (evitar el rename físico, toca demasiados archivos del sistema de acceso para cero beneficio funcional), pero en la UI es "Equipo" (`/equipo`, antes `/liquidadoras`).
+
+Dos conceptos separados:
+- **`rol`** (`admin`/`liquidadora`/`supervisor`/`viewer`) — sigue siendo solo "es admin o no" (`isAdmin: rol === "admin"` es lo único que el código chequea).
+- **`equipo_modulos`** (ya existía, N a N) — ahora es la fuente de verdad de a qué área pertenece cada persona, incluyendo `'sueldos'` como valor válido (antes solo lo usaban Impuestos/Contable/Monotributo). `getAreasDelUsuario()` en `lib/auth.ts` resuelve las áreas del usuario logueado; `requireAreaOrAdmin(modulo)` gatea las Server Actions de escritura de cada módulo nuevo (antes no tenían ningún chequeo de permisos — gap real que quedó cerrado con esto).
+
+`equipo` (la tabla vieja de Impuestos/Contable/Monotributo, sin login) se migró a `liquidadoras` preservando los mismos ids (`unificar_equipo.sql`) y quedó renombrada `equipo_legacy`, sin uso.
+
+Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los desplegables de responsable) pero sin acceso al sistema — no dispara invitación. Se le puede invitar más adelante completándole el email y usando "Reenviar acceso".
 
 ---
 
 ## Modelo de datos clave
 
-- **`liquidadoras`** — usuarios del sistema (`rol`: `admin` | `liquidadora` | `supervisor`)
+- **`liquidadoras`** — padrón único de personas de todo el sistema, no solo Sueldos (`rol`: `admin` | `liquidadora` | `supervisor` | `viewer`; a qué área pertenece cada una vive en `equipo_modulos`, ver "Padrón único de personas" arriba)
 - **`clientes`** — empresas; `liquidador_id` = asignación actual; `drive_folder_id` = raíz Drive
 - **`periodos`** — mes/año de liquidación (ej: junio 2026); se crea automáticamente
 - **`tareas`** — estado de cada cliente por período; una fila por (cliente, período)
@@ -176,9 +188,9 @@ Aplicadas en producción:
 - `add_monotributo_deuda.sql` — columnas deuda_monto, deuda_aviso, deuda_aviso_fecha en monotributo_tareas
 - `backfill_servicios_sueldos.sql` — backfill de `servicios_cliente(servicio='sueldos')` para clientes sin ninguna fila todavía. Corrido en producción 20-ago-2026 con criterio incorrecto (ver nota en el archivo) — corregido enseguida con `fix_servicios_sueldos_liquidador.sql`.
 - `fix_servicios_sueldos_liquidador.sql` — corrige el backfill anterior: deshace el tag de "sueldos" en los clientes sin `liquidador_id` (no eran de Sueldos) y lo agrega en 2 clientes que sí tenían liquidador pero no la fila. Verificado en producción: 86 clientes con Sueldos activo, 85 con `liquidador_id` (la diferencia de 1 es un caso válido, ya contemplado por la alerta de Panel General).
-
-Pendiente de aplicar:
 - `add_asignaciones_servicio.sql` — tabla `asignaciones_servicio` (reasignación con historial para Impuestos/Monotributo, análoga a `asignaciones` de Sueldos pero generalizada por servicio+subtipo).
+- `unificar_equipo.sql` — migra `equipo` a `liquidadoras` (mismos ids), repunta las FK de `equipo_modulos`/`servicios_cliente`/`asignaciones_servicio`/`balances`, backfillea `equipo_modulos(modulo='sueldos')` para las liquidadoras activas, actualiza `vista_empresas`, y renombra `equipo` a `equipo_legacy`. Ver "Padrón único de personas" arriba.
+- `fix_equipo_modulos_sueldos.sql` — corrige el backfill anterior: el paso 3 corría después de mezclar `equipo` adentro de `liquidadoras`, así que etiquetó "sueldos" también a las 24 personas de Impuestos/Contable/Monotributo migradas. Verificado en producción: `equipo_legacy` tenía 24 filas (no 8 — esa era solo la cuenta del área Impuestos), las 24 migraron ok, `con_area_sueldos` bajó de 33 a 9 (33 − 24 = 9, coincide exacto con la cantidad real de liquidadoras originales activas).
 
 ---
 
@@ -199,6 +211,7 @@ Pendiente de aplicar:
   - ✅ **Fix 20-ago**: `/empresas` y `/seguimiento` mostraban TODOS los clientes de `clientes`, no solo los de Sueldos (la alerta de "199 empresas sin liquidadora" era este mismo bug — contaba clientes de otros módulos que nunca debieron pedir liquidador). Ahora ambas pantallas filtran por `servicios_cliente(servicio='sueldos', estado=true)`, y `crearEmpresa` inserta esa fila al dar de alta para no volver a desincronizarse.
   - ✅ **Reasignación por módulo — Impuestos y Monotributo** (20-ago): mismo mecanismo que Sueldos (ícono historial junto al responsable, admin only, fecha efectiva por mes/año). Tabla nueva `asignaciones_servicio` (genérica por servicio+subtipo, ver `src/lib/asignacionesServicio.ts` — `getAsignacionesServicio`, `crearAsignacionServicio`, `resolverResponsablesVigentes`) y componente compartido `src/components/AsignacionServicioModal.tsx`. Cada página resuelve el responsable vigente por período (no el "actual" a secas) igual que `/seguimiento` lo hace con la tabla `asignaciones` de Sueldos. **Contable queda afuera a propósito**: cada fila de `balances` ya es por año y ya tiene su propio `responsable_id`/`responsable2_id` editable directo — agregar historial ahí sería redundante con cómo ya funciona.
   - ✅ **Panel de equipo visible por módulo** (20-ago): Impuestos/Contable/Monotributo tienen ahora un botón "Equipo" en el header que abre un panel lateral (`src/components/EquipoModuloPanel.tsx`) listando a las personas asignadas a esa área en Panel General (`equipo_modulos`), con la cantidad de clientes a cargo de cada una. Clickear a alguien filtra la tabla por esa persona (reusa el mismo estado que ya manejaba el desplegable "Todos los responsables" — quedan sincronizados). El filtrado por área en el backend ya existía desde que se crearon estos módulos; lo que faltaba era la parte visible.
+  - ✅ **Padrón único de personas** (20-ago): `equipo` (Impuestos/Contable/Monotributo, sin login) se unificó con `liquidadoras` (Sueldos, con login) en un solo padrón — ver sección "Padrón único de personas" en Control de accesos, arriba. `/liquidadoras` pasó a ser `/equipo`, movido de la sección Sueldos del sidebar a su propia sección junto a Panel General. De paso se cerró un gap de seguridad real: las Server Actions de escritura de Impuestos/Contable/Monotributo no tenían ningún chequeo de permisos (`requireAreaOrAdmin()` nuevo en `lib/auth.ts`).
 - **Pendiente operativo — datos**: al corregir el fix de arriba se descubrió que ~197 clientes (de los 484 en `clientes`) fueron cargados en algún momento para otros módulos (Impuestos/Contable/Monotributo) directo en la tabla, fuera de la app, sin pasar por `servicios_cliente` — no tienen ninguna etiqueta de módulo. No aparecen en Sueldos (correcto) pero tampoco aparecen en Impuestos/Contable/Monotributo, que sí filtran por `servicios_cliente` desde que se crearon. Sus datos siguen intactos en `clientes`, solo falta re-cargarlos con el servicio correcto desde Panel General (o un script de import nuevo, si Giuliana tiene el Excel de origen).
 - **Pendiente operativo**: configurar dominio propio en Resend para que los emails lleguen a las liquidadoras (hoy solo llegan al admin)
 - **Pendiente operativo**: configurar SMTP propio (Resend) en Supabase Auth para los emails de login/invitación. Hoy usan el servicio compartido de Supabase, que tiene un límite bajo de envíos por hora (HTTP 429 en `/auth/v1/otp` si hay varios logins/invitaciones seguidos). Depende del punto anterior (dominio verificado en Resend) para poder mandar a cualquier destinatario, no solo al admin.

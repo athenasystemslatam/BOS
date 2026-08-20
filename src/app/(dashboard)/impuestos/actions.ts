@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { requireAreaOrAdmin } from "@/lib/auth";
 
 export async function upsertImpuestoTarea(
   clienteId: string,
@@ -15,6 +16,12 @@ export async function upsertImpuestoTarea(
     observaciones?: string;
   }
 ) {
+  try {
+    await requireAreaOrAdmin("impuestos");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
   const admin = createAdminClient();
   const { error } = await admin.from("impuestos_tareas").upsert(
     {

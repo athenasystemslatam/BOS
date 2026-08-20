@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentLiquidadora } from "@/lib/auth";
+import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { ContableClient } from "./ContableClient";
 
 export default async function ContablePage({
@@ -10,6 +10,7 @@ export default async function ContablePage({
   const anio = Number(searchParams.anio) || new Date().getFullYear();
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
+  const areas = await getAreasDelUsuario();
 
   const [
     { data: balancesRaw },
@@ -21,12 +22,12 @@ export default async function ContablePage({
       .from("balances")
       .select(
         "*, clientes(id, nombre, cuit, tipo_contribuyente), " +
-        "responsable:equipo!balances_responsable_id_fkey(id, nombre), " +
-        "responsable2:equipo!balances_responsable2_id_fkey(id, nombre)"
+        "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
+        "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
       )
       .eq("anio_fiscal", anio)
       .order("fecha_cierre"),
-    admin.from("equipo").select("id, nombre").eq("activo", true),
+    admin.from("liquidadoras").select("id, nombre").eq("activa", true),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
     admin
       .from("servicios_cliente")
@@ -53,7 +54,7 @@ export default async function ContablePage({
       clientesConServicio={clientesConServicio as any[]}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!!yo}
+      puedeEditar={!!yo?.isAdmin || areas.includes("contable")}
     />
   );
 }

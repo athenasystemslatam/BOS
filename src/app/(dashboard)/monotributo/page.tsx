@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentLiquidadora } from "@/lib/auth";
+import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
 import { MonotributoClient } from "./MonotributoClient";
@@ -15,6 +15,7 @@ export default async function MonotributoPage({
 
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
+  const areas = await getAreasDelUsuario();
 
   const [
     { data: serviciosRaw },
@@ -32,7 +33,7 @@ export default async function MonotributoPage({
       .select("*")
       .eq("anio", anio)
       .eq("mes", mes),
-    admin.from("equipo").select("id, nombre").eq("activo", true),
+    admin.from("liquidadoras").select("id, nombre").eq("activa", true),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "monotributo"),
   ]);
 
@@ -64,7 +65,7 @@ export default async function MonotributoPage({
       mes={mes}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!!yo}
+      puedeEditar={!!yo?.isAdmin || areas.includes("monotributo")}
       creadoPor={yo?.id ?? null}
     />
   );
