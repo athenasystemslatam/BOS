@@ -6,6 +6,9 @@ import { Plus, ChevronDown, Check, Minus } from "lucide-react";
 import clsx from "clsx";
 import { updateBalance } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
+import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
+
+const ACCENT_CONTABLE = { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700" };
 
 type Balance = {
   id: string;
@@ -93,6 +96,7 @@ export function ContableClient({
   const [showModal, setShowModal] = useState(false);
   const [filterResp, setFilterResp] = useState("");
   const [filterEstado, setFilterEstado] = useState("");
+  const [mostrarEquipo, setMostrarEquipo] = useState(false);
 
   const [balancesMap, setBalancesMap] = useState<Map<string, Balance>>(() => {
     const m = new Map<string, Balance>();
@@ -143,6 +147,17 @@ export function ContableClient({
       }
     }
     return result.sort();
+  }, [balances]);
+
+  // Cantidad de balances a cargo de cada persona (cuenta responsable y
+  // responsable2 por separado), para el panel de equipo
+  const conteosResp = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const b of balances) {
+      if (b.responsable?.nombre) m[b.responsable.nombre] = (m[b.responsable.nombre] ?? 0) + 1;
+      if (b.responsable2?.nombre) m[b.responsable2.nombre] = (m[b.responsable2.nombre] ?? 0) + 1;
+    }
+    return m;
   }, [balances]);
 
   // Apply filters + sort by fecha_cierre
@@ -203,6 +218,11 @@ export function ContableClient({
           </div>
 
           <div className="flex items-center gap-2">
+            <EquipoModuloBoton
+              cantidad={equipoContable.length}
+              accent={ACCENT_CONTABLE}
+              onClick={() => setMostrarEquipo(true)}
+            />
             {/* Year selector */}
             <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
               {ANIOS.map((a) => (
@@ -567,6 +587,17 @@ export function ContableClient({
           clientesDisponibles={clientesDisponibles}
           equipoContable={equipoContable}
           onClose={() => setShowModal(false)}
+        />
+      )}
+      {mostrarEquipo && (
+        <EquipoModuloPanel
+          moduloNombre="Contable"
+          equipo={equipoContable}
+          conteos={conteosResp}
+          filterResp={filterResp}
+          onSelect={(nombre) => setFilterResp((prev) => (prev === nombre ? "" : nombre))}
+          onClose={() => setMostrarEquipo(false)}
+          accent={ACCENT_CONTABLE}
         />
       )}
     </div>

@@ -6,7 +6,10 @@ import { ChevronDown, CheckCircle2, Circle, History } from "lucide-react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
+import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { upsertImpuestoTarea } from "./actions";
+
+const ACCENT_IMPUESTOS = { dot: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-700" };
 
 type Subtipo = "iva" | "iibb" | "seh";
 
@@ -101,6 +104,7 @@ export function ImpuestosClient({
   const [filterResp, setFilterResp] = useState("");
   const [soloPendientes, setSoloPendientes] = useState(false);
   const [reasignando, setReasignando] = useState<Servicio | null>(null);
+  const [mostrarEquipo, setMostrarEquipo] = useState(false);
 
   const [tareasMap, setTareasMap] = useState<Map<string, Tarea>>(() => {
     const m = new Map<string, Tarea>();
@@ -180,6 +184,16 @@ export function ImpuestosClient({
     return result.sort();
   }, [serviciosTab]);
 
+  // Cantidad de clientes a cargo de cada persona, para el panel de equipo
+  const conteosResp = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const s of serviciosTab) {
+      if (!s.responsable_nombre) continue;
+      m[s.responsable_nombre] = (m[s.responsable_nombre] ?? 0) + 1;
+    }
+    return m;
+  }, [serviciosTab]);
+
   // Apply filters
   const filas = useMemo(() => {
     let list = serviciosTab;
@@ -228,6 +242,11 @@ export function ImpuestosClient({
 
           {/* Period selector */}
           <div className="flex items-center gap-2">
+            <EquipoModuloBoton
+              cantidad={equipoImpuestos.length}
+              accent={ACCENT_IMPUESTOS}
+              onClick={() => setMostrarEquipo(true)}
+            />
             <div className="relative">
               <select
                 value={`${mes}-${anio}`}
@@ -474,6 +493,17 @@ export function ImpuestosClient({
         creadoPor={creadoPor}
         revalidatePaths={["/impuestos", "/panel-general"]}
         onClose={() => setReasignando(null)}
+      />
+    )}
+    {mostrarEquipo && (
+      <EquipoModuloPanel
+        moduloNombre={`Impuestos — ${TABS.find((t) => t.key === activeTab)?.label}`}
+        equipo={equipoImpuestos}
+        conteos={conteosResp}
+        filterResp={filterResp}
+        onSelect={(nombre) => setFilterResp((prev) => (prev === nombre ? "" : nombre))}
+        onClose={() => setMostrarEquipo(false)}
+        accent={ACCENT_IMPUESTOS}
       />
     )}
     </>

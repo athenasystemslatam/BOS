@@ -6,7 +6,10 @@ import { ChevronDown, CheckCircle2, Circle, History } from "lucide-react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
+import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { upsertMonotributoTarea } from "./actions";
+
+const ACCENT_MONOTRIBUTO = { dot: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-700" };
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 const CATEGORIAS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
@@ -68,6 +71,7 @@ export function MonotributoClient({
   const [filterResp, setFilterResp] = useState("");
   const [soloPendientes, setSoloPendientes] = useState(false);
   const [reasignando, setReasignando] = useState<Servicio | null>(null);
+  const [mostrarEquipo, setMostrarEquipo] = useState(false);
 
   const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
@@ -147,6 +151,16 @@ export function MonotributoClient({
     return result.sort();
   }, [servicios]);
 
+  // Cantidad de clientes a cargo de cada persona, para el panel de equipo
+  const conteosResp = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const s of servicios) {
+      if (!s.responsable_nombre) continue;
+      m[s.responsable_nombre] = (m[s.responsable_nombre] ?? 0) + 1;
+    }
+    return m;
+  }, [servicios]);
+
   const filas = useMemo(() => {
     let list = servicios;
     if (filterResp) list = list.filter((s) => s.responsable_nombre === filterResp);
@@ -194,6 +208,12 @@ export function MonotributoClient({
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+          <EquipoModuloBoton
+            cantidad={equipoMonotributo.length}
+            accent={ACCENT_MONOTRIBUTO}
+            onClick={() => setMostrarEquipo(true)}
+          />
           <div className="relative">
             <select
               value={`${mes}-${anio}`}
@@ -210,6 +230,7 @@ export function MonotributoClient({
               ))}
             </select>
             <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
           </div>
         </div>
       </div>
@@ -575,6 +596,17 @@ export function MonotributoClient({
         creadoPor={creadoPor}
         revalidatePaths={["/monotributo", "/panel-general"]}
         onClose={() => setReasignando(null)}
+      />
+    )}
+    {mostrarEquipo && (
+      <EquipoModuloPanel
+        moduloNombre="Monotributo"
+        equipo={equipoMonotributo}
+        conteos={conteosResp}
+        filterResp={filterResp}
+        onSelect={(nombre) => setFilterResp((prev) => (prev === nombre ? "" : nombre))}
+        onClose={() => setMostrarEquipo(false)}
+        accent={ACCENT_MONOTRIBUTO}
       />
     )}
     </>
