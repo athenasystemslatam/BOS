@@ -7,11 +7,22 @@ export default async function EmpresasPage() {
   const supabase = createAdminClient();
   const yo = await getCurrentLiquidadora();
 
-  const [{ data: liquidadoras }, { data: clientes }, { data: rubricaTareas }] = await Promise.all([
+  const [{ data: liquidadoras }, { data: serviciosSueldos }, { data: rubricaTareas }] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
-    supabase.from("clientes").select("*, liquidadora:liquidadoras!liquidador_id(*)").order("nombre"),
+    supabase.from("servicios_cliente").select("cliente_id").eq("servicio", "sueldos").eq("estado", true),
     supabase.from("tareas").select("cliente_id, periodo_id").or("rub_lsd_manual.eq.true,rub_lsd_drive.eq.true"),
   ]);
+
+  // Módulo Sueldos: solo clientes con el servicio "sueldos" activo (no toda la
+  // base de /panel-general — un cliente que solo tiene Impuestos no es de acá).
+  const idsSueldos = (serviciosSueldos ?? []).map((s) => s.cliente_id);
+  const { data: clientes } = idsSueldos.length > 0
+    ? await supabase
+        .from("clientes")
+        .select("*, liquidadora:liquidadoras!liquidador_id(*)")
+        .in("id", idsSueldos)
+        .order("nombre")
+    : { data: [] };
 
   const periodoIds = Array.from(new Set((rubricaTareas ?? []).map((t) => t.periodo_id)));
   const lsdHasta: Record<string, { anio: number; mes: number }> = {};

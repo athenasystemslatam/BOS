@@ -174,6 +174,8 @@ Aplicadas en producción:
 - `add_balances.sql` — tabla balances (módulo Contable, seguimiento anual)
 - `add_monotributo_tareas.sql` — tabla monotributo_tareas (categoría, cuota, recategorización cuatrimestral)
 - `add_monotributo_deuda.sql` — columnas deuda_monto, deuda_aviso, deuda_aviso_fecha en monotributo_tareas
+- `backfill_servicios_sueldos.sql` — backfill de `servicios_cliente(servicio='sueldos')` para clientes sin ninguna fila todavía. Corrido en producción 20-ago-2026 con criterio incorrecto (ver nota en el archivo) — corregido enseguida con `fix_servicios_sueldos_liquidador.sql`.
+- `fix_servicios_sueldos_liquidador.sql` — corrige el backfill anterior: deshace el tag de "sueldos" en los clientes sin `liquidador_id` (no eran de Sueldos) y lo agrega en 2 clientes que sí tenían liquidador pero no la fila. Verificado en producción: 86 clientes con Sueldos activo, 85 con `liquidador_id` (la diferencia de 1 es un caso válido, ya contemplado por la alerta de Panel General).
 
 ---
 
@@ -191,6 +193,8 @@ Aplicadas en producción:
   - ✅ **Módulo Monotributo** (`/monotributo`) — categoría, cuota mensual, recategorización cuatrimestral (**febrero y agosto**, corregido desde el intento inicial ene/may/sep), campos de deuda con alertas visuales (filas en rojo) y botón para marcar aviso de deuda enviado.
   - ✅ Sidebar reorganizado por módulo (color por área) y renombrado: Empresas → Clientes, Liquidadoras → Equipo.
   - ⬜ Falta el selector de módulo al login (hoy se entra directo a Sueldos); Impuestos/Contable/Monotributo/Panel General se acceden solo desde el sidebar.
+  - ✅ **Fix 20-ago**: `/empresas` y `/seguimiento` mostraban TODOS los clientes de `clientes`, no solo los de Sueldos (la alerta de "199 empresas sin liquidadora" era este mismo bug — contaba clientes de otros módulos que nunca debieron pedir liquidador). Ahora ambas pantallas filtran por `servicios_cliente(servicio='sueldos', estado=true)`, y `crearEmpresa` inserta esa fila al dar de alta para no volver a desincronizarse.
+- **Pendiente operativo — datos**: al corregir el fix de arriba se descubrió que ~197 clientes (de los 484 en `clientes`) fueron cargados en algún momento para otros módulos (Impuestos/Contable/Monotributo) directo en la tabla, fuera de la app, sin pasar por `servicios_cliente` — no tienen ninguna etiqueta de módulo. No aparecen en Sueldos (correcto) pero tampoco aparecen en Impuestos/Contable/Monotributo, que sí filtran por `servicios_cliente` desde que se crearon. Sus datos siguen intactos en `clientes`, solo falta re-cargarlos con el servicio correcto desde Panel General (o un script de import nuevo, si Giuliana tiene el Excel de origen).
 - **Pendiente operativo**: configurar dominio propio en Resend para que los emails lleguen a las liquidadoras (hoy solo llegan al admin)
 - **Pendiente operativo**: configurar SMTP propio (Resend) en Supabase Auth para los emails de login/invitación. Hoy usan el servicio compartido de Supabase, que tiene un límite bajo de envíos por hora (HTTP 429 en `/auth/v1/otp` si hay varios logins/invitaciones seguidos). Depende del punto anterior (dominio verificado en Resend) para poder mandar a cualquier destinatario, no solo al admin.
 

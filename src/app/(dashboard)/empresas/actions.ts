@@ -49,36 +49,48 @@ export async function crearEmpresa(formData: FormData) {
   const parsed = parseCuit(cuit);
   if (!parsed) return { error: "El CUIT debe tener 11 dígitos (ej: 20-12345678-9)." };
 
-  const { error } = await supabase.from("clientes").insert({
-    nombre,
-    cuit: parsed.digits,
-    terminacion_cuit: parsed.terminacion,
-    cuil_arca,
-    liquidador_id,
-    tipo_contribuyente,
-    es_quincenal,
-    tiene_sindicato,
-    sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
-    tiene_rubrica_lsd,
-    jurisdiccion,
-    lsd_desde_anio: tiene_rubrica_lsd ? lsd_desde_anio : null,
-    lsd_desde_mes: tiene_rubrica_lsd ? lsd_desde_mes : null,
-    lsd_hasta_anio: tiene_rubrica_lsd ? lsd_hasta_anio : null,
-    lsd_hasta_mes: tiene_rubrica_lsd ? lsd_hasta_mes : null,
-    art,
-    red_bancaria,
-    fecha_alta_empleador,
-    observaciones,
-  });
+  const { data: cliente, error } = await supabase
+    .from("clientes")
+    .insert({
+      nombre,
+      cuit: parsed.digits,
+      terminacion_cuit: parsed.terminacion,
+      cuil_arca,
+      liquidador_id,
+      tipo_contribuyente,
+      es_quincenal,
+      tiene_sindicato,
+      sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
+      tiene_rubrica_lsd,
+      jurisdiccion,
+      lsd_desde_anio: tiene_rubrica_lsd ? lsd_desde_anio : null,
+      lsd_desde_mes: tiene_rubrica_lsd ? lsd_desde_mes : null,
+      lsd_hasta_anio: tiene_rubrica_lsd ? lsd_hasta_anio : null,
+      lsd_hasta_mes: tiene_rubrica_lsd ? lsd_hasta_mes : null,
+      art,
+      red_bancaria,
+      fecha_alta_empleador,
+      observaciones,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     if (error.code === "23505") return { error: "Ya existe una empresa con ese CUIT." };
     return { error: error.message };
   }
 
+  // Toda empresa creada desde /empresas es cliente de Sueldos — se refleja
+  // en servicios_cliente para que Panel General y los filtros por módulo
+  // (que se basan en esa tabla, no en clientes directamente) la vean.
+  await supabase
+    .from("servicios_cliente")
+    .insert({ cliente_id: cliente.id, servicio: "sueldos", subtipo: "general", estado: true });
+
   revalidatePath("/empresas");
   revalidatePath("/dashboard");
   revalidatePath("/seguimiento");
+  revalidatePath("/panel-general");
   return { success: true };
 }
 

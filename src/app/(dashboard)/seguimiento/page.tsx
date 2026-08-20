@@ -43,17 +43,29 @@ export default async function SeguimientoPage() {
     .order("mes", { ascending: false })
     .limit(24);
 
-  // Empresas: admin ve todas las activas (via admin client, sin RLS),
-  // liquidadora solo las suyas filtradas por código
-  let clientesQuery = admin
-    .from("clientes")
-    .select("*, liquidadora:liquidadoras!liquidador_id(id, nombre)")
-    .eq("estado", "activo")
-    .order("terminacion_cuit");
-  if (!yo?.isAdmin && yo) {
-    clientesQuery = clientesQuery.eq("liquidador_id", yo.id);
+  // Empresas: solo clientes con el servicio "sueldos" activo (no toda la base
+  // de /panel-general). Admin ve todas, liquidadora solo las suyas.
+  const { data: serviciosSueldos } = await admin
+    .from("servicios_cliente")
+    .select("cliente_id")
+    .eq("servicio", "sueldos")
+    .eq("estado", true);
+  const idsSueldos = (serviciosSueldos ?? []).map((s) => s.cliente_id);
+
+  let clientes: (Cliente & { liquidadora: { id: string; nombre: string } })[] = [];
+  if (idsSueldos.length > 0) {
+    let clientesQuery = admin
+      .from("clientes")
+      .select("*, liquidadora:liquidadoras!liquidador_id(id, nombre)")
+      .eq("estado", "activo")
+      .in("id", idsSueldos)
+      .order("terminacion_cuit");
+    if (!yo?.isAdmin && yo) {
+      clientesQuery = clientesQuery.eq("liquidador_id", yo.id);
+    }
+    const { data } = await clientesQuery;
+    clientes = (data as (Cliente & { liquidadora: { id: string; nombre: string } })[]) ?? [];
   }
-  const { data: clientes } = await clientesQuery;
 
   // Tareas for current period
   const { data: tareas } = periodo
@@ -85,7 +97,7 @@ export default async function SeguimientoPage() {
         const asig = porCliente.get(c.id);
         if (asig) {
           c.liquidador_id = asig.liquidador_id;
-          (c as Record<string, unknown>).liquidadora = asig.liquidadora;
+          (c as unknown as Record<string, unknown>).liquidadora = asig.liquidadora;
         }
       }
     }
