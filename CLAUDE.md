@@ -170,18 +170,44 @@ Aplicadas en producción:
 - `add_accesos_bloqueados.sql` — tabla accesos_bloqueados (bloqueo manual de modo consulta)
 - `add_modulos_base_maestra.sql` — tablas equipo, equipo_modulos, servicios_cliente; FK equipo_id en liquidadoras; vista vista_empresas
 - `update_vista_empresas.sql` — agrega sc.estado = true a vista_empresas para reflejar bajas de servicio
+- `add_impuestos_tareas.sql` — tabla impuestos_tareas (seguimiento mensual IVA/IIBB/SEH)
+- `add_balances.sql` — tabla balances (módulo Contable, seguimiento anual)
+- `add_monotributo_tareas.sql` — tabla monotributo_tareas (categoría, cuota, recategorización cuatrimestral)
+- `add_monotributo_deuda.sql` — columnas deuda_monto, deuda_aviso, deuda_aviso_fecha en monotributo_tareas
 
 ---
 
-## Estado del proyecto (julio 2026)
+## Estado del proyecto (agosto 2026)
 
 - **Fase 1–4** completas: acceso magic link, seguimiento, Drive sync, alertas email
 - **Fase 5** en curso:
   - ✅ Reasignación de empresas (`/empresas` → ícono historial, admin only)
   - ✅ Productividad/KPIs (`/productividad`, admin only, desde junio 2026)
   - ⬜ README/documentación técnica
+- **Fase 6 — multi-módulo** (13–14 ago 2026), primer paso hacia que BOS deje de ser "el sistema de Sueldos" y pase a tener un módulo por área (Sueldos, Impuestos, Contable, Monotributo), todos sobre la misma base de `clientes`:
+  - ✅ **Panel General** (`/panel-general`) — tabla única por cliente con encabezado de dos filas por área/módulo, alta de clientes con asignación de servicios y responsables (desde `equipo`), baja puntual de servicio vs. baja general de cliente. Advierte en la celda Sueldos si falta `liquidador_id` en `/empresas` — es el origen del aviso de "clientes de Sueldos sin vincular" que se ve ahí.
+  - ✅ **Módulo Impuestos** (`/impuestos`) — seguimiento mensual por subtipo (IVA / IIBB / Seguridad e Higiene), toggle de declaración, fecha de presentación, selector de pago/VEP.
+  - ✅ **Módulo Contable** (`/contable`) — seguimiento anual de balances por formulario (855/F899/F713/F657/IGJ), envío de info, legalización, dos responsables, vencimientos calculados desde la fecha de cierre.
+  - ✅ **Módulo Monotributo** (`/monotributo`) — categoría, cuota mensual, recategorización cuatrimestral (**febrero y agosto**, corregido desde el intento inicial ene/may/sep), campos de deuda con alertas visuales (filas en rojo) y botón para marcar aviso de deuda enviado.
+  - ✅ Sidebar reorganizado por módulo (color por área) y renombrado: Empresas → Clientes, Liquidadoras → Equipo.
+  - ⬜ Falta el selector de módulo al login (hoy se entra directo a Sueldos); Impuestos/Contable/Monotributo/Panel General se acceden solo desde el sidebar.
 - **Pendiente operativo**: configurar dominio propio en Resend para que los emails lleguen a las liquidadoras (hoy solo llegan al admin)
 - **Pendiente operativo**: configurar SMTP propio (Resend) en Supabase Auth para los emails de login/invitación. Hoy usan el servicio compartido de Supabase, que tiene un límite bajo de envíos por hora (HTTP 429 en `/auth/v1/otp` si hay varios logins/invitaciones seguidos). Depende del punto anterior (dominio verificado en Resend) para poder mandar a cualquier destinatario, no solo al admin.
+
+---
+
+## Backlog de UX (feedback de Giuliana, sin implementar)
+
+Pedidos comentados en una sesión anterior que no habían quedado escritos en ningún lado y por poco se pierden — capturados en bruto el 20-ago-2026, todavía sin precisar alcance ni prioridad:
+
+- **Scroll horizontal**: pedido pendiente sobre desplazamiento de derecha a izquierda. Distinto del fix ya hecho de visibilidad del scrollbar (7/14-ago) — falta que Giuliana precise si es dentro de las tablas, entre pantallas, o navegación entre módulos.
+- **Claves/accesos por módulo en la ficha maestra del cliente**: la ficha de cliente (tabla maestra, hoy en `/empresas` y `/panel-general`) tiene que permitir editar y cargar **todas** las claves/accesos del cliente (portales de Sueldos, Impuestos, etc.), cada una bien etiquetada con a qué módulo corresponde. Esa etiqueta es lo que la vincula al módulo: una clave marcada "impuestos" tiene que aparecer en la ficha de ese cliente dentro del módulo Impuestos, no solo en la maestra.
+- **Sync bidireccional Panel General ↔ módulos**: si se carga/edita info de un cliente desde dentro de un módulo (tiene que estar permitido hacerlo ahí, no solo desde la maestra), eso se tiene que reflejar de vuelta en Panel General.
+- **Reasignación de responsable en cada módulo**: Impuestos, Contable y Monotributo necesitan la misma función de reasignación con fecha efectiva que ya tiene Sueldos (`/empresas` → ícono historial, tabla `asignaciones`) — mismos criterios y configuración, replicado por módulo.
+- **Sidebar de equipo por módulo, filtrado por área**: el subsidebar de equipo dentro de cada módulo tiene que mostrar solo a las personas asignadas a esa área en Panel General (tabla `equipo_modulos`), no el padrón completo.
+- **Dashboard de productividad por módulo**: cuánto liquida/gestiona cada empleado, desglosado por tipo de impuesto (IVA/IIBB/SEH en Impuestos, y análogo en los demás módulos) — extender la idea de `/productividad` (hoy solo Sueldos) a los módulos nuevos.
+- **Alertas por configurar**: falta definir alertas para los módulos nuevos — hoy solo Sueldos tiene alertas F.931 por email. Sin especificar todavía cuáles, para quién, ni con qué disparador.
+- **Ajustes de diseño/interfaz**: hay cambios visuales que Giuliana quiere revisar, todavía sin detallar. Acordado que esto queda **al final**, después de que el resto del backlog (arriba) esté resuelto — tiene sentido: primero cerrar el modelo de datos y la paridad funcional entre módulos, después pulir interfaz.
 
 ---
 
