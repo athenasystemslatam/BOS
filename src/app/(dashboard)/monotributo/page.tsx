@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
+import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
 import { MonotributoClient } from "./MonotributoClient";
 
 export default async function MonotributoPage({
@@ -40,11 +41,18 @@ export default async function MonotributoPage({
 
   const equipoMap = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
 
+  // Responsable vigente para el período mostrado — igual criterio que Sueldos.
+  const vigentes = await resolverResponsablesVigentes("monotributo", "general", anio, mes);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const servicios = (serviciosRaw ?? []).map((s: any) => ({
-    ...s,
-    responsable_nombre: s.responsable_id ? (equipoMap.get(s.responsable_id) ?? null) : null,
-  }));
+  const servicios = (serviciosRaw ?? []).map((s: any) => {
+    const vigente = vigentes.get(s.cliente_id);
+    if (vigente) return { ...s, responsable_id: vigente.id, responsable_nombre: vigente.nombre };
+    return {
+      ...s,
+      responsable_nombre: s.responsable_id ? (equipoMap.get(s.responsable_id) ?? null) : null,
+    };
+  });
 
   return (
     <MonotributoClient
@@ -57,6 +65,7 @@ export default async function MonotributoPage({
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
       puedeEditar={!!yo}
+      creadoPor={yo?.id ?? null}
     />
   );
 }

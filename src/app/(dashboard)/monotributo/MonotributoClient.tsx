@@ -2,9 +2,10 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, CheckCircle2, Circle } from "lucide-react";
+import { ChevronDown, CheckCircle2, Circle, History } from "lucide-react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
+import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
 import { upsertMonotributoTarea } from "./actions";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
@@ -46,9 +47,12 @@ function generarPeriodos(mesActual: number, anioActual: number) {
 export function MonotributoClient({
   servicios,
   tareas: initialTareas,
+  equipoMonotributo,
   mes,
   anio,
+  isAdmin,
   puedeEditar,
+  creadoPor,
 }: {
   servicios: Servicio[];
   tareas: Tarea[];
@@ -57,11 +61,13 @@ export function MonotributoClient({
   anio: number;
   isAdmin: boolean;
   puedeEditar: boolean;
+  creadoPor: string | null;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [filterResp, setFilterResp] = useState("");
   const [soloPendientes, setSoloPendientes] = useState(false);
+  const [reasignando, setReasignando] = useState<Servicio | null>(null);
 
   const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
@@ -175,6 +181,7 @@ export function MonotributoClient({
   }, [servicios, tareasMap]);
 
   return (
+    <>
     <div className="flex flex-col h-full bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -360,9 +367,20 @@ export function MonotributoClient({
 
                   {/* Responsable */}
                   <td className="px-4 py-3">
-                    <span className="text-[12px] text-gray-600">
-                      {s.responsable_nombre ?? <span className="text-gray-300">—</span>}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[12px] text-gray-600">
+                        {s.responsable_nombre ?? <span className="text-gray-300">—</span>}
+                      </span>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setReasignando(s)}
+                          title="Ver historial / reasignar"
+                          className="text-gray-300 hover:text-amber-600 transition-colors"
+                        >
+                          <History size={13} />
+                        </button>
+                      )}
+                    </div>
                   </td>
 
                   {/* Cuota */}
@@ -546,5 +564,19 @@ export function MonotributoClient({
         </table>
       </div>
     </div>
+    {reasignando && (
+      <AsignacionServicioModal
+        clienteId={reasignando.cliente_id}
+        clienteNombre={reasignando.clientes?.nombre ?? ""}
+        servicio="monotributo"
+        subtipo="general"
+        equipo={equipoMonotributo}
+        responsableActual={reasignando.responsable_nombre}
+        creadoPor={creadoPor}
+        revalidatePaths={["/monotributo", "/panel-general"]}
+        onClose={() => setReasignando(null)}
+      />
+    )}
+    </>
   );
 }

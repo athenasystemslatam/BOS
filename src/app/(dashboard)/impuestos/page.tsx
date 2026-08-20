@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
+import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
 import { ImpuestosClient } from "./ImpuestosClient";
 
 export default async function ImpuestosPage({
@@ -38,14 +39,32 @@ export default async function ImpuestosPage({
   const equipoIdsImpuestos = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipoImpuestos = (equipoRaw ?? []).filter((e) => equipoIdsImpuestos.has(e.id));
 
-  // Build responsable name map
+  // Responsable vigente por subtipo para el período mostrado (no el
+  // "actual" a secas — igual que /seguimiento resuelve la liquidadora
+  // vigente por período con la tabla asignaciones).
+  const [vigentesIva, vigentesIibb, vigentesSeh] = await Promise.all([
+    resolverResponsablesVigentes("impuestos", "iva", anio, mes),
+    resolverResponsablesVigentes("impuestos", "iibb", anio, mes),
+    resolverResponsablesVigentes("impuestos", "seh", anio, mes),
+  ]);
+  const vigentesPorSubtipo: Record<string, Map<string, { id: string; nombre: string }>> = {
+    iva: vigentesIva,
+    iibb: vigentesIibb,
+    seh: vigentesSeh,
+  };
+
+  // Fallback: clientes sin ninguna reasignación registrada todavía muestran
+  // el responsable_id "actual" que ya traía servicios_cliente.
   const equipoMap = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
 
-  // Enrich servicios with responsable name
-  const servicios = (serviciosRaw ?? []).map((s) => ({
-    ...s,
-    responsable_nombre: s.responsable_id ? (equipoMap.get(s.responsable_id) ?? null) : null,
-  }));
+  const servicios = (serviciosRaw ?? []).map((s) => {
+    const vigente = vigentesPorSubtipo[s.subtipo]?.get(s.cliente_id);
+    if (vigente) return { ...s, responsable_id: vigente.id, responsable_nombre: vigente.nombre };
+    return {
+      ...s,
+      responsable_nombre: s.responsable_id ? (equipoMap.get(s.responsable_id) ?? null) : null,
+    };
+  });
 
   return (
     <ImpuestosClient
@@ -58,6 +77,7 @@ export default async function ImpuestosPage({
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
       puedeEditar={!!yo}
+      creadoPor={yo?.id ?? null}
     />
   );
 }
