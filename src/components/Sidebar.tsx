@@ -42,21 +42,30 @@ const SECTIONS = [
     label: "Impuestos",
     accent: "bg-blue-400",
     items: [
-      { href: "/impuestos", label: "Seguimiento", icon: Receipt, adminOnly: false },
+      { href: "/impuestos",              label: "Seguimiento",  icon: Receipt,         adminOnly: false },
+      { href: "/impuestos/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
+      { href: "/impuestos/vencimientos", label: "Vencimientos", icon: Calendar,        adminOnly: false },
+      { href: "/impuestos/equipo",       label: "Equipo",       icon: Users,           adminOnly: false },
     ],
   },
   {
     label: "Contable",
     accent: "bg-emerald-400",
     items: [
-      { href: "/contable", label: "Balances", icon: BookOpen, adminOnly: false },
+      { href: "/contable",              label: "Balances",     icon: BookOpen,        adminOnly: false },
+      { href: "/contable/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
+      { href: "/contable/vencimientos", label: "Vencimientos", icon: Calendar,        adminOnly: false },
+      { href: "/contable/equipo",       label: "Equipo",       icon: Users,           adminOnly: false },
     ],
   },
   {
     label: "Monotributo",
     accent: "bg-amber-400",
     items: [
-      { href: "/monotributo", label: "Seguimiento", icon: FileText, adminOnly: false },
+      { href: "/monotributo",              label: "Seguimiento",  icon: FileText,        adminOnly: false },
+      { href: "/monotributo/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
+      { href: "/monotributo/vencimientos", label: "Vencimientos", icon: Calendar,        adminOnly: false },
+      { href: "/monotributo/equipo",       label: "Equipo",       icon: Users,           adminOnly: false },
     ],
   },
 ];
@@ -106,9 +115,12 @@ export function Sidebar({ isAdmin, onClose }: { isAdmin: boolean; onClose?: () =
               )}
               <div className="space-y-0.5">
                 {visibleItems.map(({ href, label, icon: Icon }) => {
+                  // Exact match, or prefix match only if no deeper path follows
                   const isActive =
                     pathname === href ||
-                    (href !== "/dashboard" && pathname.startsWith(href));
+                    (href !== "/dashboard" &&
+                      pathname.startsWith(href) &&
+                      !pathname.slice(href.length).startsWith("/"));
                   return (
                     <Link
                       key={href}
