@@ -8,7 +8,7 @@ import {
 } from "@/lib/vencimientos";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM = "onboarding@resend.dev";
+const FROM = "bos@kmaconsultores.com.ar";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "giulianatignanelli15@gmail.com";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
