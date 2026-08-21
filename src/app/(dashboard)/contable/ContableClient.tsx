@@ -308,7 +308,8 @@ export function ContableClient({
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="overflow-x-auto pb-2">
         <table className="w-full text-sm whitespace-nowrap">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
@@ -579,6 +580,7 @@ export function ContableClient({
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal && (

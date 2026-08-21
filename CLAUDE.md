@@ -1,6 +1,6 @@
 # BOS — Contexto para Claude Code
 
-Sistema interno de KMA Consultores para seguimiento mensual de liquidaciones de sueldos.
+Sistema interno de KMA Consultores para seguimiento de sueldos, impuestos, contable y monotributo.
 
 **Producción:** https://bos-plum.vercel.app  
 **Repo:** github.com/athenasystemslatam/BOS  
@@ -71,17 +71,105 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
 
 ## Modelo de datos clave
 
+### Personas y acceso
 - **`liquidadoras`** — padrón único de personas de todo el sistema, no solo Sueldos (`rol`: `admin` | `liquidadora` | `supervisor` | `viewer`; a qué área pertenece cada una vive en `equipo_modulos`, ver "Padrón único de personas" arriba)
-- **`clientes`** — empresas; `liquidador_id` = asignación actual; `drive_folder_id` = raíz Drive
+- **`equipo_modulos`** — equipo_id + modulo ('sueldos' | 'contable' | 'impuestos' | 'monotributo'). Fuente de verdad de qué módulos cubre cada persona.
+- **`accesos_bloqueados`** — bloqueo manual de acceso por email
+
+### Clientes y módulo Sueldos
+- **`clientes`** — empresas; `liquidador_id` = asignación actual en Sueldos; `drive_folder_id` = raíz Drive
+- **`servicios_cliente`** — cliente_id, servicio, subtipo, estado (bool), responsable_id. Qué servicios tiene activos cada cliente. Filtrar siempre por `estado=true`.
 - **`periodos`** — mes/año de liquidación (ej: junio 2026); se crea automáticamente
 - **`tareas`** — estado de cada cliente por período; una fila por (cliente, período)
   - `*_manual` = marcado por la liquidadora; `*_drive` = detectado por sync
   - `recibos_manual_en` / `f931_manual_en` = timestamp de cuando se marcó (desde jul 2026)
   - `drive_error` = código de error del último sync (`no-folder`, `no-sueldos`, `no-mes`, etc.)
   - `legajos_cantidad` = se copia automáticamente del mes anterior si no está seteado
-- **`asignaciones`** — historial de cambios de liquidadora con fecha efectiva (`desde_anio`, `desde_mes`)
+- **`asignaciones`** — historial de cambios de liquidadora en Sueldos con fecha efectiva (`desde_anio`, `desde_mes`)
+- **`asignaciones_servicio`** — análoga a `asignaciones` pero para Impuestos/Monotributo (genérica por servicio+subtipo). Ver `src/lib/asignacionesServicio.ts`.
 - **`drive_log`** — archivos detectados por sync; se borra y recrea en cada sync
 - **`alertas_postcierre`** — registra ediciones en períodos ya cerrados
+
+### Módulo Contable
+- **`balances`** — cliente_id, anio_fiscal, fecha_cierre, estado, avance (int 0–100), envio1/2/3 (bool), envio1_fecha/2_fecha/3_fecha, info_recibida, responsable_id, responsable2_id, estado_eecc, f855_estado, f899_estado, f713_estado, f657_estado, igj_presentacion, igj_tasa, observaciones
+  - UNIQUE (cliente_id, anio_fiscal)
+  - VTO Balance = fecha_cierre + 135 días; VTO F.855 = fecha_cierre + 160 días
+  - Estados: `sin_asignar` | `asignado` | `en_proceso` | `finalizado` | `frenado`
+  - Datos importados: 102 balances 2025, 100 balances 2026 (desde Excel ESTATUS BALANCES.xlsx)
+  - Contable no usa `asignaciones_servicio` — cada fila de `balances` ya tiene `responsable_id`/`responsable2_id` editable directo
+
+### Módulo Impuestos
+- **`impuestos_tareas`** — cliente_id, subtipo ('iva'|'iibb'|'seh'), anio, mes, estado ('pendiente'|'presentado'), fecha_presentacion, pago_estado, observaciones
+
+### Módulo Monotributo
+- **`monotributo_tareas`** — cliente_id, anio, mes, cuota_estado ('pendiente'|'pagado'), cuota_fecha, recategorizacion ('no_corresponde'|'pendiente'|'realizada'), categoria, deuda_monto, deuda_aviso, deuda_aviso_fecha, observaciones
+  - Meses de recategorización: **febrero (2) y agosto (8)**; vencimiento cuota: día 20 de cada mes
+
+---
+
+## Rutas del sistema
+
+### Panel General y Equipo
+| Ruta | Descripción |
+|---|---|
+| `/panel-general` | Tabla maestra por cliente con todos los módulos |
+| `/equipo` | Padrón de personas, bloqueos de acceso (antes `/liquidadoras`) |
+
+### Módulo Sueldos
+| Ruta | Descripción |
+|---|---|
+| `/seguimiento` | Tabla de tareas mensuales por empresa |
+| `/dashboard` | Avance por liquidadora + vencimientos F.931 |
+| `/empresas` | ABM de clientes de Sueldos |
+| `/vencimientos` | Calendario F.931 2026 |
+| `/productividad` | KPIs (admin only) |
+
+### Módulo Impuestos (color azul)
+| Ruta | Descripción |
+|---|---|
+| `/impuestos` | Seguimiento mensual IVA / IIBB / Seg. e Hig. |
+| `/impuestos/dashboard` | Stats por subtipo, avance por responsable |
+| `/impuestos/vencimientos` | Pendientes por subtipo con semáforo de urgencia |
+| `/impuestos/equipo` | Cards por miembro con breakdown por subtipo |
+
+### Módulo Contable (color verde/emerald)
+| Ruta | Descripción |
+|---|---|
+| `/contable` | Seguimiento anual de balances |
+| `/contable/dashboard` | Stats, avance por responsable, próximos VTO |
+| `/contable/vencimientos` | VTO Balance y VTO F.855 con semáforo |
+| `/contable/equipo` | Cards por miembro: finalizados, avance promedio |
+
+### Módulo Monotributo (color ámbar)
+| Ruta | Descripción |
+|---|---|
+| `/monotributo` | Seguimiento mensual de cuotas + recategorización |
+| `/monotributo/dashboard` | Cuotas pagadas, recategorización, avance por responsable |
+| `/monotributo/vencimientos` | Pendientes cuota, calendario anual día 20 |
+| `/monotributo/equipo` | Cards por miembro: cuotas, recategorización, deuda |
+
+---
+
+## Arquitectura de tabs por módulo
+
+Cada módulo (contable, impuestos, monotributo) tiene un `layout.tsx` que renderiza `<ModuleTabBar>` encima del contenido. El componente está en `src/components/ModuleTabBar.tsx` (client component, usa `usePathname()`).
+
+Patrón de altura para que el scroll funcione dentro del tab:
+```tsx
+// layout.tsx del módulo
+<div className="flex flex-col h-full">
+  <ModuleTabBar tabs={TABS} accentColor="text-emerald-600" />
+  <div className="flex-1 min-h-0 overflow-hidden">
+    {children}
+  </div>
+</div>
+
+// página con tabla scrolleable
+<div className="flex flex-col h-full bg-gray-50">
+  <div className="flex-1 min-h-0 overflow-y-auto">
+    <div className="overflow-x-auto pb-2">
+      <table className="w-full text-sm whitespace-nowrap">
+```
 
 ---
 
@@ -132,7 +220,7 @@ Archivo central: `src/lib/drive.ts`
 | 1 día después | Liquidadoras + Admin | Pendientes post-vencimiento |
 | 5 días después | Solo Admin | Reporte final definitivo |
 
-`FROM` actual: `onboarding@resend.dev` (modo prueba Resend). Cuando se configure el dominio propio, cambiar solo la constante `FROM` en `email.ts`.
+`FROM`: `bos@kmaconsultores.com.ar` (dominio propio verificado en Resend, agosto 2026).
 
 ---
 
@@ -186,50 +274,52 @@ Aplicadas en producción:
 - `add_balances.sql` — tabla balances (módulo Contable, seguimiento anual)
 - `add_monotributo_tareas.sql` — tabla monotributo_tareas (categoría, cuota, recategorización cuatrimestral)
 - `add_monotributo_deuda.sql` — columnas deuda_monto, deuda_aviso, deuda_aviso_fecha en monotributo_tareas
-- `backfill_servicios_sueldos.sql` — backfill de `servicios_cliente(servicio='sueldos')` para clientes sin ninguna fila todavía. Corrido en producción 20-ago-2026 con criterio incorrecto (ver nota en el archivo) — corregido enseguida con `fix_servicios_sueldos_liquidador.sql`.
-- `fix_servicios_sueldos_liquidador.sql` — corrige el backfill anterior: deshace el tag de "sueldos" en los clientes sin `liquidador_id` (no eran de Sueldos) y lo agrega en 2 clientes que sí tenían liquidador pero no la fila. Verificado en producción: 86 clientes con Sueldos activo, 85 con `liquidador_id` (la diferencia de 1 es un caso válido, ya contemplado por la alerta de Panel General).
-- `add_asignaciones_servicio.sql` — tabla `asignaciones_servicio` (reasignación con historial para Impuestos/Monotributo, análoga a `asignaciones` de Sueldos pero generalizada por servicio+subtipo).
-- `unificar_equipo.sql` — migra `equipo` a `liquidadoras` (mismos ids), repunta las FK de `equipo_modulos`/`servicios_cliente`/`asignaciones_servicio`/`balances`, backfillea `equipo_modulos(modulo='sueldos')` para las liquidadoras activas, actualiza `vista_empresas`, y renombra `equipo` a `equipo_legacy`. Ver "Padrón único de personas" arriba.
-- `fix_equipo_modulos_sueldos.sql` — corrige el backfill anterior: el paso 3 corría después de mezclar `equipo` adentro de `liquidadoras`, así que etiquetó "sueldos" también a las 24 personas de Impuestos/Contable/Monotributo migradas. Verificado en producción: `equipo_legacy` tenía 24 filas (no 8 — esa era solo la cuenta del área Impuestos), las 24 migraron ok, `con_area_sueldos` bajó de 33 a 9 (33 − 24 = 9, coincide exacto con la cantidad real de liquidadoras originales activas).
+- `backfill_servicios_sueldos.sql` — backfill de `servicios_cliente(servicio='sueldos')`. Corrido 20-ago-2026 con criterio incorrecto — corregido enseguida con el siguiente.
+- `fix_servicios_sueldos_liquidador.sql` — corrige el backfill: 86 clientes con Sueldos activo, 85 con `liquidador_id` (diferencia de 1 es válida).
+- `add_asignaciones_servicio.sql` — tabla `asignaciones_servicio` (historial de reasignación para Impuestos/Monotributo, genérica por servicio+subtipo).
+- `unificar_equipo.sql` — migra `equipo` a `liquidadoras` (mismos ids), repunta FKs, backfillea `equipo_modulos(modulo='sueldos')`, renombra `equipo` a `equipo_legacy`.
+- `fix_equipo_modulos_sueldos.sql` — corrige backfill anterior: `con_area_sueldos` bajó de 33 a 9 (correcto).
 
 ---
 
 ## Estado del proyecto (agosto 2026)
 
-- **Fase 1–4** completas: acceso magic link, seguimiento, Drive sync, alertas email
-- **Fase 5** en curso:
-  - ✅ Reasignación de empresas (`/empresas` → ícono historial, admin only)
-  - ✅ Productividad/KPIs (`/productividad`, admin only, desde junio 2026)
-  - ⬜ README/documentación técnica
-- **Fase 6 — multi-módulo** (13–14 ago 2026), primer paso hacia que BOS deje de ser "el sistema de Sueldos" y pase a tener un módulo por área (Sueldos, Impuestos, Contable, Monotributo), todos sobre la misma base de `clientes`:
-  - ✅ **Panel General** (`/panel-general`) — tabla única por cliente con encabezado de dos filas por área/módulo, alta de clientes con asignación de servicios y responsables (desde `equipo`), baja puntual de servicio vs. baja general de cliente. Advierte en la celda Sueldos si falta `liquidador_id` en `/empresas` — es el origen del aviso de "clientes de Sueldos sin vincular" que se ve ahí.
-  - ✅ **Módulo Impuestos** (`/impuestos`) — seguimiento mensual por subtipo (IVA / IIBB / Seguridad e Higiene), toggle de declaración, fecha de presentación, selector de pago/VEP.
-  - ✅ **Módulo Contable** (`/contable`) — seguimiento anual de balances por formulario (855/F899/F713/F657/IGJ), envío de info, legalización, dos responsables, vencimientos calculados desde la fecha de cierre.
-  - ✅ **Módulo Monotributo** (`/monotributo`) — categoría, cuota mensual, recategorización cuatrimestral (**febrero y agosto**, corregido desde el intento inicial ene/may/sep), campos de deuda con alertas visuales (filas en rojo) y botón para marcar aviso de deuda enviado.
-  - ✅ Sidebar reorganizado por módulo (color por área) y renombrado: Empresas → Clientes, Liquidadoras → Equipo.
-  - ⬜ Falta el selector de módulo al login (hoy se entra directo a Sueldos); Impuestos/Contable/Monotributo/Panel General se acceden solo desde el sidebar.
-  - ✅ **Fix 20-ago**: `/empresas` y `/seguimiento` mostraban TODOS los clientes de `clientes`, no solo los de Sueldos (la alerta de "199 empresas sin liquidadora" era este mismo bug — contaba clientes de otros módulos que nunca debieron pedir liquidador). Ahora ambas pantallas filtran por `servicios_cliente(servicio='sueldos', estado=true)`, y `crearEmpresa` inserta esa fila al dar de alta para no volver a desincronizarse.
-  - ✅ **Reasignación por módulo — Impuestos y Monotributo** (20-ago): mismo mecanismo que Sueldos (ícono historial junto al responsable, admin only, fecha efectiva por mes/año). Tabla nueva `asignaciones_servicio` (genérica por servicio+subtipo, ver `src/lib/asignacionesServicio.ts` — `getAsignacionesServicio`, `crearAsignacionServicio`, `resolverResponsablesVigentes`) y componente compartido `src/components/AsignacionServicioModal.tsx`. Cada página resuelve el responsable vigente por período (no el "actual" a secas) igual que `/seguimiento` lo hace con la tabla `asignaciones` de Sueldos. **Contable queda afuera a propósito**: cada fila de `balances` ya es por año y ya tiene su propio `responsable_id`/`responsable2_id` editable directo — agregar historial ahí sería redundante con cómo ya funciona.
-  - ✅ **Panel de equipo visible por módulo** (20-ago): Impuestos/Contable/Monotributo tienen ahora un botón "Equipo" en el header que abre un panel lateral (`src/components/EquipoModuloPanel.tsx`) listando a las personas asignadas a esa área en Panel General (`equipo_modulos`), con la cantidad de clientes a cargo de cada una. Clickear a alguien filtra la tabla por esa persona (reusa el mismo estado que ya manejaba el desplegable "Todos los responsables" — quedan sincronizados). El filtrado por área en el backend ya existía desde que se crearon estos módulos; lo que faltaba era la parte visible.
-  - ✅ **Padrón único de personas** (20-ago): `equipo` (Impuestos/Contable/Monotributo, sin login) se unificó con `liquidadoras` (Sueldos, con login) en un solo padrón — ver sección "Padrón único de personas" en Control de accesos, arriba. `/liquidadoras` pasó a ser `/equipo`, movido de la sección Sueldos del sidebar a su propia sección junto a Panel General. De paso se cerró un gap de seguridad real: las Server Actions de escritura de Impuestos/Contable/Monotributo no tenían ningún chequeo de permisos (`requireAreaOrAdmin()` nuevo en `lib/auth.ts`).
-- **Pendiente operativo — datos**: al corregir el fix de arriba se descubrió que ~197 clientes (de los 484 en `clientes`) fueron cargados en algún momento para otros módulos (Impuestos/Contable/Monotributo) directo en la tabla, fuera de la app, sin pasar por `servicios_cliente` — no tienen ninguna etiqueta de módulo. No aparecen en Sueldos (correcto) pero tampoco aparecen en Impuestos/Contable/Monotributo, que sí filtran por `servicios_cliente` desde que se crearon. Sus datos siguen intactos en `clientes`, solo falta re-cargarlos con el servicio correcto desde Panel General (o un script de import nuevo, si Giuliana tiene el Excel de origen).
-- **Pendiente operativo**: configurar dominio propio en Resend para que los emails lleguen a las liquidadoras (hoy solo llegan al admin)
-- **Pendiente operativo**: configurar SMTP propio (Resend) en Supabase Auth para los emails de login/invitación. Hoy usan el servicio compartido de Supabase, que tiene un límite bajo de envíos por hora (HTTP 429 en `/auth/v1/otp` si hay varios logins/invitaciones seguidos). Depende del punto anterior (dominio verificado en Resend) para poder mandar a cualquier destinatario, no solo al admin.
+### Completado
+- ✅ Acceso magic link, seguimiento sueldos, Drive sync, alertas email (Fases 1–4)
+- ✅ Reasignación de empresas con historial
+- ✅ Productividad/KPIs (admin only)
+- ✅ **Panel General** (`/panel-general`) — tabla maestra por cliente, alta con asignación de servicios y responsables
+- ✅ **Módulo Impuestos** — seguimiento mensual IVA/IIBB/SEH, toggle declaración, fecha, pago/VEP
+- ✅ **Módulo Contable** — seguimiento anual de balances, formularios 855/F899/F713/F657/IGJ, vencimientos calculados
+- ✅ **Módulo Monotributo** — cuota mensual, recategorización feb/ago, deuda con alertas visuales
+- ✅ Importación de balances 2025 y 2026 desde Excel
+- ✅ Scrollbar horizontal en tablas de módulos
+- ✅ Dashboard, Vencimientos y Equipo para los 3 módulos (tabs por módulo con `ModuleTabBar`)
+- ✅ Reasignación de responsable en Impuestos y Monotributo (historial por período, `asignaciones_servicio`)
+- ✅ Panel de equipo por módulo con filtrado (componente `EquipoModuloPanel.tsx`)
+- ✅ Padrón único de personas: `equipo` unificado con `liquidadoras`; `/liquidadoras` → `/equipo`
+- ✅ Fix: `/empresas` y `/seguimiento` filtran por `servicios_cliente(servicio='sueldos')` (antes mostraban todos los clientes)
+- ✅ Emails con dominio propio: `FROM = bos@kmaconsultores.com.ar`
+
+### Pendiente de funcionalidad
+- ⬜ Panel General: edición inline de datos de empresa, gestión de activaciones de servicios, sección "Claves fiscales" (claves por módulo, visibles desde la ficha del cliente en cada módulo)
+- ⬜ Sync bidireccional Panel General ↔ módulos
+- ⬜ Dashboard de productividad por módulo (extender `/productividad` a Impuestos/Contable/Monotributo)
+- ⬜ Alertas para módulos nuevos (hoy solo F.931 de Sueldos)
+- ⬜ Ajustes de diseño/interfaz (al final, después de cerrar el modelo de datos)
+
+### Pendiente operativo
+- ⬜ Configurar SMTP propio en Supabase Auth (hoy da 429 con varios logins seguidos). Ir a Supabase Dashboard → Authentication → Emails → Custom SMTP: host `smtp.resend.com`, port 465, user `resend`, password = RESEND_API_KEY, sender `bos@kmaconsultores.com.ar`.
+- ⬜ ~197 clientes en `clientes` sin ninguna fila en `servicios_cliente` — cargados fuera de la app antes de que existiera el modelo de módulos. No aparecen en ningún módulo. Hay que re-cargarlos desde Panel General (o script de import si Giuliana tiene el Excel de origen).
 
 ---
 
 ## Backlog de UX (feedback de Giuliana, sin implementar)
 
-Pedidos comentados en una sesión anterior que no habían quedado escritos en ningún lado y por poco se pierden — capturados en bruto el 20-ago-2026, todavía sin precisar alcance ni prioridad:
-
-- **Scroll horizontal**: pedido pendiente sobre desplazamiento de derecha a izquierda. Distinto del fix ya hecho de visibilidad del scrollbar (7/14-ago) — falta que Giuliana precise si es dentro de las tablas, entre pantallas, o navegación entre módulos.
-- **Claves/accesos por módulo en la ficha maestra del cliente**: la ficha de cliente (tabla maestra, hoy en `/empresas` y `/panel-general`) tiene que permitir editar y cargar **todas** las claves/accesos del cliente (portales de Sueldos, Impuestos, etc.), cada una bien etiquetada con a qué módulo corresponde. Esa etiqueta es lo que la vincula al módulo: una clave marcada "impuestos" tiene que aparecer en la ficha de ese cliente dentro del módulo Impuestos, no solo en la maestra.
-- **Sync bidireccional Panel General ↔ módulos**: si se carga/edita info de un cliente desde dentro de un módulo (tiene que estar permitido hacerlo ahí, no solo desde la maestra), eso se tiene que reflejar de vuelta en Panel General.
-- ~~**Reasignación de responsable en cada módulo**~~ — ✅ hecho 20-ago para Impuestos y Monotributo, ver Fase 6 arriba. Contable no lo necesita (ya resuelve esto por año directo en `balances`).
-- ~~**Sidebar de equipo por módulo, filtrado por área**~~ — ✅ hecho 20-ago, ver Fase 6 arriba.
-- **Dashboard de productividad por módulo**: cuánto liquida/gestiona cada empleado, desglosado por tipo de impuesto (IVA/IIBB/SEH en Impuestos, y análogo en los demás módulos) — extender la idea de `/productividad` (hoy solo Sueldos) a los módulos nuevos.
-- **Alertas por configurar**: falta definir alertas para los módulos nuevos — hoy solo Sueldos tiene alertas F.931 por email. Sin especificar todavía cuáles, para quién, ni con qué disparador.
-- **Ajustes de diseño/interfaz**: hay cambios visuales que Giuliana quiere revisar, todavía sin detallar. Acordado que esto queda **al final**, después de que el resto del backlog (arriba) esté resuelto — tiene sentido: primero cerrar el modelo de datos y la paridad funcional entre módulos, después pulir interfaz.
+- **Claves/accesos por módulo en la ficha maestra del cliente**: la ficha tiene que permitir cargar todas las claves del cliente (portales de Sueldos, Impuestos, etc.), etiquetadas por módulo. Una clave marcada "impuestos" tiene que aparecer en la ficha de ese cliente dentro del módulo Impuestos, no solo en la maestra.
+- **Dashboard de productividad por módulo**: cuánto gestiona cada empleado, desglosado por tipo (IVA/IIBB/SEH en Impuestos, análogo en los demás) — extender la idea de `/productividad` a los módulos nuevos.
+- **Alertas por configurar**: falta definir alertas para módulos nuevos — cuáles, para quién, con qué disparador.
+- **Ajustes de diseño/interfaz**: cambios visuales pendientes de precisar. Acordado que va al final, después de cerrar el modelo de datos y la paridad funcional entre módulos.
 
 ---
 

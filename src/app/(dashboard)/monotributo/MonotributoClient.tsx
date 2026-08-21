@@ -296,8 +296,9 @@ export function MonotributoClient({
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full text-sm">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="overflow-x-auto pb-2">
+        <table className="w-full text-sm whitespace-nowrap">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3">
@@ -583,6 +584,7 @@ export function MonotributoClient({
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
     {reasignando && (
