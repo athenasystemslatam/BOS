@@ -31,8 +31,8 @@ export default async function ContableDashboardPage({
     .select(
       "id, cliente_id, fecha_cierre, estado, avance, " +
       "clientes(nombre), " +
-      "responsable:equipo!balances_responsable_id_fkey(id, nombre), " +
-      "responsable2:equipo!balances_responsable2_id_fkey(id, nombre)"
+      "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
+      "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
     )
     .eq("anio_fiscal", anio)
     .order("fecha_cierre");

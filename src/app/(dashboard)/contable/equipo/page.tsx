@@ -16,7 +16,7 @@ export default async function ContableEquipoPage({
     { data: modulosRaw },
     { data: balancesRaw },
   ] = await Promise.all([
-    admin.from("equipo").select("id, nombre").eq("activo", true).order("nombre"),
+    admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
     admin
       .from("balances")

@@ -17,7 +17,7 @@ export default async function MonotributoEquipoPage({
   const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
   const [{ data: equipoRaw }, { data: modulosRaw }, { data: serviciosRaw }, { data: tareasRaw }] = await Promise.all([
-    admin.from("equipo").select("id, nombre").eq("activo", true).order("nombre"),
+    admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "monotributo"),
     admin
       .from("servicios_cliente")

@@ -40,7 +40,7 @@ export default async function MonotributoDashboardPage({
       .select("*")
       .eq("anio", anio)
       .eq("mes", mes),
-    admin.from("equipo").select("id, nombre").eq("activo", true),
+    admin.from("liquidadoras").select("id, nombre").eq("activa", true),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
