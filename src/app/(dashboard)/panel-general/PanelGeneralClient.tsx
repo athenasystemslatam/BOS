@@ -12,26 +12,29 @@ const AREA_STYLE = {
   SUELDOS:  { header: "bg-bordo/10 text-bordo",          sub: "bg-bordo/5",       dot: "bg-bordo"        },
   IMPUESTOS: { header: "bg-blue-50 text-blue-700",        sub: "bg-blue-50/60",    dot: "bg-blue-500"     },
   CONTABLE:  { header: "bg-emerald-50 text-emerald-700",  sub: "bg-emerald-50/60", dot: "bg-emerald-500"  },
+  MONOTRIBUTO: { header: "bg-amber-50 text-amber-700",    sub: "bg-amber-50/60",   dot: "bg-amber-500"    },
   LIBROS:    { header: "bg-violet-50 text-violet-700",    sub: "bg-violet-50/60",  dot: "bg-violet-500"   },
 } as const;
 
 // Columnas de servicio en orden de renderizado
 const COLS = [
-  { key: "sueldos:general",   area: "SUELDOS"  as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
-  { key: "impuestos:iva",     area: "IMPUESTOS" as const, areaSpan: 3, subLabel: "IVA",           impuestos: true  },
-  { key: "impuestos:iibb",    area: "IMPUESTOS" as const, areaSpan: 0, subLabel: "IIBB",          impuestos: true  },
-  { key: "impuestos:seh",     area: "IMPUESTOS" as const, areaSpan: 0, subLabel: "Seg. e Hig.",   impuestos: true  },
-  { key: "contable:general",  area: "CONTABLE"  as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
-  { key: "libros:general",    area: "LIBROS"    as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
+  { key: "sueldos:general",     area: "SUELDOS"    as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
+  { key: "impuestos:iva",       area: "IMPUESTOS"   as const, areaSpan: 3, subLabel: "IVA",           impuestos: true  },
+  { key: "impuestos:iibb",      area: "IMPUESTOS"   as const, areaSpan: 0, subLabel: "IIBB",          impuestos: true  },
+  { key: "impuestos:seh",       area: "IMPUESTOS"   as const, areaSpan: 0, subLabel: "Seg. e Hig.",   impuestos: true  },
+  { key: "contable:general",    area: "CONTABLE"    as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
+  { key: "monotributo:general", area: "MONOTRIBUTO" as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
+  { key: "libros:general",      area: "LIBROS"      as const, areaSpan: 1, subLabel: "Responsable",  impuestos: false },
 ] as const;
 
 const VISTA_FIELD: Record<string, keyof VistEmpresa> = {
-  "sueldos:general":  "responsable_sueldos",
-  "impuestos:iva":    "responsable_impuestos_iva",
-  "impuestos:iibb":   "responsable_impuestos_iibb",
-  "impuestos:seh":    "responsable_impuestos_seh",
-  "contable:general": "responsable_contable",
-  "libros:general":   "responsable_libros",
+  "sueldos:general":     "responsable_sueldos",
+  "impuestos:iva":       "responsable_impuestos_iva",
+  "impuestos:iibb":      "responsable_impuestos_iibb",
+  "impuestos:seh":       "responsable_impuestos_seh",
+  "contable:general":    "responsable_contable",
+  "monotributo:general": "responsable_monotributo",
+  "libros:general":      "responsable_libros",
 };
 
 type Confirmando =
@@ -257,6 +260,7 @@ export function PanelGeneralClient({
                               area === "SUELDOS"   && "border-bordo/30",
                               area === "IMPUESTOS"  && "border-blue-200",
                               area === "CONTABLE"   && "border-emerald-200",
+                              area === "MONOTRIBUTO" && "border-amber-200",
                               area === "LIBROS"     && "border-violet-200",
                             )}
                           >

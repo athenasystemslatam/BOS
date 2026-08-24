@@ -159,4 +159,5 @@ export interface VistEmpresa {
   responsable_impuestos_seh: string | null;
   responsable_contable: string | null;
   responsable_libros: string | null;
+  responsable_monotributo: string | null;
 }

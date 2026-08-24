@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { TrendingUp, CheckCircle2, Circle } from "lucide-react";
 import clsx from "clsx";
+import { MesSelector } from "@/components/MesSelector";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 
@@ -102,19 +103,13 @@ export default async function MonotributoDashboardPage({
             </span>
           )}
         </div>
-        <div className="relative">
-          <select
-            value={`${mes}-${anio}`}
-            className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
-            onChange={() => {}}
-          >
-            {opciones.map((o) => (
-              <option key={`${o.mes}-${o.anio}`} value={`${o.mes}-${o.anio}`}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MesSelector
+          basePath="/monotributo/dashboard"
+          options={opciones}
+          currentMes={mes}
+          currentAnio={anio}
+          className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
+        />
       </div>
 
       {/* Stats */}

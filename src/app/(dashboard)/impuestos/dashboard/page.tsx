@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
 import clsx from "clsx";
+import { MesSelector } from "@/components/MesSelector";
 
 const SUBTIPOS = [
   { key: "iva", label: "IVA" },
@@ -87,22 +88,7 @@ export default async function ImpuestosDashboardPage({
             Dashboard — {MESES_NOMBRES[mes]} {anio}
           </h1>
         </div>
-        <form method="get">
-          <select
-            name="mes"
-            defaultValue={`${mes}`}
-            className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-400 cursor-pointer"
-            onChange={(e) => {
-              void e;
-            }}
-          >
-            {opciones.map((o) => (
-              <option key={`${o.mes}-${o.anio}`} value={`${o.mes}`} data-anio={o.anio}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </form>
+        <MesSelector basePath="/impuestos/dashboard" options={opciones} currentMes={mes} currentAnio={anio} />
       </div>
 
       {/* Stats por sub-tipo */}

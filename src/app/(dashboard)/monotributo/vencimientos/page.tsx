@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
+import { MesSelector } from "@/components/MesSelector";
 
 // Vencimiento cuota monotributo: día 20 de cada mes (mismo mes, no el siguiente)
 // Meses de recategorización: febrero (mes 2) y agosto (mes 8)
@@ -82,23 +83,17 @@ export default async function MonotributoVencimientosPage({
             Vencimientos — {MESES_NOMBRES[mes]} {anio}
           </h1>
         </div>
-        <div className="relative">
-          <select
-            value={`${mes}-${anio}`}
-            className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
-            onChange={() => {}}
-          >
-            {Array.from({ length: 12 }, (_, i) => {
-              const m = mesDefault - i <= 0 ? mesDefault - i + 12 : mesDefault - i;
-              const a = mesDefault - i <= 0 ? anioDefault - 1 : anioDefault;
-              return { mes: m, anio: a };
-            }).map((o) => (
-              <option key={`${o.mes}-${o.anio}`} value={`${o.mes}-${o.anio}`}>
-                {MESES_NOMBRES[o.mes]} {o.anio}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MesSelector
+          basePath="/monotributo/vencimientos"
+          options={Array.from({ length: 12 }, (_, i) => {
+            const m = mesDefault - i <= 0 ? mesDefault - i + 12 : mesDefault - i;
+            const a = mesDefault - i <= 0 ? anioDefault - 1 : anioDefault;
+            return { mes: m, anio: a };
+          })}
+          currentMes={mes}
+          currentAnio={anio}
+          className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">

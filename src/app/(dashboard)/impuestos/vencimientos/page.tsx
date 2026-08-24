@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
+import { MesSelector } from "@/components/MesSelector";
 
 // Vencimientos aproximados por subtipo (día del mes siguiente)
 // Estos son genéricos — cada cliente puede tener fechas distintas
@@ -89,19 +90,7 @@ export default async function ImpuestosVencimientosPage({
             Vencimientos — {MESES_NOMBRES[mes]} {anio}
           </h1>
         </div>
-        <div className="relative">
-          <select
-            value={`${mes}-${anio}`}
-            className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-400 cursor-pointer"
-            onChange={() => {}}
-          >
-            {opciones.map((o) => (
-              <option key={`${o.mes}-${o.anio}`} value={`${o.mes}-${o.anio}`}>
-                {MESES_NOMBRES[o.mes]} {o.anio}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MesSelector basePath="/impuestos/vencimientos" options={opciones} currentMes={mes} currentAnio={anio} />
       </div>
       <p className="text-[12px] text-gray-400 mb-6">
         Fechas indicativas — día {VTO_DIA.iva} (IVA), día {VTO_DIA.iibb} (IIBB), día {VTO_DIA.seh} (Seg. e Hig.) del mes siguiente

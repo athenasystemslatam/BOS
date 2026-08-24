@@ -11,6 +11,7 @@ const SERVICIOS_CONFIG = [
   { servicio: "impuestos", subtipo: "iibb",    label: "Impuestos — IIBB",       modulo: "impuestos" },
   { servicio: "impuestos", subtipo: "seh",     label: "Impuestos — Seg. e Hig.", modulo: "impuestos" },
   { servicio: "contable",  subtipo: "general", label: "Contable",               modulo: "contable" },
+  { servicio: "monotributo", subtipo: "general", label: "Monotributo",         modulo: "monotributo" },
   { servicio: "libros",    subtipo: "general", label: "Libros",                 modulo: "libros" },
 ] as const;
 

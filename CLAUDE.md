@@ -306,13 +306,14 @@ Aplicadas en producción:
 - ✅ Emails con dominio propio: `FROM = bos@kmaconsultores.com.ar`
 - ✅ Integración de los archivos ESTATUS (24-ago): Seg. e Hig. cargada para 22 clientes, responsable completado para 10 balances de Contable, 11 altas nuevas, 1 typo de CUIT corregido. Ver migraciones `cargar_seh_y_contable_ago2026.sql` / `altas_nuevas_ago2026.sql` arriba.
 - ✅ **Dashboard de productividad por módulo** (24-ago) — `/productividad` ahora tiene tabs Sueldos/Impuestos/Contable/Monotributo (`src/components/ProductividadTabs.tsx`). Impuestos y Monotributo: mes a mes, responsable resuelto vía `asignaciones_servicio` cuando hay historial (igual que `/seguimiento`), si no el actual de `servicios_cliente`. Contable: año a año porque `balances` es anual — un balance cuenta para los dos responsables si tiene `responsable_id` y `responsable2_id`. "A tiempo"/"Tarde": Impuestos usa el mismo vencimiento aproximado por subtipo que `/impuestos/vencimientos` (día del mes siguiente); Monotributo, día 20 del mismo mes; Contable no tiene fecha de cierre real del balance en el schema, así que en su lugar marca "vencidos sin cerrar" (hoy > fecha_cierre + 135 días y no está Finalizado).
+- ✅ **Selector de mes roto en 4 páginas** (24-ago) — `/impuestos/dashboard`, `/impuestos/vencimientos`, `/monotributo/dashboard` y `/monotributo/vencimientos` tenían un `<select>` con `onChange` vacío que no navegaba al cambiar de mes (bug de Matías, quedó así al construir esas páginas). Se reemplazó por `src/components/MesSelector.tsx`, un client component nuevo que copia el patrón que ya funcionaba en `dashboard/MonthSelector.tsx` (Sueldos) — `router.push` con `mes`/`anio` en la URL. Contable no tiene este selector porque `balances` es anual, no mensual.
+- ✅ **Monotributo agregado a Panel General** (24-ago) — `vista_empresas` no tenía columna de Monotributo (causó la falsa alarma del "197 sin módulo" el 24-ago). Se agregó `responsable_monotributo` a la vista (`add_monotributo_a_vista_empresas.sql`) y a `PanelGeneralClient.tsx`/`NuevoClienteModal.tsx` (columna nueva + opción de servicio al dar de alta un cliente, con su color ámbar como el resto del módulo).
 
 ### Pendiente de funcionalidad
 - ⬜ Panel General: edición inline de datos de empresa, gestión de activaciones de servicios, sección "Claves fiscales" (claves por módulo, visibles desde la ficha del cliente en cada módulo)
 - ⬜ Sync bidireccional Panel General ↔ módulos
 - ⬜ Alertas para módulos nuevos (hoy solo F.931 de Sueldos)
 - ⬜ Ajustes de diseño/interfaz (al final, después de cerrar el modelo de datos)
-- ⬜ Selector de mes en `/impuestos/dashboard` y `/impuestos/vencimientos` no anda — el `<select>` tiene un `onChange` vacío (`(e) => { void e; }`), no navega al cambiar de mes. Bug preexistente de Matías, no tocado en esta sesión por estar fuera de scope.
 
 ### Pendiente operativo
 - ⬜ Configurar SMTP propio en Supabase Auth (hoy da 429 con varios logins seguidos). Ir a Supabase Dashboard → Authentication → Emails → Custom SMTP: host `smtp.resend.com`, port 465, user `resend`, password = RESEND_API_KEY, sender `bos@kmaconsultores.com.ar`.
