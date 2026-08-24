@@ -2,11 +2,17 @@ export type Rol = "admin" | "supervisor" | "liquidadora" | "viewer";
 export type EstadoCliente = "activo" | "inactivo";
 export type TipoContribuyente = "empresa" | "monotributista" | "inscripto";
 
+// modulo: "" = general, visible solo en la ficha maestra. Si se etiqueta con
+// un módulo, la clave también aparece dentro de ese módulo (ver
+// ClavesModuloPopover.tsx en cada módulo).
+export type ModuloClave = "" | "sueldos" | "impuestos" | "contable" | "monotributo";
+
 export interface ClaveAcceso {
   sistema: string;
   usuario: string;
   contrasena: string;
   url: string;
+  modulo?: ModuloClave;
 }
 
 export interface AccesoBloqueado {

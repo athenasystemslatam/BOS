@@ -7,6 +7,8 @@ import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
+import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
+import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea } from "./actions";
 
 const ACCENT_MONOTRIBUTO = { dot: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-700" };
@@ -32,7 +34,7 @@ type Servicio = {
   cliente_id: string;
   responsable_id: string | null;
   responsable_nombre: string | null;
-  clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string };
+  clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string; claves_acceso: ClaveAcceso[] | null };
 };
 
 function generarPeriodos(mesActual: number, anioActual: number) {
@@ -350,9 +352,12 @@ export function MonotributoClient({
                 )}>
                   {/* Cliente */}
                   <td className="px-6 py-3">
-                    <p className="text-[13px] font-medium text-gray-800 leading-tight">
-                      {s.clientes?.nombre ?? "—"}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-medium text-gray-800 leading-tight">
+                        {s.clientes?.nombre ?? "—"}
+                      </p>
+                      <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="monotributo" />
+                    </div>
                     <p className="text-[11px] text-gray-400 mt-0.5 capitalize">
                       {s.clientes?.tipo_contribuyente ?? ""}
                     </p>

@@ -55,7 +55,7 @@ function ClavesAccesoEditor({
   }
 
   function quickAdd(sistema: string) {
-    onChange([...claves, { sistema, usuario: "", contrasena: "", url: "" }]);
+    onChange([...claves, { sistema, usuario: "", contrasena: "", url: "", modulo: "" }]);
   }
 
   const faltantes = sugerencias.filter(
@@ -65,7 +65,7 @@ function ClavesAccesoEditor({
   return (
     <div className="space-y-2">
       {claves.map((c, i) => (
-        <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 items-center">
+        <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_0.8fr_auto] gap-2 items-center">
           <input
             type="text"
             placeholder="Sistema (ARCA, TAD…)"
@@ -115,6 +115,18 @@ function ClavesAccesoEditor({
               </a>
             )}
           </div>
+          <select
+            value={c.modulo ?? ""}
+            onChange={(e) => update(i, "modulo", e.target.value)}
+            title="Módulo — si se etiqueta, la clave también aparece dentro de ese módulo"
+            className="text-xs border border-gray-200 rounded-md px-2 py-2 focus:outline-none focus:border-bordo bg-white text-gray-600"
+          >
+            <option value="">General</option>
+            <option value="sueldos">Sueldos</option>
+            <option value="impuestos">Impuestos</option>
+            <option value="contable">Contable</option>
+            <option value="monotributo">Monotributo</option>
+          </select>
           <button
             type="button"
             onClick={() => remove(i)}

@@ -282,7 +282,7 @@ Aplicadas en producción:
 - `unificar_equipo.sql` — migra `equipo` a `liquidadoras` (mismos ids), repunta FKs, backfillea `equipo_modulos(modulo='sueldos')`, renombra `equipo` a `equipo_legacy`.
 - `fix_equipo_modulos_sueldos.sql` — corrige backfill anterior: `con_area_sueldos` bajó de 33 a 9 (correcto).
 - `cargar_seh_y_contable_ago2026.sql` — corrida por Giuliana el 24-ago vía Supabase SQL Editor (la sesión de Claude no tenía credenciales de escritura, ver nota en Contexto del cliente). Carga Seg. e Hig. para 22 clientes (desde `ESTATUS IMPUESTOS 2026.xlsx`, cruzado a mano contra `clientes`/`liquidadoras` reales) y completa el responsable de 10 clientes de Contable (desde `ESTATUS BALANCES .xlsx`). Los ~76 clientes de Contable que siguen sin responsable son balances 2026 todavía no cerrados — confirmado por Giuliana, no tocar.
-- `altas_nuevas_ago2026.sql` — corrida por Giuliana el 24-ago. Da de alta 11 clientes que aparecían en los Excel ESTATUS pero no existían en `clientes`. De los otros 24 CUIT que no matcheaban al principio: 14 eran clientes inactivos (bien, no tocar), 10 eran el CUIT del representante en vez del de la empresa (correcto — se usa para entrar a ARCA), salvo `3 AES SA` que tenía un typo real, corregido en el Excel de origen. `FUNDACION PAN Y ARTE` y `PAN Y ARTE SRL` quedaron marcados con ⚠ en `observaciones` por nombre casi idéntico, sin confirmar todavía si son dos entidades o un duplicado.
+- `altas_nuevas_ago2026.sql` — corrida por Giuliana el 24-ago. Da de alta 11 clientes que aparecían en los Excel ESTATUS pero no existían en `clientes`. De los otros 24 CUIT que no matcheaban al principio: 14 eran clientes inactivos (bien, no tocar), 10 eran el CUIT del representante en vez del de la empresa (correcto — se usa para entrar a ARCA), salvo `3 AES SA` que tenía un typo real, corregido en el Excel de origen. `FUNDACION PAN Y ARTE` y `PAN Y ARTE SRL` quedaron marcados con ⚠ en `observaciones` por nombre casi idéntico — Giuliana confirmó (24-ago) que son dos clientes reales distintos, no un duplicado. La nota ⚠ sigue en la base (cosmética, no se limpió).
 
 ---
 
@@ -310,20 +310,20 @@ Aplicadas en producción:
 - ✅ **Monotributo agregado a Panel General** (24-ago) — `vista_empresas` no tenía columna de Monotributo (causó la falsa alarma del "197 sin módulo" el 24-ago). Se agregó `responsable_monotributo` a la vista (`add_monotributo_a_vista_empresas.sql`) y a `PanelGeneralClient.tsx`/`NuevoClienteModal.tsx` (columna nueva + opción de servicio al dar de alta un cliente, con su color ámbar como el resto del módulo).
 
 ### Pendiente de funcionalidad
-- ⬜ Panel General: edición inline de datos de empresa, gestión de activaciones de servicios, sección "Claves fiscales" (claves por módulo, visibles desde la ficha del cliente en cada módulo)
+- ⬜ Panel General: edición inline de datos de empresa, gestión de activaciones de servicios (hoy toda edición de cliente sigue siendo solo desde `/empresas`, que filtra a clientes de Sueldos — un cliente que es solo de Impuestos/Contable/Monotributo no tiene ninguna forma de editar sus datos ni sus claves)
 - ⬜ Sync bidireccional Panel General ↔ módulos
-- ⬜ Alertas para módulos nuevos (hoy solo F.931 de Sueldos)
-- ⬜ Ajustes de diseño/interfaz (al final, después de cerrar el modelo de datos)
+- ⬜ Alertas para módulos nuevos (hoy solo F.931 de Sueldos) — Giuliana quiere revisar el flujo completo del sistema (general + cada módulo) antes de definir esto
+- ⬜ Ajustes de diseño/interfaz (al final, después de cerrar el modelo de datos) — Giuliana lo sigue trabajando por su cuenta
 
 ### Pendiente operativo
-- ⬜ Configurar SMTP propio en Supabase Auth (hoy da 429 con varios logins seguidos). Ir a Supabase Dashboard → Authentication → Emails → Custom SMTP: host `smtp.resend.com`, port 465, user `resend`, password = RESEND_API_KEY, sender `bos@kmaconsultores.com.ar`.
+- ⬜ ~~Configurar SMTP propio en Supabase Auth~~ — hecho por Giuliana (24-ago).
 
 ---
 
 ## Backlog de UX (feedback de Giuliana, sin implementar)
 
-- **Claves/accesos por módulo en la ficha maestra del cliente**: la ficha tiene que permitir cargar todas las claves del cliente (portales de Sueldos, Impuestos, etc.), etiquetadas por módulo. Una clave marcada "impuestos" tiene que aparecer en la ficha de ese cliente dentro del módulo Impuestos, no solo en la maestra.
-- **Alertas por configurar**: falta definir alertas para módulos nuevos — cuáles, para quién, con qué disparador.
+- **Claves/accesos por módulo — mitad hecha (24-ago)**: `ClaveAcceso` ahora tiene `modulo` (`src/types/index.ts`), editable desde `/empresas → Editar` (`ClavesAccesoEditor`, solo clientes de Sueldos hoy). Cada módulo (Impuestos/Contable/Monotributo) muestra, junto al nombre del cliente, un ícono de llave que abre un popover **de solo lectura** con las claves etiquetadas para ese módulo (`src/components/ClavesModuloPopover.tsx`). Faltan dos cosas: (1) editar desde dentro del módulo, no solo verlas — depende de que Panel General tenga edición de clientes (ítem de arriba); (2) cargar los datos reales — los ESTATUS casi no traían nada (solo 3 de 119 filas en Seg. e Hig. tenían usuario/clave, ya cargadas vía `claves_seh_ago2026.sql`) — el resto vive en Excels propios de cada liquidadora. Giuliana se lo va a pedir a Matías para juntarlos y que se importen cuando estén.
+- **Alertas por configurar**: falta definir alertas para módulos nuevos — cuáles, para quién, con qué disparador. Bloqueado hasta que Giuliana revise el flujo general del sistema.
 - **Ajustes de diseño/interfaz**: cambios visuales pendientes de precisar. Acordado que va al final, después de cerrar el modelo de datos y la paridad funcional entre módulos.
 
 ---

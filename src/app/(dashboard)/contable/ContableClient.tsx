@@ -7,6 +7,8 @@ import clsx from "clsx";
 import { updateBalance } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
+import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
+import type { ClaveAcceso } from "@/types";
 
 const ACCENT_CONTABLE = { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700" };
 
@@ -31,7 +33,7 @@ type Balance = {
   igj_presentacion: string;
   igj_tasa: string;
   observaciones: string | null;
-  clientes: { nombre: string; cuit: string } | null;
+  clientes: { nombre: string; cuit: string; claves_acceso: ClaveAcceso[] | null } | null;
   responsable: { id: string; nombre: string } | null;
   responsable2: { id: string; nombre: string } | null;
 };
@@ -359,9 +361,12 @@ export function ContableClient({
                 <tr key={b.id} className="hover:bg-emerald-50/30 transition-colors group">
                   {/* Cliente */}
                   <td className="px-6 py-2.5">
-                    <p className="text-[13px] font-medium text-gray-800 truncate max-w-[200px]">
-                      {b.clientes?.nombre ?? "—"}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-medium text-gray-800 truncate max-w-[200px]">
+                        {b.clientes?.nombre ?? "—"}
+                      </p>
+                      <ClavesModuloPopover claves={b.clientes?.claves_acceso} modulo="contable" />
+                    </div>
                   </td>
 
                   {/* Cierre */}

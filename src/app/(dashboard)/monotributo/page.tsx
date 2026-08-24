@@ -25,7 +25,7 @@ export default async function MonotributoPage({
   ] = await Promise.all([
     admin
       .from("servicios_cliente")
-      .select("cliente_id, responsable_id, clientes(id, nombre, cuit, tipo_contribuyente)")
+      .select("cliente_id, responsable_id, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso)")
       .eq("servicio", "monotributo")
       .eq("estado", true),
     admin

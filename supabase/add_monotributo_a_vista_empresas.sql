@@ -44,15 +44,15 @@ SELECT
   (SELECT e.nombre
    FROM servicios_cliente sc
    JOIN liquidadoras e ON e.id = sc.responsable_id
-   WHERE sc.cliente_id = c.id AND sc.servicio = 'monotributo' AND sc.subtipo = 'general'
+   WHERE sc.cliente_id = c.id AND sc.servicio = 'libros' AND sc.subtipo = 'general'
      AND sc.estado = true
-   LIMIT 1) AS responsable_monotributo,
+   LIMIT 1) AS responsable_libros,
   (SELECT e.nombre
    FROM servicios_cliente sc
    JOIN liquidadoras e ON e.id = sc.responsable_id
-   WHERE sc.cliente_id = c.id AND sc.servicio = 'libros' AND sc.subtipo = 'general'
+   WHERE sc.cliente_id = c.id AND sc.servicio = 'monotributo' AND sc.subtipo = 'general'
      AND sc.estado = true
-   LIMIT 1) AS responsable_libros
+   LIMIT 1) AS responsable_monotributo
 FROM clientes c;
 
 -- Verificación sugerida:

@@ -7,6 +7,8 @@ import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
+import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
+import type { ClaveAcceso } from "@/types";
 import { upsertImpuestoTarea } from "./actions";
 
 const ACCENT_IMPUESTOS = { dot: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-700" };
@@ -18,7 +20,7 @@ type Servicio = {
   subtipo: Subtipo;
   responsable_id: string | null;
   responsable_nombre: string | null;
-  clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string };
+  clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string; claves_acceso: ClaveAcceso[] | null };
 };
 
 type Tarea = {
@@ -379,9 +381,12 @@ export function ImpuestosClient({
                 <tr key={s.cliente_id} className="hover:bg-blue-50/30 transition-colors">
                   {/* Cliente */}
                   <td className="px-6 py-3">
-                    <p className="text-[13px] font-medium text-gray-800 leading-tight">
-                      {s.clientes?.nombre ?? "—"}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-[13px] font-medium text-gray-800 leading-tight">
+                        {s.clientes?.nombre ?? "—"}
+                      </p>
+                      <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="impuestos" />
+                    </div>
                     <p className="text-[11px] text-gray-400 mt-0.5 capitalize">
                       {s.clientes?.tipo_contribuyente ?? ""}
                     </p>
