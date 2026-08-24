@@ -14,6 +14,8 @@ Sistema interno de KMA Consultores para seguimiento de sueldos, impuestos, conta
 - No crear archivos de documentación extra a menos que se pida explícitamente.
 - No agregar comentarios al código salvo que el WHY sea no obvio.
 - No refactorizar código que no está en scope del pedido.
+- **Al arrancar una sesión, correr `git pull` antes de tocar código.** Tanto Giuliana como Matías pushean cambios en sesiones separadas — el 24-ago se detectó que el checkout local estaba 4 commits atrás de `origin/main` (dashboards/vencimientos/equipo por módulo + email con dominio propio, ya en producción). Trabajar sobre un checkout viejo puede terminar reconstruyendo algo que ya existe, o generando conflictos al pushear.
+- **Si hace falta escritura directa a Supabase (SQL, no a través de la app) y no hay `.env.local` con credenciales reales**: el sandbox de Claude Code reemplaza automáticamente por `[SENSITIVE]` cualquier credencial real que `vercel env pull` intente guardar en disco — no es un bug, no intentar esquivarlo. La vía que funciona: armar el SQL y pedirle al usuario que lo pegue en Supabase Dashboard → SQL Editor (mismo lugar de siempre para migraciones). Para lectura, `claude-in-chrome` contra la app en producción no tiene ese problema — pero ojo, la sesión de Chrome logueada puede estar en "Modo consulta" (no admin) aunque parezca la cuenta correcta.
 
 ---
 
@@ -122,7 +124,7 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
 | `/dashboard` | Avance por liquidadora + vencimientos F.931 |
 | `/empresas` | ABM de clientes de Sueldos |
 | `/vencimientos` | Calendario F.931 2026 |
-| `/productividad` | KPIs (admin only) |
+| `/productividad` | KPIs (admin only) — ahora con tabs a la productividad de los otros 3 módulos, ver abajo |
 
 ### Módulo Impuestos (color azul)
 | Ruta | Descripción |
@@ -279,6 +281,8 @@ Aplicadas en producción:
 - `add_asignaciones_servicio.sql` — tabla `asignaciones_servicio` (historial de reasignación para Impuestos/Monotributo, genérica por servicio+subtipo).
 - `unificar_equipo.sql` — migra `equipo` a `liquidadoras` (mismos ids), repunta FKs, backfillea `equipo_modulos(modulo='sueldos')`, renombra `equipo` a `equipo_legacy`.
 - `fix_equipo_modulos_sueldos.sql` — corrige backfill anterior: `con_area_sueldos` bajó de 33 a 9 (correcto).
+- `cargar_seh_y_contable_ago2026.sql` — corrida por Giuliana el 24-ago vía Supabase SQL Editor (la sesión de Claude no tenía credenciales de escritura, ver nota en Contexto del cliente). Carga Seg. e Hig. para 22 clientes (desde `ESTATUS IMPUESTOS 2026.xlsx`, cruzado a mano contra `clientes`/`liquidadoras` reales) y completa el responsable de 10 clientes de Contable (desde `ESTATUS BALANCES .xlsx`). Los ~76 clientes de Contable que siguen sin responsable son balances 2026 todavía no cerrados — confirmado por Giuliana, no tocar.
+- `altas_nuevas_ago2026.sql` — corrida por Giuliana el 24-ago. Da de alta 11 clientes que aparecían en los Excel ESTATUS pero no existían en `clientes`. De los otros 24 CUIT que no matcheaban al principio: 14 eran clientes inactivos (bien, no tocar), 10 eran el CUIT del representante en vez del de la empresa (correcto — se usa para entrar a ARCA), salvo `3 AES SA` que tenía un typo real, corregido en el Excel de origen. `FUNDACION PAN Y ARTE` y `PAN Y ARTE SRL` quedaron marcados con ⚠ en `observaciones` por nombre casi idéntico, sin confirmar todavía si son dos entidades o un duplicado.
 
 ---
 
@@ -300,24 +304,24 @@ Aplicadas en producción:
 - ✅ Padrón único de personas: `equipo` unificado con `liquidadoras`; `/liquidadoras` → `/equipo`
 - ✅ Fix: `/empresas` y `/seguimiento` filtran por `servicios_cliente(servicio='sueldos')` (antes mostraban todos los clientes)
 - ✅ Emails con dominio propio: `FROM = bos@kmaconsultores.com.ar`
+- ✅ Integración de los archivos ESTATUS (24-ago): Seg. e Hig. cargada para 22 clientes, responsable completado para 10 balances de Contable, 11 altas nuevas, 1 typo de CUIT corregido. Ver migraciones `cargar_seh_y_contable_ago2026.sql` / `altas_nuevas_ago2026.sql` arriba.
+- ✅ **Dashboard de productividad por módulo** (24-ago) — `/productividad` ahora tiene tabs Sueldos/Impuestos/Contable/Monotributo (`src/components/ProductividadTabs.tsx`). Impuestos y Monotributo: mes a mes, responsable resuelto vía `asignaciones_servicio` cuando hay historial (igual que `/seguimiento`), si no el actual de `servicios_cliente`. Contable: año a año porque `balances` es anual — un balance cuenta para los dos responsables si tiene `responsable_id` y `responsable2_id`. "A tiempo"/"Tarde": Impuestos usa el mismo vencimiento aproximado por subtipo que `/impuestos/vencimientos` (día del mes siguiente); Monotributo, día 20 del mismo mes; Contable no tiene fecha de cierre real del balance en el schema, así que en su lugar marca "vencidos sin cerrar" (hoy > fecha_cierre + 135 días y no está Finalizado).
 
 ### Pendiente de funcionalidad
 - ⬜ Panel General: edición inline de datos de empresa, gestión de activaciones de servicios, sección "Claves fiscales" (claves por módulo, visibles desde la ficha del cliente en cada módulo)
 - ⬜ Sync bidireccional Panel General ↔ módulos
-- ⬜ Dashboard de productividad por módulo (extender `/productividad` a Impuestos/Contable/Monotributo)
 - ⬜ Alertas para módulos nuevos (hoy solo F.931 de Sueldos)
 - ⬜ Ajustes de diseño/interfaz (al final, después de cerrar el modelo de datos)
+- ⬜ Selector de mes en `/impuestos/dashboard` y `/impuestos/vencimientos` no anda — el `<select>` tiene un `onChange` vacío (`(e) => { void e; }`), no navega al cambiar de mes. Bug preexistente de Matías, no tocado en esta sesión por estar fuera de scope.
 
 ### Pendiente operativo
 - ⬜ Configurar SMTP propio en Supabase Auth (hoy da 429 con varios logins seguidos). Ir a Supabase Dashboard → Authentication → Emails → Custom SMTP: host `smtp.resend.com`, port 465, user `resend`, password = RESEND_API_KEY, sender `bos@kmaconsultores.com.ar`.
-- ⬜ ~197 clientes en `clientes` sin ninguna fila en `servicios_cliente` — cargados fuera de la app antes de que existiera el modelo de módulos. No aparecen en ningún módulo. Hay que re-cargarlos desde Panel General (o script de import si Giuliana tiene el Excel de origen).
 
 ---
 
 ## Backlog de UX (feedback de Giuliana, sin implementar)
 
 - **Claves/accesos por módulo en la ficha maestra del cliente**: la ficha tiene que permitir cargar todas las claves del cliente (portales de Sueldos, Impuestos, etc.), etiquetadas por módulo. Una clave marcada "impuestos" tiene que aparecer en la ficha de ese cliente dentro del módulo Impuestos, no solo en la maestra.
-- **Dashboard de productividad por módulo**: cuánto gestiona cada empleado, desglosado por tipo (IVA/IIBB/SEH en Impuestos, análogo en los demás) — extender la idea de `/productividad` a los módulos nuevos.
 - **Alertas por configurar**: falta definir alertas para módulos nuevos — cuáles, para quién, con qué disparador.
 - **Ajustes de diseño/interfaz**: cambios visuales pendientes de precisar. Acordado que va al final, después de cerrar el modelo de datos y la paridad funcional entre módulos.
 

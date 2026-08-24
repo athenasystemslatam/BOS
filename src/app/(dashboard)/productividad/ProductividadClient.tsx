@@ -3,6 +3,7 @@
 import { useState } from "react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
+import { ProductividadTabs } from "@/components/ProductividadTabs";
 
 export interface FilaLiquidadora {
   id: string;
@@ -62,6 +63,7 @@ export function ProductividadClient({ filas }: {
 
   return (
     <div className="p-4 md:p-8">
+      <ProductividadTabs current="/productividad" />
       <div className="mb-6 md:mb-8">
         <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">Módulo Sueldos</p>
         <h1 className="text-2xl font-semibold text-gray-900 mt-1">Productividad</h1>
