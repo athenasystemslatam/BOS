@@ -70,7 +70,20 @@ const SECTIONS = [
   },
 ];
 
-export function Sidebar({ isAdmin, onClose }: { isAdmin: boolean; onClose?: () => void }) {
+function iniciales(nombre: string) {
+  const partes = nombre.trim().split(/\s+/);
+  return ((partes[0]?.[0] ?? "") + (partes[1]?.[0] ?? "")).toUpperCase();
+}
+
+export function Sidebar({
+  isAdmin,
+  nombre,
+  onClose,
+}: {
+  isAdmin: boolean;
+  nombre: string | null;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -145,6 +158,16 @@ export function Sidebar({ isAdmin, onClose }: { isAdmin: boolean; onClose?: () =
       </nav>
 
       <div className="mx-4 h-px bg-white/10 shrink-0" />
+
+      {/* Usuario logueado */}
+      {nombre && (
+        <div className="px-4 pt-4 flex items-center gap-2.5 shrink-0">
+          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <span className="text-white text-[11px] font-semibold">{iniciales(nombre)}</span>
+          </div>
+          <p className="text-white/80 text-[13px] font-medium truncate">{nombre}</p>
+        </div>
+      )}
 
       {/* Logout */}
       <div className="px-3 py-4 shrink-0">

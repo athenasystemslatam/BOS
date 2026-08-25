@@ -9,7 +9,7 @@ export default async function DashboardLayout({
   const yo = await getCurrentLiquidadora();
 
   return (
-    <NavWrapper isAdmin={yo?.isAdmin ?? false}>
+    <NavWrapper isAdmin={yo?.isAdmin ?? false} nombre={yo?.nombre ?? null}>
       {children}
     </NavWrapper>
   );
