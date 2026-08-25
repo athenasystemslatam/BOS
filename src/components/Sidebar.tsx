@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +16,8 @@ import {
   Receipt,
   BookOpen,
   FileText,
+  Moon,
+  Sun,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -86,6 +89,18 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [modoOscuro, setModoOscuro] = useState(false);
+
+  useEffect(() => {
+    setModoOscuro(localStorage.getItem("bos-modo-oscuro") === "true");
+  }, []);
+
+  const toggleModoOscuro = () => {
+    const nuevo = !modoOscuro;
+    setModoOscuro(nuevo);
+    localStorage.setItem("bos-modo-oscuro", String(nuevo));
+    // TODO: todavía no repinta la interfaz — solo guarda la preferencia.
+  };
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -165,7 +180,14 @@ export function Sidebar({
           <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
             <span className="text-white text-[11px] font-semibold">{iniciales(nombre)}</span>
           </div>
-          <p className="text-white/80 text-[13px] font-medium truncate">{nombre}</p>
+          <p className="text-white/80 text-[13px] font-medium truncate flex-1">{nombre}</p>
+          <button
+            onClick={toggleModoOscuro}
+            aria-label={modoOscuro ? "Activar modo claro" : "Activar modo oscuro"}
+            className="text-white/50 hover:text-white/90 p-1 shrink-0 transition-colors"
+          >
+            {modoOscuro ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
+          </button>
         </div>
       )}
 
