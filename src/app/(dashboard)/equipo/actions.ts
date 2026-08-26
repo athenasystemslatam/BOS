@@ -95,10 +95,12 @@ export async function crearLiquidadora(formData: FormData) {
 
   if (areas.length > 0) await setAreas(supabase, creada.id, areas);
 
-  revalidatePath("/equipo");
-  revalidatePath("/empresas");
-  revalidatePath("/dashboard");
-  revalidatePath("/panel-general");
+  // Revalida todo el sitio, no página por página: quién pertenece a qué
+  // área impacta en /impuestos, /contable, /monotributo y sus sub-páginas
+  // (equipo, dashboard, vencimientos), además de /empresas y /seguimiento.
+  // Listarlas una por una obliga a acordarse de sumar cada página nueva
+  // (ya pasó: esta función ni avisaba a los módulos).
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -148,12 +150,8 @@ export async function editarLiquidadora(formData: FormData) {
 
   await setAreas(supabase, id, areas);
 
-  revalidatePath("/equipo");
-  revalidatePath("/dashboard");
-  revalidatePath("/panel-general");
-  revalidatePath("/impuestos");
-  revalidatePath("/contable");
-  revalidatePath("/monotributo");
+  // Ídem crearLiquidadora: revalidar todo el sitio de una, no listar rutas.
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
