@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -89,9 +89,34 @@ export function Sidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [modoOscuro, setModoOscuro] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     setModoOscuro(localStorage.getItem("bos-modo-oscuro") === "true");
+  }, []);
+
+  // El propio <aside> tiene scroll (el menú entero no entra en pantallas
+  // chicas). Como cada clic recarga la página completa, el menú volvía a
+  // arrancar arriba — esto guarda dónde estaba desplazado y lo restaura.
+  // Una sola clave para todas las páginas: el menú es el mismo en todas.
+  useEffect(() => {
+    const el = asideRef.current;
+    if (!el) return;
+    const key = "bos-sidebar-scroll";
+
+    const guardado = sessionStorage.getItem(key);
+    if (guardado) {
+      const y = Number(guardado) || 0;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.scrollTop = y;
+        });
+      });
+    }
+
+    const onScroll = () => sessionStorage.setItem(key, String(el.scrollTop));
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
   const toggleModoOscuro = () => {
@@ -109,7 +134,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="w-52 bg-bordo flex flex-col h-screen sticky top-0 shrink-0 overflow-y-auto">
+    <aside ref={asideRef} className="w-52 bg-bordo flex flex-col h-screen sticky top-0 shrink-0 overflow-y-auto">
       {/* Logo */}
       <div className="px-5 pt-7 pb-5 shrink-0">
         <div className="flex items-center gap-3">
