@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 
@@ -14,6 +15,24 @@ export function NavWrapper({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Desde que el menú recarga la página entera (ver Sidebar.tsx, necesario
+  // para no mostrar datos viejos), el scroll siempre arranca arriba. Esto
+  // recuerda por dónde estabas parado en cada sección y lo restaura al
+  // volver — no toca nada de la caché de Next, es aparte.
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const key = `bos-scroll:${pathname}`;
+    const guardado = sessionStorage.getItem(key);
+    if (guardado) el.scrollTop = Number(guardado) || 0;
+
+    const onScroll = () => sessionStorage.setItem(key, String(el.scrollTop));
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [pathname]);
 
   return (
     <div className="flex h-screen bg-[#F5F5F5] overflow-hidden">
@@ -59,7 +78,7 @@ export function NavWrapper({
       </div>
 
       {/* Page content */}
-      <main className="flex-1 overflow-y-auto min-w-0 pt-14 md:pt-0">
+      <main ref={mainRef} className="flex-1 overflow-y-auto min-w-0 pt-14 md:pt-0">
         {children}
       </main>
     </div>
