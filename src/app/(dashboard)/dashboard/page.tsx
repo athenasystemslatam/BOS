@@ -2,7 +2,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente, Liquidadora, Tarea } from "@/types";
 import { getVencimientosGrupos, getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle } from "lucide-react";
-import Link from "next/link";
 import clsx from "clsx";
 import { MonthSelector } from "./MonthSelector";
 
@@ -134,9 +133,9 @@ export default async function DashboardPage({
           </div>
         </div>
         {!esMesActual && (
-          <Link href="/dashboard" className="text-[12px] text-bordo font-medium hover:underline shrink-0">
+          <a href="/dashboard" className="text-[12px] text-bordo font-medium hover:underline shrink-0">
             Mes actual
-          </Link>
+          </a>
         )}
       </div>
 
@@ -311,13 +310,13 @@ export default async function DashboardPage({
           </div>
 
           <div className="px-5 py-3 border-t border-gray-100">
-            <Link
+            <a
               href="/vencimientos"
               className="text-[11px] font-medium text-bordo hover:text-bordo-dark flex items-center gap-1.5 transition-colors"
             >
               <CalendarDays size={12} />
               Ver calendario completo 2026
-            </Link>
+            </a>
           </div>
         </div>
       </div>

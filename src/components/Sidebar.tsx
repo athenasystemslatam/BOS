@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -150,10 +149,15 @@ export function Sidebar({
                       pathname.startsWith(href) &&
                       !pathname.slice(href.length).startsWith("/"));
                   return (
-                    <Link
+                    // <a> normal a propósito, no <Link> de Next: recarga la
+                    // página entera en cada clic del menú. Es la única forma
+                    // que garantiza traer los datos frescos del servidor —
+                    // revalidatePath + staleTimes en 0 + prefetch apagado no
+                    // alcanzaron para evitar que quedara una copia vieja en
+                    // memoria al navegar "por dentro" entre secciones.
+                    <a
                       key={href}
                       href={href}
-                      prefetch={false}
                       onClick={onClose}
                       className={clsx(
                         "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium transition-all duration-150",
@@ -164,7 +168,7 @@ export function Sidebar({
                     >
                       <Icon size={14} strokeWidth={isActive ? 2.25 : 1.75} className="shrink-0" />
                       {label}
-                    </Link>
+                    </a>
                   );
                 })}
               </div>

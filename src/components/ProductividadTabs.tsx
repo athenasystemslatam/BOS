@@ -1,4 +1,3 @@
-import Link from "next/link";
 import clsx from "clsx";
 
 const TABS = [
@@ -11,8 +10,10 @@ const TABS = [
 export function ProductividadTabs({ current }: { current: (typeof TABS)[number]["href"] }) {
   return (
     <div className="flex gap-1 border-b border-gray-100 mb-6 -mt-1">
+      {/* <a> normal, no <Link>: mismo motivo que en Sidebar — garantiza
+          datos frescos del servidor en cada clic. */}
       {TABS.map((tab) => (
-        <Link
+        <a
           key={tab.href}
           href={tab.href}
           className={clsx(
@@ -23,7 +24,7 @@ export function ProductividadTabs({ current }: { current: (typeof TABS)[number][
           )}
         >
           {tab.label}
-        </Link>
+        </a>
       ))}
     </div>
   );
