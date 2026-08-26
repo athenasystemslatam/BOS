@@ -60,9 +60,9 @@ export async function crearClienteConServicios(formData: FormData) {
     if (svcError) return { error: svcError.message };
   }
 
-  revalidatePath("/panel-general");
-  revalidatePath("/empresas");
-  revalidatePath("/seguimiento");
+  // Un cliente puede tener servicios de varios módulos a la vez (sueldos,
+  // impuestos, contable, monotributo) — revalidar todo el sitio de una.
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -83,7 +83,7 @@ export async function darDeBajaServicio(clienteId: string, servicio: string, sub
 
   if (error) return { error: error.message };
 
-  revalidatePath("/panel-general");
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -102,8 +102,6 @@ export async function darDeBajaCliente(clienteId: string) {
 
   if (error) return { error: error.message };
 
-  revalidatePath("/panel-general");
-  revalidatePath("/empresas");
-  revalidatePath("/seguimiento");
+  revalidatePath("/", "layout");
   return { success: true };
 }

@@ -20,7 +20,9 @@ export async function updateBalance(
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/contable");
+  // Igual que en Equipo: revalidar todo el sitio de una, no solo /contable
+  // (dejaba afuera /contable/dashboard, /contable/vencimientos, etc.).
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
@@ -43,6 +45,6 @@ export async function crearBalance(data: {
     estado: data.responsable_id ? "asignado" : "sin_asignar",
   });
   if (error) return { error: error.message };
-  revalidatePath("/contable");
+  revalidatePath("/", "layout");
   return { ok: true };
 }

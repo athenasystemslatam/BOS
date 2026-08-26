@@ -498,7 +498,6 @@ export function ImpuestosClient({
         equipo={equipoImpuestos}
         responsableActual={reasignando.responsable_nombre}
         creadoPor={creadoPor}
-        revalidatePaths={["/impuestos", "/panel-general"]}
         onClose={() => setReasignando(null)}
       />
     )}

@@ -35,6 +35,6 @@ export async function upsertImpuestoTarea(
     { onConflict: "cliente_id,subtipo,anio,mes" }
   );
   if (error) return { error: error.message };
-  revalidatePath("/impuestos");
+  revalidatePath("/", "layout");
   return { ok: true };
 }

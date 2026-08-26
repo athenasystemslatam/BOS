@@ -37,8 +37,7 @@ export async function crearAsignacionServicio(
   desdeAnio: number,
   desdeMes: number,
   motivo: string | null,
-  creadoPor: string | null,
-  revalidatePaths: string[]
+  creadoPor: string | null
 ) {
   try {
     await requireAdmin();
@@ -89,7 +88,10 @@ export async function crearAsignacionServicio(
     }
   }
 
-  for (const path of revalidatePaths) revalidatePath(path);
+  // Igual que en Equipo: revalidar todo el sitio de una, no listar rutas
+  // (esta lista se recibía como parámetro y se quedaba corta apenas se
+  // agregaba una sub-página nueva a un módulo).
+  revalidatePath("/", "layout");
   return { success: true };
 }
 

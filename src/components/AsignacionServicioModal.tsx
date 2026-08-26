@@ -23,7 +23,6 @@ export function AsignacionServicioModal({
   equipo,
   responsableActual,
   creadoPor,
-  revalidatePaths,
   onClose,
 }: {
   clienteId: string;
@@ -33,7 +32,6 @@ export function AsignacionServicioModal({
   equipo: { id: string; nombre: string }[];
   responsableActual: string | null;
   creadoPor: string | null;
-  revalidatePaths: string[];
   onClose: () => void;
 }) {
   const hoy = new Date();
@@ -56,7 +54,7 @@ export function AsignacionServicioModal({
     setError("");
     startTransition(async () => {
       const res = await crearAsignacionServicio(
-        clienteId, servicio, subtipo, nuevoResp, desdeAnio, desdeMes, motivo || null, creadoPor, revalidatePaths
+        clienteId, servicio, subtipo, nuevoResp, desdeAnio, desdeMes, motivo || null, creadoPor
       );
       if (res.error) { setError(res.error); return; }
       const nuevo = await getAsignacionesServicio(clienteId, servicio, subtipo);

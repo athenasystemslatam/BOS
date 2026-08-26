@@ -37,6 +37,6 @@ export async function upsertMonotributoTarea(
     { onConflict: "cliente_id,anio,mes" }
   );
   if (error) return { error: error.message };
-  revalidatePath("/monotributo");
+  revalidatePath("/", "layout");
   return { ok: true };
 }

@@ -87,10 +87,7 @@ export async function crearEmpresa(formData: FormData) {
     .from("servicios_cliente")
     .insert({ cliente_id: cliente.id, servicio: "sueldos", subtipo: "general", estado: true });
 
-  revalidatePath("/empresas");
-  revalidatePath("/dashboard");
-  revalidatePath("/seguimiento");
-  revalidatePath("/panel-general");
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -178,9 +175,7 @@ export async function editarEmpresa(formData: FormData) {
     return { error: error.message };
   }
 
-  revalidatePath("/empresas");
-  revalidatePath("/dashboard");
-  revalidatePath("/seguimiento");
+  revalidatePath("/", "layout");
   return { success: true };
 }
 
@@ -245,7 +240,7 @@ export async function crearAsignacion(
     }
   }
 
-  revalidatePath("/empresas");
-  revalidatePath("/seguimiento");
+  // Igual que en Equipo: revalidar todo el sitio de una, no listar rutas.
+  revalidatePath("/", "layout");
   return { success: true };
 }

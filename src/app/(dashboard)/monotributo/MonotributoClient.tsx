@@ -601,7 +601,6 @@ export function MonotributoClient({
         equipo={equipoMonotributo}
         responsableActual={reasignando.responsable_nombre}
         creadoPor={creadoPor}
-        revalidatePaths={["/monotributo", "/panel-general"]}
         onClose={() => setReasignando(null)}
       />
     )}
