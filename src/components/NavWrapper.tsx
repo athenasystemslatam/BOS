@@ -26,8 +26,19 @@ export function NavWrapper({
     const el = mainRef.current;
     if (!el) return;
     const key = `bos-scroll:${pathname}`;
+
     const guardado = sessionStorage.getItem(key);
-    if (guardado) el.scrollTop = Number(guardado) || 0;
+    if (guardado) {
+      const y = Number(guardado) || 0;
+      // Dos rAF en vez de fijarlo ya: recién montada, la página puede
+      // seguir acomodando su alto real (fuentes, tablas grandes) — si
+      // fijamos el scroll demasiado pronto, ese reacomodo lo vuelve a 0.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.scrollTop = y;
+        });
+      });
+    }
 
     const onScroll = () => sessionStorage.setItem(key, String(el.scrollTop));
     el.addEventListener("scroll", onScroll, { passive: true });
