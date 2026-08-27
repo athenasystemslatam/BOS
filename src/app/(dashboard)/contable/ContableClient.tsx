@@ -392,7 +392,7 @@ export function ContableClient({
                           value={b.estado}
                           onChange={(e) => update(b.id, { estado: e.target.value })}
                           className={clsx(
-                            "appearance-none text-[11px] font-medium rounded-full px-2.5 py-1 pr-5 border-0 focus:outline-none focus:ring-1 focus:ring-emerald-300 cursor-pointer",
+                            "appearance-none text-[11px] font-medium rounded-full px-2.5 py-1 pr-4 border-0 focus:outline-none focus:ring-1 focus:ring-emerald-300 cursor-pointer",
                             estadoInfo.cls
                           )}
                         >
@@ -400,7 +400,7 @@ export function ContableClient({
                             <option key={v} value={v}>{label}</option>
                           ))}
                         </select>
-                        <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                        <ChevronDown size={10} className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
                       </div>
                     ) : (
                       <span className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", estadoInfo.cls)}>
@@ -462,7 +462,7 @@ export function ContableClient({
                         {!b.responsable2_id && !b.responsable2 && (
                           <button
                             onClick={() => patch(b.id, { responsable2_id: "" })}
-                            className="text-[11px] text-gray-300 hover:text-gray-500 text-left invisible group-hover:visible"
+                            className="text-[11px] text-gray-300 hover:text-gray-500 text-left"
                           >
                             + resp. 2
                           </button>
