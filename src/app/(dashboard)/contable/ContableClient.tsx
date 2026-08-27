@@ -388,19 +388,22 @@ export function ContableClient({
                   <td className="px-3 py-2.5">
                     {puedeEditar ? (
                       <div className="relative inline-block">
+                        <span className={clsx(
+                          "flex items-center gap-1 text-[11px] font-medium rounded-full px-2.5 py-1",
+                          estadoInfo.cls
+                        )}>
+                          {estadoInfo.label}
+                          <ChevronDown size={10} className="opacity-50 shrink-0" />
+                        </span>
                         <select
                           value={b.estado}
                           onChange={(e) => update(b.id, { estado: e.target.value })}
-                          className={clsx(
-                            "appearance-none text-[11px] font-medium rounded-full px-2.5 py-1 pr-4 border-0 focus:outline-none focus:ring-1 focus:ring-emerald-300 cursor-pointer",
-                            estadoInfo.cls
-                          )}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full"
                         >
                           {Object.entries(ESTADO_BALANCE).map(([v, { label }]) => (
                             <option key={v} value={v}>{label}</option>
                           ))}
                         </select>
-                        <ChevronDown size={10} className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
                       </div>
                     ) : (
                       <span className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", estadoInfo.cls)}>
