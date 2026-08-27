@@ -387,7 +387,7 @@ export function ContableClient({
                   {/* Estado */}
                   <td className="px-3 py-2.5">
                     {puedeEditar ? (
-                      <div className="relative">
+                      <div className="relative inline-block">
                         <select
                           value={b.estado}
                           onChange={(e) => update(b.id, { estado: e.target.value })}
