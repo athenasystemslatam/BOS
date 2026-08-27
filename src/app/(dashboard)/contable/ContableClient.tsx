@@ -389,7 +389,7 @@ export function ContableClient({
                     {puedeEditar ? (
                       <div className="relative inline-block">
                         <span className={clsx(
-                          "flex items-center gap-1 text-[11px] font-medium rounded-full px-2.5 py-1",
+                          "flex items-center gap-0.5 text-[11px] font-medium rounded-full pl-2.5 pr-1.5 py-1",
                           estadoInfo.cls
                         )}>
                           {estadoInfo.label}
