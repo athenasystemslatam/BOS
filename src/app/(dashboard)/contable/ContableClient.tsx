@@ -462,7 +462,7 @@ export function ContableClient({
                         {!b.responsable2_id && !b.responsable2 && (
                           <button
                             onClick={() => patch(b.id, { responsable2_id: "" })}
-                            className="text-[11px] text-gray-300 hover:text-gray-500 text-left hidden group-hover:block"
+                            className="text-[11px] text-gray-300 hover:text-gray-500 text-left invisible group-hover:visible"
                           >
                             + resp. 2
                           </button>
