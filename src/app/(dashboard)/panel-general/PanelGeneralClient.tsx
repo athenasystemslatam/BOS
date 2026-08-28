@@ -241,24 +241,7 @@ export function PanelGeneralClient({
             {/* Tabla desktop */}
             <div className="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto pb-2">
-                <table className="w-full min-w-[900px] text-[13px] whitespace-nowrap">
-                  {/* Anchos fijos por columna: el encabezado combina celdas
-                      entre filas y columnas (rowSpan/colSpan), y sin esto el
-                      navegador tiene que resolver esas combinaciones contra
-                      el contenido de cada fila — eso es lo que causaba el
-                      reacomodo visible al entrar a la página. */}
-                  <colgroup>
-                    <col style={{ width: 200 }} />
-                    <col style={{ width: 130 }} />
-                    <col style={{ width: 70 }} />
-                    <col style={{ width: 70 }} />
-                    <col style={{ width: 90 }} />
-                    <col style={{ width: 130 }} />
-                    <col style={{ width: 130 }} />
-                    <col style={{ width: 130 }} />
-                    <col style={{ width: 90 }} />
-                    {isAdmin && <col style={{ width: 130 }} />}
-                  </colgroup>
+                <table className="w-full min-w-[900px] text-[13px]">
                   <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
                         también la fila 2 (no tienen nada más que agregar debajo) */}
