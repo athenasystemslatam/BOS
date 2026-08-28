@@ -250,9 +250,9 @@ export function PanelGeneralClient({
                   <colgroup>
                     <col className="w-[340px]" />
                     <col className="w-[170px]" />
-                    <col className="w-[90px]" />
-                    <col className="w-[90px]" />
-                    <col className="w-[130px]" />
+                    <col className="w-[170px]" />
+                    <col className="w-[170px]" />
+                    <col className="w-[170px]" />
                     <col className="w-[170px]" />
                     <col className="w-[170px]" />
                     <col className="w-[170px]" />
@@ -306,7 +306,6 @@ export function PanelGeneralClient({
                             key={key}
                             className={clsx(
                               "px-3 pb-2.5 pt-1.5 text-center font-semibold text-[10px] tracking-widest border-b-2 border-blue-200 text-blue-700",
-                              key === "impuestos:seh" ? "min-w-[120px]" : "min-w-[76px]",
                               s.sub
                             )}
                           >
