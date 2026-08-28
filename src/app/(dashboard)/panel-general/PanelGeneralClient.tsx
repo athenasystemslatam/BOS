@@ -241,7 +241,7 @@ export function PanelGeneralClient({
 
             {/* Tabla desktop */}
             <div className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="flex-1 min-h-0 overflow-auto">
+              <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
                 <table className="w-full min-w-[900px] text-[13px]">
                   <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
