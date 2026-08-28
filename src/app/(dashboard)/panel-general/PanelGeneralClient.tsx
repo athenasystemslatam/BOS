@@ -246,7 +246,7 @@ export function PanelGeneralClient({
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
                         también la fila 2 (no tienen nada más que agregar debajo) */}
                     <tr>
-                      <th rowSpan={2} className="px-5 py-2.5 text-left font-medium align-bottom pb-3 bg-gray-50 min-w-[220px]">
+                      <th rowSpan={2} className="px-5 py-2.5 text-left font-medium align-bottom pb-3 bg-gray-50">
                         Empresa
                       </th>
                       {COLS.filter((c) => c.areaSpan > 0).map(({ key, area, areaSpan }) => {
@@ -259,7 +259,7 @@ export function PanelGeneralClient({
                             rowSpan={soloUnaFila ? 2 : 1}
                             className={clsx(
                               "px-3 pt-2.5 pb-1.5 text-center font-semibold text-[10px] tracking-widest border-b-2",
-                              soloUnaFila && "align-middle min-w-[130px]",
+                              soloUnaFila && "align-middle",
                               s.header,
                               area === "SUELDOS"   && "border-bordo/30",
                               area === "IMPUESTOS"  && "border-blue-200",
@@ -272,11 +272,11 @@ export function PanelGeneralClient({
                           </th>
                         );
                       })}
-                      <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3 bg-gray-50 min-w-[90px]">
+                      <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3 bg-gray-50">
                         Estado
                       </th>
                       {isAdmin && (
-                        <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3 bg-gray-50 min-w-[130px]">
+                        <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3 bg-gray-50">
                           Acciones
                         </th>
                       )}
