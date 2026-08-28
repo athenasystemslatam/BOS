@@ -109,9 +109,9 @@ export function PanelGeneralClient({
 
   return (
     <>
-      <div className="p-4 md:p-8">
+      <div className="flex flex-col h-full p-4 md:p-8">
         {/* Header */}
-        <div className="mb-6 md:mb-8 flex items-start justify-between">
+        <div className="mb-6 md:mb-8 flex items-start justify-between shrink-0">
           <div>
             <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">KMA Consultores</p>
             <h1 className="text-2xl font-semibold text-gray-900 mt-1">Panel General</h1>
@@ -136,7 +136,7 @@ export function PanelGeneralClient({
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4 shrink-0">
           <div className="flex flex-wrap items-end gap-3 md:gap-4">
             <div className="flex-1 min-w-[200px]">
               <label className="text-xs text-gray-500 font-medium block mb-1">Buscar empresa</label>
@@ -170,11 +170,12 @@ export function PanelGeneralClient({
         </div>
 
         {actionError && (
-          <div className="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+          <div className="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 shrink-0">
             {actionError}
           </div>
         )}
 
+        <div className="flex-1 min-h-0">
         {filtradas.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-6 py-16 text-center">
             <p className="text-gray-400 text-sm">
@@ -239,8 +240,8 @@ export function PanelGeneralClient({
             </div>
 
             {/* Tabla desktop */}
-            <div className="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto pb-2">
+            <div className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-auto">
                 <table className="w-full min-w-[900px] text-[13px]">
                   <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
@@ -424,6 +425,7 @@ export function PanelGeneralClient({
             </div>
           </>
         )}
+        </div>
       </div>
 
       {creando && (
