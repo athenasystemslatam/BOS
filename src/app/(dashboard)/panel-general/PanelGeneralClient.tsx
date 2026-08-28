@@ -259,11 +259,10 @@ export function PanelGeneralClient({
                             colSpan={areaSpan}
                             rowSpan={soloUnaFila ? 2 : 1}
                             className={clsx(
-                              "px-3 text-center font-semibold text-[10px] tracking-widest border-b-2",
-                              soloUnaFila ? "align-middle py-2" : "pt-2.5 pb-1.5",
+                              "px-3 text-center font-semibold text-[10px] tracking-widest",
+                              soloUnaFila ? "align-middle py-2 border-b-2" : "pt-2.5 pb-1.5",
                               s.header,
                               area === "SUELDOS"   && "border-bordo/30",
-                              area === "IMPUESTOS"  && "border-blue-200",
                               area === "CONTABLE"   && "border-emerald-200",
                               area === "MONOTRIBUTO" && "border-amber-200",
                               area === "LIBROS"     && "border-violet-200",
@@ -287,7 +286,7 @@ export function PanelGeneralClient({
                       {COLS.filter((c) => c.impuestos).map(({ key, subLabel, area }) => {
                         const s = AREA_STYLE[area];
                         return (
-                          <th key={key} className={clsx("px-3 pb-2.5 pt-1.5 text-center font-semibold min-w-[76px]", s.sub)}>
+                          <th key={key} className={clsx("px-3 pb-2.5 pt-1.5 text-center font-semibold min-w-[76px] border-b-2 border-blue-200", s.sub)}>
                             {subLabel}
                           </th>
                         );
