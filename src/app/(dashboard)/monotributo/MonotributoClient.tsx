@@ -300,10 +300,10 @@ export function MonotributoClient({
       {/* Table */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="overflow-x-auto pb-2">
-        <table className="w-full text-sm whitespace-nowrap">
+        <table className="w-full text-sm whitespace-nowrap table-fixed">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3">
+              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-64">
                 Cliente
               </th>
               <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-24">
@@ -312,19 +312,19 @@ export function MonotributoClient({
               <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-32">
                 Responsable
               </th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-32">
+              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-36">
                 Cuota
               </th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-36">
+              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-44">
                 Fecha pago
               </th>
               <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-44">
                 Recategorización
               </th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-32">
+              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-40">
                 Deuda $
               </th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-24">
+              <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3 w-28">
                 Aviso
               </th>
               <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-4 py-3">
@@ -353,7 +353,7 @@ export function MonotributoClient({
                   {/* Cliente */}
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-[13px] font-medium text-gray-800 leading-tight">
+                      <p className="text-[13px] font-medium text-gray-800 leading-tight truncate" title={s.clientes?.nombre}>
                         {s.clientes?.nombre ?? "—"}
                       </p>
                       <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="monotributo" />
