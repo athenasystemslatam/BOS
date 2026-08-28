@@ -259,7 +259,8 @@ export function PanelGeneralClient({
                             colSpan={areaSpan}
                             rowSpan={soloUnaFila ? 2 : 1}
                             className={clsx(
-                              "px-3 pt-2.5 pb-1.5 text-center font-semibold text-[10px] tracking-widest border-b-2 align-top",
+                              "px-3 text-center font-semibold text-[10px] tracking-widest border-b-2",
+                              soloUnaFila ? "align-middle py-2" : "pt-2.5 pb-1.5",
                               s.header,
                               area === "SUELDOS"   && "border-bordo/30",
                               area === "IMPUESTOS"  && "border-blue-200",
