@@ -346,7 +346,7 @@ export function ImpuestosClient({
       {/* Table */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="overflow-x-auto pb-2">
-        <table className="w-full text-sm whitespace-nowrap">
+        <table className="w-full text-sm whitespace-nowrap table-fixed">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-72">
@@ -382,7 +382,7 @@ export function ImpuestosClient({
                   {/* Cliente */}
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-[13px] font-medium text-gray-800 leading-tight">
+                      <p className="text-[13px] font-medium text-gray-800 leading-tight truncate" title={s.clientes?.nombre}>
                         {s.clientes?.nombre ?? "—"}
                       </p>
                       <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="impuestos" />
@@ -394,15 +394,15 @@ export function ImpuestosClient({
 
                   {/* Responsable */}
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[12px] text-gray-600">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[12px] text-gray-600 truncate">
                         {s.responsable_nombre ?? <span className="text-gray-300">—</span>}
                       </span>
                       {isAdmin && (
                         <button
                           onClick={() => setReasignando(s)}
                           title="Ver historial / reasignar"
-                          className="text-gray-300 hover:text-blue-600 transition-colors"
+                          className="text-gray-300 hover:text-blue-600 transition-colors shrink-0"
                         >
                           <History size={13} />
                         </button>
