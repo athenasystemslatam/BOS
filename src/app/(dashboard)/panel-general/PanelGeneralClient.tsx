@@ -242,7 +242,23 @@ export function PanelGeneralClient({
             {/* Tabla desktop */}
             <div className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
-                <table className="w-full min-w-[900px] text-[13px]">
+                <table className="w-full min-w-[900px] text-[13px] table-fixed">
+                  {/* Ancho fijo por columna: sin esto, "Empresa" (y las demás)
+                      se agrandan a medida que el navegador va leyendo los
+                      nombres de las 293 filas, lo que se ve como un salto
+                      horizontal del encabezado al cargar. */}
+                  <colgroup>
+                    <col className="w-[340px]" />
+                    <col className="w-[170px]" />
+                    <col className="w-[90px]" />
+                    <col className="w-[90px]" />
+                    <col className="w-[130px]" />
+                    <col className="w-[170px]" />
+                    <col className="w-[170px]" />
+                    <col className="w-[170px]" />
+                    <col className="w-[100px]" />
+                    {isAdmin && <col className="w-[150px]" />}
+                  </colgroup>
                   <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
                         también la fila 2 (no tienen nada más que agregar debajo) */}
@@ -311,7 +327,7 @@ export function PanelGeneralClient({
                         <tr key={empresa.id} className="hover:bg-gray-50/60 transition-colors group">
                           {/* Empresa */}
                           <td className="px-5 py-3.5">
-                            <p className="font-medium text-gray-900 whitespace-nowrap">{empresa.nombre}</p>
+                            <p className="font-medium text-gray-900 truncate" title={empresa.nombre}>{empresa.nombre}</p>
                             <p className="text-[11px] text-gray-400 font-mono mt-0.5">
                               {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                             </p>
@@ -336,13 +352,13 @@ export function PanelGeneralClient({
                             return (
                               <td key={key} className="px-3 py-3.5 text-center">
                                 {warning ? (
-                                  <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 whitespace-nowrap">
-                                    <AlertTriangle size={11} />
-                                    Falta asignar en Sueldos
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-amber-600">
+                                    <AlertTriangle size={11} className="shrink-0" />
+                                    <span className="truncate">Falta asignar en Sueldos</span>
                                   </span>
                                 ) : tieneServicio ? (
-                                  <div className="inline-flex items-center gap-1.5 group/cell">
-                                    <span className="text-gray-700 whitespace-nowrap">
+                                  <div className="inline-flex items-center gap-1.5 group/cell max-w-full">
+                                    <span className="text-gray-700 truncate" title={nombre ?? undefined}>
                                       {nombre ?? <span className="text-gray-300">Sin responsable</span>}
                                     </span>
                                     {isAdmin && empresa.estado === "activo" && (
