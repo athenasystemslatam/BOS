@@ -286,7 +286,7 @@ export function PanelGeneralClient({
                       {COLS.filter((c) => c.impuestos).map(({ key, subLabel, area }) => {
                         const s = AREA_STYLE[area];
                         return (
-                          <th key={key} className={clsx("px-3 pb-2.5 pt-1.5 text-center font-semibold", s.sub)}>
+                          <th key={key} className={clsx("px-3 pb-2.5 pt-1.5 text-center font-semibold min-w-[76px]", s.sub)}>
                             {subLabel}
                           </th>
                         );
