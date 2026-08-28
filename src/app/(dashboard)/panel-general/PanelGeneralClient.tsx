@@ -243,54 +243,54 @@ export function PanelGeneralClient({
               <div className="overflow-x-auto pb-2">
                 <table className="w-full min-w-[900px] text-[13px]">
                   <thead className="bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
-                    {/* Fila 1: "Responsable" — una sola vez por columna, combinado
-                        en las áreas de un solo servicio (no hace falta repetirlo) */}
+                    {/* Fila 1: nombre del área — las de un solo servicio ocupan
+                        también la fila 2 (no tienen nada más que agregar debajo) */}
                     <tr>
-                      <th rowSpan={3} className="px-5 py-2.5 text-left font-medium align-middle bg-gray-50">
+                      <th rowSpan={2} className="px-5 py-2.5 text-left font-medium align-bottom pb-3 bg-gray-50">
                         Empresa
                       </th>
-                      <th rowSpan={3} className={clsx("px-3 py-2.5 text-center font-medium align-middle", AREA_STYLE.SUELDOS.sub)}>
-                        Responsable
-                      </th>
-                      <th colSpan={3} className={clsx("px-3 pt-2.5 pb-1.5 text-center font-medium", AREA_STYLE.IMPUESTOS.sub)}>
-                        Responsable
-                      </th>
-                      <th rowSpan={3} className={clsx("px-3 py-2.5 text-center font-medium align-middle", AREA_STYLE.CONTABLE.sub)}>
-                        Responsable
-                      </th>
-                      <th rowSpan={3} className={clsx("px-3 py-2.5 text-center font-medium align-middle", AREA_STYLE.MONOTRIBUTO.sub)}>
-                        Responsable
-                      </th>
-                      <th rowSpan={3} className={clsx("px-3 py-2.5 text-center font-medium align-middle", AREA_STYLE.LIBROS.sub)}>
-                        Responsable
-                      </th>
-                      <th rowSpan={3} className="px-4 py-2.5 text-center font-medium align-middle bg-gray-50">
+                      {COLS.filter((c) => c.areaSpan > 0).map(({ key, area, areaSpan }) => {
+                        const s = AREA_STYLE[area];
+                        const soloUnaFila = area !== "IMPUESTOS";
+                        return (
+                          <th
+                            key={key}
+                            colSpan={areaSpan}
+                            rowSpan={soloUnaFila ? 2 : 1}
+                            className={clsx(
+                              "px-3 pt-2.5 pb-1.5 text-center font-semibold text-[10px] tracking-widest border-b-2",
+                              soloUnaFila && "align-middle",
+                              s.header,
+                              area === "SUELDOS"   && "border-bordo/30",
+                              area === "IMPUESTOS"  && "border-blue-200",
+                              area === "CONTABLE"   && "border-emerald-200",
+                              area === "MONOTRIBUTO" && "border-amber-200",
+                              area === "LIBROS"     && "border-violet-200",
+                            )}
+                          >
+                            {area}
+                          </th>
+                        );
+                      })}
+                      <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3 bg-gray-50">
                         Estado
                       </th>
                       {isAdmin && (
-                        <th rowSpan={3} className="px-4 py-2.5 text-center font-medium align-middle bg-gray-50">
+                        <th rowSpan={2} className="px-4 py-2.5 text-center font-medium align-bottom pb-3 bg-gray-50">
                           Acciones
                         </th>
                       )}
                     </tr>
-                    {/* Fila 2: nombre del área — solo Impuestos necesita fila propia,
-                        las de un solo servicio ya quedaron resueltas en la fila 1 */}
+                    {/* Fila 2: solo Impuestos, con sus 3 tipos */}
                     <tr>
-                      <th colSpan={3} className={clsx("px-3 pt-1.5 pb-1.5 text-center font-semibold text-[10px] tracking-widest border-b-2 border-blue-200", AREA_STYLE.IMPUESTOS.header)}>
-                        IMPUESTOS
-                      </th>
-                    </tr>
-                    {/* Fila 3: los 3 tipos de impuesto */}
-                    <tr>
-                      <th className={clsx("px-3 pb-2.5 pt-1.5 text-center font-semibold text-[10px] tracking-widest", AREA_STYLE.IMPUESTOS.sub)}>
-                        IVA
-                      </th>
-                      <th className={clsx("px-3 pb-2.5 pt-1.5 text-center font-semibold text-[10px] tracking-widest", AREA_STYLE.IMPUESTOS.sub)}>
-                        IIBB
-                      </th>
-                      <th className={clsx("px-3 pb-2.5 pt-1.5 text-center font-semibold text-[10px] tracking-widest", AREA_STYLE.IMPUESTOS.sub)}>
-                        Seg. e Hig.
-                      </th>
+                      {COLS.filter((c) => c.impuestos).map(({ key, subLabel, area }) => {
+                        const s = AREA_STYLE[area];
+                        return (
+                          <th key={key} className={clsx("px-3 pb-2.5 pt-1.5 text-center font-semibold", s.sub)}>
+                            {subLabel}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
 
