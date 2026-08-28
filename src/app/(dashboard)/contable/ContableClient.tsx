@@ -312,32 +312,32 @@ export function ContableClient({
       {/* Table */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="overflow-x-auto pb-2">
-        <table className="w-full text-sm whitespace-nowrap">
+        <table className="w-full text-sm whitespace-nowrap table-fixed">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               {/* Group 1: cliente + fechas */}
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Cierre</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">VTO Bal.</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">VTO 855</th>
+              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">Cierre</th>
+              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">VTO Bal.</th>
+              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">VTO 855</th>
               {/* Group 2: estado */}
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Estado</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-8">%</th>
+              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-16">%</th>
               {/* Group 3: responsables */}
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Responsable</th>
+              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Responsable</th>
               {/* Group 4: info */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">E1</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">E2</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">E3</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Rec.</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">E1</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">E2</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">E3</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">Rec.</th>
               {/* Group 5: formularios */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">EECC</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">855</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">F899</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">F713</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">F657</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">IGJ</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Tasa</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-28">EECC</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">855</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F899</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F713</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F657</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">IGJ</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">Tasa</th>
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Obs.</th>
             </tr>
           </thead>
