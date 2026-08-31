@@ -84,7 +84,7 @@ export function LiquidadorasClient({
           ) : (
             <div className="overflow-auto max-h-[60vh] [scrollbar-gutter:stable]">
             <table className="w-full min-w-[860px] whitespace-nowrap">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-100">
                 <tr className="text-xs text-gray-400 uppercase tracking-wide">
                   <th className="px-6 py-3 text-left font-medium">Nombre</th>
                   <th className="px-6 py-3 text-left font-medium">Email</th>
