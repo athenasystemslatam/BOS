@@ -1224,7 +1224,7 @@ export function SeguimientoClient({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+          <div className="sticky bottom-0 z-10 px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50">
             <p className="text-[11px] text-gray-400">
               {clientesFiltrados.length} empresas en{" "}
               <span className="font-medium">{currentPeriodo.nombre_mes}</span>
