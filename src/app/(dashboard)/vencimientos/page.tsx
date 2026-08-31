@@ -3,6 +3,7 @@ import { Cliente } from "@/types";
 import { CALENDAR_2026, getMesTrabajoActual } from "@/lib/vencimientos";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
+import { ScrollToMesActual } from "./ScrollToMesActual";
 
 export default async function VencimientosPage() {
   const supabase = createAdminClient();
@@ -67,7 +68,7 @@ export default async function VencimientosPage() {
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-auto max-h-[500px] [scrollbar-gutter:stable]">
         <table className="w-full min-w-[480px]">
-          <thead className="bg-gray-50 border-b border-gray-100">
+          <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-100">
             <tr className="text-xs text-gray-400 uppercase tracking-wide">
               <th className="px-6 py-3 text-left font-medium w-32">Mes liq.</th>
               {[
@@ -91,6 +92,7 @@ export default async function VencimientosPage() {
               return (
                 <tr
                   key={mes}
+                  id={esActual ? "mes-actual-row" : undefined}
                   className={clsx(
                     "transition-colors",
                     esActual ? "bg-bordo/5" : "hover:bg-gray-50/60"
@@ -168,6 +170,8 @@ export default async function VencimientosPage() {
         </table>
         </div>
       </div>
+
+      <ScrollToMesActual />
     </div>
   );
 }
