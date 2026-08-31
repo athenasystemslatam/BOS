@@ -213,7 +213,7 @@ export function LiquidadorasClient({
       {transfiriendo && (
         <TransferirCarteraModal
           liquidadora={transfiriendo}
-          liquidadoras={lista}
+          liquidadoras={lista.filter((l) => (areasPorPersona[l.id] ?? []).includes("sueldos"))}
           creadoPor={creadoPor}
           onClose={() => setTransfiriendo(null)}
         />
