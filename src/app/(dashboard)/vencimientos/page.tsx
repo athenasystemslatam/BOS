@@ -58,9 +58,14 @@ export default async function VencimientosPage() {
         </div>
       </div>
 
+      <p className="text-xs text-gray-400 mb-4 flex items-center gap-1.5">
+        <CalendarDays size={12} />
+        Fechas según resolución ARCA 2026. Para años futuros se usan fechas genéricas (9/10/11 del mes siguiente).
+      </p>
+
       {/* Tabla */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[500px] [scrollbar-gutter:stable]">
         <table className="w-full min-w-[480px]">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr className="text-xs text-gray-400 uppercase tracking-wide">
@@ -163,11 +168,6 @@ export default async function VencimientosPage() {
         </table>
         </div>
       </div>
-
-      <p className="text-xs text-gray-400 mt-4 flex items-center gap-1.5">
-        <CalendarDays size={12} />
-        Fechas según resolución ARCA 2026. Para años futuros se usan fechas genéricas (9/10/11 del mes siguiente).
-      </p>
     </div>
   );
 }
