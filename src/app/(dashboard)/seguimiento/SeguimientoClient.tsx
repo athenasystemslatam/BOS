@@ -934,9 +934,9 @@ export function SeguimientoClient({
             isPending && "opacity-60"
           )}
         >
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[60vh] [scrollbar-gutter:stable]">
             <table className="w-full" style={{ minWidth: 860 }}>
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[210px]">
                     Empresa
