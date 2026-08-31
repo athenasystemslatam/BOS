@@ -82,7 +82,8 @@ export function LiquidadorasClient({
               <p className="text-gray-400 text-sm">No hay liquidadoras en esta categoría</p>
             </div>
           ) : (
-            <table className="w-full">
+            <div className="overflow-x-auto pb-2">
+            <table className="w-full min-w-[860px] whitespace-nowrap">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr className="text-xs text-gray-400 uppercase tracking-wide">
                   <th className="px-6 py-3 text-left font-medium">Nombre</th>
@@ -178,6 +179,7 @@ export function LiquidadorasClient({
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
