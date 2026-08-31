@@ -93,6 +93,10 @@ export function ProductividadClient({ filas }: {
       {!fila ? (
         <p className="text-gray-400 text-sm">Sin datos.</p>
       ) : (
+        <>
+        <p className="text-[11px] text-gray-400 mb-3">
+          Días al vencimiento: positivo = completado antes, negativo = completado después. &quot;sin ts&quot; = marcado antes de julio 2026 (sin registro de hora).
+        </p>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px]">
@@ -154,10 +158,8 @@ export function ProductividadClient({ filas }: {
               </tbody>
             </table>
           </div>
-          <div className="px-5 py-3 border-t border-gray-50 text-[11px] text-gray-400">
-            Días al vencimiento: positivo = completado antes, negativo = completado después. &quot;sin ts&quot; = marcado antes de julio 2026 (sin registro de hora).
-          </div>
         </div>
+        </>
       )}
     </div>
   );
