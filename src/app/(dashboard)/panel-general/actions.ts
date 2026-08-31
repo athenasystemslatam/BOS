@@ -60,6 +60,19 @@ export async function crearClienteConServicios(formData: FormData) {
     if (svcError) return { error: svcError.message };
   }
 
+  // El responsable de Sueldos vive además en clientes.liquidador_id — es lo
+  // que usan Seguimiento/Dashboard/Productividad de Sueldos para saber de
+  // quién es cada empresa (servicios_cliente no alcanza ahí, ver crearEmpresa
+  // en empresas/actions.ts). Sin esto, una empresa creada acá con responsable
+  // de Sueldos no aparecería en las pantallas de esa persona.
+  const sueldos = servicios.find((s) => s.servicio === "sueldos" && s.responsable_id);
+  if (sueldos) {
+    await supabase
+      .from("clientes")
+      .update({ liquidador_id: sueldos.responsable_id })
+      .eq("id", cliente.id);
+  }
+
   // Un cliente puede tener servicios de varios módulos a la vez (sueldos,
   // impuestos, contable, monotributo) — revalidar todo el sitio de una.
   revalidatePath("/", "layout");
