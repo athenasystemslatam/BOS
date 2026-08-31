@@ -263,7 +263,7 @@ export function PanelGeneralClient({
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
                         también la fila 2 (no tienen nada más que agregar debajo) */}
                     <tr>
-                      <th rowSpan={2} className="sticky left-0 z-20 px-5 py-2.5 text-left font-medium align-bottom pb-3 bg-gray-50">
+                      <th rowSpan={2} className="sticky top-0 left-0 z-20 px-5 py-2.5 text-left font-medium align-bottom pb-3 bg-gray-50">
                         Empresa
                       </th>
                       {COLS.filter((c) => c.areaSpan > 0).map(({ key, area, areaSpan }) => {
