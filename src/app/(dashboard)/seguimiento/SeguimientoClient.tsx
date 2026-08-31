@@ -935,6 +935,36 @@ export function SeguimientoClient({
             isPending && "opacity-60"
           )}
         >
+          {/* Barra de progreso */}
+          <div className="shrink-0 px-6 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+            <p className="text-[11px] text-gray-400">
+              {clientesFiltrados.length} empresas en{" "}
+              <span className="font-medium">{currentPeriodo.nombre_mes}</span>
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="h-1.5 w-36 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-success rounded-full transition-all duration-300"
+                  style={{
+                    width: `${
+                      clientesFiltrados.length > 0
+                        ? Math.round(
+                            (totalDone / clientesFiltrados.length) * 100
+                          )
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+              <span className="text-[11px] font-medium text-gray-500">
+                {clientesFiltrados.length > 0
+                  ? Math.round((totalDone / clientesFiltrados.length) * 100)
+                  : 0}
+                % completado
+              </span>
+            </div>
+          </div>
+
           <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
             <table className="w-full" style={{ minWidth: 860 }}>
               <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
@@ -1002,14 +1032,21 @@ export function SeguimientoClient({
                     <tr
                       key={cliente.id}
                       className={clsx(
-                        "transition-colors",
+                        "group transition-colors",
                         isComplete
                           ? "bg-green-50/30 hover:bg-green-50/50"
                           : "hover:bg-gray-50/60"
                       )}
                     >
                       {/* Empresa */}
-                      <td className="sticky left-0 z-10 bg-inherit px-4 py-2.5">
+                      <td
+                        className={clsx(
+                          "sticky left-0 z-10 px-4 py-2.5",
+                          isComplete
+                            ? "bg-green-50 group-hover:bg-green-100"
+                            : "bg-white group-hover:bg-gray-50"
+                        )}
+                      >
                         <div className="flex items-center gap-2.5">
                           <div
                             className={clsx(
@@ -1222,36 +1259,6 @@ export function SeguimientoClient({
                 })}
               </tbody>
             </table>
-          </div>
-
-          {/* Footer */}
-          <div className="shrink-0 px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50">
-            <p className="text-[11px] text-gray-400">
-              {clientesFiltrados.length} empresas en{" "}
-              <span className="font-medium">{currentPeriodo.nombre_mes}</span>
-            </p>
-            <div className="flex items-center gap-3">
-              <div className="h-1.5 w-36 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-success rounded-full transition-all duration-300"
-                  style={{
-                    width: `${
-                      clientesFiltrados.length > 0
-                        ? Math.round(
-                            (totalDone / clientesFiltrados.length) * 100
-                          )
-                        : 0
-                    }%`,
-                  }}
-                />
-              </div>
-              <span className="text-[11px] font-medium text-gray-500">
-                {clientesFiltrados.length > 0
-                  ? Math.round((totalDone / clientesFiltrados.length) * 100)
-                  : 0}
-                % completado
-              </span>
-            </div>
           </div>
         </div>
       )}
