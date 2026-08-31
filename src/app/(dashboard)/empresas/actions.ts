@@ -190,7 +190,11 @@ export async function getAsignaciones(clienteId: string) {
   return data ?? [];
 }
 
-export async function crearAsignacion(
+/** Núcleo de "reasignar un cliente" sin chequeo de admin propio — lo hacen
+ * los que llaman (crearAsignacion para una sola empresa, transferirCartera
+ * para todas las de una liquidadora de una), así no se repite auth por cliente. */
+async function insertarAsignacion(
+  admin: ReturnType<typeof createAdminClient>,
   clienteId: string,
   liquidadorId: string,
   desdeAnio: number,
@@ -198,13 +202,6 @@ export async function crearAsignacion(
   motivo: string | null,
   creadoPor: string | null
 ) {
-  try {
-    await requireAdmin();
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "No autorizado." };
-  }
-
-  const admin = createAdminClient();
   const { error } = await admin.from("asignaciones").insert({
     cliente_id: clienteId,
     liquidador_id: liquidadorId,
@@ -240,7 +237,91 @@ export async function crearAsignacion(
     }
   }
 
+  return { success: true };
+}
+
+export async function crearAsignacion(
+  clienteId: string,
+  liquidadorId: string,
+  desdeAnio: number,
+  desdeMes: number,
+  motivo: string | null,
+  creadoPor: string | null
+) {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const admin = createAdminClient();
+  const res = await insertarAsignacion(admin, clienteId, liquidadorId, desdeAnio, desdeMes, motivo, creadoPor);
+  if (res.error) return res;
+
   // Igual que en Equipo: revalidar todo el sitio de una, no listar rutas.
   revalidatePath("/", "layout");
   return { success: true };
+}
+
+/** Empresas activas actualmente a cargo de una liquidadora — para mostrar
+ * la vista previa antes de transferir toda su cartera a otra persona. */
+export async function getClientesActivosDeLiquidadora(liquidadorId: string) {
+  try {
+    await requireAdmin();
+  } catch {
+    return [];
+  }
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("clientes")
+    .select("id, nombre")
+    .eq("liquidador_id", liquidadorId)
+    .eq("estado", "activo")
+    .order("nombre");
+
+  return data ?? [];
+}
+
+/** Reasigna de una sola vez todas las empresas activas de una liquidadora a
+ * otra — pensado para cuando alguien se da de baja y hay que pasarle toda
+ * la cartera a otra persona, sin repetir el paso empresa por empresa. */
+export async function transferirCartera(
+  desdeLiquidadorId: string,
+  haciaLiquidadorId: string,
+  desdeAnio: number,
+  desdeMes: number,
+  motivo: string | null,
+  creadoPor: string | null
+) {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  if (desdeLiquidadorId === haciaLiquidadorId) {
+    return { error: "Elegí una liquidadora distinta a la actual." };
+  }
+
+  const admin = createAdminClient();
+  const { data: clientes, error: fetchError } = await admin
+    .from("clientes")
+    .select("id")
+    .eq("liquidador_id", desdeLiquidadorId)
+    .eq("estado", "activo");
+
+  if (fetchError) return { error: fetchError.message };
+  if (!clientes || clientes.length === 0) {
+    return { error: "Esa persona no tiene empresas activas para transferir." };
+  }
+
+  let transferidas = 0;
+  for (const c of clientes) {
+    const res = await insertarAsignacion(admin, c.id, haciaLiquidadorId, desdeAnio, desdeMes, motivo, creadoPor);
+    if (!res.error) transferidas++;
+  }
+
+  revalidatePath("/", "layout");
+  return { success: true, total: clientes.length, transferidas };
 }

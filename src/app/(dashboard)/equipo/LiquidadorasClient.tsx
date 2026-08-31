@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, ArrowRightLeft } from "lucide-react";
 import clsx from "clsx";
 import { AccesoBloqueado, Liquidadora } from "@/types";
 import { NuevaLiquidadoraModal } from "./NuevaLiquidadoraModal";
 import { EditarLiquidadoraModal } from "./EditarLiquidadoraModal";
+import { TransferirCarteraModal } from "./TransferirCarteraModal";
 import { BloqueosPanel } from "./BloqueosPanel";
 
 const ROL_LABELS: Record<string, { label: string; cls: string }> = {
@@ -29,13 +30,16 @@ export function LiquidadorasClient({
   lista,
   bloqueados,
   areasPorPersona,
+  creadoPor,
 }: {
   lista: Liquidadora[];
   bloqueados: AccesoBloqueado[];
   areasPorPersona: Record<string, string[]>;
+  creadoPor: string | null;
 }) {
   const [filtro, setFiltro] = useState<Filtro>("activas");
   const [editando, setEditando] = useState<Liquidadora | null>(null);
+  const [transfiriendo, setTransfiriendo] = useState<Liquidadora | null>(null);
 
   const filtradas =
     filtro === "todas"
@@ -166,13 +170,25 @@ export function LiquidadorasClient({
                         })}
                       </td>
                       <td className="px-6 py-3.5 text-center">
-                        <button
-                          onClick={() => setEditando(liq)}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors"
-                        >
-                          <Pencil size={12} />
-                          Editar
-                        </button>
+                        <div className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => setEditando(liq)}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors"
+                          >
+                            <Pencil size={12} />
+                            Editar
+                          </button>
+                          {(areasPorPersona[liq.id] ?? []).includes("sueldos") && (
+                            <button
+                              onClick={() => setTransfiriendo(liq)}
+                              title="Transferir su cartera de empresas de sueldos a otra persona"
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors"
+                            >
+                              <ArrowRightLeft size={12} />
+                              Transferir cartera
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -191,6 +207,15 @@ export function LiquidadorasClient({
           liquidadora={editando}
           areasActuales={areasPorPersona[editando.id] ?? []}
           onClose={() => setEditando(null)}
+        />
+      )}
+
+      {transfiriendo && (
+        <TransferirCarteraModal
+          liquidadora={transfiriendo}
+          liquidadoras={lista}
+          creadoPor={creadoPor}
+          onClose={() => setTransfiriendo(null)}
         />
       )}
     </>

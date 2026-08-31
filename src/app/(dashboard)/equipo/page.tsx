@@ -28,6 +28,7 @@ export default async function EquipoPage() {
       lista={(data as Liquidadora[]) ?? []}
       bloqueados={bloqueados}
       areasPorPersona={areasPorPersona}
+      creadoPor={yo.id}
     />
   );
 }
