@@ -784,7 +784,7 @@ export function SeguimientoClient({
         </div>
       </div>
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-[320px]">
       {/* No period */}
       {!currentPeriodo && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 text-center text-gray-400 text-sm">
