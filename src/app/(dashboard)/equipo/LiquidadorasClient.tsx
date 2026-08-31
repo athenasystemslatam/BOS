@@ -82,7 +82,7 @@ export function LiquidadorasClient({
               <p className="text-gray-400 text-sm">No hay liquidadoras en esta categoría</p>
             </div>
           ) : (
-            <div className="overflow-x-auto pb-2">
+            <div className="overflow-auto max-h-[60vh] [scrollbar-gutter:stable]">
             <table className="w-full min-w-[860px] whitespace-nowrap">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr className="text-xs text-gray-400 uppercase tracking-wide">
