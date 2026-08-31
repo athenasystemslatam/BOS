@@ -14,7 +14,7 @@ export default async function PanelGeneralPage() {
     { data: clientesData },
   ] = await Promise.all([
     supabase.from("vista_empresas").select("*").order("nombre"),
-    supabase.from("liquidadoras").select("id, nombre, activa").eq("activa", true).order("nombre"),
+    supabase.from("liquidadoras").select("id, nombre, activa, rol").eq("activa", true).order("nombre"),
     supabase.from("equipo_modulos").select("equipo_id, modulo"),
     supabase.from("servicios_cliente").select("cliente_id, servicio, subtipo, estado"),
     supabase.from("clientes").select("id, liquidador_id"),
@@ -40,6 +40,7 @@ export default async function PanelGeneralPage() {
     id: e.id,
     nombre: e.nombre,
     activo: e.activa,
+    rol: e.rol,
   }));
 
   return (

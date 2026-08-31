@@ -44,7 +44,7 @@ export function AsignacionModal({
     setError("");
     startTransition(async () => {
       const res = await crearAsignacion(cliente.id, nuevaLiq, desdeAnio, desdeMes, motivo || null, creadoPor);
-      if (res.error) { setError(res.error); return; }
+      if ("error" in res) { setError(res.error); return; }
       const nuevo = await getAsignaciones(cliente.id);
       setHistorial(nuevo);
       setNuevaLiq("");

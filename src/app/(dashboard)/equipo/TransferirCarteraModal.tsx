@@ -47,8 +47,8 @@ export function TransferirCarteraModal({
         motivo || null,
         creadoPor
       );
-      if (res.error) { setError(res.error); return; }
-      setResultado({ total: res.total ?? 0, transferidas: res.transferidas ?? 0 });
+      if ("error" in res) { setError(res.error); return; }
+      setResultado({ total: res.total, transferidas: res.transferidas });
     });
   }
 

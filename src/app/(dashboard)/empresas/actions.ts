@@ -201,7 +201,7 @@ async function insertarAsignacion(
   desdeMes: number,
   motivo: string | null,
   creadoPor: string | null
-) {
+): Promise<{ error: string } | { success: true }> {
   const { error } = await admin.from("asignaciones").insert({
     cliente_id: clienteId,
     liquidador_id: liquidadorId,
@@ -247,7 +247,7 @@ export async function crearAsignacion(
   desdeMes: number,
   motivo: string | null,
   creadoPor: string | null
-) {
+): Promise<{ error: string } | { success: true }> {
   try {
     await requireAdmin();
   } catch (e) {
@@ -256,7 +256,7 @@ export async function crearAsignacion(
 
   const admin = createAdminClient();
   const res = await insertarAsignacion(admin, clienteId, liquidadorId, desdeAnio, desdeMes, motivo, creadoPor);
-  if (res.error) return res;
+  if ("error" in res) return res;
 
   // Igual que en Equipo: revalidar todo el sitio de una, no listar rutas.
   revalidatePath("/", "layout");
@@ -293,7 +293,7 @@ export async function transferirCartera(
   desdeMes: number,
   motivo: string | null,
   creadoPor: string | null
-) {
+): Promise<{ error: string } | { success: true; total: number; transferidas: number }> {
   try {
     await requireAdmin();
   } catch (e) {
@@ -319,7 +319,7 @@ export async function transferirCartera(
   let transferidas = 0;
   for (const c of clientes) {
     const res = await insertarAsignacion(admin, c.id, haciaLiquidadorId, desdeAnio, desdeMes, motivo, creadoPor);
-    if (!res.error) transferidas++;
+    if (!("error" in res)) transferidas++;
   }
 
   revalidatePath("/", "layout");

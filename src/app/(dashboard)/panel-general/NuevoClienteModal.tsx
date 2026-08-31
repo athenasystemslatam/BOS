@@ -49,7 +49,8 @@ export function NuevoClienteModal({
 
   function responsablesPara(modulo: string) {
     const ids = new Set(equipoModulos.filter((m) => m.modulo === modulo).map((m) => m.equipo_id));
-    return equipo.filter((e) => ids.has(e.id));
+    // Solo liquidadoras: admins y perfiles de solo lectura no llevan clientes propios.
+    return equipo.filter((e) => ids.has(e.id) && e.rol === "liquidadora");
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {

@@ -152,6 +152,7 @@ export interface EquipoMiembro {
   id: string;
   nombre: string;
   activo: boolean;
+  rol: Rol;
 }
 
 export interface VistEmpresa {
