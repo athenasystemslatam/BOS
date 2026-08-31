@@ -545,12 +545,12 @@ export function SeguimientoClient({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4 md:p-8 max-w-[1600px]">
+    <div className="flex flex-col h-full p-4 md:p-8 max-w-[1600px]">
       {clienteClaves && (
         <ClavesModal cliente={clienteClaves} onClose={() => setClienteClaves(null)} />
       )}
       {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
+      <div className="shrink-0 flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
         <div>
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">
             Liquidaciones mensuales
@@ -647,7 +647,7 @@ export function SeguimientoClient({
       {syncResult && (
         <div
           className={clsx(
-            "mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-[12px] font-medium border",
+            "shrink-0 mb-4 flex items-center gap-2 px-4 py-2.5 rounded-lg text-[12px] font-medium border",
             syncResult.error
               ? "bg-red-50 border-red-200 text-red-700"
               : "bg-green-50 border-green-200 text-green-700"
@@ -683,7 +683,7 @@ export function SeguimientoClient({
 
       {/* Alerta vencimientos próximos */}
       {vencimientosProximos && (
-        <div className="mb-4 flex items-start gap-2.5 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
+        <div className="shrink-0 mb-4 flex items-start gap-2.5 px-4 py-3 rounded-lg bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
           <Bell size={14} className="mt-0.5 shrink-0 text-amber-500" />
           <div>
             <span className="font-semibold">Próximos vencimientos F.931 — </span>
@@ -701,7 +701,7 @@ export function SeguimientoClient({
 
       {/* Admin filter by liquidadora */}
       {liquidadoras.length > 0 && (
-        <div className="flex items-center gap-2 mb-5 flex-wrap">
+        <div className="shrink-0 flex items-center gap-2 mb-5 flex-wrap">
           <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wide mr-1">
             Ver:
           </span>
@@ -739,7 +739,7 @@ export function SeguimientoClient({
       )}
 
       {/* Búsqueda por empresa */}
-      <div className="relative mb-4 max-w-xs">
+      <div className="shrink-0 relative mb-4 max-w-xs">
         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
         <input
           type="text"
@@ -759,7 +759,7 @@ export function SeguimientoClient({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-5 mb-4 text-[11px] text-gray-400">
+      <div className="shrink-0 flex items-center gap-5 mb-4 text-[11px] text-gray-400">
         <div className="flex items-center gap-1.5">
           <div className="w-5 h-5 rounded-md border-2 border-dashed border-gray-200" />
           Pendiente
@@ -784,6 +784,7 @@ export function SeguimientoClient({
         </div>
       </div>
 
+      <div className="flex-1 min-h-0">
       {/* No period */}
       {!currentPeriodo && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 text-center text-gray-400 text-sm">
@@ -930,11 +931,11 @@ export function SeguimientoClient({
       {currentPeriodo && clientesFiltrados.length > 0 && (
         <div
           className={clsx(
-            "hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-opacity",
+            "hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-opacity",
             isPending && "opacity-60"
           )}
         >
-          <div className="overflow-auto max-h-[60vh] [scrollbar-gutter:stable]">
+          <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
             <table className="w-full" style={{ minWidth: 860 }}>
               <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -1224,7 +1225,7 @@ export function SeguimientoClient({
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 z-10 px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50">
+          <div className="shrink-0 px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50">
             <p className="text-[11px] text-gray-400">
               {clientesFiltrados.length} empresas en{" "}
               <span className="font-medium">{currentPeriodo.nombre_mes}</span>
@@ -1254,6 +1255,7 @@ export function SeguimientoClient({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
