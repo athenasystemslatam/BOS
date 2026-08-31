@@ -259,7 +259,7 @@ export function PanelGeneralClient({
                     <col className="w-[100px]" />
                     {isAdmin && <col className="w-[150px]" />}
                   </colgroup>
-                  <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
+                  <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
                         también la fila 2 (no tienen nada más que agregar debajo) */}
                     <tr>
