@@ -96,9 +96,9 @@ export function ProductividadClient({ filas }: {
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px]">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                 <tr className="text-[11px] text-gray-400 uppercase tracking-wide">
-                  <th className="px-5 py-3 text-left font-medium">Período</th>
+                  <th className="sticky left-0 z-10 bg-gray-50 px-5 py-3 text-left font-medium">Período</th>
                   <th className="px-4 py-3 text-center font-medium">Empresas</th>
                   <th className="px-4 py-3 text-center font-medium">Legajos liquidados</th>
                   <th className="px-4 py-3 text-center font-medium">F.931 completadas</th>
@@ -112,8 +112,8 @@ export function ProductividadClient({ filas }: {
                 {[...fila.meses].reverse().map((m) => {
                   const pct = m.total > 0 ? Math.round((m.completadas / m.total) * 100) : 0;
                   return (
-                    <tr key={m.periodoId} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="px-5 py-3 text-[13px] font-medium text-gray-900 whitespace-nowrap">
+                    <tr key={m.periodoId} className="group hover:bg-gray-50/60 transition-colors">
+                      <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-5 py-3 text-[13px] font-medium text-gray-900 whitespace-nowrap">
                         {MESES_NOMBRES[m.mes]} {m.anio}
                       </td>
                       <td className="px-4 py-3 text-center text-[13px] text-gray-600">
