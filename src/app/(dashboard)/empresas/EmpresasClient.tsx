@@ -281,11 +281,11 @@ export function EmpresasClient({
 
             {/* Tabla desktop */}
             <div className="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[60vh] [scrollbar-gutter:stable]">
                 <table className="w-full min-w-[960px]">
-                <thead className="bg-gray-50 border-b border-gray-100">
+                <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs text-gray-400 uppercase tracking-wide">
-                    <th className="px-6 py-3 text-left font-medium">Empresa</th>
+                    <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left font-medium">Empresa</th>
                     <th className="px-5 py-3 text-left font-medium">CUIT</th>
                     <th className="px-5 py-3 text-left font-medium">Liquidadora</th>
                     <th className="px-4 py-3 text-center font-medium">Tipo</th>
@@ -300,8 +300,8 @@ export function EmpresasClient({
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {filtrados.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-50/60 transition-colors">
-                      <td className="px-6 py-3.5">
+                    <tr key={c.id} className="group hover:bg-gray-50/60 transition-colors">
+                      <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-3.5">
                         <p className="text-[13px] font-medium text-gray-900 whitespace-nowrap">
                           {c.nombre}
                         </p>
