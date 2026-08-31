@@ -263,7 +263,7 @@ export function PanelGeneralClient({
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
                         también la fila 2 (no tienen nada más que agregar debajo) */}
                     <tr>
-                      <th rowSpan={2} className="px-5 py-2.5 text-left font-medium align-bottom pb-3 bg-gray-50">
+                      <th rowSpan={2} className="sticky left-0 z-20 px-5 py-2.5 text-left font-medium align-bottom pb-3 bg-gray-50">
                         Empresa
                       </th>
                       {COLS.filter((c) => c.areaSpan > 0).map(({ key, area, areaSpan }) => {
@@ -325,7 +325,7 @@ export function PanelGeneralClient({
                       return (
                         <tr key={empresa.id} className="hover:bg-gray-50/60 transition-colors group">
                           {/* Empresa */}
-                          <td className="px-5 py-3.5">
+                          <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-5 py-3.5">
                             <p className="font-medium text-gray-900 truncate" title={empresa.nombre}>{empresa.nombre}</p>
                             <p className="text-[11px] text-gray-400 font-mono mt-0.5">
                               {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
