@@ -976,7 +976,7 @@ export function SeguimientoClient({
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[160px]">
                     Observaciones
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-amber-400 uppercase tracking-wider min-w-[160px]">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-amber-400 uppercase tracking-wider min-w-[230px]">
                     Nota → Sig. mes
                   </th>
                 </tr>
