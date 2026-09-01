@@ -3,17 +3,8 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { EquipoMiembro } from "@/types";
+import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { crearClienteConServicios } from "./actions";
-
-const SERVICIOS_CONFIG = [
-  { servicio: "sueldos",   subtipo: "general", label: "Sueldos",                modulo: "sueldos" },
-  { servicio: "impuestos", subtipo: "iva",     label: "Impuestos — IVA",        modulo: "impuestos" },
-  { servicio: "impuestos", subtipo: "iibb",    label: "Impuestos — IIBB",       modulo: "impuestos" },
-  { servicio: "impuestos", subtipo: "seh",     label: "Impuestos — Seg. e Hig.", modulo: "impuestos" },
-  { servicio: "contable",  subtipo: "general", label: "Contable",               modulo: "contable" },
-  { servicio: "monotributo", subtipo: "general", label: "Monotributo",         modulo: "monotributo" },
-  { servicio: "libros",    subtipo: "general", label: "Libros",                 modulo: "libros" },
-] as const;
 
 type ServicioKey = `${string}:${string}`;
 

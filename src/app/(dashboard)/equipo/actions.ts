@@ -3,8 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
-
-const MODULOS_VALIDOS = ["sueldos", "impuestos", "contable", "monotributo", "libros"];
+import { esModuloValido } from "@/lib/modulos";
 
 function siteUrl() {
   return (
@@ -41,7 +40,7 @@ async function inviteOrResend(
 }
 
 function parseAreas(formData: FormData): string[] {
-  return formData.getAll("areas").filter((a): a is string => typeof a === "string" && MODULOS_VALIDOS.includes(a));
+  return formData.getAll("areas").filter((a): a is string => typeof a === "string" && esModuloValido(a));
 }
 
 async function setAreas(supabase: ReturnType<typeof createAdminClient>, equipoId: string, areas: string[]) {

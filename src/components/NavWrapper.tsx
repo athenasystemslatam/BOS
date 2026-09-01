@@ -8,10 +8,12 @@ import { Sidebar } from "./Sidebar";
 export function NavWrapper({
   isAdmin,
   nombre,
+  areas,
   children,
 }: {
   isAdmin: boolean;
   nombre: string | null;
+  areas: string[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -85,7 +87,7 @@ export function NavWrapper({
             <X size={18} />
           </button>
         </div>
-        <Sidebar isAdmin={isAdmin} nombre={nombre} onClose={() => setOpen(false)} />
+        <Sidebar isAdmin={isAdmin} nombre={nombre} areas={areas} onClose={() => setOpen(false)} />
       </div>
 
       {/* Page content */}

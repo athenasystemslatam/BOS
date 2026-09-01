@@ -19,10 +19,21 @@ import {
   Sun,
 } from "lucide-react";
 import clsx from "clsx";
+import { ModuloId, MODULO_LABELS } from "@/lib/modulos";
 
-const SECTIONS = [
+// modulo: null = sección general, visible para cualquiera con sesión. Con
+// modulo puesto, solo la ve un admin o alguien con ese módulo en
+// equipo_modulos (ver filtro más abajo) — antes esta lista no se filtraba
+// por área y cualquier persona veía las secciones de todos los módulos.
+const SECTIONS: {
+  label: string | null;
+  modulo: ModuloId | null;
+  accent: string | null;
+  items: { href: string; label: string; icon: typeof LayoutGrid; adminOnly: boolean }[];
+}[] = [
   {
     label: null,
+    modulo: null,
     accent: null,
     items: [
       { href: "/panel-general", label: "Panel General", icon: LayoutGrid, adminOnly: false },
@@ -30,7 +41,8 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Sueldos",
+    label: MODULO_LABELS.sueldos,
+    modulo: "sueldos",
     accent: "bg-rose-400",
     items: [
       { href: "/seguimiento",   label: "Seguimiento",   icon: ClipboardList,   adminOnly: false },
@@ -41,7 +53,8 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Impuestos",
+    label: MODULO_LABELS.impuestos,
+    modulo: "impuestos",
     accent: "bg-blue-400",
     items: [
       { href: "/impuestos",              label: "Seguimiento",  icon: Receipt,         adminOnly: false },
@@ -51,7 +64,8 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Contable",
+    label: MODULO_LABELS.contable,
+    modulo: "contable",
     accent: "bg-emerald-400",
     items: [
       { href: "/contable",              label: "Balances",     icon: BookOpen,        adminOnly: false },
@@ -61,7 +75,8 @@ const SECTIONS = [
     ],
   },
   {
-    label: "Monotributo",
+    label: MODULO_LABELS.monotributo,
+    modulo: "monotributo",
     accent: "bg-amber-400",
     items: [
       { href: "/monotributo",              label: "Seguimiento",  icon: FileText,        adminOnly: false },
@@ -80,10 +95,12 @@ function iniciales(nombre: string) {
 export function Sidebar({
   isAdmin,
   nombre,
+  areas,
   onClose,
 }: {
   isAdmin: boolean;
   nombre: string | null;
+  areas: string[];
   onClose?: () => void;
 }) {
   const pathname = usePathname();
@@ -152,7 +169,9 @@ export function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 px-3 pt-4 pb-4 space-y-4">
-        {SECTIONS.map((section, si) => {
+        {SECTIONS.filter(
+          (section) => section.modulo === null || isAdmin || areas.includes(section.modulo)
+        ).map((section, si) => {
           const visibleItems = section.items.filter((item) => !item.adminOnly || isAdmin);
           if (visibleItems.length === 0) return null;
           return (
