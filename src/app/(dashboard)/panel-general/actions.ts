@@ -60,17 +60,34 @@ export async function crearClienteConServicios(formData: FormData) {
     if (svcError) return { error: svcError.message };
   }
 
-  // El responsable de Sueldos vive además en clientes.liquidador_id — es lo
-  // que usan Seguimiento/Dashboard/Productividad de Sueldos para saber de
-  // quién es cada empresa (servicios_cliente no alcanza ahí, ver crearEmpresa
-  // en empresas/actions.ts). Sin esto, una empresa creada acá con responsable
-  // de Sueldos no aparecería en las pantallas de esa persona.
-  const sueldos = servicios.find((s) => s.servicio === "sueldos" && s.responsable_id);
+  // Si Sueldos está entre los servicios tildados, además de guardarlo en
+  // servicios_cliente hay que reflejarlo en columnas propias de `clientes`
+  // que Seguimiento/Dashboard/Productividad leen directo (servicios_cliente
+  // no alcanza ahí, ver crearEmpresa en empresas/actions.ts):
+  // - liquidador_id: de quién es la empresa para esas pantallas.
+  // - es_quincenal / tiene_sindicato / tiene_rubrica_lsd (+jurisdiccion):
+  //   de esto depende qué tareas le exige Seguimiento (Q1, Bol. Sind., LSD).
+  // Sin esto, una empresa creada acá con Sueldos activo no aparecía en las
+  // pantallas de su responsable, y aunque apareciera, entraba "vacía" —
+  // Seguimiento no le pedía ninguna de esas tareas aunque correspondieran.
+  const sueldos = servicios.find((s) => s.servicio === "sueldos");
   if (sueldos) {
-    await supabase
-      .from("clientes")
-      .update({ liquidador_id: sueldos.responsable_id })
-      .eq("id", cliente.id);
+    const es_quincenal = formData.get("sueldos_es_quincenal") === "true";
+    const tiene_sindicato = formData.get("sueldos_tiene_sindicato") === "true";
+    const sindicato_nombre = (formData.get("sueldos_sindicato_nombre") as string)?.trim() || null;
+    const tiene_rubrica_lsd = formData.get("sueldos_tiene_rubrica_lsd") === "true";
+    const jurisdiccion = (formData.get("sueldos_jurisdiccion") as string)?.trim() || null;
+
+    const update: Record<string, unknown> = {
+      es_quincenal,
+      tiene_sindicato,
+      sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
+      tiene_rubrica_lsd,
+      jurisdiccion: tiene_rubrica_lsd ? jurisdiccion : null,
+    };
+    if (sueldos.responsable_id) update.liquidador_id = sueldos.responsable_id;
+
+    await supabase.from("clientes").update(update).eq("id", cliente.id);
   }
 
   // Un cliente puede tener servicios de varios módulos a la vez (sueldos,

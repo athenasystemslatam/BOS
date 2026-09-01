@@ -4,9 +4,12 @@ import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { EquipoMiembro } from "@/types";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
+import { Toggle } from "@/components/Toggle";
 import { crearClienteConServicios } from "./actions";
 
 type ServicioKey = `${string}:${string}`;
+
+const JURISDICCIONES = ["CABA", "PBA", "Otra"];
 
 export function NuevoClienteModal({
   equipo,
@@ -22,6 +25,16 @@ export function NuevoClienteModal({
 
   // serviciosActivos: key "servicio:subtipo" → responsable_id | ""
   const [serviciosActivos, setServiciosActivos] = useState<Record<ServicioKey, string>>({});
+
+  // Datos propios de Sueldos: de esto depende qué tareas le va a pedir
+  // Seguimiento a esta empresa (Q1 si es quincenal, Bol. Sind. si tiene
+  // sindicato, LSD si lleva rúbrica) — sin esto la empresa entraba "vacía"
+  // y Seguimiento no le exigía nada de eso aunque correspondiera.
+  const [esQuincenal, setEsQuincenal] = useState(false);
+  const [tieneSindicato, setTieneSindicato] = useState(false);
+  const [sindicatoNombre, setSindicatoNombre] = useState("");
+  const [tieneRubricaLsd, setTieneRubricaLsd] = useState(false);
+  const [jurisdiccion, setJurisdiccion] = useState("CABA");
 
   function toggleServicio(key: ServicioKey) {
     setServiciosActivos((prev) => {
@@ -57,6 +70,14 @@ export function NuevoClienteModal({
     });
 
     formData.set("servicios", JSON.stringify(serviciosPayload));
+
+    if ("sueldos:general" in serviciosActivos) {
+      formData.set("sueldos_es_quincenal", String(esQuincenal));
+      formData.set("sueldos_tiene_sindicato", String(tieneSindicato));
+      formData.set("sueldos_sindicato_nombre", sindicatoNombre);
+      formData.set("sueldos_tiene_rubrica_lsd", String(tieneRubricaLsd));
+      formData.set("sueldos_jurisdiccion", jurisdiccion);
+    }
 
     startTransition(async () => {
       const result = await crearClienteConServicios(formData);
@@ -158,6 +179,63 @@ export function NuevoClienteModal({
                             </option>
                           ))}
                         </select>
+
+                        {servicio === "sueldos" && (
+                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                              Para Seguimiento
+                            </p>
+
+                            <div className="flex items-center justify-between">
+                              <span className="text-[12px] text-gray-600">
+                                Es quincenal <span className="text-gray-400">(agrega Recibo Q1)</span>
+                              </span>
+                              <Toggle value={esQuincenal} onChange={setEsQuincenal} />
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[12px] text-gray-600">
+                                  Tiene sindicato <span className="text-gray-400">(agrega Bol. Sind.)</span>
+                                </span>
+                                <Toggle value={tieneSindicato} onChange={setTieneSindicato} />
+                              </div>
+                              {tieneSindicato && (
+                                <input
+                                  type="text"
+                                  value={sindicatoNombre}
+                                  onChange={(e) => setSindicatoNombre(e.target.value)}
+                                  placeholder="Nombre del sindicato"
+                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                />
+                              )}
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[12px] text-gray-600">
+                                  Rúbrica LSD <span className="text-gray-400">(agrega tarea LSD)</span>
+                                </span>
+                                <Toggle value={tieneRubricaLsd} onChange={setTieneRubricaLsd} />
+                              </div>
+                              {tieneRubricaLsd && (
+                                <select
+                                  value={jurisdiccion}
+                                  onChange={(e) => setJurisdiccion(e.target.value)}
+                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                >
+                                  {JURISDICCIONES.map((j) => (
+                                    <option key={j} value={j}>{j}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+
+                            <p className="text-[10px] text-gray-400">
+                              El resto (ART, red bancaria, fecha de alta, etc.) se completa después desde Clientes → Editar.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

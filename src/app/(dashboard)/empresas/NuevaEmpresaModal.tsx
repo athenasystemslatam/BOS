@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { crearEmpresa } from "./actions";
 import { Liquidadora } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
+import { Toggle } from "@/components/Toggle";
 
 function Field({
   label,
@@ -27,22 +28,6 @@ function Field({
 
 const inputCls =
   "w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo focus:ring-1 focus:ring-bordo/20 transition-colors bg-white";
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${value ? "bg-bordo" : "bg-gray-200"}`}
-    >
-      <span
-        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-          value ? "translate-x-4" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
-}
 
 function formatCuit(raw: string) {
   const d = raw.replace(/\D/g, "").slice(0, 11);
