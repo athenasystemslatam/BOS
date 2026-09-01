@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { Search, Plus, AlertTriangle, Trash2, X } from "lucide-react";
+import { Search, Plus, AlertTriangle, Trash2, X, Bell } from "lucide-react";
 import clsx from "clsx";
 import { EquipoMiembro, VistEmpresa } from "@/types";
 import { NuevoClienteModal } from "./NuevoClienteModal";
@@ -147,41 +147,38 @@ export function PanelGeneralClient({
               ))}
             </div>
           </div>
-          {isAdmin && (
-            <button
-              onClick={() => setCreando(true)}
-              className="flex items-center gap-2 bg-bordo text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-bordo/90 transition-colors"
-            >
-              <Plus size={15} />
-              Nueva empresa
-            </button>
-          )}
-        </div>
-
-        {/* Aviso de empresas sin responsable — solo aparece si hay alguna,
-            desaparece solo apenas se reasignan todas. */}
-        {empresasSinResponsable.size > 0 && (
-          <div className="mb-4 md:mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-2 text-amber-800 text-sm">
-              <AlertTriangle size={16} className="shrink-0" />
-              <span>
-                <strong>{empresasSinResponsable.size}</strong>{" "}
-                empresa{empresasSinResponsable.size !== 1 ? "s" : ""} activa
-                {empresasSinResponsable.size !== 1 ? "s" : ""} con algún servicio sin responsable asignado.
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                setSoloSinResponsable(true);
-                setFiltroEstado("activo");
-                setSearch("");
-              }}
-              className="text-xs font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2 shrink-0"
-            >
-              Ver estas empresas
-            </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Campana de "sin responsable" — a propósito no es un cartel
+                aparte (le quitaba alto a la tabla): vive en la misma fila
+                que el título, así que no roba ninguna fila propia. Solo se
+                pinta si hay algo pendiente y desaparece sola al resolverse. */}
+            {empresasSinResponsable.size > 0 && (
+              <button
+                onClick={() => {
+                  setSoloSinResponsable(true);
+                  setFiltroEstado("activo");
+                  setSearch("");
+                }}
+                title={`${empresasSinResponsable.size} empresa${empresasSinResponsable.size !== 1 ? "s" : ""} activa${empresasSinResponsable.size !== 1 ? "s" : ""} con algún servicio sin responsable asignado`}
+                className="relative flex items-center justify-center w-10 h-10 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+              >
+                <Bell size={17} />
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-amber-600 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                  {empresasSinResponsable.size}
+                </span>
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => setCreando(true)}
+                className="flex items-center gap-2 bg-bordo text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-bordo/90 transition-colors"
+              >
+                <Plus size={15} />
+                Nueva empresa
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Filtros */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4 shrink-0">
