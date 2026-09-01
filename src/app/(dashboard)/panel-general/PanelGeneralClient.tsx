@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { Search, Plus, AlertTriangle, Trash2 } from "lucide-react";
+import { Search, Plus, AlertTriangle, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { EquipoMiembro, VistEmpresa } from "@/types";
 import { NuevoClienteModal } from "./NuevoClienteModal";
@@ -58,6 +58,7 @@ export function PanelGeneralClient({
 }) {
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<"activo" | "inactivo" | "">("activo");
+  const [soloSinResponsable, setSoloSinResponsable] = useState(false);
   const [creando, setCreando] = useState(false);
   const [confirmando, setConfirmando] = useState<Confirmando | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -65,14 +66,36 @@ export function PanelGeneralClient({
 
   const sinLiqSet = useMemo(() => new Set(sueldosSinLiquidadora), [sueldosSinLiquidadora]);
 
+  // Empresas activas con al menos un servicio activo sin responsable asignado
+  // (la misma condición que ya pinta "Sin responsable" en cada celda de la
+  // tabla, pero agregada acá para avisar de entrada, sin tener que revisar
+  // fila por fila). No se guarda en ningún lado — se recalcula siempre de los
+  // datos actuales, así que desaparece solo apenas se reasigna la última.
+  const empresasSinResponsable = useMemo(() => {
+    const set = new Set<string>();
+    for (const empresa of empresas) {
+      if (empresa.estado !== "activo") continue;
+      const activos = serviciosActivos[empresa.id] ?? [];
+      for (const key of activos) {
+        const field = VISTA_FIELD[key];
+        if (field && !empresa[field]) {
+          set.add(empresa.id);
+          break;
+        }
+      }
+    }
+    return set;
+  }, [empresas, serviciosActivos]);
+
   const filtradas = useMemo(() => {
     const q = search.toLowerCase().trim();
     return empresas.filter((e) => {
       if (q && !e.nombre.toLowerCase().includes(q) && !e.cuit.includes(q)) return false;
       if (filtroEstado && e.estado !== filtroEstado) return false;
+      if (soloSinResponsable && !empresasSinResponsable.has(e.id)) return false;
       return true;
     });
-  }, [empresas, search, filtroEstado]);
+  }, [empresas, search, filtroEstado, soloSinResponsable, empresasSinResponsable]);
 
   function confirmar(c: Confirmando) {
     setActionError(null);
@@ -135,6 +158,31 @@ export function PanelGeneralClient({
           )}
         </div>
 
+        {/* Aviso de empresas sin responsable — solo aparece si hay alguna,
+            desaparece solo apenas se reasignan todas. */}
+        {empresasSinResponsable.size > 0 && (
+          <div className="mb-4 md:mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0">
+            <div className="flex items-center gap-2 text-amber-800 text-sm">
+              <AlertTriangle size={16} className="shrink-0" />
+              <span>
+                <strong>{empresasSinResponsable.size}</strong>{" "}
+                empresa{empresasSinResponsable.size !== 1 ? "s" : ""} activa
+                {empresasSinResponsable.size !== 1 ? "s" : ""} con algún servicio sin responsable asignado.
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setSoloSinResponsable(true);
+                setFiltroEstado("activo");
+                setSearch("");
+              }}
+              className="text-xs font-semibold text-amber-800 hover:text-amber-900 underline underline-offset-2 shrink-0"
+            >
+              Ver estas empresas
+            </button>
+          </div>
+        )}
+
         {/* Filtros */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4 shrink-0">
           <div className="flex flex-wrap items-end gap-3 md:gap-4">
@@ -163,6 +211,15 @@ export function PanelGeneralClient({
                 <option value="">Todas</option>
               </select>
             </div>
+            {soloSinResponsable && (
+              <button
+                onClick={() => setSoloSinResponsable(false)}
+                className="flex items-center gap-1.5 bg-amber-50 text-amber-700 text-xs font-medium px-2.5 py-2 rounded-lg hover:bg-amber-100 transition-colors"
+              >
+                Sin responsable
+                <X size={12} />
+              </button>
+            )}
             <div className="text-sm text-gray-400 pb-1.5 ml-auto">
               {filtradas.length} empresa{filtradas.length !== 1 ? "s" : ""}
             </div>
