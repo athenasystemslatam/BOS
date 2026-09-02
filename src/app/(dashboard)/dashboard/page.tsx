@@ -174,7 +174,7 @@ export default async function DashboardPage({
               No hay liquidadoras configuradas
             </div>
           ) : (
-            <div className="overflow-auto max-h-[360px] [scrollbar-gutter:stable]">
+            <div className="overflow-auto max-h-[40vh] [scrollbar-gutter:stable]">
             <table className="w-full min-w-[520px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50">
@@ -331,7 +331,7 @@ export default async function DashboardPage({
             <span className="text-[13px] font-semibold text-orange-900">Modificaciones fuera de término</span>
             <span className="ml-auto text-[11px] text-orange-400">últimos 60 días</span>
           </div>
-          <div className="overflow-auto max-h-[400px] [scrollbar-gutter:stable]">
+          <div className="overflow-auto max-h-[45vh] [scrollbar-gutter:stable]">
           <table className="w-full min-w-[560px] text-[12px] text-orange-900">
             <thead className="sticky top-0 z-10 bg-orange-50">
               <tr className="border-b border-orange-100">
