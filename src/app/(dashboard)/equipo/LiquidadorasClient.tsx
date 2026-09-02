@@ -105,7 +105,7 @@ export function LiquidadorasClient({
                     ROL_LABELS[liq.rol] ?? { label: liq.rol, cls: "bg-gray-100 text-gray-500" };
                   return (
                     <tr key={liq.id} className="group hover:bg-gray-50/60 transition-colors">
-                      <td className="px-6 py-3.5 sticky left-0 z-[1] bg-white group-hover:bg-gray-50/60 transition-colors border-r border-gray-100">
+                      <td className="px-6 py-3.5 sticky left-0 z-[1] bg-white group-hover:bg-gray-50 transition-colors border-r border-gray-100">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-bordo/10 flex items-center justify-center text-[12px] font-bold text-bordo shrink-0">
                             {liq.nombre.charAt(0).toUpperCase()}
