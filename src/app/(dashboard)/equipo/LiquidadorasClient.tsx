@@ -90,7 +90,7 @@ export function LiquidadorasClient({
             <table className="w-full min-w-[860px] whitespace-nowrap">
               <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-100">
                 <tr className="text-xs text-gray-400 uppercase tracking-wide">
-                  <th className="px-6 py-3 text-left font-medium sticky left-0 z-20 bg-gray-50 border-r border-gray-100">Nombre</th>
+                  <th className="px-6 py-3 text-left font-medium sticky left-0 z-20 bg-gray-50">Nombre</th>
                   <th className="px-6 py-3 text-left font-medium">Email</th>
                   <th className="px-6 py-3 text-center font-medium">Rol</th>
                   <th className="px-6 py-3 text-left font-medium">Áreas</th>
@@ -105,7 +105,7 @@ export function LiquidadorasClient({
                     ROL_LABELS[liq.rol] ?? { label: liq.rol, cls: "bg-gray-100 text-gray-500" };
                   return (
                     <tr key={liq.id} className="group hover:bg-gray-50/60 transition-colors">
-                      <td className="px-6 py-3.5 sticky left-0 z-[1] bg-white group-hover:bg-gray-50 transition-colors border-r border-gray-100">
+                      <td className="px-6 py-3.5 sticky left-0 z-[1] bg-white group-hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-bordo/10 flex items-center justify-center text-[12px] font-bold text-bordo shrink-0">
                             {liq.nombre.charAt(0).toUpperCase()}
