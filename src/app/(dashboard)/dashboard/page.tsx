@@ -161,7 +161,7 @@ export default async function DashboardPage({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         {/* Avance por liquidadora */}
-        <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-[14px] font-semibold text-gray-900">Avance por liquidadora</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
@@ -170,11 +170,11 @@ export default async function DashboardPage({
           </div>
 
           {resumen.length === 0 ? (
-            <div className="py-14 text-center text-[13px] text-gray-400">
+            <div className="flex-1 py-14 text-center text-[13px] text-gray-400">
               No hay liquidadoras configuradas
             </div>
           ) : (
-            <div className="overflow-auto max-h-[40vh] [scrollbar-gutter:stable]">
+            <div className="flex-1 min-h-[160px] overflow-auto [scrollbar-gutter:stable]">
             <table className="w-full min-w-[520px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50">
