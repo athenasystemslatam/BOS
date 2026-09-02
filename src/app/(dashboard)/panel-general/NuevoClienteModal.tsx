@@ -53,8 +53,11 @@ export function NuevoClienteModal({
 
   function responsablesPara(modulo: string) {
     const ids = new Set(equipoModulos.filter((m) => m.modulo === modulo).map((m) => m.equipo_id));
-    // Solo liquidadoras: admins y perfiles de solo lectura no llevan clientes propios.
-    return equipo.filter((e) => ids.has(e.id) && e.rol === "liquidadora");
+    // Antes excluía a quien no fuera rol "liquidadora" (admins, solo lectura),
+    // pero eso no era parejo con "Editar empresa" y "Transferir cartera", que
+    // sí permiten elegir a un admin que además lleva cartera propia (ej.
+    // Giuliana). Se deja pasar a cualquiera que pertenezca al módulo.
+    return equipo.filter((e) => ids.has(e.id));
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
