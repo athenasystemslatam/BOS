@@ -121,7 +121,7 @@ export default async function DashboardPage({
   });
 
   return (
-    <div className="p-4 md:p-8 max-w-[1400px]">
+    <div className="p-4 md:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Resumen mensual</p>
@@ -174,9 +174,9 @@ export default async function DashboardPage({
               No hay liquidadoras configuradas
             </div>
           ) : (
-            <div className="overflow-auto max-h-[360px] [scrollbar-gutter:stable]" style={{ transform: "translateZ(0)" }}>
+            <div className="overflow-auto max-h-[360px] [scrollbar-gutter:stable]">
             <table className="w-full min-w-[520px]">
-              <thead className="sticky top-0 z-10 bg-white" style={{ willChange: "transform" }}>
+              <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50">
                   {["Liquidadora", "Empresas", "Recibos", "F.931", ...(esMesSAC ? ["SAC"] : []), "Pendientes"].map((h) => (
                     <th
@@ -331,9 +331,9 @@ export default async function DashboardPage({
             <span className="text-[13px] font-semibold text-orange-900">Modificaciones fuera de término</span>
             <span className="ml-auto text-[11px] text-orange-400">últimos 60 días</span>
           </div>
-          <div className="overflow-auto max-h-[400px] [scrollbar-gutter:stable]" style={{ transform: "translateZ(0)" }}>
+          <div className="overflow-auto max-h-[400px] [scrollbar-gutter:stable]">
           <table className="w-full min-w-[560px] text-[12px] text-orange-900">
-            <thead className="sticky top-0 z-10 bg-orange-50" style={{ willChange: "transform" }}>
+            <thead className="sticky top-0 z-10 bg-orange-50">
               <tr className="border-b border-orange-100">
                 <th className="px-5 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Empresa</th>
                 <th className="px-4 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Ítem</th>
