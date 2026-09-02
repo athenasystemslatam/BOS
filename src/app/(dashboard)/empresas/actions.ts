@@ -85,7 +85,7 @@ export async function crearEmpresa(formData: FormData) {
   // (que se basan en esa tabla, no en clientes directamente) la vean.
   await supabase
     .from("servicios_cliente")
-    .insert({ cliente_id: cliente.id, servicio: "sueldos", subtipo: "general", estado: true });
+    .insert({ cliente_id: cliente.id, servicio: "sueldos", subtipo: "general", estado: true, responsable_id: liquidador_id });
 
   revalidatePath("/", "layout");
   return { success: true };
@@ -175,6 +175,16 @@ export async function editarEmpresa(formData: FormData) {
     return { error: error.message };
   }
 
+  // Sincronizar también servicios_cliente.responsable_id (sueldos/general),
+  // que es de donde lee Panel General (vista_empresas.responsable_sueldos) —
+  // sin esto, cambiar la liquidadora acá no se reflejaba ahí.
+  await supabase
+    .from("servicios_cliente")
+    .update({ responsable_id: liquidador_id })
+    .eq("cliente_id", id)
+    .eq("servicio", "sueldos")
+    .eq("subtipo", "general");
+
   revalidatePath("/", "layout");
   return { success: true };
 }
@@ -234,6 +244,16 @@ async function insertarAsignacion(
         .from("clientes")
         .update({ liquidador_id: masReciente.liquidador_id, fecha_modificacion: new Date().toISOString() })
         .eq("id", clienteId);
+
+      // Sincronizar también servicios_cliente.responsable_id (sueldos/general),
+      // que es de donde lee Panel General (vista_empresas.responsable_sueldos).
+      // Sin esto, reasignar por acá no se reflejaba ahí.
+      await admin
+        .from("servicios_cliente")
+        .update({ responsable_id: masReciente.liquidador_id })
+        .eq("cliente_id", clienteId)
+        .eq("servicio", "sueldos")
+        .eq("subtipo", "general");
     }
   }
 
