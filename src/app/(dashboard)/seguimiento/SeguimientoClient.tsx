@@ -545,7 +545,7 @@ export function SeguimientoClient({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-full p-4 md:p-8 max-w-[1600px]">
+    <div className="flex flex-col h-full p-4 md:p-8">
       {clienteClaves && (
         <ClavesModal cliente={clienteClaves} onClose={() => setClienteClaves(null)} />
       )}
