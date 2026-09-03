@@ -88,7 +88,15 @@ export async function crearLiquidadora(formData: FormData) {
     .single();
 
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe una persona con ese email." };
+    if (error.code === "23505") {
+      // Dos constraints únicas posibles acá: email (duplicado normal) o
+      // user_id (ese login de Auth ya está conectado a otra fila — pasa al
+      // reusar una casilla compartida sin desvincularla antes).
+      if (error.message.includes("user_id")) {
+        return { error: "Ese acceso ya está conectado a otra persona del equipo — desvinculalo primero." };
+      }
+      return { error: "Ya existe una persona con ese email." };
+    }
     return { error: error.message };
   }
 
@@ -234,7 +242,32 @@ export async function reenviarInvitacion(liquidadoraId: string) {
   if (error) return { error };
 
   if (userId) {
-    await supabase.from("liquidadoras").update({ user_id: userId }).eq("id", liquidadoraId);
+    const { error: linkError } = await supabase
+      .from("liquidadoras")
+      .update({ user_id: userId })
+      .eq("id", liquidadoraId);
+
+    // liquidadoras_user_id_unique: pasa cuando ese login ya estaba
+    // conectado a otra fila (típico de reusar una casilla compartida, ej.
+    // payroll@, sin desvincularla antes de la persona anterior) — antes
+    // esto fallaba en silencio y quedaba sin conectar, mostrando solo
+    // Panel General sin ningún aviso de por qué.
+    if (linkError) {
+      if (linkError.code === "23505") {
+        const { data: otra } = await supabase
+          .from("liquidadoras")
+          .select("nombre")
+          .eq("user_id", userId)
+          .neq("id", liquidadoraId)
+          .maybeSingle();
+        return {
+          error: otra?.nombre
+            ? `Ese acceso ya está conectado a ${otra.nombre}. Desvinculalo primero (Editar → sacarle el email, o dejar user_id en blanco) antes de reenviarlo acá.`
+            : "Ese acceso ya está conectado a otra persona del equipo.",
+        };
+      }
+      return { error: linkError.message };
+    }
   }
 
   return { success: true };
