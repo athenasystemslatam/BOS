@@ -7,11 +7,19 @@ export default async function EmpresasPage() {
   const supabase = createAdminClient();
   const yo = await getCurrentLiquidadora();
 
-  const [{ data: liquidadoras }, { data: serviciosSueldos }, { data: rubricaTareas }] = await Promise.all([
+  const [{ data: liquidadorasTodas }, { data: equipoModulos }, { data: serviciosSueldos }, { data: rubricaTareas }] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
+    supabase.from("equipo_modulos").select("equipo_id").eq("modulo", "sueldos"),
     supabase.from("servicios_cliente").select("cliente_id").eq("servicio", "sueldos").eq("estado", true),
     supabase.from("tareas").select("cliente_id, periodo_id").or("rub_lsd_manual.eq.true,rub_lsd_drive.eq.true"),
   ]);
+
+  // Solo gente del módulo Sueldos puede figurar como liquidadora acá — antes
+  // se listaba cualquier liquidadora activa (incluidas las de Contable,
+  // Impuestos, etc.) tanto en el filtro como al crear/editar/reasignar,
+  // igual que ya se resolvió en Panel General con equipo_modulos.
+  const idsEquipoSueldos = new Set((equipoModulos ?? []).map((m) => m.equipo_id));
+  const liquidadoras = (liquidadorasTodas ?? []).filter((l) => idsEquipoSueldos.has(l.id));
 
   // Módulo Sueldos: solo clientes con el servicio "sueldos" activo (no toda la
   // base de /panel-general — un cliente que solo tiene Impuestos no es de acá).
