@@ -224,6 +224,59 @@ function buildEmailReporteFinal(
   return { subject, html };
 }
 
+// ─── Traspaso de cartera ────────────────────────────────────────────────────
+
+function buildEmailTraspaso(
+  liquidadoraNombre: string,
+  empresas: string[],
+  desdeAnio: number,
+  desdeMes: number,
+  motivo: string | null
+): { subject: string; html: string } {
+  const mesNombre = MESES_NOMBRES[desdeMes] ?? String(desdeMes);
+  const cantidad = empresas.length;
+  const subject = `Se te asignaron ${cantidad} empresa${cantidad !== 1 ? "s" : ""} de Sueldos`;
+
+  const filas = empresas
+    .map((n) => `<tr><td style="padding:5px 12px;border-bottom:1px solid #f0f0f0">${n}</td></tr>`)
+    .join("");
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
+      <p style="font-size:15px">Hola ${liquidadoraNombre},</p>
+      <p style="font-size:15px">
+        Se te asignaron <strong>${cantidad}</strong> empresa${cantidad !== 1 ? "s" : ""} de Sueldos,
+        a partir de <strong>${mesNombre} ${desdeAnio}</strong>:
+      </p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${filas}</tbody></table>
+      ${motivo ? `<p style="font-size:13px;color:#888;margin-top:12px">Motivo: ${motivo}</p>` : ""}
+      <p style="font-size:12px;color:#aaa;margin-top:24px">BOS · KMA Consultores</p>
+    </div>
+  `;
+
+  return { subject, html };
+}
+
+/** Avisa por mail a quien recibe una cartera transferida (ver
+ * transferirCartera en empresas/actions.ts) qué empresas se le asignaron.
+ * No corta el traspaso si falla — es un aviso, no parte de la operación. */
+export async function sendEmailTraspaso(
+  liquidadoraNombre: string,
+  liquidadoraEmail: string,
+  empresas: string[],
+  desdeAnio: number,
+  desdeMes: number,
+  motivo: string | null
+): Promise<{ error?: string }> {
+  if (!process.env.RESEND_API_KEY) return { error: "RESEND_API_KEY no configurada" };
+  if (!liquidadoraEmail || empresas.length === 0) return {};
+
+  const { subject, html } = buildEmailTraspaso(liquidadoraNombre, empresas, desdeAnio, desdeMes, motivo);
+  const { error } = await resend.emails.send({ from: FROM, to: liquidadoraEmail, subject, html });
+  if (error) return { error: error.message };
+  return {};
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function sendTestEmail(): Promise<AlertaF931Result> {

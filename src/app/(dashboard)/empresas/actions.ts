@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { sendEmailTraspaso } from "@/lib/email";
 
 function parseCuit(raw: string) {
   const digits = raw.replace(/\D/g, "");
@@ -327,7 +328,7 @@ export async function transferirCartera(
   const admin = createAdminClient();
   const { data: clientes, error: fetchError } = await admin
     .from("clientes")
-    .select("id")
+    .select("id, nombre")
     .eq("liquidador_id", desdeLiquidadorId)
     .eq("estado", "activo");
 
@@ -337,9 +338,28 @@ export async function transferirCartera(
   }
 
   let transferidas = 0;
+  const nombresTransferidos: string[] = [];
   for (const c of clientes) {
     const res = await insertarAsignacion(admin, c.id, haciaLiquidadorId, desdeAnio, desdeMes, motivo, creadoPor);
-    if (!("error" in res)) transferidas++;
+    if (!("error" in res)) {
+      transferidas++;
+      nombresTransferidos.push(c.nombre);
+    }
+  }
+
+  // Avisarle por mail a quien recibe la cartera qué empresas se le
+  // asignaron — sin esto se enteraba recién entrando a Seguimiento y viendo
+  // empresas nuevas, sin saber cuáles son ni desde cuándo quedaron a su cargo.
+  // No corta el traspaso si el mail falla (ej. sin RESEND_API_KEY en local).
+  if (nombresTransferidos.length > 0) {
+    const { data: haciaLiq } = await admin
+      .from("liquidadoras")
+      .select("nombre, email")
+      .eq("id", haciaLiquidadorId)
+      .maybeSingle();
+    if (haciaLiq?.email) {
+      await sendEmailTraspaso(haciaLiq.nombre, haciaLiq.email, nombresTransferidos, desdeAnio, desdeMes, motivo);
+    }
   }
 
   revalidatePath("/", "layout");
