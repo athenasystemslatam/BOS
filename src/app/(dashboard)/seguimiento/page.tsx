@@ -79,15 +79,25 @@ export default async function SeguimientoPage() {
 
   // Resolver liquidadora por período usando tabla asignaciones
   if (clientes && clientes.length > 0) {
+    // Ojo: acá se usa la fecha calendario real, no el "mes de trabajo"
+    // (anio/mes de arriba, que durante los primeros días del mes todavía
+    // apunta al período anterior por la ventana de 2 días post-F.931). Un
+    // traspaso hecho hoy tiene que pesar ya para saber quién es responsable
+    // ahora — es el mismo criterio de vigencia que usa insertarAsignacion
+    // al sincronizar clientes.liquidador_id, así los dos quedan de acuerdo.
+    const hoyReal = new Date();
+    const anioReal = hoyReal.getFullYear();
+    const mesReal = hoyReal.getMonth() + 1;
+
     const { data: asignaciones } = await admin
       .from("asignaciones")
       .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en, liquidadora:liquidadoras!liquidador_id(id, nombre)")
-      .lte("desde_anio", anio);
+      .lte("desde_anio", anioReal);
 
     if (asignaciones && asignaciones.length > 0) {
       const porCliente = new Map<string, typeof asignaciones[0]>();
       for (const a of asignaciones) {
-        if (a.desde_anio * 100 + a.desde_mes > anio * 100 + mes) continue;
+        if (a.desde_anio * 100 + a.desde_mes > anioReal * 100 + mesReal) continue;
         const prev = porCliente.get(a.cliente_id);
         // Desempate por creado_en cuando dos asignaciones caen en el mismo
         // desde_anio/desde_mes — sin esto, entre dos igual de "vigentes" se
