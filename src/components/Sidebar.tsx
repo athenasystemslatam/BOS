@@ -29,7 +29,7 @@ const SECTIONS: {
   label: string | null;
   modulo: ModuloId | null;
   accent: string | null;
-  items: { href: string; label: string; icon: typeof LayoutGrid; adminOnly: boolean }[];
+  items: { href: string; label: string; icon: typeof LayoutGrid; adminOnly: boolean; areaOnly?: ModuloId }[];
 }[] = [
   {
     label: null,
@@ -37,7 +37,12 @@ const SECTIONS: {
     accent: null,
     items: [
       { href: "/panel-general", label: "Panel General", icon: LayoutGrid, adminOnly: false },
-      { href: "/equipo",        label: "Equipo",        icon: Users,      adminOnly: true  },
+      // Equipo abarca todos los módulos, por eso vive acá y no adentro de
+      // una sección — pero por ahora (solo Sueldos está en uso real) se lo
+      // dejamos ver a quien sea de Sueldos, no solo a admins. Las acciones
+      // exclusivas de admin (crear/editar persona, transferir cartera,
+      // bloqueos) se ocultan adentro de la página igual.
+      { href: "/equipo",        label: "Equipo",        icon: Users,      adminOnly: false, areaOnly: "sueldos" },
     ],
   },
   {
@@ -172,7 +177,11 @@ export function Sidebar({
         {SECTIONS.filter(
           (section) => section.modulo === null || isAdmin || areas.includes(section.modulo)
         ).map((section, si) => {
-          const visibleItems = section.items.filter((item) => !item.adminOnly || isAdmin);
+          const visibleItems = section.items.filter((item) => {
+            if (item.adminOnly) return isAdmin;
+            if (item.areaOnly) return isAdmin || areas.includes(item.areaOnly);
+            return true;
+          });
           if (visibleItems.length === 0) return null;
           return (
             <div key={si}>

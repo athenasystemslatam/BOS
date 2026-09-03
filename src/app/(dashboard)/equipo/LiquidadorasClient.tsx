@@ -31,11 +31,13 @@ export function LiquidadorasClient({
   bloqueados,
   areasPorPersona,
   creadoPor,
+  isAdmin,
 }: {
   lista: Liquidadora[];
   bloqueados: AccesoBloqueado[];
   areasPorPersona: Record<string, string[]>;
   creadoPor: string | null;
+  isAdmin: boolean;
 }) {
   const [filtro, setFiltro] = useState<Filtro>("activas");
   const [editando, setEditando] = useState<Liquidadora | null>(null);
@@ -59,7 +61,7 @@ export function LiquidadorasClient({
               Todo el personal de KMA — quién tiene acceso al sistema, con qué rol, y a qué áreas pertenece.
             </p>
           </div>
-          <NuevaLiquidadoraModal />
+          {isAdmin && <NuevaLiquidadoraModal />}
         </div>
 
         {/* Filtro tabs */}
@@ -96,7 +98,7 @@ export function LiquidadorasClient({
                   <th className="px-6 py-3 text-left font-medium">Áreas</th>
                   <th className="px-6 py-3 text-center font-medium">Estado</th>
                   <th className="px-6 py-3 text-left font-medium">Alta</th>
-                  <th className="px-6 py-3 text-center font-medium">Acciones</th>
+                  {isAdmin && <th className="px-6 py-3 text-center font-medium">Acciones</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -169,27 +171,29 @@ export function LiquidadorasClient({
                           year: "numeric",
                         })}
                       </td>
-                      <td className="px-6 py-3.5 text-center">
-                        <div className="inline-flex items-center gap-1">
-                          <button
-                            onClick={() => setEditando(liq)}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors"
-                          >
-                            <Pencil size={12} />
-                            Editar
-                          </button>
-                          {(areasPorPersona[liq.id] ?? []).includes("sueldos") && (
+                      {isAdmin && (
+                        <td className="px-6 py-3.5 text-center">
+                          <div className="inline-flex items-center gap-1">
                             <button
-                              onClick={() => setTransfiriendo(liq)}
-                              title="Transferir su cartera de empresas de sueldos a otra persona"
+                              onClick={() => setEditando(liq)}
                               className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors"
                             >
-                              <ArrowRightLeft size={12} />
-                              Transferir cartera
+                              <Pencil size={12} />
+                              Editar
                             </button>
-                          )}
-                        </div>
-                      </td>
+                            {(areasPorPersona[liq.id] ?? []).includes("sueldos") && (
+                              <button
+                                onClick={() => setTransfiriendo(liq)}
+                                title="Transferir su cartera de empresas de sueldos a otra persona"
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors"
+                              >
+                                <ArrowRightLeft size={12} />
+                                Transferir cartera
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -199,7 +203,7 @@ export function LiquidadorasClient({
           )}
         </div>
 
-        <BloqueosPanel bloqueados={bloqueados} />
+        {isAdmin && <BloqueosPanel bloqueados={bloqueados} />}
       </div>
 
       {editando && (
