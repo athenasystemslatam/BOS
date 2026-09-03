@@ -242,6 +242,10 @@ async function insertarAsignacion(
   const anioHoy = hoy.getFullYear();
   const esVigente = desdeAnio * 100 + desdeMes <= anioHoy * 100 + mesHoy;
   if (esVigente) {
+    // Desempate por creado_en: si dos asignaciones caen en el mismo
+    // desde_anio/desde_mes (ej. una vieja y una corrección posterior para el
+    // mismo período), gana la que se cargó más reciente — sin esto, el orden
+    // entre iguales queda indefinido y a veces "ganaba" la vieja.
     const { data: masReciente } = await admin
       .from("asignaciones")
       .select("liquidador_id")
@@ -249,6 +253,7 @@ async function insertarAsignacion(
       .or(`desde_anio.lt.${anioHoy},and(desde_anio.eq.${anioHoy},desde_mes.lte.${mesHoy})`)
       .order("desde_anio", { ascending: false })
       .order("desde_mes", { ascending: false })
+      .order("creado_en", { ascending: false })
       .limit(1)
       .maybeSingle();
 

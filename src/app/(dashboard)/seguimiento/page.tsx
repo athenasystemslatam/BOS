@@ -81,7 +81,7 @@ export default async function SeguimientoPage() {
   if (clientes && clientes.length > 0) {
     const { data: asignaciones } = await admin
       .from("asignaciones")
-      .select("cliente_id, liquidador_id, desde_anio, desde_mes, liquidadora:liquidadoras!liquidador_id(id, nombre)")
+      .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en, liquidadora:liquidadoras!liquidador_id(id, nombre)")
       .lte("desde_anio", anio);
 
     if (asignaciones && asignaciones.length > 0) {
@@ -89,7 +89,17 @@ export default async function SeguimientoPage() {
       for (const a of asignaciones) {
         if (a.desde_anio * 100 + a.desde_mes > anio * 100 + mes) continue;
         const prev = porCliente.get(a.cliente_id);
-        if (!prev || a.desde_anio * 100 + a.desde_mes > prev.desde_anio * 100 + prev.desde_mes) {
+        // Desempate por creado_en cuando dos asignaciones caen en el mismo
+        // desde_anio/desde_mes — sin esto, entre dos igual de "vigentes" se
+        // podía quedar con la vieja en vez de la corrección más reciente
+        // (pasó con el traspaso de Diego a Claudia A.: misma fecha, y acá se
+        // seguía mostrando a Diego).
+        if (
+          !prev ||
+          a.desde_anio * 100 + a.desde_mes > prev.desde_anio * 100 + prev.desde_mes ||
+          (a.desde_anio * 100 + a.desde_mes === prev.desde_anio * 100 + prev.desde_mes &&
+            a.creado_en > prev.creado_en)
+        ) {
           porCliente.set(a.cliente_id, a);
         }
       }

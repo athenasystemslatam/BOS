@@ -49,7 +49,7 @@ export default async function ProductividadPage() {
   // Asignaciones para resolver liquidadora histórica
   const { data: asignaciones } = await admin
     .from("asignaciones")
-    .select("cliente_id, liquidador_id, desde_anio, desde_mes");
+    .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en");
 
   // Liquidadoras activas
   const { data: liquidadoras } = await admin
@@ -75,7 +75,16 @@ export default async function ProductividadPage() {
     for (const a of asignaciones) {
       if (a.cliente_id !== clienteId) continue;
       if (a.desde_anio * 100 + a.desde_mes > anio * 100 + mes) continue;
-      if (!mejor || a.desde_anio * 100 + a.desde_mes > mejor.desde_anio * 100 + mejor.desde_mes) {
+      // Desempate por creado_en cuando dos asignaciones caen en el mismo
+      // desde_anio/desde_mes — mismo criterio que en Seguimiento, así no
+      // muestra a la liquidadora vieja cuando hay una corrección para el
+      // mismo período.
+      if (
+        !mejor ||
+        a.desde_anio * 100 + a.desde_mes > mejor.desde_anio * 100 + mejor.desde_mes ||
+        (a.desde_anio * 100 + a.desde_mes === mejor.desde_anio * 100 + mejor.desde_mes &&
+          a.creado_en > mejor.creado_en)
+      ) {
         mejor = a;
       }
     }
