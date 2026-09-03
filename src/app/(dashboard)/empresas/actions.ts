@@ -42,6 +42,13 @@ export async function crearEmpresa(formData: FormData) {
   const red_bancaria = (formData.get("red_bancaria") as string)?.trim() || null;
   const fecha_alta_empleador = (formData.get("fecha_alta_empleador") as string)?.trim() || null;
   const observaciones = (formData.get("observaciones") as string)?.trim() || null;
+  // Mismo parseo que editarEmpresa: acepta URL completa de Drive o ID directo.
+  const driveFolderRaw = (formData.get("drive_folder_id") as string)?.trim() || null;
+  const drive_folder_id = driveFolderRaw
+    ? (driveFolderRaw.match(/\/folders\/([-\w]+)/)?.[1] ?? driveFolderRaw)
+    : null;
+  let claves_acceso: unknown = [];
+  try { claves_acceso = JSON.parse((formData.get("claves_acceso") as string) || "[]"); } catch { /* keep [] */ }
 
   if (!nombre || !cuit || !liquidador_id || !tipo_contribuyente) {
     return { error: "Nombre, CUIT, tipo y liquidadora son obligatorios." };
@@ -72,12 +79,17 @@ export async function crearEmpresa(formData: FormData) {
       red_bancaria,
       fecha_alta_empleador,
       observaciones,
+      drive_folder_id,
+      claves_acceso,
     })
     .select("id")
     .single();
 
   if (error) {
     if (error.code === "23505") return { error: "Ya existe una empresa con ese CUIT." };
+    if (error.message.includes("claves_acceso")) {
+      return { error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.' };
+    }
     return { error: error.message };
   }
 

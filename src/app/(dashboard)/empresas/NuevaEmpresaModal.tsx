@@ -3,9 +3,10 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { crearEmpresa } from "./actions";
-import { Liquidadora } from "@/types";
+import { Liquidadora, ClaveAcceso } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Toggle } from "@/components/Toggle";
+import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 
 function Field({
   label,
@@ -51,10 +52,22 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
   const [lsdHastaMes, setLsdHastaMes] = useState<number | null>(null);
   const [esQuincenal, setEsQuincenal] = useState(false);
   const [jurisdiccion, setJurisdiccion] = useState("CABA");
+  const [sindicatoNombre, setSindicatoNombre] = useState("");
+  const [claves, setClaves] = useState<ClaveAcceso[]>([]);
 
   const terminacion = cuit.replace(/\D/g, "").length === 11
     ? cuit.replace(/\D/g, "")[10]
     : "—";
+
+  // Mismas sugerencias que en Panel General y Editar empresa — se arman
+  // solas a partir de lo que ya se va tildando en el formulario.
+  const sugerenciasClaves = [
+    "ARCA",
+    ...(jurisdiccion === "CABA" ? ["TAD"] : []),
+    ...(jurisdiccion === "PBA" ? ["SITRADIB"] : []),
+    ...(tieneSindicato && sindicatoNombre ? [sindicatoNombre] : []),
+    ...(tieneRubrica ? ["Rúbrica"] : []),
+  ];
 
   function handleOpen() {
     setOpen(true);
@@ -68,6 +81,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     setLsdHastaMes(null);
     setEsQuincenal(false);
     setJurisdiccion("CABA");
+    setSindicatoNombre("");
+    setClaves([]);
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -76,6 +91,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     formData.set("tiene_sindicato", String(tieneSindicato));
     formData.set("tiene_rubrica_lsd", String(tieneRubrica));
     formData.set("es_quincenal", String(esQuincenal));
+    formData.set("claves_acceso", JSON.stringify(claves));
     if (jurisdiccion !== "Otra") formData.set("jurisdiccion", jurisdiccion);
     if (tieneRubrica && (jurisdiccion === "PBA" || jurisdiccion === "CABA")) {
       if (lsdDesdeAnio) formData.set("lsd_desde_anio", String(lsdDesdeAnio));
@@ -109,7 +125,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"
+            className="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -202,6 +218,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                     <input
                       name="sindicato_nombre"
                       type="text"
+                      value={sindicatoNombre}
+                      onChange={(e) => setSindicatoNombre(e.target.value)}
                       placeholder="Nombre del sindicato"
                       className={inputCls}
                     />
@@ -319,6 +337,23 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                     className={`${inputCls} resize-none`}
                   />
                 </Field>
+
+                <Field label="Carpeta Drive (URL o ID)">
+                  <input
+                    name="drive_folder_id"
+                    type="text"
+                    placeholder="https://drive.google.com/drive/folders/… o ID directo"
+                    className={inputCls}
+                  />
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Usalo cuando el nombre en Drive no coincide con el nombre del sistema (ej: carpeta &quot;RA&quot; para &quot;Rodrigo Acosta&quot;).
+                  </p>
+                </Field>
+
+                <div className="border border-gray-100 rounded-lg p-4">
+                  <p className="text-xs font-medium text-gray-700 mb-3">Claves de acceso</p>
+                  <ClavesAccesoEditor claves={claves} onChange={setClaves} sugerencias={sugerenciasClaves} />
+                </div>
 
                 {error && (
                   <p className="text-xs text-danger bg-red-50 border border-red-100 rounded-lg px-3 py-2">

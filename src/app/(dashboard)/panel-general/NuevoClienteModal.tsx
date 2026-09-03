@@ -46,6 +46,8 @@ export function NuevoClienteModal({
   const [redBancaria, setRedBancaria] = useState("");
   const [fechaAltaEmpleador, setFechaAltaEmpleador] = useState("");
   const [claves, setClaves] = useState<ClaveAcceso[]>([]);
+  const [observaciones, setObservaciones] = useState("");
+  const [driveFolder, setDriveFolder] = useState("");
 
   const sugerenciasClaves = [
     "ARCA",
@@ -104,6 +106,8 @@ export function NuevoClienteModal({
       formData.set("sueldos_red_bancaria", redBancaria);
       formData.set("sueldos_fecha_alta_empleador", fechaAltaEmpleador);
       formData.set("sueldos_claves_acceso", JSON.stringify(claves));
+      formData.set("sueldos_observaciones", observaciones);
+      formData.set("sueldos_drive_folder_id", driveFolder);
     }
 
     startTransition(async () => {
@@ -312,11 +316,31 @@ export function NuevoClienteModal({
                                 <label className="text-[11px] text-gray-400 block mb-1">Claves de acceso</label>
                                 <ClavesAccesoEditor claves={claves} onChange={setClaves} sugerencias={sugerenciasClaves} />
                               </div>
-                            </div>
 
-                            <p className="text-[10px] text-gray-400">
-                              Observaciones y carpeta de Drive se completan después desde Clientes → Editar.
-                            </p>
+                              <div>
+                                <label className="text-[11px] text-gray-400 block mb-1">Observaciones</label>
+                                <textarea
+                                  value={observaciones}
+                                  onChange={(e) => setObservaciones(e.target.value)}
+                                  rows={2}
+                                  placeholder="Notas adicionales…"
+                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white resize-none"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] text-gray-400 block mb-1">
+                                  Carpeta Drive (URL o ID)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={driveFolder}
+                                  onChange={(e) => setDriveFolder(e.target.value)}
+                                  placeholder="https://drive.google.com/drive/folders/… o ID directo"
+                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                />
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
