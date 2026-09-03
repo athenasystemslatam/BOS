@@ -279,6 +279,20 @@ export async function crearAsignacion(
   const res = await insertarAsignacion(admin, clienteId, liquidadorId, desdeAnio, desdeMes, motivo, creadoPor);
   if ("error" in res) return res;
 
+  // Mismo aviso que en transferirCartera, pero para una sola empresa —
+  // sin esto, reasignar una empresa puntual quedaba silencioso y la
+  // liquidadora que la recibe recién se enteraba entrando a Seguimiento.
+  // No corta la reasignación si el mail falla.
+  const { data: cliente } = await admin.from("clientes").select("nombre").eq("id", clienteId).maybeSingle();
+  const { data: liquidadora } = await admin
+    .from("liquidadoras")
+    .select("nombre, email")
+    .eq("id", liquidadorId)
+    .maybeSingle();
+  if (cliente?.nombre && liquidadora?.email) {
+    await sendEmailTraspaso(liquidadora.nombre, liquidadora.email, [cliente.nombre], desdeAnio, desdeMes, motivo);
+  }
+
   // Igual que en Equipo: revalidar todo el sitio de una, no listar rutas.
   revalidatePath("/", "layout");
   return { success: true };
