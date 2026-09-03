@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
-import { EquipoMiembro } from "@/types";
+import { EquipoMiembro, ClaveAcceso } from "@/types";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { Toggle } from "@/components/Toggle";
+import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { crearClienteConServicios } from "./actions";
 
 type ServicioKey = `${string}:${string}`;
@@ -35,6 +36,24 @@ export function NuevoClienteModal({
   const [sindicatoNombre, setSindicatoNombre] = useState("");
   const [tieneRubricaLsd, setTieneRubricaLsd] = useState(false);
   const [jurisdiccion, setJurisdiccion] = useState("CABA");
+
+  // Datos adicionales de Sueldos — antes solo se cargaban después desde
+  // Clientes → Editar; se agregan acá para no tener que pasar por dos
+  // pantallas al dar de alta una empresa. Mismos campos de `clientes`,
+  // sin duplicar nada.
+  const [cuilArca, setCuilArca] = useState("");
+  const [art, setArt] = useState("");
+  const [redBancaria, setRedBancaria] = useState("");
+  const [fechaAltaEmpleador, setFechaAltaEmpleador] = useState("");
+  const [claves, setClaves] = useState<ClaveAcceso[]>([]);
+
+  const sugerenciasClaves = [
+    "ARCA",
+    ...(jurisdiccion === "CABA" ? ["TAD"] : []),
+    ...(jurisdiccion === "PBA" ? ["SITRADIB"] : []),
+    ...(tieneSindicato && sindicatoNombre ? [sindicatoNombre] : []),
+    ...(tieneRubricaLsd ? ["Rúbrica"] : []),
+  ];
 
   function toggleServicio(key: ServicioKey) {
     setServiciosActivos((prev) => {
@@ -80,6 +99,11 @@ export function NuevoClienteModal({
       formData.set("sueldos_sindicato_nombre", sindicatoNombre);
       formData.set("sueldos_tiene_rubrica_lsd", String(tieneRubricaLsd));
       formData.set("sueldos_jurisdiccion", jurisdiccion);
+      formData.set("sueldos_cuil_arca", cuilArca);
+      formData.set("sueldos_art", art);
+      formData.set("sueldos_red_bancaria", redBancaria);
+      formData.set("sueldos_fecha_alta_empleador", fechaAltaEmpleador);
+      formData.set("sueldos_claves_acceso", JSON.stringify(claves));
     }
 
     startTransition(async () => {
@@ -94,7 +118,7 @@ export function NuevoClienteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-[15px] font-semibold text-gray-900">Nueva empresa</h2>
           <button
@@ -234,8 +258,64 @@ export function NuevoClienteModal({
                               )}
                             </div>
 
+                            <div className="pt-3 border-t border-gray-200 space-y-3">
+                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                                Datos adicionales
+                              </p>
+
+                              <div>
+                                <label className="text-[11px] text-gray-400 block mb-1">
+                                  CUIL de acceso a ARCA
+                                </label>
+                                <input
+                                  type="text"
+                                  value={cuilArca}
+                                  onChange={(e) => setCuilArca(e.target.value)}
+                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[11px] text-gray-400 block mb-1">ART</label>
+                                  <input
+                                    type="text"
+                                    value={art}
+                                    onChange={(e) => setArt(e.target.value)}
+                                    className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[11px] text-gray-400 block mb-1">Red bancaria</label>
+                                  <input
+                                    type="text"
+                                    value={redBancaria}
+                                    onChange={(e) => setRedBancaria(e.target.value)}
+                                    className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] text-gray-400 block mb-1">
+                                  Fecha de alta como empleador
+                                </label>
+                                <input
+                                  type="date"
+                                  value={fechaAltaEmpleador}
+                                  onChange={(e) => setFechaAltaEmpleador(e.target.value)}
+                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[11px] text-gray-400 block mb-1">Claves de acceso</label>
+                                <ClavesAccesoEditor claves={claves} onChange={setClaves} sugerencias={sugerenciasClaves} />
+                              </div>
+                            </div>
+
                             <p className="text-[10px] text-gray-400">
-                              El resto (ART, red bancaria, fecha de alta, etc.) se completa después desde Clientes → Editar.
+                              Observaciones y carpeta de Drive se completan después desde Clientes → Editar.
                             </p>
                           </div>
                         )}

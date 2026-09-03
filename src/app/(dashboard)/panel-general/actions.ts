@@ -77,6 +77,15 @@ export async function crearClienteConServicios(formData: FormData) {
     const sindicato_nombre = (formData.get("sueldos_sindicato_nombre") as string)?.trim() || null;
     const tiene_rubrica_lsd = formData.get("sueldos_tiene_rubrica_lsd") === "true";
     const jurisdiccion = (formData.get("sueldos_jurisdiccion") as string)?.trim() || null;
+    // Mismos campos que Clientes → Editar (cuil_arca, art, red_bancaria,
+    // fecha_alta_empleador, claves_acceso) — se completan acá directamente
+    // para no obligar a pasar por las dos pantallas al dar de alta.
+    const cuil_arca = (formData.get("sueldos_cuil_arca") as string)?.trim() || null;
+    const art = (formData.get("sueldos_art") as string)?.trim() || null;
+    const red_bancaria = (formData.get("sueldos_red_bancaria") as string)?.trim() || null;
+    const fecha_alta_empleador = (formData.get("sueldos_fecha_alta_empleador") as string)?.trim() || null;
+    let claves_acceso: unknown = [];
+    try { claves_acceso = JSON.parse((formData.get("sueldos_claves_acceso") as string) || "[]"); } catch { /* keep [] */ }
 
     const update: Record<string, unknown> = {
       es_quincenal,
@@ -84,6 +93,11 @@ export async function crearClienteConServicios(formData: FormData) {
       sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
       tiene_rubrica_lsd,
       jurisdiccion: tiene_rubrica_lsd ? jurisdiccion : null,
+      cuil_arca,
+      art,
+      red_bancaria,
+      fecha_alta_empleador,
+      claves_acceso,
     };
     if (sueldos.responsable_id) update.liquidador_id = sueldos.responsable_id;
 
