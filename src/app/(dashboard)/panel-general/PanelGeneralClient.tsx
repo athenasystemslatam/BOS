@@ -37,6 +37,10 @@ const VISTA_FIELD: Record<string, keyof VistEmpresa> = {
   "libros:general":      "responsable_libros",
 };
 
+// Todas las columnas de responsable, para el filtro "cualquier área" — la
+// vista guarda el nombre (no el id) en cada una.
+const RESPONSABLE_FIELDS = Object.values(VISTA_FIELD);
+
 type Confirmando =
   | { tipo: "servicio"; clienteId: string; servicio: string; subtipo: string }
   | { tipo: "cliente"; clienteId: string };
@@ -59,6 +63,7 @@ export function PanelGeneralClient({
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<"activo" | "inactivo" | "">("activo");
   const [soloSinResponsable, setSoloSinResponsable] = useState(false);
+  const [filtroResponsable, setFiltroResponsable] = useState("");
   const [creando, setCreando] = useState(false);
   const [confirmando, setConfirmando] = useState<Confirmando | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -93,9 +98,13 @@ export function PanelGeneralClient({
       if (q && !e.nombre.toLowerCase().includes(q) && !e.cuit.includes(q)) return false;
       if (filtroEstado && e.estado !== filtroEstado) return false;
       if (soloSinResponsable && !empresasSinResponsable.has(e.id)) return false;
+      // "Cualquier área": alcanza con que la persona sea responsable de un
+      // solo servicio (ej. solo IVA) para que la empresa aparezca — no hace
+      // falta que lo sea en todas.
+      if (filtroResponsable && !RESPONSABLE_FIELDS.some((f) => e[f] === filtroResponsable)) return false;
       return true;
     });
-  }, [empresas, search, filtroEstado, soloSinResponsable, empresasSinResponsable]);
+  }, [empresas, search, filtroEstado, soloSinResponsable, empresasSinResponsable, filtroResponsable]);
 
   function confirmar(c: Confirmando) {
     setActionError(null);
@@ -206,6 +215,19 @@ export function PanelGeneralClient({
                 <option value="activo">Activas</option>
                 <option value="inactivo">Inactivas</option>
                 <option value="">Todas</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 font-medium block mb-1">Responsable</label>
+              <select
+                value={filtroResponsable}
+                onChange={(e) => setFiltroResponsable(e.target.value)}
+                className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo bg-white"
+              >
+                <option value="">Todos</option>
+                {equipo.map((m) => (
+                  <option key={m.id} value={m.nombre}>{m.nombre}</option>
+                ))}
               </select>
             </div>
             {soloSinResponsable && (
