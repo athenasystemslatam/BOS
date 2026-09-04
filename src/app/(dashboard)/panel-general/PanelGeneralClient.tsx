@@ -281,7 +281,10 @@ export function PanelGeneralClient({
                           {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                         </p>
                         {empresa.emails_contacto && empresa.emails_contacto.length > 0 && (
-                          <p className="text-[11px] text-gray-400 truncate">
+                          <p
+                            className="text-[11px] text-gray-400 truncate"
+                            title={empresa.emails_contacto.join("\n")}
+                          >
                             {empresa.emails_contacto.join(", ")}
                           </p>
                         )}
@@ -418,7 +421,10 @@ export function PanelGeneralClient({
                               {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                             </p>
                             {empresa.emails_contacto && empresa.emails_contacto.length > 0 && (
-                              <p className="text-[11px] text-gray-400 truncate">
+                              <p
+                                className="text-[11px] text-gray-400 truncate"
+                                title={empresa.emails_contacto.join("\n")}
+                              >
                                 {empresa.emails_contacto.join(", ")}
                               </p>
                             )}

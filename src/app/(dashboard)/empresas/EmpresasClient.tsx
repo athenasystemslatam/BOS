@@ -233,7 +233,10 @@ export function EmpresasClient({
                         {c.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                       </p>
                       {c.emails_contacto && c.emails_contacto.length > 0 && (
-                        <p className="text-[11px] text-gray-400 truncate">
+                        <p
+                          className="text-[11px] text-gray-400 truncate"
+                          title={c.emails_contacto.join("\n")}
+                        >
                           {c.emails_contacto.join(", ")}
                         </p>
                       )}
@@ -320,7 +323,10 @@ export function EmpresasClient({
                           {c.nombre}
                         </p>
                         {c.emails_contacto && c.emails_contacto.length > 0 && (
-                          <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
+                          <p
+                            className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]"
+                            title={c.emails_contacto.join("\n")}
+                          >
                             {c.emails_contacto.join(", ")}
                           </p>
                         )}
