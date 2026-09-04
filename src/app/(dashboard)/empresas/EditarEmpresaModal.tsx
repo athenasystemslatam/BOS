@@ -56,9 +56,7 @@ export function EditarEmpresaModal({
   const [jurisdiccion, setJurisdiccion] = useState(
     JURISDICCIONES.includes(cliente.jurisdiccion ?? "") ? (cliente.jurisdiccion as string) : "Otra"
   );
-  const [claves, setClaves] = useState<ClaveAcceso[]>(
-    (cliente.claves_acceso ?? []).map((c) => ({ ...c, url: c.url ?? "" }))
-  );
+  const [claves, setClaves] = useState<ClaveAcceso[]>(cliente.claves_acceso ?? []);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 

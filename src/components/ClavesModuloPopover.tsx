@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { KeyRound, Eye, EyeOff } from "lucide-react";
 import type { ClaveAcceso, ModuloClave } from "@/types";
 
 // Botón + popover de solo lectura para ver, desde dentro de un módulo, las
@@ -59,16 +59,6 @@ export function ClavesModuloPopover({
                     </button>
                   )}
                 </div>
-                {c.url && (
-                  <a
-                    href={/^https?:\/\//.test(c.url) ? c.url : `https://${c.url}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-600 hover:underline mt-0.5"
-                  >
-                    Abrir <ExternalLink size={10} />
-                  </a>
-                )}
               </div>
             ))}
             <p className="text-[10px] text-gray-400 pt-1 border-t border-gray-100">

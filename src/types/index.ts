@@ -11,7 +11,6 @@ export interface ClaveAcceso {
   sistema: string;
   usuario: string;
   contrasena: string;
-  url: string;
   modulo?: ModuloClave;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import type { ClaveAcceso } from "@/types";
 
 // Editor de claves de acceso, compartido entre Clientes → Editar y Panel
@@ -30,7 +30,7 @@ export function ClavesAccesoEditor({
   }
 
   function quickAdd(sistema: string) {
-    onChange([...claves, { sistema, usuario: "", contrasena: "", url: "", modulo: "" }]);
+    onChange([...claves, { sistema, usuario: "", contrasena: "", modulo: "" }]);
   }
 
   const faltantes = sugerencias.filter(
@@ -42,7 +42,7 @@ export function ClavesAccesoEditor({
       {claves.map((c, i) => (
         <div
           key={i}
-          className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_1fr_1fr_0.8fr_auto] gap-2 sm:items-center"
+          className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_1fr_0.8fr_auto] gap-2 sm:items-center"
         >
           <input
             type="text"
@@ -73,25 +73,6 @@ export function ClavesAccesoEditor({
             >
               {showPass[i] ? <EyeOff size={13} /> : <Eye size={13} />}
             </button>
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="URL"
-              value={c.url ?? ""}
-              onChange={(e) => update(i, "url", e.target.value)}
-              className="text-xs border border-gray-200 rounded-md px-2.5 py-2 pr-7 focus:outline-none focus:border-bordo bg-white w-full"
-            />
-            {c.url && (
-              <a
-                href={/^https?:\/\//.test(c.url) ? c.url : `https://${c.url}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-bordo"
-              >
-                <ExternalLink size={13} />
-              </a>
-            )}
           </div>
           <select
             value={c.modulo ?? ""}

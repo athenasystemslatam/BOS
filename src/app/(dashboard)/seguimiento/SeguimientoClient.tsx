@@ -231,22 +231,6 @@ function ClavesModal({
                         </div>
                       </div>
                     )}
-                    {clave.url && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400 text-[11px]">URL</span>
-                        <div className="flex items-center gap-1 text-[11px]">
-                          <a
-                            href={/^https?:\/\//.test(clave.url) ? clave.url : `https://${clave.url}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-blue-500 hover:underline truncate max-w-[130px]"
-                          >
-                            {clave.url}
-                          </a>
-                          <CopyButton value={clave.url} />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               ))}
