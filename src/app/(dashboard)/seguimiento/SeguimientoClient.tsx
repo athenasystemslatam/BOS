@@ -236,7 +236,7 @@ function ClavesModal({
                         <span className="text-gray-400 text-[11px]">URL</span>
                         <div className="flex items-center gap-1 text-[11px]">
                           <a
-                            href={clave.url}
+                            href={/^https?:\/\//.test(clave.url) ? clave.url : `https://${clave.url}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="font-mono text-blue-500 hover:underline truncate max-w-[130px]"
