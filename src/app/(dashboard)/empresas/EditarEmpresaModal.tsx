@@ -46,6 +46,7 @@ export function EditarEmpresaModal({
 }) {
   const [cuit, setCuit] = useState(formatCuit(cliente.cuit));
   const [tieneSindicato, setTieneSindicato] = useState(cliente.tiene_sindicato);
+  const [sindicatoNombre, setSindicatoNombre] = useState(cliente.sindicato_nombre ?? "");
   const [tieneRubrica, setTieneRubrica] = useState(cliente.tiene_rubrica_lsd);
   const [lsdDesdeAnio, setLsdDesdeAnio] = useState<number | null>(cliente.lsd_desde_anio ?? null);
   const [lsdDesMes, setLsdDesMes] = useState<number | null>(cliente.lsd_desde_mes ?? null);
@@ -68,7 +69,7 @@ export function EditarEmpresaModal({
     "ARCA",
     ...(jurisdiccion === "CABA" ? ["TAD"] : []),
     ...(jurisdiccion === "PBA" ? ["SITRADIB"] : []),
-    ...(tieneSindicato && cliente.sindicato_nombre ? [cliente.sindicato_nombre] : []),
+    ...(tieneSindicato && sindicatoNombre ? [sindicatoNombre] : []),
     ...(tieneRubrica ? ["Rúbrica"] : []),
   ];
 
@@ -261,7 +262,8 @@ export function EditarEmpresaModal({
                   name="sindicato_nombre"
                   type="text"
                   placeholder="Nombre del sindicato"
-                  defaultValue={cliente.sindicato_nombre ?? ""}
+                  value={sindicatoNombre}
+                  onChange={(e) => setSindicatoNombre(e.target.value)}
                   className={inputCls}
                 />
               )}
