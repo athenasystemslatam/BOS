@@ -15,6 +15,17 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "BOS · KMA Consultores",
   description: "Baires Outsourcing System — Módulo de Sueldos",
+  // El celular (sobre todo Safari/iPhone) detecta automáticamente números
+  // que "parecen" teléfono, fecha, dirección o email en cualquier texto de
+  // la pantalla y los convierte en link — sin que el código los arme como
+  // tal. Con muchas claves numéricas (PINs, claves fiscales), eso las hacía
+  // ver como hipervínculo al visualizarlas. Se apaga esa detección acá.
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
+  },
 };
 
 export default function RootLayout({
