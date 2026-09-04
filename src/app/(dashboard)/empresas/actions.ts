@@ -23,6 +23,7 @@ export async function crearEmpresa(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuit = (formData.get("cuit") as string)?.trim();
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
+  const email_contacto = (formData.get("email_contacto") as string)?.trim() || null;
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const es_quincenal = formData.get("es_quincenal") === "true";
@@ -64,6 +65,7 @@ export async function crearEmpresa(formData: FormData) {
       cuit: parsed.digits,
       terminacion_cuit: parsed.terminacion,
       cuil_arca,
+      email_contacto,
       liquidador_id,
       tipo_contribuyente,
       es_quincenal,
@@ -117,6 +119,7 @@ export async function editarEmpresa(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuit = (formData.get("cuit") as string)?.trim();
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
+  const email_contacto = (formData.get("email_contacto") as string)?.trim() || null;
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const es_quincenal = formData.get("es_quincenal") === "true";
@@ -159,6 +162,7 @@ export async function editarEmpresa(formData: FormData) {
     cuit: parsed.digits,
     terminacion_cuit: parsed.terminacion,
     cuil_arca,
+    email_contacto,
     liquidador_id,
     tipo_contribuyente,
     es_quincenal,

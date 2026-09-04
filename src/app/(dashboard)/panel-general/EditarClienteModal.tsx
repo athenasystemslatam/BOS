@@ -30,6 +30,7 @@ export function EditarClienteModal({
   const [nombre, setNombre] = useState("");
   const [cuit, setCuit] = useState("");
   const [tipoContribuyente, setTipoContribuyente] = useState("empresa");
+  const [emailContacto, setEmailContacto] = useState("");
 
   // serviciosActivos: key "servicio:subtipo" → responsable_id | ""
   const [serviciosActivos, setServiciosActivos] = useState<Record<ServicioKey, string>>({});
@@ -60,6 +61,7 @@ export function EditarClienteModal({
       setNombre(cliente.nombre);
       setCuit(cliente.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3"));
       setTipoContribuyente(cliente.tipo_contribuyente ?? "empresa");
+      setEmailContacto(cliente.email_contacto ?? "");
 
       const activos: Record<ServicioKey, string> = {};
       for (const s of servicios) {
@@ -214,6 +216,19 @@ export function EditarClienteModal({
                   <option value="monotributista">Monotributista</option>
                   <option value="inscripto">Inscripto</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1">
+                  Email de contacto
+                </label>
+                <input
+                  name="email_contacto"
+                  type="email"
+                  defaultValue={emailContacto}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
+                  placeholder="contacto@empresa.com"
+                />
               </div>
             </div>
 

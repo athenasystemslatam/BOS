@@ -38,6 +38,7 @@ export interface Cliente {
   cuit: string;
   terminacion_cuit: number;
   cuil_arca?: string;
+  email_contacto?: string;
   liquidador_id: string;
   tipo_contribuyente: TipoContribuyente;
   es_quincenal: boolean;
@@ -159,6 +160,7 @@ export interface VistEmpresa {
   nombre: string;
   cuit: string;
   estado: EstadoCliente;
+  email_contacto: string | null;
   responsable_sueldos: string | null;
   responsable_impuestos_iva: string | null;
   responsable_impuestos_iibb: string | null;

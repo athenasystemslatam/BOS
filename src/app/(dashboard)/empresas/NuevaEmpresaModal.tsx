@@ -187,6 +187,15 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                       <option value="inscripto">Inscripto</option>
                     </select>
                   </Field>
+
+                  <Field label="Email de contacto">
+                    <input
+                      name="email_contacto"
+                      type="email"
+                      placeholder="contacto@empresa.com"
+                      className={inputCls}
+                    />
+                  </Field>
                 </div>
 
                 {/* Servicios activos — acá siempre es Sueldos (es la única

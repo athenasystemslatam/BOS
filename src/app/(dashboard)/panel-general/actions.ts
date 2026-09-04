@@ -22,6 +22,7 @@ export async function crearClienteConServicios(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuitRaw = (formData.get("cuit") as string)?.trim();
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
+  const email_contacto = (formData.get("email_contacto") as string)?.trim() || null;
 
   if (!nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -39,7 +40,13 @@ export async function crearClienteConServicios(formData: FormData) {
 
   const { data: cliente, error: clienteError } = await supabase
     .from("clientes")
-    .insert({ nombre, cuit: parsed.digits, terminacion_cuit: parsed.terminacion, tipo_contribuyente })
+    .insert({
+      nombre,
+      cuit: parsed.digits,
+      terminacion_cuit: parsed.terminacion,
+      tipo_contribuyente,
+      email_contacto,
+    })
     .select("id")
     .single();
 
@@ -155,6 +162,7 @@ export async function editarClienteConServicios(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuitRaw = (formData.get("cuit") as string)?.trim();
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
+  const email_contacto = (formData.get("email_contacto") as string)?.trim() || null;
 
   if (!id || !nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -177,6 +185,7 @@ export async function editarClienteConServicios(formData: FormData) {
       cuit: parsed.digits,
       terminacion_cuit: parsed.terminacion,
       tipo_contribuyente,
+      email_contacto,
       fecha_modificacion: new Date().toISOString(),
     })
     .eq("id", id);

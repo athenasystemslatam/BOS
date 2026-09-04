@@ -159,6 +159,20 @@ export function EditarEmpresaModal({
               />
             </div>
 
+            {/* Email de contacto */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Email de contacto
+              </label>
+              <input
+                name="email_contacto"
+                type="email"
+                defaultValue={cliente.email_contacto ?? ""}
+                placeholder="contacto@empresa.com"
+                className={inputCls}
+              />
+            </div>
+
             {/* Tipo + Liquidadora */}
             <div className="grid grid-cols-2 gap-4">
               <div>

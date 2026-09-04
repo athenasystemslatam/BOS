@@ -280,6 +280,9 @@ export function PanelGeneralClient({
                         <p className="text-[11px] text-gray-400 font-mono mt-0.5">
                           {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                         </p>
+                        {empresa.email_contacto && (
+                          <p className="text-[11px] text-gray-400 truncate">{empresa.email_contacto}</p>
+                        )}
                       </div>
                       <span className={clsx(
                         "shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
@@ -412,6 +415,9 @@ export function PanelGeneralClient({
                             <p className="text-[11px] text-gray-400 font-mono mt-0.5">
                               {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                             </p>
+                            {empresa.email_contacto && (
+                              <p className="text-[11px] text-gray-400 truncate">{empresa.email_contacto}</p>
+                            )}
                           </td>
 
                           {/* Celdas de servicio */}

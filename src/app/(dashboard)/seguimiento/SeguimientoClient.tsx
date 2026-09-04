@@ -189,6 +189,19 @@ function ClavesModal({
           </button>
         </div>
 
+        {/* Email de contacto */}
+        {cliente.email_contacto && (
+          <div className="mb-4">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              Email de contacto
+            </p>
+            <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 font-mono text-[13px] text-gray-700">
+              {cliente.email_contacto}
+              <CopyButton value={cliente.email_contacto} />
+            </div>
+          </div>
+        )}
+
         {/* CUIL ARCA */}
         {cliente.cuil_arca && (
           <div className="mb-4">

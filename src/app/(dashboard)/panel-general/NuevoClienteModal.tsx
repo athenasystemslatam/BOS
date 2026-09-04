@@ -175,6 +175,18 @@ export function NuevoClienteModal({
                 <option value="inscripto">Inscripto</option>
               </select>
             </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-500 block mb-1">
+                Email de contacto
+              </label>
+              <input
+                name="email_contacto"
+                type="email"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
+                placeholder="contacto@empresa.com"
+              />
+            </div>
           </div>
 
           {/* Servicios */}
