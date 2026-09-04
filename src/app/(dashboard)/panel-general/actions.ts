@@ -10,11 +10,13 @@ function parseCuit(raw: string) {
   return { digits, terminacion: parseInt(digits[10]) };
 }
 
+const MAX_EMAILS_CONTACTO = 5;
+
 function parseEmailsContacto(formData: FormData): string[] {
   try {
     const raw = JSON.parse((formData.get("emails_contacto") as string) || "[]");
     if (!Array.isArray(raw)) return [];
-    return raw.map((e) => String(e).trim()).filter(Boolean);
+    return raw.map((e) => String(e).trim()).filter(Boolean).slice(0, MAX_EMAILS_CONTACTO);
   } catch {
     return [];
   }
