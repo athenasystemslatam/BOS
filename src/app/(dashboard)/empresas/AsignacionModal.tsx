@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { X, History, ChevronRight } from "lucide-react";
 import { Asignacion, Cliente, Liquidadora } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
@@ -25,7 +25,7 @@ export function AsignacionModal({
 }) {
   const hoy = new Date();
   const [historial, setHistorial] = useState<Asignacion[]>([]);
-  const [cargado, setCargado] = useState(false);
+  const [cargando, setCargando] = useState(true);
   const [nuevaLiq, setNuevaLiq] = useState("");
   const [desdeMes, setDesdeMes] = useState(hoy.getMonth() + 1);
   const [desdeAnio, setDesdeAnio] = useState(hoy.getFullYear());
@@ -34,10 +34,16 @@ export function AsignacionModal({
   const [isPending, startTransition] = useTransition();
 
   // Cargar historial al abrir
-  if (!cargado) {
-    setCargado(true);
-    getAsignaciones(cliente.id).then(setHistorial);
-  }
+  useEffect(() => {
+    let cancelado = false;
+    setCargando(true);
+    getAsignaciones(cliente.id).then((res) => {
+      if (cancelado) return;
+      setHistorial(res);
+      setCargando(false);
+    });
+    return () => { cancelado = true; };
+  }, [cliente.id]);
 
   function handleGuardar() {
     if (!nuevaLiq) { setError("Seleccioná una liquidadora."); return; }
@@ -75,7 +81,9 @@ export function AsignacionModal({
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">
               Historial
             </p>
-            {historial.length === 0 ? (
+            {cargando ? (
+              <p className="text-sm text-gray-400 py-2">Cargando historial…</p>
+            ) : historial.length === 0 ? (
               <div className="text-sm text-gray-400 py-2">
                 <p>Sin reasignaciones registradas.</p>
                 <p className="text-[12px] mt-1">
