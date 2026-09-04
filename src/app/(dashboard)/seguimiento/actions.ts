@@ -111,6 +111,25 @@ export async function updateObservaciones(
   return error ? { error: error.message } : { success: true };
 }
 
+// A diferencia de Legajos/Observaciones/Recordatorio, la alícuota ART no es
+// un dato por período — vive en `clientes`, igual que el nombre de la ART.
+// Se edita acá igual (columna directa en la tabla) para no obligar a pasar
+// por Clientes → Editar para un dato que se consulta seguido en Seguimiento.
+export async function updateAlicuotaArt(clienteId: string, alicuota: string) {
+  try {
+    await requireLiquidadoraOrAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("clientes")
+    .update({ alicuota_art: alicuota.trim() || null })
+    .eq("id", clienteId);
+  return error ? { error: error.message } : { success: true };
+}
+
 export async function fetchPeriodo(
   anio: number,
   mes: number

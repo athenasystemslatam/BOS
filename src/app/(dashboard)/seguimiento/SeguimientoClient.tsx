@@ -26,6 +26,7 @@ import {
   updateLegajos,
   updateObservaciones,
   updateRecordatorio,
+  updateAlicuotaArt,
   fetchPeriodo,
   fetchTareas,
   fetchRecordatoriosPrevios,
@@ -292,6 +293,10 @@ export function SeguimientoClient({
     initialRecordatoriosPrevios
   );
 
+  // Alícuota ART — dato del cliente, no del período, así que se overridea
+  // por clienteId solo (no clienteId+período como el resto de estos campos).
+  const [alicuotaOverrides, setAlicuotaOverrides] = useState<Record<string, string>>({});
+
   // Debounce timers
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -494,6 +499,21 @@ export function SeguimientoClient({
         () => updateObservaciones(clienteId, currentPeriodo.id, valor),
         700
       )
+    );
+  }
+
+  // ── Alícuota ART (debounced) ──────────────────────────────────────────────
+  // No usa `overrides`/`getEffective` como el resto: es un dato del cliente,
+  // no del período, entonces el override es por clienteId solo.
+
+  function handleAlicuotaArt(clienteId: string, valor: string) {
+    if (!puedeEditar) return;
+    setAlicuotaOverrides((prev) => ({ ...prev, [clienteId]: valor }));
+    const key = `${clienteId}-alicuota`;
+    clearTimeout(debounceTimers.current.get(key));
+    debounceTimers.current.set(
+      key,
+      setTimeout(() => updateAlicuotaArt(clienteId, valor), 700)
     );
   }
 
@@ -1000,6 +1020,9 @@ export function SeguimientoClient({
                   <th className="px-3 py-3 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-[76px]">
                     Legajos
                   </th>
+                  <th className="px-3 py-3 text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wider w-[90px]">
+                    Alíc. ART
+                  </th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[160px]">
                     Observaciones
                   </th>
@@ -1222,6 +1245,20 @@ export function SeguimientoClient({
                             handleLegajos(cliente.id, e.target.value)
                           }
                           className="w-14 text-center text-[12px] font-medium text-gray-700 border border-gray-200 rounded-md px-1 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo bg-transparent hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        />
+                      </td>
+
+                      {/* Alícuota ART */}
+                      <td className="px-3 py-2.5 text-center">
+                        <input
+                          type="text"
+                          value={alicuotaOverrides[cliente.id] ?? cliente.alicuota_art ?? ""}
+                          placeholder="0%"
+                          disabled={!puedeEditar}
+                          onChange={(e) =>
+                            handleAlicuotaArt(cliente.id, e.target.value)
+                          }
+                          className="w-16 text-center text-[12px] font-medium text-gray-700 border border-gray-200 rounded-md px-1 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo bg-transparent hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </td>
 

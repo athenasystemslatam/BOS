@@ -47,6 +47,7 @@ export interface Cliente {
   tiene_rubrica_lsd: boolean;
   jurisdiccion?: string;
   art?: string;
+  alicuota_art?: string;
   red_bancaria?: string;
   estado: EstadoCliente;
   observaciones?: string;
