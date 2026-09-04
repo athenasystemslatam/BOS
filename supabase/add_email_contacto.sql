@@ -15,7 +15,6 @@ SELECT
   c.nombre,
   c.cuit,
   c.estado,
-  c.email_contacto,
   (SELECT e.nombre
    FROM servicios_cliente sc
    JOIN liquidadoras e ON e.id = sc.responsable_id
@@ -57,5 +56,6 @@ SELECT
    JOIN liquidadoras e ON e.id = sc.responsable_id
    WHERE sc.cliente_id = c.id AND sc.servicio = 'monotributo' AND sc.subtipo = 'general'
      AND sc.estado = true
-   LIMIT 1) AS responsable_monotributo
+   LIMIT 1) AS responsable_monotributo,
+  c.email_contacto
 FROM clientes c;
