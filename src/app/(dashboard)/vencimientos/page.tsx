@@ -28,8 +28,8 @@ export default async function VencimientosPage() {
   ];
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="mb-6 md:mb-8">
+    <div className="flex flex-col h-full p-4 md:p-8">
+      <div className="mb-6 md:mb-8 shrink-0">
         <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">F.931 — ARCA</p>
         <h1 className="text-2xl font-semibold text-gray-900 mt-1">
           Calendario de vencimientos 2026
@@ -40,7 +40,7 @@ export default async function VencimientosPage() {
       </div>
 
       {/* Leyenda */}
-      <div className="flex flex-wrap items-center gap-3 md:gap-5 mb-6 text-xs text-gray-500">
+      <div className="flex flex-wrap items-center gap-3 md:gap-5 mb-6 text-xs text-gray-500 shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-full bg-success" />
           Más de 7 días
@@ -59,14 +59,14 @@ export default async function VencimientosPage() {
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 mb-4 flex items-center gap-1.5">
+      <p className="text-xs text-gray-400 mb-4 flex items-center gap-1.5 shrink-0">
         <CalendarDays size={12} />
         Fechas según resolución ARCA 2026. Para años futuros se usan fechas genéricas (9/10/11 del mes siguiente).
       </p>
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-auto max-h-[500px] [scrollbar-gutter:stable]">
+      <div className="flex-1 min-h-0 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="h-full overflow-auto [scrollbar-gutter:stable]">
         <table className="w-full min-w-[480px]">
           <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-100">
             <tr className="text-xs text-gray-400 uppercase tracking-wide">

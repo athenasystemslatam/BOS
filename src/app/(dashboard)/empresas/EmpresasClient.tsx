@@ -119,8 +119,8 @@ export function EmpresasClient({
 
   return (
     <>
-      <div className="p-4 md:p-8">
-        <div className="mb-6 md:mb-8 flex items-start justify-between">
+      <div className="flex flex-col h-full p-4 md:p-8">
+        <div className="mb-6 md:mb-8 flex items-start justify-between shrink-0">
           <div>
             <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">
               Módulo Sueldos
@@ -132,7 +132,7 @@ export function EmpresasClient({
 
         {/* Alerta: empresas sin liquidadora activa */}
         {sinAsignacion.length > 0 && (
-          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+          <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3 shrink-0">
             <span className="text-amber-500 text-base mt-0.5">⚠</span>
             <div>
               <p className="text-sm font-medium text-amber-800">
@@ -148,7 +148,7 @@ export function EmpresasClient({
         )}
 
         {/* Filtros */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 md:mb-6 px-4 md:px-5 py-3 md:py-4 shrink-0">
           <div className="flex flex-wrap items-end gap-3 md:gap-4">
             {/* Búsqueda */}
             <div className="flex-1 min-w-[200px]">
@@ -208,6 +208,7 @@ export function EmpresasClient({
         </div>
 
         {/* Mobile cards */}
+        <div className="flex-1 min-h-0">
         {filtrados.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-6 py-16 text-center">
             <p className="text-gray-400 text-sm">
@@ -280,8 +281,8 @@ export function EmpresasClient({
             </div>
 
             {/* Tabla desktop */}
-            <div className="hidden md:block bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="overflow-auto max-h-[60vh] [scrollbar-gutter:stable]">
+            <div className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
                 <table className="w-full min-w-[960px]">
                 <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs text-gray-400 uppercase tracking-wide">
@@ -406,6 +407,7 @@ export function EmpresasClient({
             </div>
           </>
         )}
+        </div>
       </div>
 
       {editando && (
