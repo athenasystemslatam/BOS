@@ -257,6 +257,9 @@ export function EmpresasClient({
                     {c.tiene_sindicato && (
                       <span className="text-[11px] text-gray-500">Sind. {c.sindicato_nombre}</span>
                     )}
+                    {c.red_bancaria && (
+                      <span className="text-[11px] text-gray-500">{c.red_bancaria}</span>
+                    )}
                   </div>
                   {isAdmin && (
                     <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-50">
@@ -283,7 +286,7 @@ export function EmpresasClient({
             {/* Tabla desktop */}
             <div className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
-                <table className="w-full min-w-[960px]">
+                <table className="w-full min-w-[1080px]">
                 <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs text-gray-400 uppercase tracking-wide">
                     <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left font-medium">Empresa</th>
@@ -293,6 +296,7 @@ export function EmpresasClient({
                     <th className="px-4 py-3 text-center font-medium">Sindicato</th>
                     <th className="px-4 py-3 text-left font-medium">LSD</th>
                     <th className="px-4 py-3 text-left font-medium">Jurisdicción</th>
+                    <th className="px-4 py-3 text-left font-medium">Red bancaria</th>
                     <th className="px-4 py-3 text-center font-medium">Estado</th>
                     {isAdmin && (
                       <th className="px-4 py-3 text-center font-medium">Acciones</th>
@@ -375,6 +379,9 @@ export function EmpresasClient({
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
                         {c.jurisdiccion ?? <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
+                        {c.red_bancaria ?? <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         <span
