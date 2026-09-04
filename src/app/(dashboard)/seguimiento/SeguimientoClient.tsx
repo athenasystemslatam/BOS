@@ -762,49 +762,52 @@ export function SeguimientoClient({
         </div>
       )}
 
-      {/* Búsqueda por empresa */}
-      <div className="shrink-0 relative mb-4 max-w-xs">
-        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-        <input
-          type="text"
-          placeholder="Buscar empresa..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-8 pr-3 py-1.5 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo placeholder:text-gray-300 bg-white"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
-          >
-            <X size={12} />
-          </button>
-        )}
-      </div>
+      {/* Búsqueda por empresa + leyenda, en la misma línea para no restarle
+          alto a la tabla de abajo. */}
+      <div className="shrink-0 flex flex-wrap items-center gap-4 mb-4">
+        <div className="relative max-w-xs w-full sm:w-56">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar empresa..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-8 pr-3 py-1.5 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo placeholder:text-gray-300 bg-white"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
 
-      {/* Legend */}
-      <div className="shrink-0 flex items-center gap-5 mb-4 text-[11px] text-gray-400">
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded-md border-2 border-dashed border-gray-200" />
-          Pendiente
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded-md border-2 bg-amber-50 border-amber-300 flex items-center justify-center">
-            <AlertTriangle size={10} className="text-amber-500" />
+        {/* Legend */}
+        <div className="flex flex-wrap items-center gap-4 text-[11px] text-gray-400">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md border-2 border-dashed border-gray-200" />
+            Pendiente
           </div>
-          Marcado (Drive no confirmó)
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded-md border-2 bg-blue-50 border-blue-300 flex items-center justify-center">
-            <Cloud size={10} className="text-blue-400" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md border-2 bg-amber-50 border-amber-300 flex items-center justify-center">
+              <AlertTriangle size={10} className="text-amber-500" />
+            </div>
+            Marcado (Drive no confirmó)
           </div>
-          Drive detectó
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-5 rounded-md border-2 bg-green-50 border-green-400 flex items-center justify-center">
-            <Check size={10} strokeWidth={3} className="text-success" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md border-2 bg-blue-50 border-blue-300 flex items-center justify-center">
+              <Cloud size={10} className="text-blue-400" />
+            </div>
+            Drive detectó
           </div>
-          Confirmado
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md border-2 bg-green-50 border-green-400 flex items-center justify-center">
+              <Check size={10} strokeWidth={3} className="text-success" />
+            </div>
+            Confirmado
+          </div>
         </div>
       </div>
 
