@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { Search, Plus, AlertTriangle, Trash2, X, Bell } from "lucide-react";
+import { Search, Plus, AlertTriangle, Trash2, Pencil, X, Bell } from "lucide-react";
 import clsx from "clsx";
 import { EquipoMiembro, VistEmpresa } from "@/types";
 import { NuevoClienteModal } from "./NuevoClienteModal";
+import { EditarClienteModal } from "./EditarClienteModal";
 import { darDeBajaServicio, darDeBajaCliente } from "./actions";
 
 // Colores por área
@@ -65,6 +66,7 @@ export function PanelGeneralClient({
   const [soloSinResponsable, setSoloSinResponsable] = useState(false);
   const [filtroResponsable, setFiltroResponsable] = useState("");
   const [creando, setCreando] = useState(false);
+  const [editando, setEditando] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<Confirmando | null>(null);
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -333,7 +335,7 @@ export function PanelGeneralClient({
                     <col className="w-[170px]" />
                     <col className="w-[170px]" />
                     <col className="w-[100px]" />
-                    {isAdmin && <col className="w-[150px]" />}
+                    {isAdmin && <col className="w-[190px]" />}
                   </colgroup>
                   <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
                     {/* Fila 1: nombre del área — las de un solo servicio ocupan
@@ -484,33 +486,42 @@ export function PanelGeneralClient({
                           {/* Acciones */}
                           {isAdmin && (
                             <td className="px-4 py-3.5 text-center">
-                              {empresa.estado === "activo" && (
-                                pendienteBajaCliente ? (
-                                  <span className="inline-flex items-center gap-1">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => setEditando(empresa.id)}
+                                  className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-bordo transition-colors whitespace-nowrap"
+                                >
+                                  <Pencil size={11} />
+                                  Editar
+                                </button>
+                                {empresa.estado === "activo" && (
+                                  pendienteBajaCliente ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <button
+                                        onClick={() => confirmar(confirmBajaCliente)}
+                                        disabled={isPending}
+                                        className="text-[11px] font-semibold text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                      >
+                                        Confirmar baja
+                                      </button>
+                                      <button
+                                        onClick={() => setConfirmando(null)}
+                                        className="text-gray-400 hover:text-gray-600 text-[11px] px-1"
+                                      >
+                                        ✕
+                                      </button>
+                                    </span>
+                                  ) : (
                                     <button
                                       onClick={() => confirmar(confirmBajaCliente)}
-                                      disabled={isPending}
-                                      className="text-[11px] font-semibold text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                      className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors whitespace-nowrap"
                                     >
-                                      Confirmar baja
+                                      <Trash2 size={11} />
+                                      Dar de baja
                                     </button>
-                                    <button
-                                      onClick={() => setConfirmando(null)}
-                                      className="text-gray-400 hover:text-gray-600 text-[11px] px-1"
-                                    >
-                                      ✕
-                                    </button>
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={() => confirmar(confirmBajaCliente)}
-                                    className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors whitespace-nowrap"
-                                  >
-                                    <Trash2 size={11} />
-                                    Dar de baja
-                                  </button>
-                                )
-                              )}
+                                  )
+                                )}
+                              </div>
                             </td>
                           )}
                         </tr>
@@ -530,6 +541,15 @@ export function PanelGeneralClient({
           equipo={equipo}
           equipoModulos={equipoModulos}
           onClose={() => setCreando(false)}
+        />
+      )}
+
+      {editando && (
+        <EditarClienteModal
+          clienteId={editando}
+          equipo={equipo}
+          equipoModulos={equipoModulos}
+          onClose={() => setEditando(null)}
         />
       )}
     </>
