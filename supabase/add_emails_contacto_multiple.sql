@@ -12,11 +12,13 @@ WHERE email_contacto IS NOT NULL
   AND email_contacto <> ''
   AND emails_contacto = '{}';
 
-ALTER TABLE clientes DROP COLUMN IF EXISTS email_contacto;
-
--- CREATE OR REPLACE VIEW no permite sacar/renombrar una columna existente
--- (email_contacto), solo agregar al final — hay que recrear la vista entera.
+-- Hay que borrar la vista ANTES que la columna: vista_empresas depende de
+-- email_contacto, así que dropear la columna primero falla. Y no alcanza
+-- con CREATE OR REPLACE VIEW porque tampoco permite sacar/renombrar una
+-- columna existente (solo agregar al final) — hay que recrearla entera.
 DROP VIEW IF EXISTS vista_empresas;
+
+ALTER TABLE clientes DROP COLUMN IF EXISTS email_contacto;
 
 CREATE VIEW vista_empresas AS
 SELECT
