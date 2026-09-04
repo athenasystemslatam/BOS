@@ -96,8 +96,12 @@ export function PanelGeneralClient({
 
   const filtradas = useMemo(() => {
     const q = search.toLowerCase().trim();
+    // El CUIT se guarda sin guiones — se le sacan los caracteres no
+    // numéricos a lo tipeado para que busque igual con o sin guiones
+    // (20-12345678-9 o 20123456789).
+    const qCuit = q.replace(/\D/g, "");
     return empresas.filter((e) => {
-      if (q && !e.nombre.toLowerCase().includes(q) && !e.cuit.includes(q)) return false;
+      if (q && !e.nombre.toLowerCase().includes(q) && !(qCuit && e.cuit.includes(qCuit))) return false;
       if (filtroEstado && e.estado !== filtroEstado) return false;
       if (soloSinResponsable && !empresasSinResponsable.has(e.id)) return false;
       // "Cualquier área": alcanza con que la persona sea responsable de un

@@ -109,8 +109,12 @@ export function EmpresasClient({
 
   const filtrados = useMemo(() => {
     const q = search.toLowerCase().trim();
+    // El CUIT se guarda sin guiones — se le sacan los caracteres no
+    // numéricos a lo tipeado para que busque igual con o sin guiones
+    // (20-12345678-9 o 20123456789).
+    const qCuit = q.replace(/\D/g, "");
     return clientes.filter((c) => {
-      if (q && !c.nombre.toLowerCase().includes(q) && !c.cuit.includes(q)) return false;
+      if (q && !c.nombre.toLowerCase().includes(q) && !(qCuit && c.cuit.includes(qCuit))) return false;
       if (filtroLiq && c.liquidador_id !== filtroLiq) return false;
       if (filtroEstado && c.estado !== filtroEstado) return false;
       return true;
