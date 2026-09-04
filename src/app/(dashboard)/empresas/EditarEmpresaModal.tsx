@@ -6,6 +6,7 @@ import { editarEmpresa } from "./actions";
 import { Cliente, Liquidadora, ClaveAcceso } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
+import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 
 const inputCls =
   "w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo focus:ring-1 focus:ring-bordo/20 transition-colors bg-white";
@@ -57,6 +58,7 @@ export function EditarEmpresaModal({
     JURISDICCIONES.includes(cliente.jurisdiccion ?? "") ? (cliente.jurisdiccion as string) : "Otra"
   );
   const [claves, setClaves] = useState<ClaveAcceso[]>(cliente.claves_acceso ?? []);
+  const [emailsContacto, setEmailsContacto] = useState<string[]>(cliente.emails_contacto ?? []);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -78,6 +80,10 @@ export function EditarEmpresaModal({
     formData.set("tiene_rubrica_lsd", String(tieneRubrica));
     formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
+    formData.set(
+      "emails_contacto",
+      JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
+    );
     if (jurisdiccion !== "Otra") formData.set("jurisdiccion", jurisdiccion);
     if (tieneRubrica && (jurisdiccion === "PBA" || jurisdiccion === "CABA")) {
       if (lsdDesdeAnio) formData.set("lsd_desde_anio", String(lsdDesdeAnio));
@@ -159,18 +165,12 @@ export function EditarEmpresaModal({
               />
             </div>
 
-            {/* Email de contacto */}
+            {/* Emails de contacto */}
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                Email de contacto
+                Emails de contacto
               </label>
-              <input
-                name="email_contacto"
-                type="email"
-                defaultValue={cliente.email_contacto ?? ""}
-                placeholder="contacto@empresa.com"
-                className={inputCls}
-              />
+              <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
             </div>
 
             {/* Tipo + Liquidadora */}

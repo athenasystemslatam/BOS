@@ -6,6 +6,7 @@ import { EquipoMiembro, ClaveAcceso } from "@/types";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
+import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { crearClienteConServicios } from "./actions";
 
 type ServicioKey = `${string}:${string}`;
@@ -23,6 +24,7 @@ export function NuevoClienteModal({
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [emailsContacto, setEmailsContacto] = useState<string[]>([]);
 
   // serviciosActivos: key "servicio:subtipo" → responsable_id | ""
   const [serviciosActivos, setServiciosActivos] = useState<Record<ServicioKey, string>>({});
@@ -94,6 +96,10 @@ export function NuevoClienteModal({
     });
 
     formData.set("servicios", JSON.stringify(serviciosPayload));
+    formData.set(
+      "emails_contacto",
+      JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
+    );
 
     if ("sueldos:general" in serviciosActivos) {
       formData.set("sueldos_es_quincenal", String(esQuincenal));
@@ -178,14 +184,9 @@ export function NuevoClienteModal({
 
             <div>
               <label className="text-xs font-medium text-gray-500 block mb-1">
-                Email de contacto
+                Emails de contacto
               </label>
-              <input
-                name="email_contacto"
-                type="email"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
-                placeholder="contacto@empresa.com"
-              />
+              <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
             </div>
           </div>
 

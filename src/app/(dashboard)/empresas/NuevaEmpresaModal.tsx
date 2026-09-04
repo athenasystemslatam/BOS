@@ -7,6 +7,7 @@ import { Liquidadora, ClaveAcceso } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
+import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 
 function Field({
   label,
@@ -60,6 +61,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
   const [jurisdiccion, setJurisdiccion] = useState("CABA");
   const [sindicatoNombre, setSindicatoNombre] = useState("");
   const [claves, setClaves] = useState<ClaveAcceso[]>([]);
+  const [emailsContacto, setEmailsContacto] = useState<string[]>([]);
 
   const terminacion = cuit.replace(/\D/g, "").length === 11
     ? cuit.replace(/\D/g, "")[10]
@@ -98,6 +100,10 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     formData.set("tiene_rubrica_lsd", String(tieneRubrica));
     formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
+    formData.set(
+      "emails_contacto",
+      JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
+    );
     if (jurisdiccion !== "Otra") formData.set("jurisdiccion", jurisdiccion);
     if (tieneRubrica && (jurisdiccion === "PBA" || jurisdiccion === "CABA")) {
       if (lsdDesdeAnio) formData.set("lsd_desde_anio", String(lsdDesdeAnio));
@@ -188,13 +194,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                     </select>
                   </Field>
 
-                  <Field label="Email de contacto">
-                    <input
-                      name="email_contacto"
-                      type="email"
-                      placeholder="contacto@empresa.com"
-                      className={inputCls}
-                    />
+                  <Field label="Emails de contacto">
+                    <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
                   </Field>
                 </div>
 

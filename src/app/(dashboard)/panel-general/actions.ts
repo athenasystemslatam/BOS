@@ -10,6 +10,16 @@ function parseCuit(raw: string) {
   return { digits, terminacion: parseInt(digits[10]) };
 }
 
+function parseEmailsContacto(formData: FormData): string[] {
+  try {
+    const raw = JSON.parse((formData.get("emails_contacto") as string) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw.map((e) => String(e).trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export async function crearClienteConServicios(formData: FormData) {
   try {
     await requireAdmin();
@@ -22,7 +32,7 @@ export async function crearClienteConServicios(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuitRaw = (formData.get("cuit") as string)?.trim();
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
-  const email_contacto = (formData.get("email_contacto") as string)?.trim() || null;
+  const emails_contacto = parseEmailsContacto(formData);
 
   if (!nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -45,7 +55,7 @@ export async function crearClienteConServicios(formData: FormData) {
       cuit: parsed.digits,
       terminacion_cuit: parsed.terminacion,
       tipo_contribuyente,
-      email_contacto,
+      emails_contacto,
     })
     .select("id")
     .single();
@@ -162,7 +172,7 @@ export async function editarClienteConServicios(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuitRaw = (formData.get("cuit") as string)?.trim();
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
-  const email_contacto = (formData.get("email_contacto") as string)?.trim() || null;
+  const emails_contacto = parseEmailsContacto(formData);
 
   if (!id || !nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -185,7 +195,7 @@ export async function editarClienteConServicios(formData: FormData) {
       cuit: parsed.digits,
       terminacion_cuit: parsed.terminacion,
       tipo_contribuyente,
-      email_contacto,
+      emails_contacto,
       fecha_modificacion: new Date().toISOString(),
     })
     .eq("id", id);

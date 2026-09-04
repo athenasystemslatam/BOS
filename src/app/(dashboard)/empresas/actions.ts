@@ -11,6 +11,16 @@ function parseCuit(raw: string) {
   return { digits, terminacion: parseInt(digits[10]) };
 }
 
+function parseEmailsContacto(formData: FormData): string[] {
+  try {
+    const raw = JSON.parse((formData.get("emails_contacto") as string) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw.map((e) => String(e).trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export async function crearEmpresa(formData: FormData) {
   try {
     await requireAdmin();
@@ -23,7 +33,7 @@ export async function crearEmpresa(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuit = (formData.get("cuit") as string)?.trim();
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
-  const email_contacto = (formData.get("email_contacto") as string)?.trim() || null;
+  const emails_contacto = parseEmailsContacto(formData);
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const es_quincenal = formData.get("es_quincenal") === "true";
@@ -65,7 +75,7 @@ export async function crearEmpresa(formData: FormData) {
       cuit: parsed.digits,
       terminacion_cuit: parsed.terminacion,
       cuil_arca,
-      email_contacto,
+      emails_contacto,
       liquidador_id,
       tipo_contribuyente,
       es_quincenal,
@@ -119,7 +129,7 @@ export async function editarEmpresa(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuit = (formData.get("cuit") as string)?.trim();
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
-  const email_contacto = (formData.get("email_contacto") as string)?.trim() || null;
+  const emails_contacto = parseEmailsContacto(formData);
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const es_quincenal = formData.get("es_quincenal") === "true";
@@ -162,7 +172,7 @@ export async function editarEmpresa(formData: FormData) {
     cuit: parsed.digits,
     terminacion_cuit: parsed.terminacion,
     cuil_arca,
-    email_contacto,
+    emails_contacto,
     liquidador_id,
     tipo_contribuyente,
     es_quincenal,

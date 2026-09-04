@@ -232,8 +232,10 @@ export function EmpresasClient({
                       <p className="text-[11px] text-gray-400 font-mono mt-0.5">
                         {c.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                       </p>
-                      {c.email_contacto && (
-                        <p className="text-[11px] text-gray-400 truncate">{c.email_contacto}</p>
+                      {c.emails_contacto && c.emails_contacto.length > 0 && (
+                        <p className="text-[11px] text-gray-400 truncate">
+                          {c.emails_contacto.join(", ")}
+                        </p>
                       )}
                     </div>
                     <span className={clsx(
@@ -317,9 +319,9 @@ export function EmpresasClient({
                         <p className="text-[13px] font-medium text-gray-900 whitespace-nowrap">
                           {c.nombre}
                         </p>
-                        {c.email_contacto && (
+                        {c.emails_contacto && c.emails_contacto.length > 0 && (
                           <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
-                            {c.email_contacto}
+                            {c.emails_contacto.join(", ")}
                           </p>
                         )}
                         {c.observaciones && (

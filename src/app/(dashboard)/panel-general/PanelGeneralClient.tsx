@@ -280,8 +280,10 @@ export function PanelGeneralClient({
                         <p className="text-[11px] text-gray-400 font-mono mt-0.5">
                           {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                         </p>
-                        {empresa.email_contacto && (
-                          <p className="text-[11px] text-gray-400 truncate">{empresa.email_contacto}</p>
+                        {empresa.emails_contacto && empresa.emails_contacto.length > 0 && (
+                          <p className="text-[11px] text-gray-400 truncate">
+                            {empresa.emails_contacto.join(", ")}
+                          </p>
                         )}
                       </div>
                       <span className={clsx(
@@ -415,8 +417,10 @@ export function PanelGeneralClient({
                             <p className="text-[11px] text-gray-400 font-mono mt-0.5">
                               {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                             </p>
-                            {empresa.email_contacto && (
-                              <p className="text-[11px] text-gray-400 truncate">{empresa.email_contacto}</p>
+                            {empresa.emails_contacto && empresa.emails_contacto.length > 0 && (
+                              <p className="text-[11px] text-gray-400 truncate">
+                                {empresa.emails_contacto.join(", ")}
+                              </p>
                             )}
                           </td>
 
