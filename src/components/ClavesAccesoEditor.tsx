@@ -40,7 +40,10 @@ export function ClavesAccesoEditor({
   return (
     <div className="space-y-2">
       {claves.map((c, i) => (
-        <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1fr_0.8fr_auto] gap-2 items-center">
+        <div
+          key={i}
+          className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_1fr_1fr_0.8fr_auto] gap-2 sm:items-center"
+        >
           <input
             type="text"
             placeholder="Sistema (ARCA, TAD…)"
@@ -105,7 +108,7 @@ export function ClavesAccesoEditor({
           <button
             type="button"
             onClick={() => remove(i)}
-            className="text-gray-300 hover:text-danger transition-colors"
+            className="text-gray-300 hover:text-danger transition-colors justify-self-end sm:justify-self-auto"
           >
             <Trash2 size={14} />
           </button>

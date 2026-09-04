@@ -131,7 +131,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[90vh] flex flex-col"
+            className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -146,8 +146,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
             </div>
 
             {/* Scrollable body */}
-            <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-              <div className="px-6 py-5 space-y-5">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5">
 
                 {/* Datos básicos */}
                 <div className="space-y-4">

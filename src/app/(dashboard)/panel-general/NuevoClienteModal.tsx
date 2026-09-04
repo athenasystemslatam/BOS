@@ -122,8 +122,8 @@ export function NuevoClienteModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <h2 className="text-[15px] font-semibold text-gray-900">Nueva empresa</h2>
           <button
             onClick={onClose}
@@ -133,7 +133,8 @@ export function NuevoClienteModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5">
           {/* Datos básicos */}
           <div className="space-y-3">
             <div>
@@ -354,8 +355,9 @@ export function NuevoClienteModal({
           {error && (
             <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
+        </div>
 
-          <div className="flex justify-end gap-2 pt-1">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 shrink-0">
             <button
               type="button"
               onClick={onClose}
