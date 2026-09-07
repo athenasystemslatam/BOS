@@ -20,7 +20,7 @@ BOS centraliza el seguimiento mensual de los clientes de la consultora. En **Sue
 | `/seguimiento` | Seguimiento mensual de Sueldos (checkboxes por tarea, legajos, alícuota ART, observaciones, recordatorios) | Completo |
 | `/empresas` | Alta/edición de clientes de Sueldos, historial de reasignación de liquidadora | Completo |
 | `/vencimientos` | Calendario de vencimientos F.931 por grupo de CUIT | Completo |
-| `/panel-general` | Vista de todos los clientes con responsable por módulo (Sueldos/Impuestos/Contable/Monotributo/Libros); alta y edición de clientes multi-módulo | Completo |
+| `/panel-general` | Vista de todos los clientes con responsable por módulo (Sueldos/Impuestos/Contable/Monotributo/Libros); alta, edición y exportación a Excel de clientes multi-módulo | Completo |
 | `/equipo` | Padrón de personas, qué módulos cubre cada una, bloqueo de accesos | Completo |
 | `/impuestos` | Seguimiento mensual por subtipo (IVA, IIBB, Seg. e Hig.) | En desarrollo |
 | `/contable` | Balances anuales (envíos de info, EECC, F.855/899/713/657, IGJ) | En desarrollo |
@@ -42,7 +42,7 @@ Impuestos, Contable y Monotributo repiten el mismo patrón interno: `[modulo]/pa
 | Resend | Emails | API simple, sin configurar servidor SMTP |
 | GitHub Actions | Cron jobs | Vercel Hobby tiene límite de 10s por función; GitHub Actions llama al endpoint y espera sin límite |
 | @react-pdf/renderer | Generación de PDF | Renderizado server-side sin browser (reporte mensual) |
-| exceljs | Generación de Excel | Instalada para exportaciones a planilla (uso puntual, no en todas las pantallas) |
+| exceljs | Generación de Excel | Usada en `/api/exportar/clientes` — genera el archivo en el servidor, sin guardarlo |
 
 ---
 
@@ -237,6 +237,9 @@ Solo existe "dar de baja" (`estado: inactivo`), nunca un `delete`. Un cliente in
 **¿Por qué la cuenta de servicio de Google solo puede leer carpetas y no subir archivos?**  
 Las cuentas de servicio no tienen cuota de almacenamiento de Google Drive. Pueden leer sin problema, pero no pueden crear archivos en Drive personal. Para el reporte PDF mensual se usa email (Resend) en su lugar.
 
+**¿Por qué la exportación a Excel incluye las contraseñas de las claves de acceso en texto plano?**  
+Fue una decisión explícita del usuario (no el default recomendado) al pedir la funcionalidad. El archivo que genera `/api/exportar/clientes` es tan sensible como los sistemas que lista — quien lo reciba por mail o lo guarde en una compu tiene acceso directo a esas claves. Solo admins pueden generarlo (`requireAdmin()`).
+
 ---
 
 ## Variables de entorno
@@ -305,6 +308,17 @@ El endpoint `/api/alertas/f931` se llama por cron. Envía emails a las liquidado
 
 ### Reporte mensual PDF
 El endpoint `/api/cron/reporte-mensual` genera un PDF con estadísticas del mes cerrado (avance por liquidadora, empresas pendientes) y lo envía por email al admin.
+
+---
+
+## Exportación de datos
+
+`GET /api/exportar/clientes` (solo admin) genera un Excel al vuelo, sin guardarlo en ningún lado:
+
+- Sin `?id` → todos los clientes.
+- Con `?id=<uuid>` → un solo cliente (botón de descarga por fila en Panel General).
+
+El archivo tiene dos hojas: **Clientes** (una fila por empresa, todos los campos de la ficha) y **Claves de acceso** (una fila por sistema cargado, contraseña incluida — ver Decisiones de arquitectura). Todavía no hay un backup automático periódico armado con esto; por ahora es solo a demanda, desde el botón "Exportar todo" de Panel General.
 
 ---
 
