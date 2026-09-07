@@ -89,6 +89,7 @@ Empresas, monotributistas e inscriptos — ficha maestra, un solo registro por c
 | terminacion_cuit | int | Último dígito del CUIT (define fecha F.931) |
 | tipo_contribuyente | text | `empresa`, `monotributista`, `inscripto` |
 | liquidador_id | uuid | FK → liquidadoras (responsable de Sueldos vigente) |
+| fecha_inicio_liquidacion | date | Desde cuándo la consultora le liquida sueldos (distinto de fecha_alta_empleador) |
 | emails_contacto | text[] | Hasta 5 emails de contacto (validado en front y en el server) |
 | cuil_arca | text | CUIL usado para entrar a ARCA |
 | es_quincenal | boolean | Tiene liquidación quincenal (rec_q1) |
