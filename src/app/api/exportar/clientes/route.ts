@@ -24,6 +24,29 @@ function fecha(raw: string | null | undefined) {
   return Number.isNaN(d.getTime()) ? raw : d.toLocaleDateString("es-AR");
 }
 
+// Hora de Argentina, no la del servidor (Vercel corre en UTC) — mismo
+// criterio que el reporte mensual (ver src/app/api/cron/reporte-mensual).
+function generadoEn(d: Date) {
+  return d.toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
+// Para el nombre de archivo: mismo dato pero en formato ordenable
+// (YYYY-MM-DD_HH-mm), también en hora Argentina.
+function stampArchivo(d: Date) {
+  return d
+    .toLocaleString("sv-SE", {
+      timeZone: "America/Argentina/Buenos_Aires",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    })
+    .replace(" ", "_")
+    .replace(":", "-");
+}
+
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin();
@@ -58,6 +81,7 @@ export async function GET(req: NextRequest) {
   }
 
   const vistaPorId = new Map((vista as VistEmpresa[] | null ?? []).map((v) => [v.id, v]));
+  const ahora = new Date();
 
   const wb = new ExcelJS.Workbook();
 
@@ -89,6 +113,9 @@ export async function GET(req: NextRequest) {
     { header: "Fecha alta en BOS", key: "fecha_alta", width: 16 },
   ];
   wsClientes.getRow(1).font = { bold: true };
+  wsClientes.insertRow(1, [`Generado: ${generadoEn(ahora)}`]);
+  wsClientes.mergeCells(1, 1, 1, wsClientes.columns.length);
+  wsClientes.getRow(1).font = { italic: true, color: { argb: "FF888888" } };
 
   const wsClaves = wb.addWorksheet("Claves de acceso");
   wsClaves.columns = [
@@ -100,6 +127,9 @@ export async function GET(req: NextRequest) {
     { header: "Módulo", key: "modulo", width: 14 },
   ];
   wsClaves.getRow(1).font = { bold: true };
+  wsClaves.insertRow(1, [`Generado: ${generadoEn(ahora)}`]);
+  wsClaves.mergeCells(1, 1, 1, wsClaves.columns.length);
+  wsClaves.getRow(1).font = { italic: true, color: { argb: "FF888888" } };
 
   for (const c of clientes as Cliente[]) {
     const v = vistaPorId.get(c.id);
@@ -144,8 +174,8 @@ export async function GET(req: NextRequest) {
 
   const buffer = await wb.xlsx.writeBuffer();
   const nombreArchivo = id
-    ? `${(clientes[0] as Cliente).nombre.replace(/[^\w\-]+/g, "_")}.xlsx`
-    : `clientes-BOS-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    ? `${(clientes[0] as Cliente).nombre.replace(/[^\w\-]+/g, "_")}_${stampArchivo(ahora)}.xlsx`
+    : `clientes-BOS-${stampArchivo(ahora)}.xlsx`;
 
   return new NextResponse(buffer, {
     headers: {
