@@ -330,6 +330,11 @@ export function PanelGeneralClient({
                             ) : (
                               <span className="text-gray-300">—</span>
                             )}
+                            {esSueldos && empresa.fecha_inicio_liquidacion && (
+                              <span className="text-gray-300 text-[11px]">
+                                (desde {new Date(empresa.fecha_inicio_liquidacion).toLocaleDateString("es-AR", { timeZone: "UTC" })})
+                              </span>
+                            )}
                           </div>
                         );
                       })}
@@ -465,9 +470,16 @@ export function PanelGeneralClient({
                                   </span>
                                 ) : tieneServicio ? (
                                   <div className="inline-flex items-center gap-1.5 group/cell max-w-full">
-                                    <span className="text-gray-700 truncate" title={nombre ?? undefined}>
-                                      {nombre ?? <span className="text-gray-300">Sin responsable</span>}
-                                    </span>
+                                    <div className="min-w-0">
+                                      <span className="text-gray-700 truncate block" title={nombre ?? undefined}>
+                                        {nombre ?? <span className="text-gray-300">Sin responsable</span>}
+                                      </span>
+                                      {esSueldos && empresa.fecha_inicio_liquidacion && (
+                                        <span className="text-[10px] text-gray-400 block truncate">
+                                          Desde {new Date(empresa.fecha_inicio_liquidacion).toLocaleDateString("es-AR", { timeZone: "UTC" })}
+                                        </span>
+                                      )}
+                                    </div>
                                     {isAdmin && empresa.estado === "activo" && (
                                       pendienteEste ? (
                                         <span className="inline-flex items-center gap-1">

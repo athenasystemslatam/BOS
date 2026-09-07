@@ -21,7 +21,10 @@ function si(v: boolean | null | undefined) {
 function fecha(raw: string | null | undefined) {
   if (!raw) return "";
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? raw : d.toLocaleDateString("es-AR");
+  // timeZone: "UTC" para que una columna `date` (sin hora) como
+  // fecha_alta_empleador o fecha_inicio_liquidacion no se corra un día
+  // para atrás al mostrarla — new Date("2026-09-07") es medianoche UTC.
+  return Number.isNaN(d.getTime()) ? raw : d.toLocaleDateString("es-AR", { timeZone: "UTC" });
 }
 
 // Hora de Argentina, no la del servidor (Vercel corre en UTC) — mismo
@@ -92,6 +95,7 @@ export async function GET(req: NextRequest) {
     { header: "Tipo", key: "tipo", width: 14 },
     { header: "Estado", key: "estado", width: 10 },
     { header: "Resp. Sueldos", key: "resp_sueldos", width: 18 },
+    { header: "Inicio liquidación", key: "fecha_inicio_liquidacion", width: 16 },
     { header: "Resp. Impuestos IVA", key: "resp_iva", width: 18 },
     { header: "Resp. Impuestos IIBB", key: "resp_iibb", width: 18 },
     { header: "Resp. Impuestos Seg.Hig.", key: "resp_seh", width: 20 },
@@ -139,6 +143,7 @@ export async function GET(req: NextRequest) {
       tipo: c.tipo_contribuyente,
       estado: c.estado === "activo" ? "Activa" : "Inactiva",
       resp_sueldos: v?.responsable_sueldos ?? "",
+      fecha_inicio_liquidacion: fecha(c.fecha_inicio_liquidacion),
       resp_iva: v?.responsable_impuestos_iva ?? "",
       resp_iibb: v?.responsable_impuestos_iibb ?? "",
       resp_seh: v?.responsable_impuestos_seh ?? "",

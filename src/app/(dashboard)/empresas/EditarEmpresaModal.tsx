@@ -198,6 +198,19 @@ export function EditarEmpresaModal({
               </div>
             </div>
 
+            {/* Fecha de inicio de liquidación */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Fecha de inicio de liquidación
+              </label>
+              <input
+                name="fecha_inicio_liquidacion"
+                type="date"
+                defaultValue={cliente.fecha_inicio_liquidacion ?? ""}
+                className={inputCls}
+              />
+            </div>
+
             {/* Quincenal */}
             <div className="border border-gray-100 rounded-lg p-4">
               <div className="flex items-center justify-between">

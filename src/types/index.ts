@@ -59,6 +59,7 @@ export interface Cliente {
   drive_folder_id?: string;
   fecha_alta: string;
   fecha_alta_empleador?: string;
+  fecha_inicio_liquidacion?: string;
   fecha_baja?: string;
   fecha_modificacion: string;
   creado_por?: string;
@@ -162,6 +163,7 @@ export interface VistEmpresa {
   cuit: string;
   estado: EstadoCliente;
   emails_contacto: string[];
+  fecha_inicio_liquidacion: string | null;
   responsable_sueldos: string | null;
   responsable_impuestos_iva: string | null;
   responsable_impuestos_iibb: string | null;

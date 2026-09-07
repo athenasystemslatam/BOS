@@ -38,6 +38,7 @@ export async function crearEmpresa(formData: FormData) {
   const emails_contacto = parseEmailsContacto(formData);
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
+  const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
   const es_quincenal = formData.get("es_quincenal") === "true";
   const tiene_sindicato = formData.get("tiene_sindicato") === "true";
   const sindicato_nombre = (formData.get("sindicato_nombre") as string)?.trim() || null;
@@ -80,6 +81,7 @@ export async function crearEmpresa(formData: FormData) {
       emails_contacto,
       liquidador_id,
       tipo_contribuyente,
+      fecha_inicio_liquidacion,
       es_quincenal,
       tiene_sindicato,
       sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
@@ -134,6 +136,7 @@ export async function editarEmpresa(formData: FormData) {
   const emails_contacto = parseEmailsContacto(formData);
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
+  const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
   const es_quincenal = formData.get("es_quincenal") === "true";
   const tiene_sindicato = formData.get("tiene_sindicato") === "true";
   const sindicato_nombre = (formData.get("sindicato_nombre") as string)?.trim() || null;
@@ -177,6 +180,7 @@ export async function editarEmpresa(formData: FormData) {
     emails_contacto,
     liquidador_id,
     tipo_contribuyente,
+    fecha_inicio_liquidacion,
     es_quincenal,
     tiene_sindicato,
     sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,

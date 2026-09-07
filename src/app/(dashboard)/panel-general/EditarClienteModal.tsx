@@ -36,6 +36,7 @@ export function EditarClienteModal({
   // serviciosActivos: key "servicio:subtipo" → responsable_id | ""
   const [serviciosActivos, setServiciosActivos] = useState<Record<ServicioKey, string>>({});
 
+  const [fechaInicioLiquidacion, setFechaInicioLiquidacion] = useState("");
   const [esQuincenal, setEsQuincenal] = useState(false);
   const [tieneSindicato, setTieneSindicato] = useState(false);
   const [sindicatoNombre, setSindicatoNombre] = useState("");
@@ -71,6 +72,7 @@ export function EditarClienteModal({
       }
       setServiciosActivos(activos);
 
+      setFechaInicioLiquidacion(cliente.fecha_inicio_liquidacion ?? "");
       setEsQuincenal(!!cliente.es_quincenal);
       setTieneSindicato(!!cliente.tiene_sindicato);
       setSindicatoNombre(cliente.sindicato_nombre ?? "");
@@ -138,6 +140,7 @@ export function EditarClienteModal({
     );
 
     if ("sueldos:general" in serviciosActivos) {
+      formData.set("sueldos_fecha_inicio_liquidacion", fechaInicioLiquidacion);
       formData.set("sueldos_es_quincenal", String(esQuincenal));
       formData.set("sueldos_tiene_sindicato", String(tieneSindicato));
       formData.set("sueldos_sindicato_nombre", sindicatoNombre);
@@ -268,6 +271,18 @@ export function EditarClienteModal({
 
                           {servicio === "sueldos" && (
                             <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                              <div>
+                                <label className="text-[11px] text-gray-400 block mb-1">
+                                  Fecha de inicio de liquidación
+                                </label>
+                                <input
+                                  type="date"
+                                  value={fechaInicioLiquidacion}
+                                  onChange={(e) => setFechaInicioLiquidacion(e.target.value)}
+                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                />
+                              </div>
+
                               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
                                 Para Seguimiento
                               </p>

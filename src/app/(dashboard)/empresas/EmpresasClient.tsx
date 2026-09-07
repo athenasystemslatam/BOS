@@ -298,7 +298,7 @@ export function EmpresasClient({
             {/* Tabla desktop */}
             <div className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
-                <table className="w-full min-w-[1080px]">
+                <table className="w-full min-w-[1200px]">
                 <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs text-gray-400 uppercase tracking-wide">
                     <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left font-medium">Empresa</th>
@@ -309,6 +309,7 @@ export function EmpresasClient({
                     <th className="px-4 py-3 text-left font-medium">LSD</th>
                     <th className="px-4 py-3 text-left font-medium">Jurisdicción</th>
                     <th className="px-4 py-3 text-left font-medium">Red bancaria</th>
+                    <th className="px-4 py-3 text-left font-medium">Inicio liquidación</th>
                     <th className="px-4 py-3 text-center font-medium">Estado</th>
                     {isAdmin && (
                       <th className="px-4 py-3 text-center font-medium">Acciones</th>
@@ -402,6 +403,13 @@ export function EmpresasClient({
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
                         {c.red_bancaria ?? <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
+                        {c.fecha_inicio_liquidacion ? (
+                          new Date(c.fecha_inicio_liquidacion).toLocaleDateString("es-AR", { timeZone: "UTC" })
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5 text-center">
                         <span

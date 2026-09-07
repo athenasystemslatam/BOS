@@ -57,6 +57,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
   const [lsdDesMes, setLsdDesMes] = useState<number | null>(null);
   const [lsdHastaAnio, setLsdHastaAnio] = useState<number | null>(null);
   const [lsdHastaMes, setLsdHastaMes] = useState<number | null>(null);
+  const [fechaInicioLiquidacion, setFechaInicioLiquidacion] = useState("");
   const [esQuincenal, setEsQuincenal] = useState(false);
   const [jurisdiccion, setJurisdiccion] = useState("CABA");
   const [sindicatoNombre, setSindicatoNombre] = useState("");
@@ -98,6 +99,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     const formData = new FormData(e.currentTarget);
     formData.set("tiene_sindicato", String(tieneSindicato));
     formData.set("tiene_rubrica_lsd", String(tieneRubrica));
+    formData.set("fecha_inicio_liquidacion", fechaInicioLiquidacion);
     formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
     formData.set(
@@ -227,6 +229,18 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                             <option key={l.id} value={l.id}>{l.nombre}</option>
                           ))}
                         </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] text-gray-400 block mb-1">
+                          Fecha de inicio de liquidación
+                        </label>
+                        <input
+                          type="date"
+                          value={fechaInicioLiquidacion}
+                          onChange={(e) => setFechaInicioLiquidacion(e.target.value)}
+                          className={nestedCls}
+                        />
                       </div>
 
                       {/* Para Seguimiento */}

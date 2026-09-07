@@ -91,6 +91,7 @@ export async function crearClienteConServicios(formData: FormData) {
   // Seguimiento no le pedía ninguna de esas tareas aunque correspondieran.
   const sueldos = servicios.find((s) => s.servicio === "sueldos");
   if (sueldos) {
+    const fecha_inicio_liquidacion = (formData.get("sueldos_fecha_inicio_liquidacion") as string)?.trim() || null;
     const es_quincenal = formData.get("sueldos_es_quincenal") === "true";
     const tiene_sindicato = formData.get("sueldos_tiene_sindicato") === "true";
     const sindicato_nombre = (formData.get("sueldos_sindicato_nombre") as string)?.trim() || null;
@@ -114,6 +115,7 @@ export async function crearClienteConServicios(formData: FormData) {
       : null;
 
     const update: Record<string, unknown> = {
+      fecha_inicio_liquidacion,
       es_quincenal,
       tiene_sindicato,
       sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
@@ -241,6 +243,7 @@ export async function editarClienteConServicios(formData: FormData) {
   // de Sueldos que Seguimiento/Dashboard/Productividad leen directo de `clientes`.
   const sueldos = servicios.find((s) => s.servicio === "sueldos");
   if (sueldos) {
+    const fecha_inicio_liquidacion = (formData.get("sueldos_fecha_inicio_liquidacion") as string)?.trim() || null;
     const es_quincenal = formData.get("sueldos_es_quincenal") === "true";
     const tiene_sindicato = formData.get("sueldos_tiene_sindicato") === "true";
     const sindicato_nombre = (formData.get("sueldos_sindicato_nombre") as string)?.trim() || null;
@@ -259,6 +262,7 @@ export async function editarClienteConServicios(formData: FormData) {
       : null;
 
     const update: Record<string, unknown> = {
+      fecha_inicio_liquidacion,
       es_quincenal,
       tiene_sindicato,
       sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
