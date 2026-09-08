@@ -476,13 +476,16 @@ export function PanelGeneralClient({
                   {/* Fila 1: nombre de módulo, con el filete bordó de 2px que
                       "abraza" exactamente el ancho de sus columnas. */}
                   <tr>
-                    {/* Esquina fija en las dos direcciones: Chrome no repinta
-                        bien un <th> con sticky en top y left a la vez sobre
-                        celdas que scrollean por debajo (bug conocido) — se
-                        separa en dos elementos, cada uno con un solo eje. */}
-                    <th className="sticky top-0 z-[6] p-0 w-[268px]">
-                      <div className="sticky left-0 bg-paper pt-[18px] pb-1.5 w-[268px]" />
-                    </th>
+                    {/* Solo sticky arriba, no también a la izquierda: probado
+                        en vivo con ~480 filas reales, un <th> sticky en los
+                        dos ejes a la vez no repinta bien en Chrome sobre
+                        celdas que scrollean por detrás (bug del navegador,
+                        no se encontró una forma limpia de evitarlo). El td
+                        del cuerpo sí sigue fijo a la izquierda sin problema
+                        — se pierde ver la palabra "Empresa" en el título
+                        mientras estás scrolleado del todo a la derecha,
+                        nada más. */}
+                    <th className="sticky top-0 z-[6] bg-paper pt-[18px] pb-1.5 w-[268px]" />
                     {gruposVisibles.map((g) => (
                       <th
                         key={g.key}
@@ -500,10 +503,8 @@ export function PanelGeneralClient({
                   </tr>
                   {/* Fila 2: nombre de columna */}
                   <tr>
-                    <th className="sticky top-[50px] z-[6] p-0 w-[268px] border-b border-line-rule">
-                      <div className="sticky left-0 bg-paper text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint w-[268px]">
-                        Empresa
-                      </div>
+                    <th className="sticky top-[50px] z-[6] bg-paper text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]">
+                      Empresa
                     </th>
                     {columnasVisibles.map((c, i) => {
                       const primero = gruposVisibles.some((g) => g.cols[0]?.key === c.key);
