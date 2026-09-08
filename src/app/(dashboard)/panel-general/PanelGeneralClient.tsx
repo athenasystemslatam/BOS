@@ -476,7 +476,13 @@ export function PanelGeneralClient({
                   {/* Fila 1: nombre de módulo, con el filete bordó de 2px que
                       "abraza" exactamente el ancho de sus columnas. */}
                   <tr>
-                    <th className="sticky left-0 top-0 z-[6] bg-paper pt-[18px] pb-1.5 w-[268px]" />
+                    {/* Esquina fija en las dos direcciones: Chrome no repinta
+                        bien un <th> con sticky en top y left a la vez sobre
+                        celdas que scrollean por debajo (bug conocido) — se
+                        separa en dos elementos, cada uno con un solo eje. */}
+                    <th className="sticky top-0 z-[6] p-0 w-[268px]">
+                      <div className="sticky left-0 bg-paper pt-[18px] pb-1.5 w-[268px]" />
+                    </th>
                     {gruposVisibles.map((g) => (
                       <th
                         key={g.key}
@@ -494,8 +500,10 @@ export function PanelGeneralClient({
                   </tr>
                   {/* Fila 2: nombre de columna */}
                   <tr>
-                    <th className="sticky left-0 top-[50px] z-[6] bg-paper text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]">
-                      Empresa
+                    <th className="sticky top-[50px] z-[6] p-0 w-[268px] border-b border-line-rule">
+                      <div className="sticky left-0 bg-paper text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint w-[268px]">
+                        Empresa
+                      </div>
                     </th>
                     {columnasVisibles.map((c, i) => {
                       const primero = gruposVisibles.some((g) => g.cols[0]?.key === c.key);
