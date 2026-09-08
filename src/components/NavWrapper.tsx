@@ -4,15 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import type { Rol } from "@/types";
 
 export function NavWrapper({
   isAdmin,
   nombre,
+  rol,
   areas,
   children,
 }: {
   isAdmin: boolean;
   nombre: string | null;
+  rol?: Rol;
   areas: string[];
   children: React.ReactNode;
 }) {
@@ -87,7 +90,7 @@ export function NavWrapper({
             <X size={18} />
           </button>
         </div>
-        <Sidebar isAdmin={isAdmin} nombre={nombre} areas={areas} onClose={() => setOpen(false)} />
+        <Sidebar isAdmin={isAdmin} nombre={nombre} rol={rol} areas={areas} onClose={() => setOpen(false)} />
       </div>
 
       {/* Page content */}
