@@ -41,10 +41,22 @@ export default async function DashboardPage({
   const esMesActual = mesActual === mesTrabajo && anioActual === anioTrabajo;
   const monthOptions = generateMonthOptions(mesTrabajo, anioTrabajo);
 
-  const [{ data: liquidadoras }, { data: clientes }] = await Promise.all([
+  const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
     supabase.from("clientes").select("*, liquidadora:liquidadoras!liquidador_id(*)").eq("estado", "activo"),
+    supabase
+      .from("servicios_cliente")
+      .select("cliente_id")
+      .eq("servicio", "sueldos")
+      .eq("subtipo", "general")
+      .eq("estado", true),
   ]);
+
+  // "clientes" trae toda empresa activa, tenga o no Sueldos contratado (ej:
+  // una que solo hace Monotributo) — este dashboard es de Seguimiento de
+  // Sueldos, así que el total (y todo lo que sale de él) tiene que salir
+  // solo de las que sí tienen el servicio activo, no de todas las activas.
+  const idsConSueldos = new Set((serviciosSueldos ?? []).map((s) => s.cliente_id));
 
   let { data: periodoActual } = await supabase
     .from("periodos").select("*").eq("anio", anioActual).eq("mes", mesActual).maybeSingle();
@@ -71,7 +83,9 @@ export default async function DashboardPage({
     .order("modificado_at", { ascending: false })
     .limit(50);
 
-  const clientesList = (clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? [];
+  const clientesList = ((clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? []).filter((c) =>
+    idsConSueldos.has(c.id)
+  );
   const clienteLiqIds = new Set(clientesList.map((c) => c.liquidador_id).filter(Boolean));
   const liquidadorasList = ((liquidadoras as Liquidadora[]) ?? []).filter((l) => clienteLiqIds.has(l.id));
   const tareasList = (tareas as Tarea[]) ?? [];
