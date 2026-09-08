@@ -22,6 +22,7 @@ const GRUPOS = [
     ],
   },
   { key: "contable", label: "Contable", cols: [{ key: "contable:general", label: "Responsable" }] },
+  { key: "monotributo", label: "Monotributo", cols: [{ key: "monotributo:general", label: "Responsable" }] },
 ] as const;
 
 const VISTA_FIELD: Record<string, keyof VistEmpresa> = {
@@ -30,6 +31,7 @@ const VISTA_FIELD: Record<string, keyof VistEmpresa> = {
   "impuestos:iibb": "responsable_impuestos_iibb",
   "impuestos:seh": "responsable_impuestos_seh",
   "contable:general": "responsable_contable",
+  "monotributo:general": "responsable_monotributo",
 };
 
 // Todas las columnas de responsable, para el filtro "cualquier área" — la
