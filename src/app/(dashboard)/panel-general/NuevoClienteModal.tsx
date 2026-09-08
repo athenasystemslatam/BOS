@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
+import clsx from "clsx";
 import { EquipoMiembro, ClaveAcceso } from "@/types";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { Toggle } from "@/components/Toggle";
@@ -129,13 +130,16 @@ export function NuevoClienteModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-[15px] font-semibold text-gray-900">Nueva empresa</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(23,20,26,.46)] p-4">
+      <div className="bg-paper rounded-2xl shadow-[0_30px_70px_rgba(23,20,26,.3)] w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-[26px] py-[18px] pt-6 border-b border-line-soft shrink-0">
+          <div>
+            <p className="text-[10.5px] font-semibold tracking-[.18em] uppercase text-ink-faint">Alta de cliente</p>
+            <h2 className="font-archivo text-[22px] font-semibold tracking-[-.025em] text-ink mt-2">Nueva empresa</h2>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-ink-faint hover:text-ink-muted transition-colors"
           >
             <X size={18} />
           </button>
@@ -146,37 +150,37 @@ export function NuevoClienteModal({
           {/* Datos básicos */}
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">
+              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                 Nombre <span className="text-red-400">*</span>
               </label>
               <input
                 name="nombre"
                 required
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
-                placeholder="Razón social"
+                className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
+                placeholder="Ej. Distribuidora Sanmartín S.A."
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">
+              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                 CUIT <span className="text-red-400">*</span>
               </label>
               <input
                 name="cuit"
                 required
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo font-mono"
-                placeholder="20-12345678-9"
+                className="w-full font-plex text-[12.5px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
+                placeholder="30-71234567-4"
               />
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">
+              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                 Tipo de contribuyente
               </label>
               <select
                 name="tipo_contribuyente"
                 defaultValue="empresa"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo bg-white"
+                className="w-full text-[12.5px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
               >
                 <option value="empresa">Empresa</option>
                 <option value="monotributista">Monotributista</option>
@@ -185,7 +189,7 @@ export function NuevoClienteModal({
             </div>
 
             <div>
-              <label className="text-xs font-medium text-gray-500 block mb-1">
+              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                 Emails de contacto
               </label>
               <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
@@ -194,30 +198,33 @@ export function NuevoClienteModal({
 
           {/* Servicios */}
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-3">Servicios activos</p>
+            <p className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle mb-[9px]">Servicios y responsables</p>
             <div className="space-y-2">
               {SERVICIOS_CONFIG.map(({ servicio, subtipo, label, modulo }) => {
                 const key = `${servicio}:${subtipo}` as ServicioKey;
                 const activo = key in serviciosActivos;
                 const opciones = responsablesPara(modulo);
                 return (
-                  <div key={key} className="rounded-lg border border-gray-100 overflow-hidden">
-                    <label className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={activo}
-                        onChange={() => toggleServicio(key)}
-                        className="accent-bordo w-4 h-4 shrink-0"
-                      />
-                      <span className="text-[13px] font-medium text-gray-800">{label}</span>
-                    </label>
+                  <div
+                    key={key}
+                    className={clsx(
+                      "rounded-[10px] border overflow-hidden",
+                      activo ? "border-bordo-border bg-[#FCF7F7]" : "border-line-soft"
+                    )}
+                  >
+                    <div className="flex items-center gap-[11px] px-[11px] py-[9px]">
+                      <Toggle value={activo} onChange={() => toggleServicio(key)} />
+                      <span className={clsx("flex-1 text-[12.5px] font-medium", activo ? "text-ink" : "text-ink-faint")}>
+                        {label}
+                      </span>
+                    </div>
                     {activo && (
-                      <div className="px-3 pb-3 pt-1 bg-gray-50 border-t border-gray-100">
-                        <label className="text-[11px] text-gray-400 block mb-1">Responsable</label>
+                      <div className="px-[11px] pb-3 pt-1 border-t border-bordo-border">
+                        <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">Responsable</label>
                         <select
                           value={serviciosActivos[key]}
                           onChange={(e) => setResponsable(key, e.target.value)}
-                          className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                          className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                         >
                           <option value="">Sin asignar</option>
                           {opciones.map((p) => (
@@ -228,34 +235,34 @@ export function NuevoClienteModal({
                         </select>
 
                         {servicio === "sueldos" && (
-                          <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
+                          <div className="mt-3 pt-3 border-t border-line-soft space-y-3">
                             <div>
-                              <label className="text-[11px] text-gray-400 block mb-1">
+                              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                                 Fecha de inicio de liquidación
                               </label>
                               <input
                                 type="date"
                                 value={fechaInicioLiquidacion}
                                 onChange={(e) => setFechaInicioLiquidacion(e.target.value)}
-                                className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                               />
                             </div>
 
-                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                            <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-[.1em]">
                               Para Seguimiento
                             </p>
 
                             <div className="flex items-center justify-between">
-                              <span className="text-[12px] text-gray-600">
-                                Es quincenal <span className="text-gray-400">(agrega Recibo Q1)</span>
+                              <span className="text-[12px] text-ink-muted">
+                                Es quincenal <span className="text-ink-faint">(agrega Recibo Q1)</span>
                               </span>
                               <Toggle value={esQuincenal} onChange={setEsQuincenal} />
                             </div>
 
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[12px] text-gray-600">
-                                  Tiene sindicato <span className="text-gray-400">(agrega Bol. Sind.)</span>
+                                <span className="text-[12px] text-ink-muted">
+                                  Tiene sindicato <span className="text-ink-faint">(agrega Bol. Sind.)</span>
                                 </span>
                                 <Toggle value={tieneSindicato} onChange={setTieneSindicato} />
                               </div>
@@ -265,15 +272,15 @@ export function NuevoClienteModal({
                                   value={sindicatoNombre}
                                   onChange={(e) => setSindicatoNombre(e.target.value)}
                                   placeholder="Nombre del sindicato"
-                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                                 />
                               )}
                             </div>
 
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-[12px] text-gray-600">
-                                  Rúbrica LSD <span className="text-gray-400">(agrega tarea LSD)</span>
+                                <span className="text-[12px] text-ink-muted">
+                                  Rúbrica LSD <span className="text-ink-faint">(agrega tarea LSD)</span>
                                 </span>
                                 <Toggle value={tieneRubricaLsd} onChange={setTieneRubricaLsd} />
                               </div>
@@ -281,7 +288,7 @@ export function NuevoClienteModal({
                                 <select
                                   value={jurisdiccion}
                                   onChange={(e) => setJurisdiccion(e.target.value)}
-                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                                 >
                                   {JURISDICCIONES.map((j) => (
                                     <option key={j} value={j}>{j}</option>
@@ -290,74 +297,74 @@ export function NuevoClienteModal({
                               )}
                             </div>
 
-                            <div className="pt-3 border-t border-gray-200 space-y-3">
-                              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+                            <div className="pt-3 border-t border-line-soft space-y-3">
+                              <p className="text-[10px] font-semibold text-ink-faint uppercase tracking-[.1em]">
                                 Datos adicionales
                               </p>
 
                               <div>
-                                <label className="text-[11px] text-gray-400 block mb-1">
+                                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                                   CUIL de acceso a ARCA
                                 </label>
                                 <input
                                   type="text"
                                   value={cuilArca}
                                   onChange={(e) => setCuilArca(e.target.value)}
-                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                                 />
                               </div>
 
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-[11px] text-gray-400 block mb-1">ART</label>
+                                  <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">ART</label>
                                   <input
                                     type="text"
                                     value={art}
                                     onChange={(e) => setArt(e.target.value)}
-                                    className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[11px] text-gray-400 block mb-1">Red bancaria</label>
+                                  <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">Red bancaria</label>
                                   <input
                                     type="text"
                                     value={redBancaria}
                                     onChange={(e) => setRedBancaria(e.target.value)}
-                                    className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                                   />
                                 </div>
                               </div>
 
                               <div>
-                                <label className="text-[11px] text-gray-400 block mb-1">
+                                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                                   Fecha de alta como empleador
                                 </label>
                                 <input
                                   type="date"
                                   value={fechaAltaEmpleador}
                                   onChange={(e) => setFechaAltaEmpleador(e.target.value)}
-                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                                 />
                               </div>
 
                               <div>
-                                <label className="text-[11px] text-gray-400 block mb-1">Claves de acceso</label>
+                                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">Claves de acceso</label>
                                 <ClavesAccesoEditor claves={claves} onChange={setClaves} sugerencias={sugerenciasClaves} />
                               </div>
 
                               <div>
-                                <label className="text-[11px] text-gray-400 block mb-1">Observaciones</label>
+                                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">Observaciones</label>
                                 <textarea
                                   value={observaciones}
                                   onChange={(e) => setObservaciones(e.target.value)}
                                   rows={2}
                                   placeholder="Notas adicionales…"
-                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white resize-none"
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] resize-none"
                                 />
                               </div>
 
                               <div>
-                                <label className="text-[11px] text-gray-400 block mb-1">
+                                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                                   Carpeta Drive (URL o ID)
                                 </label>
                                 <input
@@ -365,7 +372,7 @@ export function NuevoClienteModal({
                                   value={driveFolder}
                                   onChange={(e) => setDriveFolder(e.target.value)}
                                   placeholder="https://drive.google.com/drive/folders/… o ID directo"
-                                  className="w-full text-sm border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:border-bordo bg-white"
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                                 />
                               </div>
                             </div>
@@ -384,18 +391,18 @@ export function NuevoClienteModal({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100 shrink-0">
+        <div className="flex justify-end gap-2.5 px-[26px] py-[18px] border-t border-line-soft shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+              className="px-4 py-2.5 text-[12.5px] font-medium text-ink-muted bg-white border border-line-input rounded-[9px] hover:bg-paper-hover transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="px-4 py-2 text-sm font-semibold text-white bg-bordo hover:bg-bordo/90 rounded-lg transition-colors disabled:opacity-50"
+              className="px-[18px] py-2.5 text-[12.5px] font-semibold text-white bg-bordo hover:bg-bordo-light rounded-[9px] transition-colors disabled:opacity-50"
             >
               {isPending ? "Guardando…" : "Crear empresa"}
             </button>

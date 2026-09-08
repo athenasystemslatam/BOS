@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Archivo, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
 // Antes se cargaba con @import en globals.css (pide la fuente a Google en el
@@ -9,6 +9,23 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+// Rediseño Panel General (handoff sep-2026): Archivo para títulos/cifras,
+// IBM Plex Mono solo para CUIT. Se exponen como variables CSS (no
+// className directo) para no cambiar la tipografía del resto del sitio —
+// cada pantalla rediseñada las usa puntual vía font-archivo/font-plex.
+const archivo = Archivo({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-archivo",
+  display: "swap",
+});
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-plex-mono",
   display: "swap",
 });
 
@@ -35,7 +52,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${inter.className} antialiased`}>{children}</body>
+      <body className={`${inter.className} ${archivo.variable} ${plexMono.variable} antialiased`}>{children}</body>
     </html>
   );
 }

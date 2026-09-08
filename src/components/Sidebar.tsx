@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,11 +15,10 @@ import {
   Receipt,
   BookOpen,
   FileText,
-  Moon,
-  Sun,
 } from "lucide-react";
 import clsx from "clsx";
 import { ModuloId, MODULO_LABELS } from "@/lib/modulos";
+import type { Rol } from "@/types";
 
 // modulo: null = sección general, visible para cualquiera con sesión. Con
 // modulo puesto, solo la ve un admin o alguien con ese módulo en
@@ -28,13 +27,11 @@ import { ModuloId, MODULO_LABELS } from "@/lib/modulos";
 const SECTIONS: {
   label: string | null;
   modulo: ModuloId | null;
-  accent: string | null;
   items: { href: string; label: string; icon: typeof LayoutGrid; adminOnly: boolean; areaOnly?: ModuloId }[];
 }[] = [
   {
     label: null,
     modulo: null,
-    accent: null,
     items: [
       { href: "/panel-general", label: "Panel General", icon: LayoutGrid, adminOnly: false },
       // Equipo abarca todos los módulos, por eso vive acá y no adentro de
@@ -48,7 +45,6 @@ const SECTIONS: {
   {
     label: MODULO_LABELS.sueldos,
     modulo: "sueldos",
-    accent: "bg-rose-400",
     items: [
       { href: "/seguimiento",   label: "Seguimiento",   icon: ClipboardList,   adminOnly: false },
       { href: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard, adminOnly: false },
@@ -60,7 +56,6 @@ const SECTIONS: {
   {
     label: MODULO_LABELS.impuestos,
     modulo: "impuestos",
-    accent: "bg-blue-400",
     items: [
       { href: "/impuestos",              label: "Seguimiento",  icon: Receipt,         adminOnly: false },
       { href: "/impuestos/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
@@ -71,7 +66,6 @@ const SECTIONS: {
   {
     label: MODULO_LABELS.contable,
     modulo: "contable",
-    accent: "bg-emerald-400",
     items: [
       { href: "/contable",              label: "Balances",     icon: BookOpen,        adminOnly: false },
       { href: "/contable/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
@@ -82,7 +76,6 @@ const SECTIONS: {
   {
     label: MODULO_LABELS.monotributo,
     modulo: "monotributo",
-    accent: "bg-amber-400",
     items: [
       { href: "/monotributo",              label: "Seguimiento",  icon: FileText,        adminOnly: false },
       { href: "/monotributo/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
@@ -92,6 +85,13 @@ const SECTIONS: {
   },
 ];
 
+const ROL_LABELS: Record<Rol, string> = {
+  admin: "Administrador/a",
+  supervisor: "Supervisor/a",
+  liquidadora: "Liquidadora",
+  viewer: "Solo lectura",
+};
+
 function iniciales(nombre: string) {
   const partes = nombre.trim().split(/\s+/);
   return ((partes[0]?.[0] ?? "") + (partes[1]?.[0] ?? "")).toUpperCase();
@@ -100,22 +100,19 @@ function iniciales(nombre: string) {
 export function Sidebar({
   isAdmin,
   nombre,
+  rol,
   areas,
   onClose,
 }: {
   isAdmin: boolean;
   nombre: string | null;
+  rol?: Rol;
   areas: string[];
   onClose?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [modoOscuro, setModoOscuro] = useState(false);
   const asideRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    setModoOscuro(localStorage.getItem("bos-modo-oscuro") === "true");
-  }, []);
 
   // El propio <aside> tiene scroll (el menú entero no entra en pantallas
   // chicas). Como cada clic recarga la página completa, el menú volvía a
@@ -141,13 +138,6 @@ export function Sidebar({
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  const toggleModoOscuro = () => {
-    const nuevo = !modoOscuro;
-    setModoOscuro(nuevo);
-    localStorage.setItem("bos-modo-oscuro", String(nuevo));
-    // TODO: todavía no repinta la interfaz — solo guarda la preferencia.
-  };
-
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -156,24 +146,29 @@ export function Sidebar({
   };
 
   return (
-    <aside ref={asideRef} className="w-52 bg-bordo flex flex-col h-screen sticky top-0 shrink-0 overflow-y-auto">
+    <aside
+      ref={asideRef}
+      className="w-[214px] bg-paper flex flex-col h-screen sticky top-0 shrink-0 overflow-y-auto border-r border-line-panel"
+    >
       {/* Logo */}
-      <div className="px-5 pt-7 pb-5 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-white/20 rounded-md flex items-center justify-center shrink-0">
-            <span className="text-white font-bold text-xs tracking-tight">K</span>
-          </div>
-          <div>
-            <p className="font-semibold text-white text-[13px] leading-tight">KMA Consultores</p>
-            <p className="text-white/50 text-[11px] mt-0.5">Sistema BOS</p>
-          </div>
+      <div className="px-[18px] pt-[22px] pb-4 flex items-center gap-[11px] shrink-0">
+        <div className="w-[27px] h-[27px] bg-bordo rounded-lg flex items-center justify-center shrink-0">
+          <span className="text-white font-archivo font-bold text-xs tracking-tight">K</span>
+        </div>
+        <div className="min-w-0">
+          <p className="font-archivo font-semibold text-ink text-[13px] leading-[1.15] tracking-[-0.012em]">
+            KMA Consultores
+          </p>
+          <p className="text-ink-faint text-[10px] font-medium tracking-[.14em] uppercase mt-[3px]">
+            Sistema BOS
+          </p>
         </div>
       </div>
 
-      <div className="mx-4 h-px bg-white/10 shrink-0" />
+      <div className="mx-[14px] h-px bg-line-soft shrink-0" />
 
       {/* Nav */}
-      <nav className="flex-1 px-3 pt-4 pb-4 space-y-4">
+      <nav className="flex-1 px-3 py-4 flex flex-col gap-[19px]">
         {SECTIONS.filter(
           (section) => section.modulo === null || isAdmin || areas.includes(section.modulo)
         ).map((section, si) => {
@@ -183,82 +178,129 @@ export function Sidebar({
             return true;
           });
           if (visibleItems.length === 0) return null;
-          return (
-            <div key={si}>
-              {section.label && (
-                <div className="flex items-center gap-1.5 px-2 mb-1.5">
-                  <span className={clsx("w-1.5 h-1.5 rounded-full shrink-0", section.accent)} />
-                  <p className="text-white/40 text-[10px] font-semibold tracking-widest uppercase">
-                    {section.label}
-                  </p>
-                </div>
-              )}
-              <div className="space-y-0.5">
+
+          // Grupo superior (Panel General / Equipo) sin título de módulo: se
+          // renderiza distinto — barra de 2px al lado de cada ítem, no una
+          // espina de grupo con título arriba.
+          if (!section.label) {
+            return (
+              <div key={si} className="flex flex-col gap-0.5">
                 {visibleItems.map(({ href, label, icon: Icon }) => {
-                  // Exact match, or prefix match only if no deeper path follows
-                  const isActive =
-                    pathname === href ||
-                    (href !== "/dashboard" &&
-                      pathname.startsWith(href) &&
-                      !pathname.slice(href.length).startsWith("/"));
+                  const isActive = esRutaActiva(pathname, href);
                   return (
-                    // <a> normal a propósito, no <Link> de Next: recarga la
-                    // página entera en cada clic del menú. Es la única forma
-                    // que garantiza traer los datos frescos del servidor —
-                    // revalidatePath + staleTimes en 0 + prefetch apagado no
-                    // alcanzaron para evitar que quedara una copia vieja en
-                    // memoria al navegar "por dentro" entre secciones.
-                    <a
-                      key={href}
-                      href={href}
-                      onClick={onClose}
-                      className={clsx(
-                        "flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium transition-all duration-150",
-                        isActive
-                          ? "bg-white/15 text-white"
-                          : "text-white/60 hover:bg-white/10 hover:text-white/90"
-                      )}
-                    >
+                    <NavLink key={href} href={href} isActive={isActive} onClose={onClose} topLevel>
                       <Icon size={14} strokeWidth={isActive ? 2.25 : 1.75} className="shrink-0" />
                       {label}
-                    </a>
+                    </NavLink>
                   );
                 })}
+              </div>
+            );
+          }
+
+          return (
+            <div key={si} className="flex gap-[11px]">
+              <span className="w-0.5 shrink-0 rounded-full bg-bordo ml-[3px] mt-[3px] mb-[5px]" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-[9px] mb-[7px] pr-0.5">
+                  <p className="font-archivo font-semibold text-[12.5px] tracking-[.01em] text-ink whitespace-nowrap">
+                    {section.label}
+                  </p>
+                  <span className="flex-1 h-px bg-line-group" />
+                </div>
+                <div className="flex flex-col gap-px">
+                  {visibleItems.map(({ href, label }) => {
+                    const isActive = esRutaActiva(pathname, href);
+                    return (
+                      <NavLink key={href} href={href} isActive={isActive} onClose={onClose}>
+                        <span
+                          className={clsx(
+                            "w-[3px] h-[3px] rounded-full shrink-0",
+                            isActive ? "bg-bordo" : "bg-dot"
+                          )}
+                        />
+                        {label}
+                      </NavLink>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           );
         })}
       </nav>
 
-      <div className="mx-4 h-px bg-white/10 shrink-0" />
+      <div className="mx-[14px] h-px bg-line-soft shrink-0" />
 
-      {/* Usuario logueado */}
-      {nombre && (
-        <div className="px-4 pt-4 flex items-center gap-2.5 shrink-0">
-          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-            <span className="text-white text-[11px] font-semibold">{iniciales(nombre)}</span>
+      {/* Pie: usuario + cerrar sesión */}
+      <div className="p-3 flex flex-col gap-1 shrink-0">
+        {nombre && (
+          <div className="flex items-center gap-2.5 px-[9px] py-[5px]">
+            <div className="w-[26px] h-[26px] rounded-full bg-bordo-tint2 flex items-center justify-center shrink-0">
+              <span className="text-bordo text-[10px] font-semibold">{iniciales(nombre)}</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-ink text-[11.5px] font-medium truncate">{nombre}</p>
+              {rol && <p className="text-ink-faint text-[10.5px] mt-0.5">{ROL_LABELS[rol]}</p>}
+            </div>
           </div>
-          <p className="text-white/80 text-[13px] font-medium truncate flex-1">{nombre}</p>
-          <button
-            onClick={toggleModoOscuro}
-            aria-label={modoOscuro ? "Activar modo claro" : "Activar modo oscuro"}
-            className="text-white/50 hover:text-white/90 p-1 shrink-0 transition-colors"
-          >
-            {modoOscuro ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
-          </button>
-        </div>
-      )}
-
-      {/* Logout */}
-      <div className="px-3 py-4 shrink-0">
+        )}
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] font-medium text-white/50 hover:bg-white/10 hover:text-white/80 w-full transition-all duration-150"
+          className="flex items-center gap-2.5 px-[9px] py-[7px] rounded-[7px] text-[12.5px] font-medium text-ink-subtle hover:bg-paper-hover hover:text-ink w-full transition-colors duration-150 text-left"
         >
           <LogOut size={14} strokeWidth={1.75} className="shrink-0" />
           Cerrar sesión
         </button>
       </div>
     </aside>
+  );
+}
+
+// Exact match, o prefix match solo si no sigue un path más profundo.
+function esRutaActiva(pathname: string, href: string) {
+  return (
+    pathname === href ||
+    (href !== "/dashboard" && pathname.startsWith(href) && !pathname.slice(href.length).startsWith("/"))
+  );
+}
+
+function NavLink({
+  href,
+  isActive,
+  onClose,
+  topLevel,
+  children,
+}: {
+  href: string;
+  isActive: boolean;
+  onClose?: () => void;
+  topLevel?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    // <a> normal a propósito, no <Link> de Next: recarga la página entera en
+    // cada clic del menú. Es la única forma que garantiza traer los datos
+    // frescos del servidor — revalidatePath + staleTimes en 0 + prefetch
+    // apagado no alcanzaron para evitar que quedara una copia vieja en
+    // memoria al navegar "por dentro" entre secciones.
+    <a
+      href={href}
+      onClick={onClose}
+      className={clsx(
+        "flex items-center gap-[9px] rounded-[7px] text-[12.5px] font-medium transition-colors duration-150",
+        topLevel ? "py-2 px-[9px]" : "py-[6px] px-[9px]",
+        isActive && topLevel && "bg-bordo text-white",
+        isActive && !topLevel && "text-ink",
+        !isActive && "text-ink-muted hover:bg-paper-hover hover:text-ink"
+      )}
+    >
+      {topLevel && (
+        <span
+          className={clsx("w-0.5 h-[15px] rounded-full shrink-0", isActive ? "bg-white/85" : "bg-line-input")}
+        />
+      )}
+      {children}
+    </a>
   );
 }

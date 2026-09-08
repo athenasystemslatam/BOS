@@ -11,7 +11,7 @@ export default async function DashboardLayout({
   const areas = yo && !yo.isAdmin ? await getAreasDelUsuario() : [];
 
   return (
-    <NavWrapper isAdmin={yo?.isAdmin ?? false} nombre={yo?.nombre ?? null} areas={areas}>
+    <NavWrapper isAdmin={yo?.isAdmin ?? false} nombre={yo?.nombre ?? null} rol={yo?.rol} areas={areas}>
       {children}
     </NavWrapper>
   );
