@@ -476,7 +476,7 @@ export function PanelGeneralClient({
                   {/* Fila 1: nombre de módulo, con el filete bordó de 2px que
                       "abraza" exactamente el ancho de sus columnas. */}
                   <tr>
-                    <th className="sticky left-0 top-0 z-[6] bg-paper pt-[18px] pb-1.5" />
+                    <th className="sticky left-0 top-0 z-[6] bg-paper pt-[18px] pb-1.5 w-[268px]" />
                     {gruposVisibles.map((g) => (
                       <th
                         key={g.key}
@@ -494,7 +494,7 @@ export function PanelGeneralClient({
                   </tr>
                   {/* Fila 2: nombre de columna */}
                   <tr>
-                    <th className="sticky left-0 top-[50px] z-[6] bg-paper text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule">
+                    <th className="sticky left-0 top-[50px] z-[6] bg-paper text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]">
                       Empresa
                     </th>
                     {columnasVisibles.map((c, i) => {
@@ -541,7 +541,7 @@ export function PanelGeneralClient({
                         }}
                       >
                         {/* Empresa */}
-                        <td className={clsx("sticky left-0 z-[2] py-[13px] pr-4 border-b border-line-row whitespace-nowrap", rowBg)}>
+                        <td className={clsx("sticky left-0 z-[2] py-[13px] pr-4 border-b border-line-row whitespace-nowrap w-[268px]", rowBg)}>
                           <div className="flex items-center gap-[11px]">
                             <span
                               className={clsx(
