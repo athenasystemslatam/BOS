@@ -456,7 +456,7 @@ export function PanelGeneralClient({
 
         {/* Tabla desktop */}
         <div className="hidden md:flex flex-1 min-h-0 bg-paper border border-line-panel rounded-[14px] flex-col overflow-hidden">
-          <div className="flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable]">
+          <div className="relative flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable]">
             {filtradas.length === 0 ? (
               <div className="py-[72px] px-6 text-center">
                 <p className="font-archivo text-base font-semibold tracking-[-.015em] text-ink">Sin resultados</p>
@@ -465,6 +465,23 @@ export function PanelGeneralClient({
                 </p>
               </div>
             ) : (
+              <>
+              {/* Encabezado "Empresa" pegado a ambos ejes a la vez: un <th>
+                  sticky en top Y left al mismo tiempo no repinta bien el
+                  fondo en Chrome sobre celdas que scrollean por detrás (bug
+                  del navegador, no es un <th> real, así que lo esquiva). El
+                  <div> exterior no ocupa espacio (w-0 h-0) y solo ancla la
+                  esquina superior izquierda visible de la tabla; adentro, un
+                  <div> absoluto pinta el mismo texto/fondo que ya muestra el
+                  <th> real de abajo (que sigue ahí sin tocarse). */}
+              <div className="sticky top-0 left-0 z-[7] w-0 h-0 overflow-visible pointer-events-none">
+                <div className="absolute top-0 left-0 w-[268px] bg-paper">
+                  <div className="h-[50px]" />
+                  <div className="pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule">
+                    Empresa
+                  </div>
+                </div>
+              </div>
               <table className="w-full min-w-[1140px] border-collapse text-[12.5px] table-fixed">
                 <colgroup>
                   <col className="w-[268px]" />
@@ -515,7 +532,7 @@ export function PanelGeneralClient({
                         <th
                           key={c.key}
                           className={clsx(
-                            "sticky top-[50px] z-[5] bg-paper text-left px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b border-line-rule",
+                            "sticky top-[50px] z-[5] bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b border-line-rule",
                             primero && "border-l border-line-group"
                           )}
                         >
@@ -523,7 +540,7 @@ export function PanelGeneralClient({
                         </th>
                       );
                     })}
-                    <th className="sticky top-[50px] z-[5] bg-paper text-left px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule border-l border-line-group">
+                    <th className="sticky top-[50px] z-[5] bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule border-l border-line-group">
                       Estado
                     </th>
                     {isAdmin && (
@@ -594,7 +611,7 @@ export function PanelGeneralClient({
                                 setHoverGrupo(c.grupo);
                               }}
                               className={clsx(
-                                "px-3.5 py-[13px] text-left align-middle border-b border-line-row whitespace-nowrap",
+                                "px-3.5 py-[13px] text-center align-middle border-b border-line-row whitespace-nowrap",
                                 grupoTinte,
                                 primero && "border-l border-line-group"
                               )}
@@ -645,7 +662,7 @@ export function PanelGeneralClient({
                         })}
 
                         {/* Estado */}
-                        <td className={clsx("px-3.5 py-[13px] border-b border-line-row border-l border-line-group whitespace-nowrap", rowBg)}>
+                        <td className={clsx("px-3.5 py-[13px] text-center border-b border-line-row border-l border-line-group whitespace-nowrap", rowBg)}>
                           <span className={clsx("inline-flex items-center gap-[7px] text-[11.5px] font-medium", activa ? "text-activo" : "text-ink-subtle")}>
                             <span className={clsx("w-[5px] h-[5px] rounded-full shrink-0", activa ? "bg-activo-dot" : "bg-dot")} />
                             {activa ? "Activa" : "Inactiva"}
@@ -654,7 +671,7 @@ export function PanelGeneralClient({
 
                         {/* Acciones */}
                         {isAdmin && (
-                          <td className={clsx("px-3.5 py-[13px] text-right border-b border-line-row border-l border-line-group whitespace-nowrap group/acciones", rowBg)}>
+                          <td className={clsx("px-3.5 py-[13px] text-center border-b border-line-row border-l border-line-group whitespace-nowrap group/acciones", rowBg)}>
                             <span className="inline-flex items-center gap-1">
                               <a
                                 href={`/api/exportar/clientes?id=${empresa.id}`}
@@ -705,6 +722,7 @@ export function PanelGeneralClient({
                   })}
                 </tbody>
               </table>
+              </>
             )}
           </div>
 
