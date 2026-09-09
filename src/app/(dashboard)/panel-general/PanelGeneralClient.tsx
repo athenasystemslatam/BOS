@@ -456,7 +456,12 @@ export function PanelGeneralClient({
 
         {/* Tabla desktop */}
         <div className="hidden md:flex flex-1 min-h-0 bg-paper border border-line-panel rounded-[14px] flex-col overflow-hidden">
-          <div className="relative flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable]">
+          {/* will-change/contain/content-visibility: sin esto, Chrome deja
+              "fantasmas" de texto de columnas ya scrolleadas pintados en el
+              lugar equivocado durante el scroll horizontal (bug de
+              repintado, no de layout — probado en vivo con datos reales;
+              sin estas tres propiedades juntas el problema vuelve). */}
+          <div className="relative flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable] [will-change:scroll-position] [contain:strict] [content-visibility:auto]">
             {filtradas.length === 0 ? (
               <div className="py-[72px] px-6 text-center">
                 <p className="font-archivo text-base font-semibold tracking-[-.015em] text-ink">Sin resultados</p>
