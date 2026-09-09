@@ -527,7 +527,7 @@ export function PanelGeneralClient({
                       Estado
                     </th>
                     {isAdmin && (
-                      <th className="sticky top-[50px] z-[5] bg-paper pb-[9px] pt-[11px] border-b border-line-rule" />
+                      <th className="sticky top-[50px] z-[5] bg-paper pb-[9px] pt-[11px] border-b border-line-rule border-l border-line-group" />
                     )}
                   </tr>
                 </thead>
@@ -654,7 +654,7 @@ export function PanelGeneralClient({
 
                         {/* Acciones */}
                         {isAdmin && (
-                          <td className={clsx("px-3.5 py-[13px] text-right border-b border-line-row whitespace-nowrap group/acciones", rowBg)}>
+                          <td className={clsx("px-3.5 py-[13px] text-right border-b border-line-row border-l border-line-group whitespace-nowrap group/acciones", rowBg)}>
                             <span className="inline-flex items-center gap-1">
                               <a
                                 href={`/api/exportar/clientes?id=${empresa.id}`}
