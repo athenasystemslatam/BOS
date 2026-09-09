@@ -511,7 +511,7 @@ export function PanelGeneralClient({
                         colSpan={g.cols.length}
                         className="sticky top-0 z-[5] bg-paper pt-[18px] pb-1.5"
                       >
-                        <div className="border-b-2 border-bordo pb-[7px] px-3.5 flex items-center gap-2.5">
+                        <div className="border-b-2 border-bordo pb-[7px] px-3.5 flex items-center justify-center gap-2.5">
                           <span className="sticky left-[269px] font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap bg-paper pr-2.5">
                             {g.label}
                           </span>
