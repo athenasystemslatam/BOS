@@ -177,7 +177,7 @@ function ClavesModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-xl border border-gray-100 w-full max-w-sm mx-4 p-5"
+        className="bg-white rounded-xl shadow-xl border border-gray-100 w-full max-w-sm mx-4 p-5 max-h-[85vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
