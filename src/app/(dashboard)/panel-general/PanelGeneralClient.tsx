@@ -659,14 +659,14 @@ export function PanelGeneralClient({
                               <a
                                 href={`/api/exportar/clientes?id=${empresa.id}`}
                                 title="Exportar esta empresa a Excel"
-                                className="text-transparent group-hover/acciones:text-ink-faint hover:!text-bordo transition-colors p-[5px] rounded-[6px]"
+                                className="text-ink-faint hover:!text-bordo transition-colors p-[5px] rounded-[6px]"
                               >
                                 <Download size={12} />
                               </a>
                               <button
                                 onClick={() => setEditando(empresa.id)}
                                 title="Editar"
-                                className="text-transparent group-hover/acciones:text-ink-faint hover:!text-bordo transition-colors p-[5px] rounded-[6px]"
+                                className="text-ink-faint hover:!text-bordo transition-colors p-[5px] rounded-[6px]"
                               >
                                 <Pencil size={12} />
                               </button>
