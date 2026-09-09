@@ -466,12 +466,7 @@ export function PanelGeneralClient({
               </p>
             </div>
           )}
-          {/* will-change/contain/content-visibility: sin esto, Chrome deja
-              "fantasmas" de texto de columnas ya scrolleadas pintados en el
-              lugar equivocado durante el scroll horizontal (bug de
-              repintado, no de layout — probado en vivo con datos reales;
-              sin estas tres propiedades juntas el problema vuelve). */}
-          <div className="relative flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable] [will-change:scroll-position] [contain:strict] [content-visibility:auto]">
+          <div className="flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable]">
             {filtradas.length === 0 ? (
               <div className="py-[72px] px-6 text-center">
                 <p className="font-archivo text-base font-semibold tracking-[-.015em] text-ink">Sin resultados</p>
@@ -490,28 +485,22 @@ export function PanelGeneralClient({
                   <col className="w-[116px]" />
                   {isAdmin && <col className="w-[190px]" />}
                 </colgroup>
-                {/* Un solo <thead sticky top-0>, no un sticky por celda: así
-                    era antes del rediseño y nunca tuvo problemas. La versión
-                    con sticky por celda (más el "pin" de las etiquetas de
-                    grupo al scrollear) le hacía dejar restos de texto mal
-                    pintados en Chrome al scrollear lateralmente con datos
-                    reales — un <th> "Empresa" con sticky top+left juntos en
-                    una celda de tabla es justamente lo que antes evitaba
-                    ese bug, así que se volvió a esa estructura simple. La
-                    única diferencia con el diseño anterior: acá cada grupo
-                    de un solo módulo también muestra su fila de "Responsable"
-                    (fila 2), como pide el diseño nuevo — antes esos grupos
-                    ocupaban las dos filas con una sola celda. Se pierde el
-                    "pin" del nombre del módulo (Sueldos/Impuestos/...)
-                    mientras se scrollea del todo a la derecha; el resto de
-                    la fila se sigue viendo bien. */}
-                <thead className="sticky top-0 z-[6] bg-paper">
+                {/* Sin sticky en el header ni en la columna Empresa: Chrome
+                    deja restos de texto de columnas ya scrolleadas pintados
+                    en el lugar equivocado cuando hay un elemento con
+                    position:sticky en esta tabla — probado en vivo con
+                    datos reales, pasa con cualquier combinación de sticky
+                    (por celda, por thead entero, con o sin hacks de
+                    repintado). Sacar el sticky por completo es lo único que
+                    lo elimina de raíz. Se pierde que el encabezado y la
+                    columna Empresa queden fijos al scrollear. */}
+                <thead className="bg-paper">
                   {/* Fila 1: nombre de módulo, con el filete bordó de 2px que
                       "abraza" exactamente el ancho de sus columnas. */}
                   <tr>
                     <th
                       rowSpan={2}
-                      className="sticky left-0 z-[7] bg-paper align-bottom text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]"
+                      className="bg-paper align-bottom text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]"
                     >
                       Empresa
                     </th>
@@ -573,7 +562,7 @@ export function PanelGeneralClient({
                         }}
                       >
                         {/* Empresa */}
-                        <td className={clsx("sticky left-0 z-[2] py-[13px] pr-4 border-b border-line-row whitespace-nowrap w-[268px]", rowBg)}>
+                        <td className={clsx("py-[13px] pr-4 border-b border-line-row whitespace-nowrap w-[268px]", rowBg)}>
                           <div className="flex items-center gap-[11px]">
                             <span
                               className={clsx(
