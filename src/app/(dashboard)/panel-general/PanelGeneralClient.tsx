@@ -206,7 +206,7 @@ export function PanelGeneralClient({
 
   return (
     <>
-      <div className="flex flex-col h-full bg-appbg p-4 md:p-0 md:pl-0 md:pr-7 md:pb-6">
+      <div className="flex flex-col h-full bg-appbg p-4 md:p-0 md:pl-7 md:pr-7 md:pb-6">
         {/* Encabezado */}
         <div className="flex items-end justify-between gap-6 md:gap-[30px] py-4 md:py-[30px] md:pt-[30px] md:px-0.5 md:pb-5 shrink-0 flex-wrap">
           <div>
