@@ -540,10 +540,15 @@ export function PanelGeneralClient({
               <>
               {/* Panel fijo de "Empresa": duplica el encabezado + cada fila
                   real de abajo (mismo contenido/alto/fondo), desplazado por
-                  transform en vez de sticky — ver el porqué en el <thead>. */}
+                  transform en vez de sticky — ver el porqué en el <thead>.
+                  overflow-hidden + will-change:transform: sin esto, probado
+                  en vivo, Chrome deja de pintar el panel (se ve en blanco)
+                  al scrollear — es un panel muy alto (una fila por cada
+                  empresa) y necesita esa pista para repintar bien la parte
+                  visible en cada scroll. */}
               <div
                 ref={frozenColRef}
-                className="absolute top-0 left-0 z-[8] w-[268px] bg-paper"
+                className="absolute top-0 left-0 z-[8] w-[268px] bg-paper overflow-hidden [will-change:transform]"
               >
                 <div
                   style={{ height: headerAltura || undefined }}
