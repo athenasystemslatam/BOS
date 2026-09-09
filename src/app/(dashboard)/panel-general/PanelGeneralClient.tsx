@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Download, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { EquipoMiembro, VistEmpresa } from "@/types";
@@ -96,6 +96,31 @@ export function PanelGeneralClient({
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Columna "Empresa" fija al scrollear lateralmente sin usar position:sticky
+  // — un <th>/<td> sticky en esta tabla le hace pintar mal a Chrome restos
+  // de columnas ya scrolleadas (bug probado en vivo con datos reales, ver
+  // comentario más abajo junto al <thead>). En cambio, se dibuja aparte un
+  // panel con el mismo contenido, desplazado por transform (no sticky) en
+  // cada scroll horizontal — eso sí repinta bien.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+  const frozenColRef = useRef<HTMLDivElement>(null);
+  const frozenRafRef = useRef<number | null>(null);
+  const [headerAltura, setHeaderAltura] = useState(0);
+
+  function aplicarTransformFijo() {
+    frozenRafRef.current = null;
+    if (frozenColRef.current && scrollRef.current) {
+      frozenColRef.current.style.transform = `translateX(${scrollRef.current.scrollLeft}px)`;
+    }
+  }
+
+  function onScrollTabla() {
+    if (frozenRafRef.current == null) {
+      frozenRafRef.current = requestAnimationFrame(aplicarTransformFijo);
+    }
+  }
+
   const sinLiqSet = useMemo(() => new Set(sueldosSinLiquidadora), [sueldosSinLiquidadora]);
 
   // Empresas activas con al menos un servicio activo sin responsable asignado
@@ -155,6 +180,39 @@ export function PanelGeneralClient({
 
   const gruposVisibles = GRUPOS.filter((g) => !ocultos[g.key]);
   const columnasVisibles = gruposVisibles.flatMap((g) => g.cols.map((c) => ({ ...c, grupo: g.key })));
+
+  // Datos por fila que comparten la tabla real y el panel fijo de "Empresa"
+  // (así no se recalculan/desincronizan en dos lugares distintos).
+  const filasConEstilo = useMemo(
+    () =>
+      filtradas.map((empresa, ri) => ({
+        empresa,
+        activa: empresa.estado === "activo",
+        zebra: ri % 2 === 1 ? "bg-paper-alt" : "bg-paper",
+      })),
+    [filtradas]
+  );
+
+  // El panel fijo de "Empresa" necesita saber cuánto mide el encabezado real
+  // (dos filas: nombre de módulo + nombre de columna) para arrancar a la
+  // misma altura — se mide en vez de hardcodear el número porque cambia
+  // según qué chips de módulo estén activos/ocultos.
+  useLayoutEffect(() => {
+    const el = theadRef.current;
+    if (!el) return;
+    const medir = () => setHeaderAltura(el.offsetHeight);
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [gruposVisibles.length]);
+
+  // Si cambia el filtro/orden de filas, el scroll de la tabla no se resetea
+  // solo — hay que volver a aplicar el transform del panel fijo para que no
+  // quede desalineado un frame.
+  useEffect(() => {
+    aplicarTransformFijo();
+  }, [filtradas]);
 
   function confirmar(c: Confirmando) {
     setActionError(null);
@@ -466,7 +524,11 @@ export function PanelGeneralClient({
               </p>
             </div>
           )}
-          <div className="flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable]">
+          <div
+            ref={scrollRef}
+            onScroll={onScrollTabla}
+            className="relative flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable]"
+          >
             {filtradas.length === 0 ? (
               <div className="py-[72px] px-6 text-center">
                 <p className="font-archivo text-base font-semibold tracking-[-.015em] text-ink">Sin resultados</p>
@@ -476,6 +538,52 @@ export function PanelGeneralClient({
               </div>
             ) : (
               <>
+              {/* Panel fijo de "Empresa": duplica el encabezado + cada fila
+                  real de abajo (mismo contenido/alto/fondo), desplazado por
+                  transform en vez de sticky — ver el porqué en el <thead>. */}
+              <div
+                ref={frozenColRef}
+                className="absolute top-0 left-0 z-[8] w-[268px] bg-paper"
+              >
+                <div
+                  style={{ height: headerAltura || undefined }}
+                  className="flex items-end pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule box-border"
+                >
+                  Empresa
+                </div>
+                {filasConEstilo.map(({ empresa, activa, zebra }) => {
+                  const filaHover = hoverRow === empresa.id;
+                  const rowBg = filaHover ? "bg-paper-hover" : zebra;
+                  return (
+                    <div
+                      key={empresa.id}
+                      onMouseEnter={() => setHoverRow(empresa.id)}
+                      onMouseLeave={() => {
+                        setHoverRow(null);
+                        setHoverGrupo(null);
+                      }}
+                      className={clsx("flex items-center gap-[11px] py-[13px] pr-4 border-b border-line-row box-border", rowBg)}
+                    >
+                      <span
+                        className={clsx(
+                          "w-[29px] h-[29px] rounded-[9px] shrink-0 flex items-center justify-center font-archivo text-[11.5px] font-semibold",
+                          activa ? "bg-bordo-tint2 text-bordo" : "bg-paper-alt text-ink-faint"
+                        )}
+                      >
+                        {sigla(empresa.nombre)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-medium tracking-[-.012em] text-ink truncate" title={empresa.nombre}>
+                          {empresa.nombre}
+                        </p>
+                        <p className="font-plex text-[10.5px] text-ink-faint mt-[3px]">
+                          {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
               <table className="w-full min-w-[1140px] border-collapse text-[12.5px] table-fixed">
                 <colgroup>
                   <col className="w-[268px]" />
@@ -491,12 +599,14 @@ export function PanelGeneralClient({
                     position:sticky en esta tabla — probado en vivo con
                     datos reales, pasa con cualquier combinación de sticky
                     (por celda, por thead entero, con o sin hacks de
-                    repintado). Sacar el sticky por completo es lo único que
-                    lo elimina de raíz. Se pierde que el encabezado y la
-                    columna Empresa queden fijos al scrollear. */}
-                <thead className="bg-paper">
-                  {/* Fila 1: nombre de módulo, con el filete bordó de 2px que
-                      "abraza" exactamente el ancho de sus columnas. */}
+                    repintado). El "congelado" de arriba (panel aparte con
+                    transform) lo reemplaza sin ese bug. */}
+                <thead ref={theadRef} className="bg-paper">
+                  {/* Fila 1: nombre de módulo. Los de una sola columna
+                      (Sueldos/Contable/Monotributo) ocupan directamente las
+                      dos filas — no tiene sentido repetir "Responsable"
+                      abajo si no hay nada más que distinguir. Impuestos, con
+                      3 subcolumnas, sí se abre en dos filas. */}
                   <tr>
                     <th
                       rowSpan={2}
@@ -504,15 +614,31 @@ export function PanelGeneralClient({
                     >
                       Empresa
                     </th>
-                    {gruposVisibles.map((g) => (
-                      <th key={g.key} colSpan={g.cols.length} className="bg-paper pt-[18px] pb-1.5">
-                        <div className="border-b-2 border-bordo pb-[7px] px-3.5 flex items-center justify-center gap-2.5">
-                          <span className="font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap">
-                            {g.label}
-                          </span>
-                        </div>
-                      </th>
-                    ))}
+                    {gruposVisibles.map((g) => {
+                      const unaSola = g.cols.length === 1;
+                      if (unaSola) {
+                        return (
+                          <th
+                            key={g.key}
+                            rowSpan={2}
+                            className="bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] border-b-2 border-bordo border-l border-line-group"
+                          >
+                            <span className="font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap">
+                              {g.label}
+                            </span>
+                          </th>
+                        );
+                      }
+                      return (
+                        <th key={g.key} colSpan={g.cols.length} className="bg-paper pt-[18px] pb-1.5 border-l border-line-group">
+                          <div className="border-b-2 border-bordo pb-[7px] px-3.5 flex items-center justify-center gap-2.5">
+                            <span className="font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap">
+                              {g.label}
+                            </span>
+                          </div>
+                        </th>
+                      );
+                    })}
                     <th
                       rowSpan={2}
                       className="bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule border-l border-line-group"
@@ -523,22 +649,25 @@ export function PanelGeneralClient({
                       <th rowSpan={2} className="bg-paper border-b border-line-rule border-l border-line-group" />
                     )}
                   </tr>
-                  {/* Fila 2: nombre de columna */}
+                  {/* Fila 2: solo subcolumnas de los grupos con más de una
+                      (hoy, únicamente Impuestos) — los de una sola columna
+                      ya ocuparon su celda en la fila 1 con rowSpan=2. */}
                   <tr>
-                    {columnasVisibles.map((c) => {
-                      const primero = gruposVisibles.some((g) => g.cols[0]?.key === c.key);
-                      return (
-                        <th
-                          key={c.key}
-                          className={clsx(
-                            "bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b border-line-rule",
-                            primero && "border-l border-line-group"
-                          )}
-                        >
-                          {c.label}
-                        </th>
-                      );
-                    })}
+                    {gruposVisibles.flatMap((g) =>
+                      g.cols.length === 1
+                        ? []
+                        : g.cols.map((c, i) => (
+                            <th
+                              key={c.key}
+                              className={clsx(
+                                "bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b border-line-rule",
+                                i === 0 && "border-l border-line-group"
+                              )}
+                            >
+                              {c.label}
+                            </th>
+                          ))
+                    )}
                   </tr>
                 </thead>
 
