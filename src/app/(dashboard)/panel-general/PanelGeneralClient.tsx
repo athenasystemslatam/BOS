@@ -105,19 +105,16 @@ export function PanelGeneralClient({
   const scrollRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const frozenColRef = useRef<HTMLDivElement>(null);
-  const frozenRafRef = useRef<number | null>(null);
   const [headerAltura, setHeaderAltura] = useState(0);
 
+  // Sin requestAnimationFrame a propósito: even con rAF (que espera al
+  // próximo frame) el panel quedaba un toque atrás del scroll nativo — se
+  // notaba como un "tironeo" al scrollear rápido. Aplicando el transform
+  // directo en cada evento de scroll (el navegador ya los despacha a ritmo
+  // de frame) queda un poco más pegado al scroll real.
   function aplicarTransformFijo() {
-    frozenRafRef.current = null;
     if (frozenColRef.current && scrollRef.current) {
       frozenColRef.current.style.transform = `translateX(${scrollRef.current.scrollLeft}px)`;
-    }
-  }
-
-  function onScrollTabla() {
-    if (frozenRafRef.current == null) {
-      frozenRafRef.current = requestAnimationFrame(aplicarTransformFijo);
     }
   }
 
@@ -526,7 +523,7 @@ export function PanelGeneralClient({
           )}
           <div
             ref={scrollRef}
-            onScroll={onScrollTabla}
+            onScroll={aplicarTransformFijo}
             className="relative flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable]"
           >
             {filtradas.length === 0 ? (
@@ -695,9 +692,16 @@ export function PanelGeneralClient({
                           setHoverGrupo(null);
                         }}
                       >
-                        {/* Empresa */}
+                        {/* Empresa: el contenido real queda invisible (pero
+                            sigue en el DOM, por accesibilidad/copiar texto)
+                            — el panel fijo de arriba es el que se ve. Sin
+                            esto, con scroll parcial (menos de 268px) esta
+                            celda y el panel se solapan en pantalla, y
+                            cualquier frame de diferencia entre el scroll
+                            nativo y el transform del panel se veía como
+                            texto duplicado/tironeando. */}
                         <td className={clsx("py-[13px] pr-4 border-b border-line-row whitespace-nowrap w-[268px]", rowBg)}>
-                          <div className="flex items-center gap-[11px]">
+                          <div className="flex items-center gap-[11px] opacity-0">
                             <span
                               className={clsx(
                                 "w-[29px] h-[29px] rounded-[9px] shrink-0 flex items-center justify-center font-archivo text-[11.5px] font-semibold",
