@@ -456,6 +456,16 @@ export function PanelGeneralClient({
 
         {/* Tabla desktop */}
         <div className="hidden md:flex flex-1 min-h-0 bg-paper border border-line-panel rounded-[14px] flex-col overflow-hidden">
+          {filtradas.length > 0 && (
+            <div className="shrink-0 border-b border-line-soft px-[26px] py-[11px] flex items-center justify-between gap-5 text-[11.5px]">
+              <p className="text-ink-subtle">
+                <span className="font-semibold text-ink tabular-nums">{filtradas.length}</span> de {empresas.length} empresas
+              </p>
+              <p className="text-ink-faint">
+                Una raya “—” indica servicio no contratado · dar de baja un servicio no da de baja al cliente
+              </p>
+            </div>
+          )}
           {/* will-change/contain/content-visibility: sin esto, Chrome deja
               "fantasmas" de texto de columnas ya scrolleadas pintados en el
               lugar equivocado durante el scroll horizontal (bug de
@@ -471,22 +481,6 @@ export function PanelGeneralClient({
               </div>
             ) : (
               <>
-              {/* Encabezado "Empresa" pegado a ambos ejes a la vez: un <th>
-                  sticky en top Y left al mismo tiempo no repinta bien el
-                  fondo en Chrome sobre celdas que scrollean por detrás (bug
-                  del navegador, no es un <th> real, así que lo esquiva). El
-                  <div> exterior no ocupa espacio (w-0 h-0) y solo ancla la
-                  esquina superior izquierda visible de la tabla; adentro, un
-                  <div> absoluto pinta el mismo texto/fondo que ya muestra el
-                  <th> real de abajo (que sigue ahí sin tocarse). */}
-              <div className="sticky top-0 left-0 z-[7] w-0 h-0 overflow-visible pointer-events-none">
-                <div className="absolute top-0 left-0 w-[268px] bg-paper">
-                  <div className="h-[50px]" />
-                  <div className="pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule">
-                    Empresa
-                  </div>
-                </div>
-              </div>
               <table className="w-full min-w-[1140px] border-collapse text-[12.5px] table-fixed">
                 <colgroup>
                   <col className="w-[268px]" />
@@ -496,48 +490,59 @@ export function PanelGeneralClient({
                   <col className="w-[116px]" />
                   {isAdmin && <col className="w-[190px]" />}
                 </colgroup>
-                <thead>
+                {/* Un solo <thead sticky top-0>, no un sticky por celda: así
+                    era antes del rediseño y nunca tuvo problemas. La versión
+                    con sticky por celda (más el "pin" de las etiquetas de
+                    grupo al scrollear) le hacía dejar restos de texto mal
+                    pintados en Chrome al scrollear lateralmente con datos
+                    reales — un <th> "Empresa" con sticky top+left juntos en
+                    una celda de tabla es justamente lo que antes evitaba
+                    ese bug, así que se volvió a esa estructura simple. La
+                    única diferencia con el diseño anterior: acá cada grupo
+                    de un solo módulo también muestra su fila de "Responsable"
+                    (fila 2), como pide el diseño nuevo — antes esos grupos
+                    ocupaban las dos filas con una sola celda. Se pierde el
+                    "pin" del nombre del módulo (Sueldos/Impuestos/...)
+                    mientras se scrollea del todo a la derecha; el resto de
+                    la fila se sigue viendo bien. */}
+                <thead className="sticky top-0 z-[6] bg-paper">
                   {/* Fila 1: nombre de módulo, con el filete bordó de 2px que
                       "abraza" exactamente el ancho de sus columnas. */}
                   <tr>
-                    {/* Solo sticky arriba, no también a la izquierda: probado
-                        en vivo con ~480 filas reales, un <th> sticky en los
-                        dos ejes a la vez no repinta bien en Chrome sobre
-                        celdas que scrollean por detrás (bug del navegador,
-                        no se encontró una forma limpia de evitarlo). El td
-                        del cuerpo sí sigue fijo a la izquierda sin problema
-                        — se pierde ver la palabra "Empresa" en el título
-                        mientras estás scrolleado del todo a la derecha,
-                        nada más. */}
-                    <th className="sticky top-0 z-[6] bg-paper pt-[18px] pb-1.5 w-[268px]" />
+                    <th
+                      rowSpan={2}
+                      className="sticky left-0 z-[7] bg-paper align-bottom text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]"
+                    >
+                      Empresa
+                    </th>
                     {gruposVisibles.map((g) => (
-                      <th
-                        key={g.key}
-                        colSpan={g.cols.length}
-                        className="sticky top-0 z-[5] bg-paper pt-[18px] pb-1.5"
-                      >
+                      <th key={g.key} colSpan={g.cols.length} className="bg-paper pt-[18px] pb-1.5">
                         <div className="border-b-2 border-bordo pb-[7px] px-3.5 flex items-center justify-center gap-2.5">
-                          <span className="sticky left-[269px] font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap bg-paper pr-2.5">
+                          <span className="font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap">
                             {g.label}
                           </span>
                         </div>
                       </th>
                     ))}
-                    <th colSpan={isAdmin ? 2 : 1} className="sticky top-0 z-[5] bg-paper pt-[18px] pb-1.5" />
+                    <th
+                      rowSpan={2}
+                      className="bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule border-l border-line-group"
+                    >
+                      Estado
+                    </th>
+                    {isAdmin && (
+                      <th rowSpan={2} className="bg-paper border-b border-line-rule border-l border-line-group" />
+                    )}
                   </tr>
                   {/* Fila 2: nombre de columna */}
                   <tr>
-                    <th className="sticky top-[50px] z-[6] bg-paper text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]">
-                      Empresa
-                    </th>
-                    {columnasVisibles.map((c, i) => {
+                    {columnasVisibles.map((c) => {
                       const primero = gruposVisibles.some((g) => g.cols[0]?.key === c.key);
-                      void i;
                       return (
                         <th
                           key={c.key}
                           className={clsx(
-                            "sticky top-[50px] z-[5] bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b border-line-rule",
+                            "bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b border-line-rule",
                             primero && "border-l border-line-group"
                           )}
                         >
@@ -545,12 +550,6 @@ export function PanelGeneralClient({
                         </th>
                       );
                     })}
-                    <th className="sticky top-[50px] z-[5] bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule border-l border-line-group">
-                      Estado
-                    </th>
-                    {isAdmin && (
-                      <th className="sticky top-[50px] z-[5] bg-paper pb-[9px] pt-[11px] border-b border-line-rule border-l border-line-group" />
-                    )}
                   </tr>
                 </thead>
 
@@ -730,17 +729,6 @@ export function PanelGeneralClient({
               </>
             )}
           </div>
-
-          {filtradas.length > 0 && (
-            <div className="shrink-0 border-t border-line-soft px-[26px] py-[11px] flex items-center justify-between gap-5 text-[11.5px]">
-              <p className="text-ink-subtle">
-                <span className="font-semibold text-ink tabular-nums">{filtradas.length}</span> de {empresas.length} empresas
-              </p>
-              <p className="text-ink-faint">
-                Una raya “—” indica servicio no contratado · dar de baja un servicio no da de baja al cliente
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
