@@ -261,21 +261,21 @@ export function PanelGeneralClient({
             <p className="text-[10.5px] font-semibold tracking-[.2em] uppercase text-ink-faint">
               Cartera del estudio
             </p>
-            <h1 className="font-archivo text-[26px] md:text-[33px] font-semibold tracking-[-.032em] leading-none text-ink mt-2.5">
+            <h1 className="text-[26px] md:text-[33px] font-semibold tracking-[-.032em] leading-none text-ink mt-2.5">
               Panel General
             </h1>
           </div>
 
           <div className="flex items-stretch border border-line-input rounded-xl bg-paper overflow-hidden">
             <div className="px-4 md:px-5 py-[11px]">
-              <p className="font-archivo text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-ink tabular-nums">
+              <p className="text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-ink tabular-nums">
                 {kpi.activas}
               </p>
               <p className="text-[10.5px] font-medium tracking-[.1em] uppercase text-ink-faint mt-[5px]">Activas</p>
             </div>
             <div className="w-px bg-line-soft" />
             <div className="px-4 md:px-5 py-[11px]">
-              <p className="font-archivo text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-ink tabular-nums">
+              <p className="text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-ink tabular-nums">
                 {kpi.servicios}
               </p>
               <p className="text-[10.5px] font-medium tracking-[.1em] uppercase text-ink-faint mt-[5px]">Servicios</p>
@@ -287,7 +287,7 @@ export function PanelGeneralClient({
                 title={`${kpi.sinResp} servicio${kpi.sinResp !== 1 ? "s" : ""} contratado${kpi.sinResp !== 1 ? "s" : ""} sin responsable asignado`}
                 className="px-4 md:px-5 py-[11px] bg-alerta-bg text-left hover:brightness-[0.98] transition-[filter]"
               >
-                <p className="font-archivo text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-alerta-fg tabular-nums">
+                <p className="text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-alerta-fg tabular-nums">
                   {kpi.sinResp}
                 </p>
                 <p className="text-[10.5px] font-medium tracking-[.1em] uppercase text-alerta-label mt-[5px]">
@@ -296,7 +296,7 @@ export function PanelGeneralClient({
               </button>
             ) : (
               <div className="px-4 md:px-5 py-[11px]">
-                <p className="font-archivo text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-ink tabular-nums">
+                <p className="text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-ink tabular-nums">
                   0
                 </p>
                 <p className="text-[10.5px] font-medium tracking-[.1em] uppercase text-ink-faint mt-[5px]">
