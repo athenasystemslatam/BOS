@@ -1251,6 +1251,36 @@ export function SeguimientoClient({
                   ];
                   const isComplete = checks.every(Boolean);
 
+                  // Estado del F.931 — el mismo que muestra el letrero bajo el
+                  // nombre. Se usa también para pintar el fondo de la fila con
+                  // el color que le corresponde a ese letrero.
+                  const f931Dias =
+                    t.f931_drive || t.f931_manual ? 99 : semaforoF931.get(cliente.id) ?? 99;
+                  const f931Estado: "presentado" | "sin_confirmar" | "vencido" | "proximo" | null =
+                    t.f931_drive
+                      ? "presentado"
+                      : t.f931_manual
+                      ? "sin_confirmar"
+                      : f931Dias > 7
+                      ? null
+                      : f931Dias < 3
+                      ? "vencido"
+                      : "proximo";
+                  const filaTint = clsx(
+                    f931Estado === "presentado" && "bg-green-50/40 hover:bg-green-50/60",
+                    f931Estado === "sin_confirmar" && "bg-orange-50/50 hover:bg-orange-50/70",
+                    f931Estado === "vencido" && "bg-red-50/50 hover:bg-red-50/70",
+                    f931Estado === "proximo" && "bg-amber-50/50 hover:bg-amber-50/70",
+                    !f931Estado && "hover:bg-gray-50/60"
+                  );
+                  const celdaTint = clsx(
+                    f931Estado === "presentado" && "bg-green-50 group-hover:bg-green-100",
+                    f931Estado === "sin_confirmar" && "bg-orange-50 group-hover:bg-orange-100",
+                    f931Estado === "vencido" && "bg-red-50 group-hover:bg-red-100",
+                    f931Estado === "proximo" && "bg-amber-50 group-hover:bg-amber-100",
+                    !f931Estado && "bg-white group-hover:bg-gray-50"
+                  );
+
                   return (
                     <tr
                       key={cliente.id}
@@ -1269,22 +1299,13 @@ export function SeguimientoClient({
                       }}
                       className={clsx(
                         "group transition-colors",
-                        isComplete
-                          ? "bg-green-50/30 hover:bg-green-50/50"
-                          : "hover:bg-gray-50/60",
+                        filaTint,
                         dragId === cliente.id && "opacity-40",
                         overId === cliente.id && dragId && dragId !== cliente.id && "border-t-2 border-bordo"
                       )}
                     >
                       {/* Empresa */}
-                      <td
-                        className={clsx(
-                          "sticky left-0 z-10 px-4 py-2.5",
-                          isComplete
-                            ? "bg-green-50 group-hover:bg-green-100"
-                            : "bg-white group-hover:bg-gray-50"
-                        )}
-                      >
+                      <td className={clsx("sticky left-0 z-10 px-4 py-2.5", celdaTint)}>
                         <div className="flex items-center gap-2.5">
                           <span
                             onMouseDown={() => {
@@ -1339,8 +1360,9 @@ export function SeguimientoClient({
                                   </span>
                                 );
                               }
-                              // Estado 3: semáforo de días (ambos false)
-                              const dias = semaforoF931.get(cliente.id) ?? 99;
+                              // Estado 3: semáforo de días (ambos false) —
+                              // mismo valor que usa f931Estado para el fondo.
+                              const dias = f931Dias;
                               if (dias > 7) return null;
                               const critico = dias === 0;
                               const rojo = dias < 3;
