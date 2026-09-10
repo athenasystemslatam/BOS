@@ -211,7 +211,11 @@ export function PanelGeneralClient({
   useLayoutEffect(() => {
     const th = theadRef.current;
     const medir = () => {
-      if (th) setHeaderAltura(Math.ceil(th.getBoundingClientRect().height));
+      // Sin redondear: el <th> "Cliente" de la izquierda es más bajo que
+      // su contenido, así que toma exactamente esta altura y queda igual
+      // que el encabezado de la derecha (si redondeara hacia arriba
+      // quedaría ~1px más y las filas del cuerpo arrancarían desfasadas).
+      if (th) setHeaderAltura(th.getBoundingClientRect().height);
       const izq = filaRef.current?.getBoundingClientRect().height ?? 0;
       const der = filaBodyRef.current?.getBoundingClientRect().height ?? 0;
       const alto = Math.max(izq, der);
@@ -531,11 +535,16 @@ export function PanelGeneralClient({
                 onScroll={() => syncVertical("frozen")}
                 className="shrink-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <table className="w-[294px] border-collapse text-[12.5px] table-fixed">
+                {/* border-separate (no collapse): con collapse, Chrome se
+                    lleva mal con thead sticky (se le van los bordes / repinta
+                    mal). Con border-spacing 0 se ve igual. Mismo criterio que
+                    la tabla de Seguimiento, que fija el encabezado sin
+                    problemas. */}
+                <table className="w-[294px] border-separate border-spacing-0 text-[12.5px] table-fixed">
                   <colgroup>
                     <col className="w-[294px]" />
                   </colgroup>
-                  <thead className="bg-paper">
+                  <thead className="sticky top-0 z-20 bg-paper">
                     <tr>
                       <th
                         style={{ height: headerAltura || undefined }}
@@ -593,7 +602,7 @@ export function PanelGeneralClient({
                 onScroll={() => syncVertical("body")}
                 className="flex-1 min-w-0 overflow-auto pr-[26px] [scrollbar-gutter:stable]"
               >
-                <table className="w-full min-w-[880px] border-collapse text-[12.5px] table-fixed">
+                <table className="w-full min-w-[880px] border-separate border-spacing-0 text-[12.5px] table-fixed">
                 <colgroup>
                   {columnasVisibles.map((c) => (
                     <col key={c.key} className="w-[170px]" />
@@ -601,7 +610,7 @@ export function PanelGeneralClient({
                   <col className="w-[116px]" />
                   {isAdmin && <col className="w-[190px]" />}
                 </colgroup>
-                <thead ref={theadRef} className="bg-paper">
+                <thead ref={theadRef} className="sticky top-0 z-20 bg-paper">
                   {/* Fila 1: nombre de módulo. Los de una sola columna
                       (Sueldos/Contable/Monotributo) ocupan directamente las
                       dos filas — no tiene sentido repetir "Responsable"
