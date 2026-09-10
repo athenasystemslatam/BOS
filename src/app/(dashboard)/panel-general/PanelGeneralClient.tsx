@@ -114,7 +114,12 @@ export function PanelGeneralClient({
   // de frame) queda un poco más pegado al scroll real.
   function aplicarTransformFijo() {
     if (frozenColRef.current && scrollRef.current) {
-      frozenColRef.current.style.transform = `translateX(${scrollRef.current.scrollLeft}px)`;
+      // Math.round + translate3d: el scrollLeft puede venir fraccionado
+      // (trackpad, pantallas hi-dpi) y un transform con decimales hace que
+      // el texto del panel "tiemble" sub-pixel al scrollear. Redondeado y
+      // en 3d (capa propia de GPU) queda más firme.
+      const x = Math.round(scrollRef.current.scrollLeft);
+      frozenColRef.current.style.transform = `translate3d(${x}px,0,0)`;
     }
   }
 
@@ -545,7 +550,7 @@ export function PanelGeneralClient({
                   visible en cada scroll. */}
               <div
                 ref={frozenColRef}
-                className="absolute top-0 left-0 z-[8] w-[268px] bg-paper overflow-hidden [will-change:transform]"
+                className="absolute top-0 left-[26px] z-[8] w-[268px] bg-paper overflow-hidden [will-change:transform]"
               >
                 <div
                   style={{ height: headerAltura || undefined }}
