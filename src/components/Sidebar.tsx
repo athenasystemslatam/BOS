@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -15,6 +15,7 @@ import {
   Receipt,
   BookOpen,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 import clsx from "clsx";
 import { ModuloId, MODULO_LABELS } from "@/lib/modulos";
@@ -114,6 +115,34 @@ export function Sidebar({
   const router = useRouter();
   const asideRef = useRef<HTMLElement>(null);
 
+  // Secciones de módulo colapsables. Arranca todo abierto (igual que antes);
+  // lo que el usuario cierra se guarda en sessionStorage para que no se
+  // vuelva a abrir en cada recarga (el menú recarga la página entera en
+  // cada clic). Se lee en un effect, no en el render, para no romper la
+  // hidratación — puede haber un parpadeo mínimo al cargar.
+  const [cerrados, setCerrados] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("bos-sidebar-cerrados");
+      if (raw) setCerrados(JSON.parse(raw));
+    } catch {
+      /* sessionStorage no disponible: se queda todo abierto */
+    }
+  }, []);
+
+  function toggleSeccion(label: string) {
+    setCerrados((prev) => {
+      const next = { ...prev, [label]: !prev[label] };
+      try {
+        sessionStorage.setItem("bos-sidebar-cerrados", JSON.stringify(next));
+      } catch {
+        /* ignorar */
+      }
+      return next;
+    });
+  }
+
   // El propio <aside> tiene scroll (el menú entero no entra en pantallas
   // chicas). Como cada clic recarga la página completa, el menú volvía a
   // arrancar arriba — esto guarda dónde estaba desplazado y lo restaura.
@@ -198,32 +227,52 @@ export function Sidebar({
             );
           }
 
+          // Si la ruta activa está adentro de esta sección, se muestra sí o
+          // sí (aunque el usuario la haya cerrado) para no esconder dónde
+          // estás parado.
+          const contieneRutaActiva = visibleItems.some((item) => esRutaActiva(pathname, item.href));
+          const abierta = !cerrados[section.label] || contieneRutaActiva;
+
           return (
             <div key={si} className="flex gap-[11px]">
               <span className="w-0.5 shrink-0 rounded-full bg-bordo ml-[3px] mt-[3px] mb-[5px]" />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-[9px] mb-[7px] pr-0.5">
-                  <p className="font-archivo font-semibold text-[12.5px] tracking-[.01em] text-ink whitespace-nowrap">
+                <button
+                  type="button"
+                  onClick={() => toggleSeccion(section.label!)}
+                  className="w-full flex items-center gap-[9px] mb-[7px] pr-0.5 group"
+                >
+                  <p className="font-archivo font-semibold text-[12.5px] tracking-[.01em] text-ink whitespace-nowrap group-hover:text-bordo transition-colors">
                     {section.label}
                   </p>
                   <span className="flex-1 h-px bg-line-group" />
-                </div>
-                <div className="flex flex-col gap-px">
-                  {visibleItems.map(({ href, label }) => {
-                    const isActive = esRutaActiva(pathname, href);
-                    return (
-                      <NavLink key={href} href={href} isActive={isActive} onClose={onClose}>
-                        <span
-                          className={clsx(
-                            "w-[3px] h-[3px] rounded-full shrink-0",
-                            isActive ? "bg-bordo" : "bg-dot"
-                          )}
-                        />
-                        {label}
-                      </NavLink>
-                    );
-                  })}
-                </div>
+                  <ChevronDown
+                    size={13}
+                    strokeWidth={2}
+                    className={clsx(
+                      "shrink-0 text-ink-faint group-hover:text-bordo transition-[transform,color] duration-150",
+                      !abierta && "-rotate-90"
+                    )}
+                  />
+                </button>
+                {abierta && (
+                  <div className="flex flex-col gap-px">
+                    {visibleItems.map(({ href, label }) => {
+                      const isActive = esRutaActiva(pathname, href);
+                      return (
+                        <NavLink key={href} href={href} isActive={isActive} onClose={onClose}>
+                          <span
+                            className={clsx(
+                              "w-[3px] h-[3px] rounded-full shrink-0",
+                              isActive ? "bg-bordo" : "bg-dot"
+                            )}
+                          />
+                          {label}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           );
