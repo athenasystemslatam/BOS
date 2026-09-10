@@ -1,10 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireLiquidadoraOrAdmin } from "@/lib/auth";
+import { requireLiquidadoraOrAdmin, requireAreaOrAdmin } from "@/lib/auth";
 
 import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
-import { Periodo, Tarea } from "@/types";
+import { ClaveAcceso, Periodo, Tarea } from "@/types";
 import type { CampoManual } from "@/lib/drive";
 export type { CampoManual } from "@/lib/drive";
 
@@ -16,6 +17,68 @@ const CAMPOS_DRIVE = [
   "rub_lsd",
   "sac",
 ] as const;
+
+const MAX_EMAILS_CONTACTO = 5;
+
+/** Edita los datos de contacto/accesos de un cliente desde el recuadro de
+ * la llavecita en Seguimiento — mismos campos que la ficha completa
+ * (emails_contacto, cuil_arca, claves_acceso), así el cambio se ve también
+ * en Clientes de Sueldos y Panel General. No toca nombre/CUIT/liquidadora
+ * ni el estado. */
+export async function editarDatosCliente(
+  clienteId: string,
+  datos: {
+    emails_contacto: string[];
+    cuil_arca: string | null;
+    claves_acceso: ClaveAcceso[];
+  }
+) {
+  try {
+    await requireAreaOrAdmin("sueldos");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const admin = createAdminClient();
+
+  const emails = (datos.emails_contacto ?? [])
+    .map((e) => String(e).trim())
+    .filter(Boolean)
+    .slice(0, MAX_EMAILS_CONTACTO);
+
+  const cuil_arca = datos.cuil_arca?.trim() || null;
+
+  const claves_acceso = (Array.isArray(datos.claves_acceso) ? datos.claves_acceso : [])
+    .map((c) => ({
+      sistema: String(c?.sistema ?? "").trim(),
+      usuario: String(c?.usuario ?? "").trim(),
+      contrasena: String(c?.contrasena ?? ""),
+      modulo: String(c?.modulo ?? ""),
+    }))
+    .filter((c) => c.sistema || c.usuario || c.contrasena);
+
+  const { error } = await admin
+    .from("clientes")
+    .update({
+      emails_contacto: emails,
+      cuil_arca,
+      claves_acceso,
+      fecha_modificacion: new Date().toISOString(),
+    })
+    .eq("id", clienteId);
+
+  if (error) {
+    if (error.message.includes("claves_acceso")) {
+      return {
+        error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.',
+      };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/", "layout");
+  return { success: true };
+}
 
 export async function toggleManual(
   clienteId: string,

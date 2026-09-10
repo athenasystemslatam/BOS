@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
   AlertTriangle,
@@ -21,9 +22,13 @@ import {
   Bell,
   GripVertical,
   RotateCcw,
+  Pencil,
 } from "lucide-react";
 import { Cliente, ClaveAcceso, Liquidadora, Periodo, Tarea } from "@/types";
+import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
+import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import {
+  editarDatosCliente,
   toggleManual,
   updateLegajos,
   updateObservaciones,
@@ -167,19 +172,46 @@ function CopyButton({ value }: { value: string }) {
 
 function ClavesModal({
   cliente,
+  puedeEditar,
   onClose,
+  onSaved,
 }: {
   cliente: ClienteConLiq;
+  puedeEditar: boolean;
   onClose: () => void;
+  onSaved: () => void;
 }) {
   const claves: ClaveAcceso[] = cliente.claves_acceso ?? [];
+  const [edit, setEdit] = useState(false);
+  const [emails, setEmails] = useState<string[]>(cliente.emails_contacto ?? []);
+  const [cuil, setCuil] = useState(cliente.cuil_arca ?? "");
+  const [clavesEdit, setClavesEdit] = useState<ClaveAcceso[]>(claves);
+  const [err, setErr] = useState<string | null>(null);
+  const [guardando, startGuardar] = useTransition();
+
+  function guardar() {
+    setErr(null);
+    startGuardar(async () => {
+      const r = await editarDatosCliente(cliente.id, {
+        emails_contacto: emails,
+        cuil_arca: cuil.trim() || null,
+        claves_acceso: clavesEdit,
+      });
+      if (r?.error) setErr(r.error);
+      else onSaved();
+    });
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl shadow-xl border border-gray-100 w-full max-w-sm mx-4 p-5 max-h-[85vh] overflow-y-auto"
+        className={clsx(
+          "bg-white rounded-xl shadow-xl border border-gray-100 w-full mx-4 p-5 max-h-[85vh] overflow-y-auto",
+          edit ? "max-w-lg" : "max-w-sm"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -187,82 +219,153 @@ function ClavesModal({
             <p className="text-[13px] font-semibold text-gray-800">{cliente.nombre}</p>
             <p className="text-[10px] text-gray-400 font-mono">{cliente.cuit}</p>
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition-colors">
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            {puedeEditar && !edit && (
+              <button
+                onClick={() => setEdit(true)}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400 hover:text-bordo border border-gray-200 rounded px-1.5 py-0.5 transition-colors"
+              >
+                <Pencil size={11} /> Editar
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
-        {/* Emails de contacto */}
-        {cliente.emails_contacto && cliente.emails_contacto.length > 0 && (
-          <div className="mb-4">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-              Email{cliente.emails_contacto.length > 1 ? "s" : ""} de contacto
-            </p>
-            <div className="space-y-1.5">
-              {cliente.emails_contacto.map((email, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 font-mono text-[13px] text-gray-700"
-                >
-                  {email}
-                  <CopyButton value={email} />
-                </div>
-              ))}
+        {edit ? (
+          <div className="space-y-4">
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                Emails de contacto
+              </p>
+              <EmailsContactoEditor emails={emails} onChange={setEmails} />
             </div>
-          </div>
-        )}
 
-        {/* CUIL ARCA */}
-        {cliente.cuil_arca && (
-          <div className="mb-4">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-              CUIL ARCA
-            </p>
-            <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 font-mono text-[13px] text-gray-700">
-              {cliente.cuil_arca}
-              <CopyButton value={cliente.cuil_arca} />
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                CUIL ARCA
+              </p>
+              <input
+                type="text"
+                value={cuil}
+                onChange={(e) => setCuil(e.target.value)}
+                placeholder="20-12345678-9"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-bordo"
+              />
             </div>
-          </div>
-        )}
 
-        {/* Claves de acceso */}
-        {claves.length > 0 ? (
-          <div>
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-              Claves de acceso
-            </p>
-            <div className="space-y-2">
-              {claves.map((clave, i) => (
-                <div key={i} className="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px]">
-                  <p className="font-semibold text-gray-600 mb-1.5">{clave.sistema}</p>
-                  <div className="space-y-1">
-                    {clave.usuario && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400 text-[11px]">Usuario</span>
-                        <div className="flex items-center font-mono text-gray-700">
-                          {clave.usuario}
-                          <CopyButton value={clave.usuario} />
-                        </div>
-                      </div>
-                    )}
-                    {clave.contrasena && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-400 text-[11px]">Contraseña</span>
-                        <div className="flex items-center font-mono text-gray-700">
-                          {clave.contrasena}
-                          <CopyButton value={clave.contrasena} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                Claves de acceso
+              </p>
+              <ClavesAccesoEditor claves={clavesEdit} onChange={setClavesEdit} sugerencias={[]} />
+            </div>
+
+            {err && (
+              <p className="text-xs text-danger bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                {err}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-3 pt-1">
+              <button
+                onClick={() => {
+                  setEdit(false);
+                  setEmails(cliente.emails_contacto ?? []);
+                  setCuil(cliente.cuil_arca ?? "");
+                  setClavesEdit(claves);
+                  setErr(null);
+                }}
+                className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardar}
+                disabled={guardando}
+                className="bg-bordo text-white text-sm font-medium px-4 py-1.5 rounded-lg hover:bg-bordo-dark transition-colors disabled:opacity-60"
+              >
+                {guardando ? "Guardando…" : "Guardar"}
+              </button>
             </div>
           </div>
         ) : (
-          <p className="text-[12px] text-gray-400 text-center py-4">
-            Sin claves de acceso registradas.
-          </p>
+          <>
+            {/* Emails de contacto */}
+            {cliente.emails_contacto && cliente.emails_contacto.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                  Email{cliente.emails_contacto.length > 1 ? "s" : ""} de contacto
+                </p>
+                <div className="space-y-1.5">
+                  {cliente.emails_contacto.map((email, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 font-mono text-[13px] text-gray-700"
+                    >
+                      {email}
+                      <CopyButton value={email} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CUIL ARCA */}
+            {cliente.cuil_arca && (
+              <div className="mb-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                  CUIL ARCA
+                </p>
+                <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 font-mono text-[13px] text-gray-700">
+                  {cliente.cuil_arca}
+                  <CopyButton value={cliente.cuil_arca} />
+                </div>
+              </div>
+            )}
+
+            {/* Claves de acceso */}
+            {claves.length > 0 ? (
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  Claves de acceso
+                </p>
+                <div className="space-y-2">
+                  {claves.map((clave, i) => (
+                    <div key={i} className="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px]">
+                      <p className="font-semibold text-gray-600 mb-1.5">{clave.sistema}</p>
+                      <div className="space-y-1">
+                        {clave.usuario && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-[11px]">Usuario</span>
+                            <div className="flex items-center font-mono text-gray-700">
+                              {clave.usuario}
+                              <CopyButton value={clave.usuario} />
+                            </div>
+                          </div>
+                        )}
+                        {clave.contrasena && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-[11px]">Contraseña</span>
+                            <div className="flex items-center font-mono text-gray-700">
+                              {clave.contrasena}
+                              <CopyButton value={clave.contrasena} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-[12px] text-gray-400 text-center py-4">
+                Sin claves de acceso registradas.
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -280,6 +383,8 @@ export function SeguimientoClient({
   puedeEditar,
   recordatoriosPrevios: initialRecordatoriosPrevios,
 }: Props) {
+  const router = useRouter();
+
   // Period state — managed client-side to avoid URL params (which make the route dynamic)
   const [currentPeriodo, setCurrentPeriodo] = useState<Periodo | null>(initialPeriodo);
   const [currentTareas, setCurrentTareas] = useState<Tarea[]>(initialTareas);
@@ -639,7 +744,15 @@ export function SeguimientoClient({
   return (
     <div className="flex flex-col h-full p-4 md:p-8">
       {clienteClaves && (
-        <ClavesModal cliente={clienteClaves} onClose={() => setClienteClaves(null)} />
+        <ClavesModal
+          cliente={clienteClaves}
+          puedeEditar={puedeEditar}
+          onClose={() => setClienteClaves(null)}
+          onSaved={() => {
+            setClienteClaves(null);
+            router.refresh();
+          }}
+        />
       )}
       {/* Header */}
       <div className="shrink-0 flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
