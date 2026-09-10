@@ -31,12 +31,14 @@ const config: Config = {
           group: "#F6F3EE",
         },
         ink: {
+          // Escala de grises de texto del rediseño, un escalón más oscura
+          // (mismo tono cálido, sin tocar el peso de la fuente).
           DEFAULT: "#17141A",
-          cell: "#2E2830",
-          muted: "#6E6660",
-          subtle: "#8F867F",
-          faint: "#A39A94",
-          ghost: "#D3CDC3",
+          cell: "#28232A",
+          muted: "#605954",
+          subtle: "#7C756E",
+          faint: "#8E8681",
+          ghost: "#B8B2AA",
         },
         line: {
           panel: "#E2DDD4",
