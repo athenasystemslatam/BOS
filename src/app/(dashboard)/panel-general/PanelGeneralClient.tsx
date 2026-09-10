@@ -641,7 +641,10 @@ export function PanelGeneralClient({
                           colSpan={g.cols.length}
                           className={clsx("bg-paper pt-[18px] pb-1.5", gi > 0 && "border-l border-line-group")}
                         >
-                          <div className="border-b-2 border-bordo pb-[7px] px-3.5 flex items-center justify-center gap-2.5">
+                          {/* Sin línea acá: la raya bordó va abajo de todo,
+                              debajo de IVA/IIBB/Seg. e Hig. (ver fila 2),
+                              alineada con la de los demás módulos. */}
+                          <div className="pb-[7px] px-3.5 flex items-center justify-center gap-2.5">
                             <span className="font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap">
                               {g.label}
                             </span>
@@ -661,7 +664,10 @@ export function PanelGeneralClient({
                   </tr>
                   {/* Fila 2: solo subcolumnas de los grupos con más de una
                       (hoy, únicamente Impuestos) — los de una sola columna
-                      ya ocuparon su celda en la fila 1 con rowSpan=2. */}
+                      ya ocuparon su celda en la fila 1 con rowSpan=2. La
+                      raya bordó del fondo va acá, al mismo nivel que la de
+                      Sueldos/Contable/Monotributo, para que sea una sola
+                      línea continua. */}
                   <tr>
                     {gruposVisibles.flatMap((g, gi) =>
                       g.cols.length === 1
@@ -670,7 +676,7 @@ export function PanelGeneralClient({
                             <th
                               key={c.key}
                               className={clsx(
-                                "bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b border-line-rule",
+                                "bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b-2 border-bordo",
                                 i === 0 && gi > 0 && "border-l border-line-group"
                               )}
                             >
