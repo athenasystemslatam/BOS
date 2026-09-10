@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useTransition } from "react";
+import { useState, useMemo, useRef, useEffect, useTransition } from "react";
 import clsx from "clsx";
 import {
   AlertTriangle,
@@ -19,6 +19,8 @@ import {
   Copy,
   X,
   Bell,
+  GripVertical,
+  RotateCcw,
 } from "lucide-react";
 import { Cliente, ClaveAcceso, Liquidadora, Periodo, Tarea } from "@/types";
 import {
@@ -311,6 +313,47 @@ export function SeguimientoClient({
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<SyncDriveResult | null>(null);
 
+  // Orden manual de las filas — por usuario, guardado en localStorage (este
+  // navegador nada más). Arranca en null = orden por defecto del server, y
+  // se carga en un effect para no romper la hidratación. Se guarda la lista
+  // completa de ids ordenados; un cliente que no esté (nuevo) va al final
+  // hasta que lo acomoden.
+  const ORDEN_KEY = "bos-seguimiento-orden";
+  const [ordenIds, setOrdenIds] = useState<string[] | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [handleActivo, setHandleActivo] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ORDEN_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setOrdenIds(parsed.map(String));
+      }
+    } catch {
+      /* localStorage no disponible: se queda con el orden por defecto */
+    }
+  }, []);
+
+  function guardarOrden(ids: string[]) {
+    setOrdenIds(ids);
+    try {
+      localStorage.setItem(ORDEN_KEY, JSON.stringify(ids));
+    } catch {
+      /* ignorar */
+    }
+  }
+
+  function restablecerOrden() {
+    setOrdenIds(null);
+    try {
+      localStorage.removeItem(ORDEN_KEY);
+    } catch {
+      /* ignorar */
+    }
+  }
+
   async function handleSync() {
     if (!currentPeriodo || isSyncing || !puedeEditar) return;
     setIsSyncing(true);
@@ -359,14 +402,39 @@ export function SeguimientoClient({
     return { ...server, ...override };
   }
 
+  // Rank por id según el orden manual. Si no hay orden guardado, rankMap
+  // vale el orden por defecto (índice natural), así ordenar no cambia nada.
+  const rankMap = useMemo(() => {
+    const existentes = new Set(clientes.map((c) => c.id));
+    const base = (ordenIds ?? []).filter((id) => existentes.has(id));
+    const enBase = new Set(base);
+    const completo = [...base, ...clientes.map((c) => c.id).filter((id) => !enBase.has(id))];
+    return new Map(completo.map((id, i): [string, number] => [id, i]));
+  }, [clientes, ordenIds]);
+
   const clientesFiltrados = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return clientes.filter((c) => {
-      if (filtroLiq !== "todas" && c.liquidadora?.id !== filtroLiq) return false;
-      if (q && !c.nombre.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [clientes, filtroLiq, searchQuery]);
+    return clientes
+      .filter((c) => {
+        if (filtroLiq !== "todas" && c.liquidadora?.id !== filtroLiq) return false;
+        if (q && !c.nombre.toLowerCase().includes(q)) return false;
+        return true;
+      })
+      .sort((a, b) => (rankMap.get(a.id) ?? 0) - (rankMap.get(b.id) ?? 0));
+  }, [clientes, filtroLiq, searchQuery, rankMap]);
+
+  // Mueve dragId justo antes de targetId en el orden completo y lo persiste.
+  function aplicarDrop(targetId: string) {
+    if (!dragId || dragId === targetId) return;
+    const orden = Array.from(rankMap.entries())
+      .sort((a, b) => a[1] - b[1])
+      .map(([id]) => id);
+    const sinDrag = orden.filter((id) => id !== dragId);
+    const idx = sinDrag.indexOf(targetId);
+    if (idx === -1) return;
+    sinDrag.splice(idx, 0, dragId);
+    guardarOrden(sinDrag);
+  }
 
   const tieneQuincenales = useMemo(
     () => clientes.some((c) => c.es_quincenal),
@@ -964,9 +1032,21 @@ export function SeguimientoClient({
         >
           {/* Barra de progreso */}
           <div className="shrink-0 px-6 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-            <p className="text-[11px] text-gray-400">
-              {clientesFiltrados.length} clientes en{" "}
-              <span className="font-medium">{currentPeriodo.nombre_mes}</span>
+            <p className="text-[11px] text-gray-400 flex items-center gap-2">
+              <span>
+                {clientesFiltrados.length} clientes en{" "}
+                <span className="font-medium">{currentPeriodo.nombre_mes}</span>
+              </span>
+              {ordenIds && (
+                <button
+                  onClick={restablecerOrden}
+                  title="Volver al orden por defecto"
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-400 hover:text-bordo border border-gray-200 rounded px-1.5 py-0.5 transition-colors"
+                >
+                  <RotateCcw size={10} />
+                  Orden manual
+                </button>
+              )}
             </p>
             <div className="flex items-center gap-3">
               <div className="h-1.5 w-36 bg-gray-200 rounded-full overflow-hidden">
@@ -1061,11 +1141,26 @@ export function SeguimientoClient({
                   return (
                     <tr
                       key={cliente.id}
+                      draggable={handleActivo}
+                      onDragStart={() => setDragId(cliente.id)}
+                      onDragOver={(e) => {
+                        if (!dragId) return;
+                        e.preventDefault();
+                        if (overId !== cliente.id) setOverId(cliente.id);
+                      }}
+                      onDrop={() => aplicarDrop(cliente.id)}
+                      onDragEnd={() => {
+                        setDragId(null);
+                        setOverId(null);
+                        setHandleActivo(false);
+                      }}
                       className={clsx(
                         "group transition-colors",
                         isComplete
                           ? "bg-green-50/30 hover:bg-green-50/50"
-                          : "hover:bg-gray-50/60"
+                          : "hover:bg-gray-50/60",
+                        dragId === cliente.id && "opacity-40",
+                        overId === cliente.id && dragId && dragId !== cliente.id && "border-t-2 border-bordo"
                       )}
                     >
                       {/* Empresa */}
@@ -1078,6 +1173,22 @@ export function SeguimientoClient({
                         )}
                       >
                         <div className="flex items-center gap-2.5">
+                          <span
+                            onMouseDown={() => {
+                              setHandleActivo(true);
+                              // Por si sueltan sin llegar a arrastrar: sin
+                              // esto la fila quedaba draggable indefinidamente.
+                              window.addEventListener(
+                                "mouseup",
+                                () => setHandleActivo(false),
+                                { once: true }
+                              );
+                            }}
+                            title="Arrastrar para reordenar"
+                            className="shrink-0 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing -ml-1.5"
+                          >
+                            <GripVertical size={14} />
+                          </span>
                           <div
                             className={clsx(
                               "w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0",
