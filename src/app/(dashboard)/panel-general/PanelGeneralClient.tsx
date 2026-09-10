@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Download, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { EquipoMiembro, VistEmpresa } from "@/types";
@@ -95,31 +95,33 @@ export function PanelGeneralClient({
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Columna "Empresa" fija al scrollear lateralmente sin usar position:sticky
-  // — un <th>/<td> sticky en esta tabla le hace pintar mal a Chrome restos
-  // de columnas ya scrolleadas (bug probado en vivo con datos reales, ver
-  // comentario más abajo junto al <thead>). En cambio, se dibuja aparte un
-  // panel con el mismo contenido, desplazado por transform (no sticky) en
-  // cada scroll horizontal — eso sí repinta bien.
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // Columna "Cliente" fija al scrollear lateralmente: se parte la tabla en
+  // dos. La de la izquierda (solo Cliente) vive en su propio contenedor SIN
+  // scroll horizontal, así nunca se desplaza de costado — no hay position:
+  // sticky (a Chrome le hacía pintar mal restos de columnas ya scrolleadas
+  // en esta tabla) ni transform por JS (iba un frame atrás del scroll y
+  // "temblaba"). El scroll vertical de las dos mitades se sincroniza abajo.
+  const bodyScrollRef = useRef<HTMLDivElement>(null);
+  const frozenScrollRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
-  const frozenColRef = useRef<HTMLDivElement>(null);
+  const filaRef = useRef<HTMLTableRowElement>(null);
   const [headerAltura, setHeaderAltura] = useState(0);
+  const [filaAltura, setFilaAltura] = useState(0);
 
-  // Sin requestAnimationFrame a propósito: even con rAF (que espera al
-  // próximo frame) el panel quedaba un toque atrás del scroll nativo — se
-  // notaba como un "tironeo" al scrollear rápido. Aplicando el transform
-  // directo en cada evento de scroll (el navegador ya los despacha a ritmo
-  // de frame) queda un poco más pegado al scroll real.
-  function aplicarTransformFijo() {
-    if (frozenColRef.current && scrollRef.current) {
-      // Math.round + translate3d: el scrollLeft puede venir fraccionado
-      // (trackpad, pantallas hi-dpi) y un transform con decimales hace que
-      // el texto del panel "tiemble" sub-pixel al scrollear. Redondeado y
-      // en 3d (capa propia de GPU) queda más firme.
-      const x = Math.round(scrollRef.current.scrollLeft);
-      frozenColRef.current.style.transform = `translate3d(${x}px,0,0)`;
+  // Sincronizar el scroll vertical entre las dos mitades. Se aplica directo
+  // en el evento (sin rAF) para que queden lo más pegadas posible; el lock
+  // evita el ida y vuelta infinito entre los dos onScroll.
+  const syncLock = useRef(false);
+  function syncVertical(desde: "body" | "frozen") {
+    if (syncLock.current) {
+      syncLock.current = false;
+      return;
     }
+    const src = desde === "body" ? bodyScrollRef.current : frozenScrollRef.current;
+    const dst = desde === "body" ? frozenScrollRef.current : bodyScrollRef.current;
+    if (!src || !dst || dst.scrollTop === src.scrollTop) return;
+    syncLock.current = true;
+    dst.scrollTop = src.scrollTop;
   }
 
   const sinLiqSet = useMemo(() => new Set(sueldosSinLiquidadora), [sueldosSinLiquidadora]);
@@ -181,8 +183,8 @@ export function PanelGeneralClient({
   const gruposVisibles = GRUPOS;
   const columnasVisibles = gruposVisibles.flatMap((g) => g.cols.map((c) => ({ ...c, grupo: g.key })));
 
-  // Datos por fila que comparten la tabla real y el panel fijo de "Empresa"
-  // (así no se recalculan/desincronizan en dos lugares distintos).
+  // Datos por fila que comparten las dos mitades de la tabla (Cliente a la
+  // izquierda, el resto a la derecha) — así no se recalculan/desincronizan.
   const filasConEstilo = useMemo(
     () =>
       filtradas.map((empresa, ri) => ({
@@ -193,25 +195,25 @@ export function PanelGeneralClient({
     [filtradas]
   );
 
-  // El panel fijo de "Empresa" necesita saber cuánto mide el encabezado real
-  // (dos filas: nombre de módulo + nombre de columna) para arrancar a la
-  // misma altura — se mide en vez de hardcodearlo.
+  // Las dos mitades tienen que quedar alineadas fila a fila. El encabezado
+  // de la derecha son dos filas (módulo + subcolumna) y las filas del
+  // cuerpo las manda el lado Cliente (avatar + nombre + CUIT, siempre una
+  // línea): se miden esas alturas reales y se le imponen al otro lado, en
+  // vez de hardcodearlas.
+  const hayFilas = filtradas.length > 0;
   useLayoutEffect(() => {
-    const el = theadRef.current;
-    if (!el) return;
-    const medir = () => setHeaderAltura(el.offsetHeight);
+    const th = theadRef.current;
+    const fila = filaRef.current;
+    const medir = () => {
+      if (th) setHeaderAltura(th.offsetHeight);
+      if (fila) setFilaAltura(fila.offsetHeight);
+    };
     medir();
     const ro = new ResizeObserver(medir);
-    ro.observe(el);
+    if (th) ro.observe(th);
+    if (fila) ro.observe(fila);
     return () => ro.disconnect();
-  }, [gruposVisibles.length]);
-
-  // Si cambia el filtro/orden de filas, el scroll de la tabla no se resetea
-  // solo — hay que volver a aplicar el transform del panel fijo para que no
-  // quede desalineado un frame.
-  useEffect(() => {
-    aplicarTransformFijo();
-  }, [filtradas]);
+  }, [gruposVisibles.length, hayFilas]);
 
   function confirmar(c: Confirmando) {
     setActionError(null);
@@ -491,93 +493,96 @@ export function PanelGeneralClient({
               </p>
             </div>
           )}
-          <div
-            ref={scrollRef}
-            onScroll={aplicarTransformFijo}
-            className="relative flex-1 min-h-0 overflow-auto px-[26px] pb-2 [scrollbar-gutter:stable]"
-          >
-            {filtradas.length === 0 ? (
-              <div className="py-[72px] px-6 text-center">
-                <p className="font-archivo text-base font-semibold tracking-[-.015em] text-ink">Sin resultados</p>
-                <p className="text-[12.5px] text-ink-faint mt-2">
-                  Probá con otro nombre, CUIT o filtro de estado.
-                </p>
-              </div>
-            ) : (
-              <>
-              {/* Panel fijo de "Empresa": duplica el encabezado + cada fila
-                  real de abajo (mismo contenido/alto/fondo), desplazado por
-                  transform en vez de sticky — ver el porqué en el <thead>.
-                  Arranca en left-0 y es 26px más ancho que la columna
-                  (w-294 = 26 + 268) con pl-[26px] adentro: así su fondo
-                  opaco + las rayas de fila tapan el margen interno izquierdo
-                  del scroll (px-[26px]), donde si no se veía asomar el
-                  contenido de las columnas ya scrolleadas.
-                  overflow-hidden + will-change:transform: sin esto, probado
-                  en vivo, Chrome deja de pintar el panel (se ve en blanco)
-                  al scrollear — es un panel muy alto (una fila por cada
-                  empresa) y necesita esa pista para repintar bien la parte
-                  visible en cada scroll. */}
+          {filtradas.length === 0 ? (
+            <div className="flex-1 min-h-0 py-[72px] px-6 text-center">
+              <p className="font-archivo text-base font-semibold tracking-[-.015em] text-ink">Sin resultados</p>
+              <p className="text-[12.5px] text-ink-faint mt-2">
+                Probá con otro nombre, CUIT o filtro de estado.
+              </p>
+            </div>
+          ) : (
+            /* Tabla partida en dos: la columna "Cliente" vive en su propio
+               contenedor a la izquierda SIN scroll horizontal (por eso nunca
+               tiembla ni deja asomar contenido), y todo el resto scrollea de
+               costado a la derecha. El scroll vertical se sincroniza entre
+               las dos mitades (ver syncVertical). Reemplaza al viejo panel
+               con transform, que iba un frame atrás del scroll. */
+            <div className="flex-1 min-h-0 flex overflow-hidden">
+              {/* ── Mitad izquierda: solo Cliente ── */}
               <div
-                ref={frozenColRef}
-                className="absolute top-0 left-0 z-[8] w-[294px] bg-paper overflow-hidden [will-change:transform]"
+                ref={frozenScrollRef}
+                onScroll={() => syncVertical("frozen")}
+                className="shrink-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <div
-                  style={{ height: headerAltura || undefined }}
-                  className="flex items-end pl-[26px] pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule box-border"
-                >
-                  Cliente
-                </div>
-                {filasConEstilo.map(({ empresa, activa, zebra }) => {
-                  const filaHover = hoverRow === empresa.id;
-                  const rowBg = filaHover ? "bg-paper-hover" : zebra;
-                  return (
-                    <div
-                      key={empresa.id}
-                      onMouseEnter={() => setHoverRow(empresa.id)}
-                      onMouseLeave={() => {
-                        setHoverRow(null);
-                        setHoverGrupo(null);
-                      }}
-                      className={clsx("flex items-center gap-[11px] py-[13px] pl-[26px] pr-4 border-b border-line-row box-border", rowBg)}
-                    >
-                      <span
-                        className={clsx(
-                          "w-[29px] h-[29px] rounded-[9px] shrink-0 flex items-center justify-center font-archivo text-[11.5px] font-semibold",
-                          activa ? "bg-bordo-tint2 text-bordo" : "bg-paper-alt text-ink-faint"
-                        )}
+                <table className="w-[294px] border-collapse text-[12.5px] table-fixed">
+                  <colgroup>
+                    <col className="w-[294px]" />
+                  </colgroup>
+                  <thead className="bg-paper">
+                    <tr>
+                      <th
+                        style={{ height: headerAltura || undefined }}
+                        className="bg-paper align-bottom text-left pl-[26px] pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule border-r border-line-group box-border"
                       >
-                        {sigla(empresa.nombre)}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium tracking-[-.012em] text-ink truncate" title={empresa.nombre}>
-                          {empresa.nombre}
-                        </p>
-                        <p className="font-plex text-[10.5px] text-ink-faint mt-[3px]">
-                          {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+                        Cliente
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filasConEstilo.map(({ empresa, activa, zebra }, ri) => {
+                      const filaHover = hoverRow === empresa.id;
+                      const rowBg = filaHover ? "bg-paper-hover" : zebra;
+                      return (
+                        <tr
+                          key={empresa.id}
+                          ref={ri === 0 ? filaRef : undefined}
+                          onMouseEnter={() => setHoverRow(empresa.id)}
+                          onMouseLeave={() => {
+                            setHoverRow(null);
+                            setHoverGrupo(null);
+                          }}
+                        >
+                          <td className={clsx("pl-[26px] pr-4 py-[13px] border-b border-line-row border-r border-line-group align-middle whitespace-nowrap", rowBg)}>
+                            <div className="flex items-center gap-[11px]">
+                              <span
+                                className={clsx(
+                                  "w-[29px] h-[29px] rounded-[9px] shrink-0 flex items-center justify-center font-archivo text-[11.5px] font-semibold",
+                                  activa ? "bg-bordo-tint2 text-bordo" : "bg-paper-alt text-ink-faint"
+                                )}
+                              >
+                                {sigla(empresa.nombre)}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-medium tracking-[-.012em] text-ink truncate" title={empresa.nombre}>
+                                  {empresa.nombre}
+                                </p>
+                                <p className="font-plex text-[10.5px] text-ink-faint mt-[3px]">
+                                  {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <table className="w-full min-w-[1140px] border-collapse text-[12.5px] table-fixed">
+
+              {/* ── Mitad derecha: todo lo demás (scroll horizontal + vertical) ── */}
+              <div
+                ref={bodyScrollRef}
+                onScroll={() => syncVertical("body")}
+                className="flex-1 min-w-0 overflow-auto pr-[26px] [scrollbar-gutter:stable]"
+              >
+                <table className="w-full min-w-[880px] border-collapse text-[12.5px] table-fixed">
                 <colgroup>
-                  <col className="w-[268px]" />
                   {columnasVisibles.map((c) => (
                     <col key={c.key} className="w-[170px]" />
                   ))}
                   <col className="w-[116px]" />
                   {isAdmin && <col className="w-[190px]" />}
                 </colgroup>
-                {/* Sin sticky en el header ni en la columna Empresa: Chrome
-                    deja restos de texto de columnas ya scrolleadas pintados
-                    en el lugar equivocado cuando hay un elemento con
-                    position:sticky en esta tabla — probado en vivo con
-                    datos reales, pasa con cualquier combinación de sticky
-                    (por celda, por thead entero, con o sin hacks de
-                    repintado). El "congelado" de arriba (panel aparte con
-                    transform) lo reemplaza sin ese bug. */}
                 <thead ref={theadRef} className="bg-paper">
                   {/* Fila 1: nombre de módulo. Los de una sola columna
                       (Sueldos/Contable/Monotributo) ocupan directamente las
@@ -585,20 +590,17 @@ export function PanelGeneralClient({
                       abajo si no hay nada más que distinguir. Impuestos, con
                       3 subcolumnas, sí se abre en dos filas. */}
                   <tr>
-                    <th
-                      rowSpan={2}
-                      className="bg-paper align-bottom text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]"
-                    >
-                      Cliente
-                    </th>
-                    {gruposVisibles.map((g) => {
+                    {gruposVisibles.map((g, gi) => {
                       const unaSola = g.cols.length === 1;
                       if (unaSola) {
                         return (
                           <th
                             key={g.key}
                             rowSpan={2}
-                            className="bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] border-b-2 border-bordo border-l border-line-group"
+                            className={clsx(
+                              "bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] border-b-2 border-bordo",
+                              gi > 0 && "border-l border-line-group"
+                            )}
                           >
                             <span className="font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap">
                               {g.label}
@@ -607,7 +609,11 @@ export function PanelGeneralClient({
                         );
                       }
                       return (
-                        <th key={g.key} colSpan={g.cols.length} className="bg-paper pt-[18px] pb-1.5 border-l border-line-group">
+                        <th
+                          key={g.key}
+                          colSpan={g.cols.length}
+                          className={clsx("bg-paper pt-[18px] pb-1.5", gi > 0 && "border-l border-line-group")}
+                        >
                           <div className="border-b-2 border-bordo pb-[7px] px-3.5 flex items-center justify-center gap-2.5">
                             <span className="font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap">
                               {g.label}
@@ -630,7 +636,7 @@ export function PanelGeneralClient({
                       (hoy, únicamente Impuestos) — los de una sola columna
                       ya ocuparon su celda en la fila 1 con rowSpan=2. */}
                   <tr>
-                    {gruposVisibles.flatMap((g) =>
+                    {gruposVisibles.flatMap((g, gi) =>
                       g.cols.length === 1
                         ? []
                         : g.cols.map((c, i) => (
@@ -638,7 +644,7 @@ export function PanelGeneralClient({
                               key={c.key}
                               className={clsx(
                                 "bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b border-line-rule",
-                                i === 0 && "border-l border-line-group"
+                                i === 0 && gi > 0 && "border-l border-line-group"
                               )}
                             >
                               {c.label}
@@ -649,62 +655,35 @@ export function PanelGeneralClient({
                 </thead>
 
                 <tbody>
-                  {filtradas.map((empresa, ri) => {
+                  {filasConEstilo.map(({ empresa, activa, zebra }) => {
                     const activos = serviciosActivos[empresa.id] ?? [];
                     const confirmBajaCliente: Confirmando = { tipo: "cliente", clienteId: empresa.id };
                     const pendienteBajaCliente = esConfirmando(confirmBajaCliente);
-                    const activa = empresa.estado === "activo";
                     const filaHover = hoverRow === empresa.id;
-                    const zebra = ri % 2 === 1 ? "bg-paper-alt" : "bg-paper";
                     const rowBg = filaHover ? "bg-paper-hover" : zebra;
 
                     return (
                       <tr
                         key={empresa.id}
+                        style={{ height: filaAltura || undefined }}
                         onMouseEnter={() => setHoverRow(empresa.id)}
                         onMouseLeave={() => {
                           setHoverRow(null);
                           setHoverGrupo(null);
                         }}
                       >
-                        {/* Empresa: el contenido real queda invisible (pero
-                            sigue en el DOM, por accesibilidad/copiar texto)
-                            — el panel fijo de arriba es el que se ve. Sin
-                            esto, con scroll parcial (menos de 268px) esta
-                            celda y el panel se solapan en pantalla, y
-                            cualquier frame de diferencia entre el scroll
-                            nativo y el transform del panel se veía como
-                            texto duplicado/tironeando. */}
-                        <td className={clsx("py-[13px] pr-4 border-b border-line-row whitespace-nowrap w-[268px]", rowBg)}>
-                          <div className="flex items-center gap-[11px] opacity-0">
-                            <span
-                              className={clsx(
-                                "w-[29px] h-[29px] rounded-[9px] shrink-0 flex items-center justify-center font-archivo text-[11.5px] font-semibold",
-                                activa ? "bg-bordo-tint2 text-bordo" : "bg-paper-alt text-ink-faint"
-                              )}
-                            >
-                              {sigla(empresa.nombre)}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-[13px] font-medium tracking-[-.012em] text-ink truncate" title={empresa.nombre}>
-                                {empresa.nombre}
-                              </p>
-                              <p className="font-plex text-[10.5px] text-ink-faint mt-[3px]">
-                                {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
                         {/* Celdas de servicio */}
-                        {columnasVisibles.map((c) => {
+                        {columnasVisibles.map((c, ci) => {
                           const [servicio, subtipo] = c.key.split(":");
                           const field = VISTA_FIELD[c.key];
                           const nombre = field ? (empresa[field] as string | null) : null;
                           const tieneServicio = activos.includes(c.key);
                           const esSueldos = c.key === "sueldos:general";
                           const warning = esSueldos && tieneServicio && sinLiqSet.has(empresa.id);
-                          const primero = gruposVisibles.some((g) => g.cols[0]?.key === c.key);
+                          // Divisoria entre módulos. La primera columna de
+                          // todas (Sueldos) no la lleva: ahí la línea la
+                          // dibuja el borde derecho de la mitad "Cliente".
+                          const primero = ci > 0 && gruposVisibles.some((g) => g.cols[0]?.key === c.key);
                           const confirmServicio: Confirmando = { tipo: "servicio", clienteId: empresa.id, servicio, subtipo };
                           const pendienteEste = esConfirmando(confirmServicio);
                           const grupoTinte = !filaHover && hoverGrupo === c.grupo ? "bg-paper-group" : rowBg;
@@ -827,10 +806,10 @@ export function PanelGeneralClient({
                     );
                   })}
                 </tbody>
-              </table>
-              </>
-            )}
-          </div>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
