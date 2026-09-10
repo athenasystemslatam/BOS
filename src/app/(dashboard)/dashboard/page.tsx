@@ -155,7 +155,7 @@ export default async function DashboardPage({
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-5 md:mb-7">
-        <StatCard label="Total empresas" value={total} icon={<Building2 size={16} className="text-gray-400" />} />
+        <StatCard label="Total clientes" value={total} icon={<Building2 size={16} className="text-gray-400" />} />
         <StatCard
           label="Recibos"
           value={recibosOk}
@@ -192,7 +192,7 @@ export default async function DashboardPage({
             <table className="w-full min-w-[520px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50">
-                  {["Liquidadora", "Empresas", "Recibos", "F.931", ...(esMesSAC ? ["SAC"] : []), "Pendientes"].map((h) => (
+                  {["Liquidadora", "Clientes", "Recibos", "F.931", ...(esMesSAC ? ["SAC"] : []), "Pendientes"].map((h) => (
                     <th
                       key={h}
                       className={clsx(
@@ -349,7 +349,7 @@ export default async function DashboardPage({
           <table className="w-full min-w-[560px] text-[12px] text-orange-900">
             <thead className="sticky top-0 z-10 bg-orange-50">
               <tr className="border-b border-orange-100">
-                <th className="px-5 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Empresa</th>
+                <th className="px-5 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Cliente</th>
                 <th className="px-4 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Ítem</th>
                 <th className="px-4 py-2 text-left text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Período</th>
                 <th className="px-4 py-2 text-right text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Fecha</th>

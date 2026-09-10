@@ -71,7 +71,7 @@ export function ReportePDF({ data }: { data: ReporteData }) {
           <Text style={s.sectionLabel}>Resumen</Text>
           <View style={s.statsRow}>
             {[
-              { val: String(data.total), lbl: "Total empresas", style: {} },
+              { val: String(data.total), lbl: "Total clientes", style: {} },
               { val: String(data.completadas), lbl: "Completadas", style: s.success },
               { val: String(data.enProceso), lbl: "En proceso", style: s.warn },
               { val: String(data.pendientes), lbl: "Pendientes", style: data.pendientes > 0 ? s.danger : s.success },
@@ -89,7 +89,7 @@ export function ReportePDF({ data }: { data: ReporteData }) {
           <View style={s.table}>
             <View style={s.tHead}>
               <Text style={[s.th, s.c1]}>Liquidadora</Text>
-              <Text style={[s.th, s.c2]}>Empresas</Text>
+              <Text style={[s.th, s.c2]}>Clientes</Text>
               <Text style={[s.th, s.c2]}>Recibos</Text>
               <Text style={[s.th, s.c2]}>F.931</Text>
               <Text style={[s.th, s.c2]}>Pendientes</Text>
@@ -111,11 +111,11 @@ export function ReportePDF({ data }: { data: ReporteData }) {
           {data.empresasPendientes.length > 0 && (
             <>
               <Text style={s.sectionLabel}>
-                Empresas pendientes al cierre ({data.empresasPendientes.length})
+                Clientes pendientes al cierre ({data.empresasPendientes.length})
               </Text>
               <View style={s.table}>
                 <View style={s.tHead}>
-                  <Text style={[s.th, { flex: 3 }]}>Empresa</Text>
+                  <Text style={[s.th, { flex: 3 }]}>Cliente</Text>
                   <Text style={[s.th, { flex: 2 }]}>Pendiente</Text>
                 </View>
                 {data.empresasPendientes.map((e, i) => (

@@ -594,7 +594,7 @@ export function SeguimientoClient({
             )}
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            {clientesFiltrados.length} empresas ·{" "}
+            {clientesFiltrados.length} clientes ·{" "}
             <span className="text-success font-medium">{totalDone} completas</span>
             {totalPending > 0 && (
               <>
@@ -686,7 +686,7 @@ export function SeguimientoClient({
             <>
               <CheckCircle2 size={14} />
               Drive sincronizado — {syncResult.archivosDetectados} archivos en{" "}
-              {syncResult.clientesConArchivos} empresas
+              {syncResult.clientesConArchivos} clientes
               {Object.keys(syncResult.errorCodes).length > 0 && (
                 <span className="ml-2 text-green-500 font-normal">
                   ({Object.entries(syncResult.errorCodes)
@@ -769,7 +769,7 @@ export function SeguimientoClient({
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
           <input
             type="text"
-            placeholder="Buscar empresa..."
+            placeholder="Buscar cliente..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo placeholder:text-gray-300 bg-white"
@@ -823,7 +823,7 @@ export function SeguimientoClient({
       {currentPeriodo && clientesFiltrados.length === 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm py-16 text-center">
           <Building2 size={32} className="text-gray-200 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">No hay empresas para mostrar.</p>
+          <p className="text-sm text-gray-400">No hay clientes para mostrar.</p>
         </div>
       )}
 
@@ -965,7 +965,7 @@ export function SeguimientoClient({
           {/* Barra de progreso */}
           <div className="shrink-0 px-6 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
             <p className="text-[11px] text-gray-400">
-              {clientesFiltrados.length} empresas en{" "}
+              {clientesFiltrados.length} clientes en{" "}
               <span className="font-medium">{currentPeriodo.nombre_mes}</span>
             </p>
             <div className="flex items-center gap-3">
@@ -997,7 +997,7 @@ export function SeguimientoClient({
               <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                 <tr>
                   <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[210px]">
-                    Empresa
+                    Cliente
                   </th>
                   <th className="px-3 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wider min-w-[110px]">
                     Liquidadora

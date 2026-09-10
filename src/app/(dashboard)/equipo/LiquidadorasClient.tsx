@@ -184,7 +184,7 @@ export function LiquidadorasClient({
                             {(areasPorPersona[liq.id] ?? []).includes("sueldos") && (
                               <button
                                 onClick={() => setTransfiriendo(liq)}
-                                title="Transferir su cartera de empresas de sueldos a otra persona"
+                                title="Transferir su cartera de clientes de sueldos a otra persona"
                                 className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors"
                               >
                                 <ArrowRightLeft size={12} />

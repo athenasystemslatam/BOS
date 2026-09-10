@@ -129,7 +129,7 @@ function buildEmailPrevio(
     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
       <p style="font-size:15px">Hola ${liquidadoraNombre},</p>
       <p style="font-size:15px">
-        Las siguientes empresas tienen el <strong>F.931 de ${periodoNombre}</strong> pendiente
+        Los siguientes clientes tienen el <strong>F.931 de ${periodoNombre}</strong> pendiente
         y sus vencimientos se aproximan:
       </p>
       ${bloques}
@@ -156,7 +156,7 @@ function buildEmailPost(
       <p style="font-size:15px">Hola ${liquidadoraNombre},</p>
       <p style="font-size:15px">
         Los vencimientos del <strong>F.931 de ${periodoNombre}</strong> ya pasaron.
-        Las siguientes empresas todavía no tienen la presentación registrada:
+        Los siguientes clientes todavía no tienen la presentación registrada:
       </p>
       <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${filas}</tbody></table>
       <p style="font-size:13px;color:#888;margin-top:16px">
@@ -204,7 +204,7 @@ function buildEmailReporteFinal(
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead>
             <tr style="background:#f5f5f5">
-              <th style="padding:6px 10px;text-align:left">Empresa</th>
+              <th style="padding:6px 10px;text-align:left">Cliente</th>
               <th style="padding:6px 10px;text-align:left">Liquidadora</th>
             </tr>
           </thead>
@@ -216,7 +216,7 @@ function buildEmailReporteFinal(
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;color:#222">
       <h2 style="font-size:16px">F.931 ${periodoNombre} — ${pendientesTotal} pendiente${pendientesTotal !== 1 ? "s" : ""}</h2>
-      ${bloques || "<p style='color:#888'>Todas las empresas están al día. ✓</p>"}
+      ${bloques || "<p style='color:#888'>Todos los clientes están al día. ✓</p>"}
       <p style="font-size:12px;color:#aaa;margin-top:24px">BOS · KMA Consultores</p>
     </div>
   `;
@@ -235,7 +235,7 @@ function buildEmailTraspaso(
 ): { subject: string; html: string } {
   const mesNombre = MESES_NOMBRES[desdeMes] ?? String(desdeMes);
   const cantidad = empresas.length;
-  const subject = `Se te asignaron ${cantidad} empresa${cantidad !== 1 ? "s" : ""} de Sueldos`;
+  const subject = `Se te asignaron ${cantidad} cliente${cantidad !== 1 ? "s" : ""} de Sueldos`;
 
   const filas = empresas
     .map((n) => `<tr><td style="padding:5px 12px;border-bottom:1px solid #f0f0f0">${n}</td></tr>`)
@@ -245,7 +245,7 @@ function buildEmailTraspaso(
     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
       <p style="font-size:15px">Hola ${liquidadoraNombre},</p>
       <p style="font-size:15px">
-        Se te asignaron <strong>${cantidad}</strong> empresa${cantidad !== 1 ? "s" : ""} de Sueldos,
+        Se te asignaron <strong>${cantidad}</strong> cliente${cantidad !== 1 ? "s" : ""} de Sueldos,
         a partir de <strong>${mesNombre} ${desdeAnio}</strong>:
       </p>
       <table style="width:100%;border-collapse:collapse;font-size:13px"><tbody>${filas}</tbody></table>

@@ -63,7 +63,7 @@ export async function crearClienteConServicios(formData: FormData) {
     .single();
 
   if (clienteError) {
-    if (clienteError.code === "23505") return { error: "Ya existe una empresa con ese CUIT." };
+    if (clienteError.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
     return { error: clienteError.message };
   }
 
@@ -205,7 +205,7 @@ export async function editarClienteConServicios(formData: FormData) {
     .eq("id", id);
 
   if (clienteError) {
-    if (clienteError.code === "23505") return { error: "Ya existe una empresa con ese CUIT." };
+    if (clienteError.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
     return { error: clienteError.message };
   }
 

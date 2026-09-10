@@ -48,7 +48,7 @@ function LsdSemaforo({
   if (status === "sin-lsd") return <span className="text-gray-300">—</span>;
   if (status === "sin-config")
     return (
-      <span className="inline-flex items-center gap-1 text-[11px] text-gray-400" title="Configurar período de inicio en editar empresa">
+      <span className="inline-flex items-center gap-1 text-[11px] text-gray-400" title="Configurar período de inicio en editar cliente">
         <span className="w-2 h-2 rounded-full bg-gray-300 inline-block shrink-0" />
         Sin inicio
       </span>
@@ -129,7 +129,7 @@ export function EmpresasClient({
             <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">
               Módulo Sueldos
             </p>
-            <h1 className="text-2xl font-semibold text-gray-900 mt-1">Empresas</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 mt-1">Clientes</h1>
           </div>
           {isAdmin && <NuevaEmpresaModal liquidadoras={liquidadoras} />}
         </div>
@@ -141,8 +141,8 @@ export function EmpresasClient({
             <div>
               <p className="text-sm font-medium text-amber-800">
                 {sinAsignacion.length === 1
-                  ? "1 empresa activa sin liquidadora asignada"
-                  : `${sinAsignacion.length} empresas activas sin liquidadora asignada`}
+                  ? "1 cliente activo sin liquidadora asignada"
+                  : `${sinAsignacion.length} clientes activos sin liquidadora asignada`}
               </p>
               <p className="text-xs text-amber-700 mt-0.5">
                 {sinAsignacion.map((c) => c.nombre).join(", ")}
@@ -157,7 +157,7 @@ export function EmpresasClient({
             {/* Búsqueda */}
             <div className="flex-1 min-w-[200px]">
               <label className="text-xs text-gray-500 font-medium block mb-1">
-                Buscar empresa
+                Buscar cliente
               </label>
               <div className="relative">
                 <Search
@@ -206,7 +206,7 @@ export function EmpresasClient({
             </div>
 
             <div className="text-sm text-gray-400 pb-1.5 ml-auto">
-              {filtrados.length} empresa{filtrados.length !== 1 ? "s" : ""}
+              {filtrados.length} cliente{filtrados.length !== 1 ? "s" : ""}
             </div>
           </div>
         </div>
@@ -217,8 +217,8 @@ export function EmpresasClient({
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-6 py-16 text-center">
             <p className="text-gray-400 text-sm">
               {search || filtroLiq || filtroEstado !== "activo"
-                ? "No hay empresas que coincidan con los filtros"
-                : "No hay empresas cargadas aún"}
+                ? "No hay clientes que coincidan con los filtros"
+                : "No hay clientes cargados aún"}
             </p>
           </div>
         ) : (
@@ -301,7 +301,7 @@ export function EmpresasClient({
                 <table className="w-full min-w-[1200px]">
                 <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs text-gray-400 uppercase tracking-wide">
-                    <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left font-medium">Empresa</th>
+                    <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left font-medium">Cliente</th>
                     <th className="px-5 py-3 text-left font-medium">CUIT</th>
                     <th className="px-5 py-3 text-left font-medium">Liquidadora</th>
                     <th className="px-4 py-3 text-center font-medium">Tipo</th>

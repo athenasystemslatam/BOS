@@ -315,7 +315,7 @@ export function PanelGeneralClient({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar empresa o CUIT…"
+              placeholder="Buscar cliente o CUIT…"
               className="w-full text-[12.5px] text-ink bg-paper border border-line-input rounded-[9px] pl-[34px] pr-3 py-[9px] outline-none transition-[border-color,box-shadow] duration-150 focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] placeholder:text-ink-faint"
             />
           </div>
@@ -381,7 +381,7 @@ export function PanelGeneralClient({
               className="ml-auto inline-flex items-center gap-2 bg-bordo text-white text-[12.5px] font-semibold px-4 py-2.5 rounded-[9px] hover:bg-bordo-light transition-colors"
             >
               <Plus size={14} />
-              Nueva empresa
+              Nuevo cliente
             </button>
           )}
         </div>
@@ -399,8 +399,8 @@ export function PanelGeneralClient({
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-6 py-16 text-center">
               <p className="text-gray-400 text-sm">
                 {search || filtroEstado !== "activo"
-                  ? "No hay empresas que coincidan con los filtros"
-                  : "No hay empresas cargadas aún"}
+                  ? "No hay clientes que coincidan con los filtros"
+                  : "No hay clientes cargados aún"}
               </p>
             </div>
           ) : (
@@ -484,7 +484,7 @@ export function PanelGeneralClient({
           {filtradas.length > 0 && (
             <div className="shrink-0 border-b border-line-soft px-[26px] py-[11px] flex items-center justify-between gap-5 text-[11.5px]">
               <p className="text-ink-subtle">
-                <span className="font-semibold text-ink tabular-nums">{filtradas.length}</span> de {empresas.length} empresas
+                <span className="font-semibold text-ink tabular-nums">{filtradas.length}</span> de {empresas.length} clientes
               </p>
               <p className="text-ink-faint">
                 Una raya “—” indica servicio no contratado · dar de baja un servicio no da de baja al cliente
@@ -521,7 +521,7 @@ export function PanelGeneralClient({
                   style={{ height: headerAltura || undefined }}
                   className="flex items-end pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule box-border"
                 >
-                  Empresa
+                  Cliente
                 </div>
                 {filasConEstilo.map(({ empresa, activa, zebra }) => {
                   const filaHover = hoverRow === empresa.id;
@@ -584,7 +584,7 @@ export function PanelGeneralClient({
                       rowSpan={2}
                       className="bg-paper align-bottom text-left pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule w-[268px]"
                     >
-                      Empresa
+                      Cliente
                     </th>
                     {gruposVisibles.map((g) => {
                       const unaSola = g.cols.length === 1;
@@ -776,7 +776,7 @@ export function PanelGeneralClient({
                             <span className="inline-flex items-center gap-1">
                               <a
                                 href={`/api/exportar/clientes?id=${empresa.id}`}
-                                title="Exportar esta empresa a Excel"
+                                title="Exportar este cliente a Excel"
                                 className="text-ink-faint hover:!text-bordo transition-colors p-[5px] rounded-[6px]"
                               >
                                 <Download size={12} />

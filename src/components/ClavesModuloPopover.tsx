@@ -62,7 +62,7 @@ export function ClavesModuloPopover({
               </div>
             ))}
             <p className="text-[10px] text-gray-400 pt-1 border-t border-gray-100">
-              Para editar, ir a Clientes → {"{empresa}"} → Editar
+              Para editar, ir a Clientes → {"{cliente}"} → Editar
             </p>
           </div>
         </>

@@ -109,7 +109,7 @@ export function EditarEmpresaModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-          <h2 className="text-[15px] font-semibold text-gray-900">Editar empresa</h2>
+          <h2 className="text-[15px] font-semibold text-gray-900">Editar cliente</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={18} />
           </button>

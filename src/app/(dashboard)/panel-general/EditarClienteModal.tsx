@@ -172,7 +172,7 @@ export function EditarClienteModal({
         <div className="flex items-center justify-between px-[26px] py-[18px] pt-6 border-b border-line-soft shrink-0">
           <div>
             <p className="text-[10.5px] font-semibold tracking-[.18em] uppercase text-ink-faint">Ficha de cliente</p>
-            <h2 className="font-archivo text-[22px] font-semibold tracking-[-.025em] text-ink mt-2">Editar empresa</h2>
+            <h2 className="font-archivo text-[22px] font-semibold tracking-[-.025em] text-ink mt-2">Editar cliente</h2>
           </div>
           <button
             onClick={onClose}

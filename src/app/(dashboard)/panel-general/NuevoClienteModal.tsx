@@ -135,7 +135,7 @@ export function NuevoClienteModal({
         <div className="flex items-center justify-between px-[26px] py-[18px] pt-6 border-b border-line-soft shrink-0">
           <div>
             <p className="text-[10.5px] font-semibold tracking-[.18em] uppercase text-ink-faint">Alta de cliente</p>
-            <h2 className="font-archivo text-[22px] font-semibold tracking-[-.025em] text-ink mt-2">Nueva empresa</h2>
+            <h2 className="font-archivo text-[22px] font-semibold tracking-[-.025em] text-ink mt-2">Nuevo cliente</h2>
           </div>
           <button
             onClick={onClose}
@@ -404,7 +404,7 @@ export function NuevoClienteModal({
               disabled={isPending}
               className="px-[18px] py-2.5 text-[12.5px] font-semibold text-white bg-bordo hover:bg-bordo-light rounded-[9px] transition-colors disabled:opacity-50"
             >
-              {isPending ? "Guardando…" : "Crear empresa"}
+              {isPending ? "Guardando…" : "Crear cliente"}
             </button>
           </div>
         </form>

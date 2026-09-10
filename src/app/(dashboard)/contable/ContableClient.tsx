@@ -215,7 +215,7 @@ export function ContableClient({
             <div className="w-2 h-6 rounded-full bg-emerald-500" />
             <div>
               <h1 className="text-[17px] font-semibold text-gray-900">Contable — Balances</h1>
-              <p className="text-[12px] text-gray-400 mt-0.5">Seguimiento anual por empresa</p>
+              <p className="text-[12px] text-gray-400 mt-0.5">Seguimiento anual por cliente</p>
             </div>
           </div>
 

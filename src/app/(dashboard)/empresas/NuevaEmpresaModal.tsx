@@ -130,7 +130,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
         onClick={handleOpen}
         className="bg-bordo text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-bordo-dark transition-colors"
       >
-        + Nueva empresa
+        + Nuevo cliente
       </button>
 
       {open && (
@@ -144,7 +144,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
           >
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <h2 className="text-[15px] font-semibold text-gray-900">Nueva empresa</h2>
+              <h2 className="text-[15px] font-semibold text-gray-900">Nuevo cliente</h2>
               <button
                 onClick={() => setOpen(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -164,7 +164,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                       name="nombre"
                       type="text"
                       required
-                      placeholder="Ej: Empresa S.A."
+                      placeholder="Ej: Cliente S.A."
                       className={inputCls}
                     />
                   </Field>
@@ -214,7 +214,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                         type="checkbox"
                         checked
                         disabled
-                        title="Toda empresa creada acá es de Sueldos"
+                        title="Todo cliente creado acá es de Sueldos"
                         className="accent-bordo w-4 h-4 shrink-0"
                       />
                       <span className="text-[13px] font-medium text-gray-800">Sueldos</span>
@@ -446,7 +446,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                   disabled={isPending}
                   className="bg-bordo text-white text-sm font-medium px-5 py-2 rounded-lg hover:bg-bordo-dark transition-colors disabled:opacity-60"
                 >
-                  {isPending ? "Guardando…" : "Guardar empresa"}
+                  {isPending ? "Guardando…" : "Guardar cliente"}
                 </button>
               </div>
             </form>

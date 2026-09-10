@@ -37,7 +37,7 @@ export function EmailsContactoEditor({
             type="email"
             value={email}
             onChange={(e) => update(i, e.target.value)}
-            placeholder="contacto@empresa.com"
+            placeholder="contacto@cliente.com"
             className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
           />
           <button

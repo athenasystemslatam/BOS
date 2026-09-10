@@ -103,7 +103,7 @@ export function ProductividadClient({ filas }: {
               <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                 <tr className="text-[11px] text-gray-400 uppercase tracking-wide">
                   <th className="sticky left-0 z-10 bg-gray-50 px-5 py-3 text-left font-medium">Período</th>
-                  <th className="px-4 py-3 text-center font-medium">Empresas</th>
+                  <th className="px-4 py-3 text-center font-medium">Clientes</th>
                   <th className="px-4 py-3 text-center font-medium">Legajos liquidados</th>
                   <th className="px-4 py-3 text-center font-medium">F.931 completadas</th>
                   <th className="px-4 py-3 text-center font-medium">Días al venc. F.931</th>

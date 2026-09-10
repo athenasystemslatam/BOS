@@ -68,7 +68,7 @@ export function TransferirCarteraModal({
             <div>
               <p className="text-[13px] font-semibold text-gray-900">Transferir cartera</p>
               <p className="text-[11px] text-gray-400 mt-0.5">
-                Empresas de sueldos a cargo de {liquidadora.nombre}
+                Clientes de sueldos a cargo de {liquidadora.nombre}
               </p>
             </div>
           </div>
@@ -81,23 +81,23 @@ export function TransferirCarteraModal({
           {resultado ? (
             <div className="text-center py-6">
               <p className="text-[14px] font-semibold text-gray-900">
-                {resultado.transferidas} de {resultado.total} empresas transferidas
+                {resultado.transferidas} de {resultado.total} clientes transferidos
               </p>
               <p className="text-[12px] text-gray-400 mt-1">
                 Ya quedaron a cargo de la nueva liquidadora, con el historial guardado.
               </p>
             </div>
           ) : clientes === null ? (
-            <p className="text-sm text-gray-400 py-2">Cargando empresas…</p>
+            <p className="text-sm text-gray-400 py-2">Cargando clientes…</p>
           ) : clientes.length === 0 ? (
             <p className="text-sm text-gray-400 py-2">
-              {liquidadora.nombre} no tiene empresas activas de sueldos asignadas.
+              {liquidadora.nombre} no tiene clientes activos de sueldos asignados.
             </p>
           ) : (
             <>
               <div>
                 <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  {clientes.length} {clientes.length === 1 ? "empresa" : "empresas"} a transferir
+                  {clientes.length} {clientes.length === 1 ? "cliente" : "clientes"} a transferir
                 </p>
                 <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
                   {clientes.map((c) => (
@@ -187,7 +187,7 @@ export function TransferirCarteraModal({
               disabled={isPending || !destino}
               className="text-sm font-medium bg-bordo text-white px-4 py-2 rounded-lg hover:bg-bordo/90 disabled:opacity-50 transition-colors"
             >
-              {isPending ? "Transfiriendo…" : `Transferir ${clientes.length} ${clientes.length === 1 ? "empresa" : "empresas"}`}
+              {isPending ? "Transfiriendo…" : `Transferir ${clientes.length} ${clientes.length === 1 ? "cliente" : "clientes"}`}
             </button>
           )}
         </div>

@@ -72,9 +72,9 @@ export default async function VencimientosPage() {
             <tr className="text-xs text-gray-400 uppercase tracking-wide">
               <th className="px-6 py-3 text-left font-medium w-32">Mes liq.</th>
               {[
-                { label: "CUITs 0–3", sub: `${totalesPorGrupo[0]} empresas` },
-                { label: "CUITs 4–6", sub: `${totalesPorGrupo[1]} empresas` },
-                { label: "CUITs 7–9", sub: `${totalesPorGrupo[2]} empresas` },
+                { label: "CUITs 0–3", sub: `${totalesPorGrupo[0]} clientes` },
+                { label: "CUITs 4–6", sub: `${totalesPorGrupo[1]} clientes` },
+                { label: "CUITs 7–9", sub: `${totalesPorGrupo[2]} clientes` },
               ].map((g) => (
                 <th key={g.label} className="px-6 py-3 text-center font-medium">
                   <div>{g.label}</div>

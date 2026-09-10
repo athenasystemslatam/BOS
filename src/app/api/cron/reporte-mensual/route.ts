@@ -159,7 +159,7 @@ export async function GET(req: NextRequest) {
           </p>
           <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;background:#f9fafb;border-radius:6px">
             <tr>
-              <td style="padding:8px 12px;color:#666">Total empresas</td>
+              <td style="padding:8px 12px;color:#666">Total clientes</td>
               <td style="padding:8px 12px;font-weight:bold">${total}</td>
             </tr>
             <tr>
