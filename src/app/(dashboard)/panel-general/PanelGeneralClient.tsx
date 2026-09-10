@@ -508,6 +508,11 @@ export function PanelGeneralClient({
               {/* Panel fijo de "Empresa": duplica el encabezado + cada fila
                   real de abajo (mismo contenido/alto/fondo), desplazado por
                   transform en vez de sticky — ver el porqué en el <thead>.
+                  Arranca en left-0 y es 26px más ancho que la columna
+                  (w-294 = 26 + 268) con pl-[26px] adentro: así su fondo
+                  opaco + las rayas de fila tapan el margen interno izquierdo
+                  del scroll (px-[26px]), donde si no se veía asomar el
+                  contenido de las columnas ya scrolleadas.
                   overflow-hidden + will-change:transform: sin esto, probado
                   en vivo, Chrome deja de pintar el panel (se ve en blanco)
                   al scrollear — es un panel muy alto (una fila por cada
@@ -515,11 +520,11 @@ export function PanelGeneralClient({
                   visible en cada scroll. */}
               <div
                 ref={frozenColRef}
-                className="absolute top-0 left-[26px] z-[8] w-[268px] bg-paper overflow-hidden [will-change:transform]"
+                className="absolute top-0 left-0 z-[8] w-[294px] bg-paper overflow-hidden [will-change:transform]"
               >
                 <div
                   style={{ height: headerAltura || undefined }}
-                  className="flex items-end pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule box-border"
+                  className="flex items-end pl-[26px] pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule box-border"
                 >
                   Cliente
                 </div>
@@ -534,7 +539,7 @@ export function PanelGeneralClient({
                         setHoverRow(null);
                         setHoverGrupo(null);
                       }}
-                      className={clsx("flex items-center gap-[11px] py-[13px] pr-4 border-b border-line-row box-border", rowBg)}
+                      className={clsx("flex items-center gap-[11px] py-[13px] pl-[26px] pr-4 border-b border-line-row box-border", rowBg)}
                     >
                       <span
                         className={clsx(
