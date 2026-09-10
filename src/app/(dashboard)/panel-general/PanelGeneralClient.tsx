@@ -88,7 +88,6 @@ export function PanelGeneralClient({
   const [soloSinResponsable, setSoloSinResponsable] = useState(false);
   const [filtroResponsable, setFiltroResponsable] = useState("");
   const [hoverRow, setHoverRow] = useState<string | null>(null);
-  const [hoverGrupo, setHoverGrupo] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<Confirmando | null>(null);
@@ -556,10 +555,7 @@ export function PanelGeneralClient({
                           ref={ri === 0 ? filaRef : undefined}
                           style={{ height: filaAltura || undefined }}
                           onMouseEnter={() => setHoverRow(empresa.id)}
-                          onMouseLeave={() => {
-                            setHoverRow(null);
-                            setHoverGrupo(null);
-                          }}
+                          onMouseLeave={() => setHoverRow(null)}
                         >
                           <td className={clsx("pl-[26px] pr-4 py-[13px] border-b border-line-row border-r border-line-group align-middle whitespace-nowrap", rowBg)}>
                             <div className="flex items-center gap-[11px]">
@@ -690,10 +686,7 @@ export function PanelGeneralClient({
                         ref={ri === 0 ? filaBodyRef : undefined}
                         style={{ height: filaAltura || undefined }}
                         onMouseEnter={() => setHoverRow(empresa.id)}
-                        onMouseLeave={() => {
-                          setHoverRow(null);
-                          setHoverGrupo(null);
-                        }}
+                        onMouseLeave={() => setHoverRow(null)}
                       >
                         {/* Celdas de servicio */}
                         {columnasVisibles.map((c, ci) => {
@@ -709,18 +702,14 @@ export function PanelGeneralClient({
                           const primero = ci > 0 && gruposVisibles.some((g) => g.cols[0]?.key === c.key);
                           const confirmServicio: Confirmando = { tipo: "servicio", clienteId: empresa.id, servicio, subtipo };
                           const pendienteEste = esConfirmando(confirmServicio);
-                          const grupoTinte = !filaHover && hoverGrupo === c.grupo ? "bg-paper-group" : rowBg;
 
                           return (
                             <td
                               key={c.key}
-                              onMouseEnter={() => {
-                                setHoverRow(empresa.id);
-                                setHoverGrupo(c.grupo);
-                              }}
+                              onMouseEnter={() => setHoverRow(empresa.id)}
                               className={clsx(
                                 "px-3.5 py-[13px] text-center align-middle border-b border-line-row whitespace-nowrap",
-                                grupoTinte,
+                                rowBg,
                                 primero && "border-l border-line-group"
                               )}
                             >
