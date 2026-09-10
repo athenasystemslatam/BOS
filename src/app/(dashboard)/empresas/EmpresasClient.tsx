@@ -273,24 +273,22 @@ export function EmpresasClient({
                       <span className="text-[11px] text-gray-500">{c.red_bancaria}</span>
                     )}
                   </div>
-                  {isAdmin && (
-                    <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-50">
+                  <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-50">
+                    <button
+                      onClick={() => setEditando(c)}
+                      className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-bordo transition-colors"
+                    >
+                      <Pencil size={12} /> Editar
+                    </button>
+                    {isAdmin && c.liquidadora && (
                       <button
-                        onClick={() => setEditando(c)}
+                        onClick={() => setAsignando(c)}
                         className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-bordo transition-colors"
                       >
-                        <Pencil size={12} /> Editar
+                        <History size={12} /> Reasignar
                       </button>
-                      {c.liquidadora && (
-                        <button
-                          onClick={() => setAsignando(c)}
-                          className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-bordo transition-colors"
-                        >
-                          <History size={12} /> Reasignar
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -311,9 +309,7 @@ export function EmpresasClient({
                     <th className="px-4 py-3 text-left font-medium">Red bancaria</th>
                     <th className="px-4 py-3 text-left font-medium">Inicio liquidación</th>
                     <th className="px-4 py-3 text-center font-medium">Estado</th>
-                    {isAdmin && (
-                      <th className="px-4 py-3 text-center font-medium">Acciones</th>
-                    )}
+                    <th className="px-4 py-3 text-center font-medium">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -423,17 +419,15 @@ export function EmpresasClient({
                           {c.estado === "activo" ? "Activa" : "Inactiva"}
                         </span>
                       </td>
-                      {isAdmin && (
-                        <td className="px-4 py-3.5 text-center">
-                          <button
-                            onClick={() => setEditando(c)}
-                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap"
-                          >
-                            <Pencil size={12} />
-                            Editar
-                          </button>
-                        </td>
-                      )}
+                      <td className="px-4 py-3.5 text-center">
+                        <button
+                          onClick={() => setEditando(c)}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap"
+                        >
+                          <Pencil size={12} />
+                          Editar
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -449,6 +443,7 @@ export function EmpresasClient({
         <EditarEmpresaModal
           cliente={editando}
           liquidadoras={liquidadoras}
+          isAdmin={isAdmin}
           onClose={() => setEditando(null)}
         />
       )}

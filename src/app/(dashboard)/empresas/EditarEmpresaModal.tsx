@@ -39,10 +39,12 @@ const JURISDICCIONES = ["CABA", "PBA", "Otra"];
 export function EditarEmpresaModal({
   cliente,
   liquidadoras,
+  isAdmin = false,
   onClose,
 }: {
   cliente: Cliente & { liquidadora?: Liquidadora };
   liquidadoras: Liquidadora[];
+  isAdmin?: boolean;
   onClose: () => void;
 }) {
   const [cuit, setCuit] = useState(formatCuit(cliente.cuit));
@@ -189,12 +191,21 @@ export function EditarEmpresaModal({
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">
                   Liquidadora <span className="text-danger">*</span>
                 </label>
-                <select name="liquidador_id" required defaultValue={cliente.liquidador_id} className={inputCls}>
-                  <option value="">Seleccionar…</option>
-                  {liquidadoras.map((l) => (
-                    <option key={l.id} value={l.id}>{l.nombre}</option>
-                  ))}
-                </select>
+                {isAdmin ? (
+                  <select name="liquidador_id" required defaultValue={cliente.liquidador_id} className={inputCls}>
+                    <option value="">Seleccionar…</option>
+                    {liquidadoras.map((l) => (
+                      <option key={l.id} value={l.id}>{l.nombre}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
+                    <input type="hidden" name="liquidador_id" value={cliente.liquidador_id} />
+                    <div className={`${inputCls} text-gray-500 bg-gray-50`} title="Solo un admin puede reasignar">
+                      {cliente.liquidadora?.nombre ?? "—"}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -244,10 +255,19 @@ export function EditarEmpresaModal({
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Estado</label>
-                <select name="estado" defaultValue={cliente.estado} className={inputCls}>
-                  <option value="activo">Activa</option>
-                  <option value="inactivo">Inactiva</option>
-                </select>
+                {isAdmin ? (
+                  <select name="estado" defaultValue={cliente.estado} className={inputCls}>
+                    <option value="activo">Activa</option>
+                    <option value="inactivo">Inactiva</option>
+                  </select>
+                ) : (
+                  <>
+                    <input type="hidden" name="estado" value={cliente.estado} />
+                    <div className={`${inputCls} text-gray-500 bg-gray-50`} title="Solo un admin puede cambiar el estado">
+                      {cliente.estado === "activo" ? "Activa" : "Inactiva"}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

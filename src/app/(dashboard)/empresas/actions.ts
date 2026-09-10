@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireAreaOrAdmin, type CurrentLiquidadora } from "@/lib/auth";
 import { sendEmailTraspaso } from "@/lib/email";
 
 function parseCuit(raw: string) {
@@ -121,8 +121,12 @@ export async function crearEmpresa(formData: FormData) {
 }
 
 export async function editarEmpresa(formData: FormData) {
+  let yo: CurrentLiquidadora;
   try {
-    await requireAdmin();
+    // Un usuario de Sueldos (no solo admin) puede editar la ficha del
+    // cliente. Los campos "liquidadora" y "estado" quedan igual para
+    // no-admins (ver abajo) — esos siguen siendo cosa de admin.
+    yo = await requireAreaOrAdmin("sueldos");
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
@@ -134,7 +138,7 @@ export async function editarEmpresa(formData: FormData) {
   const cuit = (formData.get("cuit") as string)?.trim();
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
   const emails_contacto = parseEmailsContacto(formData);
-  const liquidador_id = formData.get("liquidador_id") as string;
+  let liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
   const es_quincenal = formData.get("es_quincenal") === "true";
@@ -154,7 +158,7 @@ export async function editarEmpresa(formData: FormData) {
   const red_bancaria = (formData.get("red_bancaria") as string)?.trim() || null;
   const fecha_alta_empleador = (formData.get("fecha_alta_empleador") as string)?.trim() || null;
   const observaciones = (formData.get("observaciones") as string)?.trim() || null;
-  const estado = formData.get("estado") as string;
+  let estado = formData.get("estado") as string;
   const claves_raw = (formData.get("claves_acceso") as string) || "[]";
   // Acepta URL completa de Drive o ID directo
   const driveFolderRaw = (formData.get("drive_folder_id") as string)?.trim() || null;
@@ -168,6 +172,21 @@ export async function editarEmpresa(formData: FormData) {
 
   const parsed = parseCuit(cuit);
   if (!parsed) return { error: "El CUIT debe tener 11 dígitos." };
+
+  // Un no-admin no puede reasignar la liquidadora ni cambiar el estado —
+  // se ignora lo que venga en el form y se conserva lo que ya está guardado
+  // (defensa por si alguien arma el request a mano).
+  if (!yo.isAdmin) {
+    const { data: actual } = await supabase
+      .from("clientes")
+      .select("liquidador_id, estado")
+      .eq("id", id)
+      .maybeSingle();
+    if (actual) {
+      liquidador_id = actual.liquidador_id;
+      estado = actual.estado;
+    }
+  }
 
   let claves_acceso: unknown = [];
   try { claves_acceso = JSON.parse(claves_raw); } catch { /* keep [] */ }
