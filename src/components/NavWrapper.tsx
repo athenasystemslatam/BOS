@@ -11,12 +11,14 @@ export function NavWrapper({
   nombre,
   rol,
   areas,
+  cerradosInicial,
   children,
 }: {
   isAdmin: boolean;
   nombre: string | null;
   rol?: Rol;
   areas: string[];
+  cerradosInicial?: string[];
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -90,7 +92,14 @@ export function NavWrapper({
             <X size={18} />
           </button>
         </div>
-        <Sidebar isAdmin={isAdmin} nombre={nombre} rol={rol} areas={areas} onClose={() => setOpen(false)} />
+        <Sidebar
+          isAdmin={isAdmin}
+          nombre={nombre}
+          rol={rol}
+          areas={areas}
+          cerradosInicial={cerradosInicial}
+          onClose={() => setOpen(false)}
+        />
       </div>
 
       {/* Page content */}

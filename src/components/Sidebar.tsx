@@ -103,12 +103,14 @@ export function Sidebar({
   nombre,
   rol,
   areas,
+  cerradosInicial,
   onClose,
 }: {
   isAdmin: boolean;
   nombre: string | null;
   rol?: Rol;
   areas: string[];
+  cerradosInicial?: string[];
   onClose?: () => void;
 }) {
   const pathname = usePathname();
@@ -116,26 +118,20 @@ export function Sidebar({
   const asideRef = useRef<HTMLElement>(null);
 
   // Secciones de módulo colapsables. Arranca todo abierto (igual que antes);
-  // lo que el usuario cierra se guarda en sessionStorage para que no se
-  // vuelva a abrir en cada recarga (el menú recarga la página entera en
-  // cada clic). Se lee en un effect, no en el render, para no romper la
-  // hidratación — puede haber un parpadeo mínimo al cargar.
-  const [cerrados, setCerrados] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("bos-sidebar-cerrados");
-      if (raw) setCerrados(JSON.parse(raw));
-    } catch {
-      /* sessionStorage no disponible: se queda todo abierto */
-    }
-  }, []);
+  // lo que el usuario cierra se guarda en una cookie — así el server ya la
+  // lee y renderiza esas secciones cerradas desde el primer paint, sin el
+  // parpadeo de "todo abierto → se esconde" que había leyéndolo en un
+  // effect. El menú recarga la página entera en cada clic, por eso hace
+  // falta persistirlo.
+  const [cerrados, setCerrados] = useState<Set<string>>(() => new Set(cerradosInicial ?? []));
 
   function toggleSeccion(label: string) {
     setCerrados((prev) => {
-      const next = { ...prev, [label]: !prev[label] };
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
       try {
-        sessionStorage.setItem("bos-sidebar-cerrados", JSON.stringify(next));
+        document.cookie = `bos-sidebar-cerrados=${Array.from(next).join(",")}; path=/; max-age=31536000; samesite=lax`;
       } catch {
         /* ignorar */
       }
@@ -231,7 +227,7 @@ export function Sidebar({
           // sí (aunque el usuario la haya cerrado) para no esconder dónde
           // estás parado.
           const contieneRutaActiva = visibleItems.some((item) => esRutaActiva(pathname, item.href));
-          const abierta = !cerrados[section.label] || contieneRutaActiva;
+          const abierta = !cerrados.has(section.label) || contieneRutaActiva;
 
           return (
             <div key={si} className="flex gap-[11px]">
