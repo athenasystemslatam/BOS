@@ -105,8 +105,13 @@ export function PanelGeneralClient({
   const frozenScrollRef = useRef<HTMLDivElement>(null);
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const filaRef = useRef<HTMLTableRowElement>(null);
+  const filaBodyRef = useRef<HTMLTableRowElement>(null);
   const [headerAltura, setHeaderAltura] = useState(0);
   const [filaAltura, setFilaAltura] = useState(0);
+  // Alto de la barra de scroll horizontal de la mitad derecha (0 si no hay).
+  // La izquierda no la tiene, así que sin compensar esto la derecha puede
+  // scrollear ~15px más y las dos se despegan cerca del final.
+  const [scrollbarComp, setScrollbarComp] = useState(0);
 
   // Sincronizar el scroll vertical entre las dos mitades. Se aplica directo
   // en el evento (sin rAF) para que queden lo más pegadas posible; el lock
@@ -196,23 +201,36 @@ export function PanelGeneralClient({
   );
 
   // Las dos mitades tienen que quedar alineadas fila a fila. El encabezado
-  // de la derecha son dos filas (módulo + subcolumna) y las filas del
-  // cuerpo las manda el lado Cliente (avatar + nombre + CUIT, siempre una
-  // línea): se miden esas alturas reales y se le imponen al otro lado, en
-  // vez de hardcodearlas.
+  // de la derecha son dos filas (módulo + subcolumna); la izquierda lo
+  // iguala con esa altura medida. Para las filas del cuerpo se mide la
+  // altura natural de AMBOS lados (la primera fila de cada tabla) y se le
+  // impone a las dos el techo redondeado hacia arriba — si se dejara que
+  // cada lado use su altura natural, la diferencia sub-pixel entre uno y
+  // otro se va sumando fila a fila y el scroll vertical se desfasa cada
+  // vez más.
   const hayFilas = filtradas.length > 0;
   useLayoutEffect(() => {
     const th = theadRef.current;
-    const fila = filaRef.current;
     const medir = () => {
-      if (th) setHeaderAltura(th.offsetHeight);
-      if (fila) setFilaAltura(fila.offsetHeight);
+      if (th) setHeaderAltura(Math.ceil(th.getBoundingClientRect().height));
+      const izq = filaRef.current?.getBoundingClientRect().height ?? 0;
+      const der = filaBodyRef.current?.getBoundingClientRect().height ?? 0;
+      const alto = Math.max(izq, der);
+      if (alto) setFilaAltura(Math.ceil(alto));
+      const b = bodyScrollRef.current;
+      if (b) setScrollbarComp(b.offsetHeight - b.clientHeight);
     };
     medir();
     const ro = new ResizeObserver(medir);
     if (th) ro.observe(th);
-    if (fila) ro.observe(fila);
-    return () => ro.disconnect();
+    if (filaRef.current) ro.observe(filaRef.current);
+    if (filaBodyRef.current) ro.observe(filaBodyRef.current);
+    if (bodyScrollRef.current) ro.observe(bodyScrollRef.current);
+    window.addEventListener("resize", medir);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", medir);
+    };
   }, [gruposVisibles.length, hayFilas]);
 
   function confirmar(c: Confirmando) {
@@ -536,6 +554,7 @@ export function PanelGeneralClient({
                         <tr
                           key={empresa.id}
                           ref={ri === 0 ? filaRef : undefined}
+                          style={{ height: filaAltura || undefined }}
                           onMouseEnter={() => setHoverRow(empresa.id)}
                           onMouseLeave={() => {
                             setHoverRow(null);
@@ -567,6 +586,9 @@ export function PanelGeneralClient({
                     })}
                   </tbody>
                 </table>
+                {/* Iguala el alto scrolleable con el de la derecha, que
+                    pierde ~15px por su barra de scroll horizontal. */}
+                {scrollbarComp > 0 && <div style={{ height: scrollbarComp }} aria-hidden />}
               </div>
 
               {/* ── Mitad derecha: todo lo demás (scroll horizontal + vertical) ── */}
@@ -655,7 +677,7 @@ export function PanelGeneralClient({
                 </thead>
 
                 <tbody>
-                  {filasConEstilo.map(({ empresa, activa, zebra }) => {
+                  {filasConEstilo.map(({ empresa, activa, zebra }, ri) => {
                     const activos = serviciosActivos[empresa.id] ?? [];
                     const confirmBajaCliente: Confirmando = { tipo: "cliente", clienteId: empresa.id };
                     const pendienteBajaCliente = esConfirmando(confirmBajaCliente);
@@ -665,6 +687,7 @@ export function PanelGeneralClient({
                     return (
                       <tr
                         key={empresa.id}
+                        ref={ri === 0 ? filaBodyRef : undefined}
                         style={{ height: filaAltura || undefined }}
                         onMouseEnter={() => setHoverRow(empresa.id)}
                         onMouseLeave={() => {
