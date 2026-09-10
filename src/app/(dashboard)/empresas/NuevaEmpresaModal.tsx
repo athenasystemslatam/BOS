@@ -196,6 +196,15 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                     </select>
                   </Field>
 
+                  <Field label="Teléfono">
+                    <input
+                      name="telefono"
+                      type="text"
+                      placeholder="Ej: 11 4567-8900"
+                      className={inputCls}
+                    />
+                  </Field>
+
                   <Field label="Emails de contacto">
                     <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
                   </Field>

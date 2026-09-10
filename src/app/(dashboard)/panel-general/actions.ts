@@ -35,6 +35,7 @@ export async function crearClienteConServicios(formData: FormData) {
   const cuitRaw = (formData.get("cuit") as string)?.trim();
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
   const emails_contacto = parseEmailsContacto(formData);
+  const telefono = (formData.get("telefono") as string)?.trim() || null;
 
   if (!nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -58,12 +59,15 @@ export async function crearClienteConServicios(formData: FormData) {
       terminacion_cuit: parsed.terminacion,
       tipo_contribuyente,
       emails_contacto,
+      telefono,
     })
     .select("id")
     .single();
 
   if (clienteError) {
     if (clienteError.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
+    if (clienteError.message.includes("telefono"))
+      return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     return { error: clienteError.message };
   }
 
@@ -177,6 +181,7 @@ export async function editarClienteConServicios(formData: FormData) {
   const cuitRaw = (formData.get("cuit") as string)?.trim();
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
   const emails_contacto = parseEmailsContacto(formData);
+  const telefono = (formData.get("telefono") as string)?.trim() || null;
 
   if (!id || !nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -200,12 +205,15 @@ export async function editarClienteConServicios(formData: FormData) {
       terminacion_cuit: parsed.terminacion,
       tipo_contribuyente,
       emails_contacto,
+      telefono,
       fecha_modificacion: new Date().toISOString(),
     })
     .eq("id", id);
 
   if (clienteError) {
     if (clienteError.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
+    if (clienteError.message.includes("telefono"))
+      return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     return { error: clienteError.message };
   }
 

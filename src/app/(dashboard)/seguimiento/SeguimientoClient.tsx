@@ -185,6 +185,7 @@ function ClavesModal({
   const [edit, setEdit] = useState(false);
   const [emails, setEmails] = useState<string[]>(cliente.emails_contacto ?? []);
   const [cuil, setCuil] = useState(cliente.cuil_arca ?? "");
+  const [tel, setTel] = useState(cliente.telefono ?? "");
   const [clavesEdit, setClavesEdit] = useState<ClaveAcceso[]>(claves);
   const [err, setErr] = useState<string | null>(null);
   const [guardando, startGuardar] = useTransition();
@@ -195,6 +196,7 @@ function ClavesModal({
       const r = await editarDatosCliente(cliente.id, {
         emails_contacto: emails,
         cuil_arca: cuil.trim() || null,
+        telefono: tel.trim() || null,
         claves_acceso: clavesEdit,
       });
       if (r?.error) setErr(r.error);
@@ -258,6 +260,19 @@ function ClavesModal({
 
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                Teléfono
+              </p>
+              <input
+                type="text"
+                value={tel}
+                onChange={(e) => setTel(e.target.value)}
+                placeholder="11 4567-8900"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
+              />
+            </div>
+
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 Claves de acceso
               </p>
               <ClavesAccesoEditor claves={clavesEdit} onChange={setClavesEdit} sugerencias={[]} />
@@ -275,6 +290,7 @@ function ClavesModal({
                   setEdit(false);
                   setEmails(cliente.emails_contacto ?? []);
                   setCuil(cliente.cuil_arca ?? "");
+                  setTel(cliente.telefono ?? "");
                   setClavesEdit(claves);
                   setErr(null);
                 }}
@@ -322,6 +338,19 @@ function ClavesModal({
                 <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 font-mono text-[13px] text-gray-700">
                   {cliente.cuil_arca}
                   <CopyButton value={cliente.cuil_arca} />
+                </div>
+              </div>
+            )}
+
+            {/* Teléfono */}
+            {cliente.telefono && (
+              <div className="mb-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                  Teléfono
+                </p>
+                <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 text-[13px] text-gray-700">
+                  {cliente.telefono}
+                  <CopyButton value={cliente.telefono} />
                 </div>
               </div>
             )}

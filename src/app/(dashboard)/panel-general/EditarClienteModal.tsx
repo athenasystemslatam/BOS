@@ -32,6 +32,7 @@ export function EditarClienteModal({
   const [nombre, setNombre] = useState("");
   const [cuit, setCuit] = useState("");
   const [tipoContribuyente, setTipoContribuyente] = useState("empresa");
+  const [telefono, setTelefono] = useState("");
   const [emailsContacto, setEmailsContacto] = useState<string[]>([]);
 
   // serviciosActivos: key "servicio:subtipo" → responsable_id | ""
@@ -64,6 +65,7 @@ export function EditarClienteModal({
       setNombre(cliente.nombre);
       setCuit(cliente.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3"));
       setTipoContribuyente(cliente.tipo_contribuyente ?? "empresa");
+      setTelefono(cliente.telefono ?? "");
       setEmailsContacto(cliente.emails_contacto ?? []);
 
       const activos: Record<ServicioKey, string> = {};
@@ -228,6 +230,18 @@ export function EditarClienteModal({
                   <option value="monotributista">Monotributista</option>
                   <option value="inscripto">Inscripto</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                  Teléfono
+                </label>
+                <input
+                  name="telefono"
+                  defaultValue={telefono}
+                  className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
+                  placeholder="Ej. 11 4567-8900"
+                />
               </div>
 
               <div>

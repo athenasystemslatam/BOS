@@ -190,6 +190,17 @@ export function NuevoClienteModal({
 
             <div>
               <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                Teléfono
+              </label>
+              <input
+                name="telefono"
+                className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
+                placeholder="Ej. 11 4567-8900"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                 Emails de contacto
               </label>
               <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />

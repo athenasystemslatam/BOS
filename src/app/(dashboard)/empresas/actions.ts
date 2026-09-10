@@ -36,6 +36,7 @@ export async function crearEmpresa(formData: FormData) {
   const cuit = (formData.get("cuit") as string)?.trim();
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
   const emails_contacto = parseEmailsContacto(formData);
+  const telefono = (formData.get("telefono") as string)?.trim() || null;
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
@@ -79,6 +80,7 @@ export async function crearEmpresa(formData: FormData) {
       terminacion_cuit: parsed.terminacion,
       cuil_arca,
       emails_contacto,
+      telefono,
       liquidador_id,
       tipo_contribuyente,
       fecha_inicio_liquidacion,
@@ -105,6 +107,9 @@ export async function crearEmpresa(formData: FormData) {
     if (error.code === "23505") return { error: "Ya existe una empresa con ese CUIT." };
     if (error.message.includes("claves_acceso")) {
       return { error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.' };
+    }
+    if (error.message.includes("telefono")) {
+      return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     }
     return { error: error.message };
   }
@@ -138,6 +143,7 @@ export async function editarEmpresa(formData: FormData) {
   const cuit = (formData.get("cuit") as string)?.trim();
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
   const emails_contacto = parseEmailsContacto(formData);
+  const telefono = (formData.get("telefono") as string)?.trim() || null;
   let liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
@@ -197,6 +203,7 @@ export async function editarEmpresa(formData: FormData) {
     terminacion_cuit: parsed.terminacion,
     cuil_arca,
     emails_contacto,
+    telefono,
     liquidador_id,
     tipo_contribuyente,
     fecha_inicio_liquidacion,
@@ -223,6 +230,9 @@ export async function editarEmpresa(formData: FormData) {
     if (error.code === "23505") return { error: "Ya existe una empresa con ese CUIT." };
     if (error.message.includes("claves_acceso")) {
       return { error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.' };
+    }
+    if (error.message.includes("telefono")) {
+      return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     }
     return { error: error.message };
   }

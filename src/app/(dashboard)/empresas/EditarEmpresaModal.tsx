@@ -167,6 +167,20 @@ export function EditarEmpresaModal({
               />
             </div>
 
+            {/* Teléfono */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Teléfono
+              </label>
+              <input
+                name="telefono"
+                type="text"
+                defaultValue={cliente.telefono ?? ""}
+                placeholder="Ej: 11 4567-8900"
+                className={inputCls}
+              />
+            </div>
+
             {/* Emails de contacto */}
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">

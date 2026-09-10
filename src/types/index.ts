@@ -39,6 +39,7 @@ export interface Cliente {
   terminacion_cuit: number;
   cuil_arca?: string;
   emails_contacto?: string[];
+  telefono?: string;
   liquidador_id: string;
   tipo_contribuyente: TipoContribuyente;
   es_quincenal: boolean;

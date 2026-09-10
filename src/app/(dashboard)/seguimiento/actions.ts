@@ -30,6 +30,7 @@ export async function editarDatosCliente(
   datos: {
     emails_contacto: string[];
     cuil_arca: string | null;
+    telefono: string | null;
     claves_acceso: ClaveAcceso[];
   }
 ) {
@@ -47,6 +48,7 @@ export async function editarDatosCliente(
     .slice(0, MAX_EMAILS_CONTACTO);
 
   const cuil_arca = datos.cuil_arca?.trim() || null;
+  const telefono = datos.telefono?.trim() || null;
 
   const claves_acceso = (Array.isArray(datos.claves_acceso) ? datos.claves_acceso : [])
     .map((c) => ({
@@ -62,6 +64,7 @@ export async function editarDatosCliente(
     .update({
       emails_contacto: emails,
       cuil_arca,
+      telefono,
       claves_acceso,
       fecha_modificacion: new Date().toISOString(),
     })
@@ -71,6 +74,11 @@ export async function editarDatosCliente(
     if (error.message.includes("claves_acceso")) {
       return {
         error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.',
+      };
+    }
+    if (error.message.includes("telefono")) {
+      return {
+        error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;',
       };
     }
     return { error: error.message };
