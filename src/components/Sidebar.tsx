@@ -224,9 +224,7 @@ export function Sidebar({
           }
 
           // El toggle manda siempre — si la cerraste, queda cerrada aunque
-          // estés parado en una de sus páginas. En ese caso se muestra un
-          // puntito en el título para saber que "estás acá adentro".
-          const contieneRutaActiva = visibleItems.some((item) => esRutaActiva(pathname, item.href));
+          // estés parado en una de sus páginas.
           const abierta = !cerrados.has(section.label);
 
           return (
@@ -241,9 +239,6 @@ export function Sidebar({
                   <p className="font-archivo font-semibold text-[12.5px] tracking-[.01em] text-ink whitespace-nowrap group-hover:text-bordo transition-colors">
                     {section.label}
                   </p>
-                  {!abierta && contieneRutaActiva && (
-                    <span className="w-[5px] h-[5px] rounded-full bg-bordo shrink-0" title="Estás en una página de esta sección" />
-                  )}
                   <span className="flex-1 h-px bg-line-group" />
                   <ChevronDown
                     size={13}
