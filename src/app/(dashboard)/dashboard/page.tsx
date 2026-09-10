@@ -138,7 +138,7 @@ export default async function DashboardPage({
     <div className="p-4 md:p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Resumen mensual</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Sueldos · Resumen mensual</p>
           <div className="flex items-center gap-3">
             <h1 className="text-xl md:text-[22px] font-semibold text-gray-900 tracking-tight">
               {MESES_NOMBRES[mesActual]} {anioActual}

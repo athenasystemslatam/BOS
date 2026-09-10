@@ -30,7 +30,7 @@ export default async function VencimientosPage() {
   return (
     <div className="flex flex-col h-full p-4 md:p-8">
       <div className="mb-6 md:mb-8 shrink-0">
-        <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">F.931 — ARCA</p>
+        <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">Sueldos · F.931 — ARCA</p>
         <h1 className="text-2xl font-semibold text-gray-900 mt-1">
           Calendario de vencimientos 2026
         </h1>

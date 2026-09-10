@@ -758,7 +758,7 @@ export function SeguimientoClient({
       <div className="shrink-0 flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-6">
         <div>
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">
-            Liquidaciones mensuales
+            Sueldos · Liquidaciones mensuales
           </p>
           <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight flex items-center gap-3">
             Seguimiento
