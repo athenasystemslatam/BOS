@@ -86,7 +86,7 @@ export default async function ContableDashboardPage({
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable · Resumen mensual</p>
           <h1 className="text-[20px] font-semibold text-gray-900">Dashboard {anio}</h1>
         </div>
         <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">

@@ -83,7 +83,7 @@ export default async function ImpuestosDashboardPage({
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Impuestos</p>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Impuestos · Resumen mensual</p>
           <h1 className="text-[20px] font-semibold text-gray-900">
             Dashboard — {MESES_NOMBRES[mes]} {anio}
           </h1>
