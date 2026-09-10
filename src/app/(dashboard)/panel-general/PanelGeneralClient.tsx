@@ -87,7 +87,6 @@ export function PanelGeneralClient({
   const [filtroEstado, setFiltroEstado] = useState<"activo" | "inactivo" | "">("activo");
   const [soloSinResponsable, setSoloSinResponsable] = useState(false);
   const [filtroResponsable, setFiltroResponsable] = useState("");
-  const [ocultos, setOcultos] = useState<Record<string, boolean>>({});
   const [hoverRow, setHoverRow] = useState<string | null>(null);
   const [hoverGrupo, setHoverGrupo] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
@@ -144,9 +143,8 @@ export function PanelGeneralClient({
     return set;
   }, [empresas, serviciosActivos]);
 
-  // KPIs de cabecera — sobre Sueldos/Impuestos/Contable siempre, no cambian
-  // si se ocultan columnas con los chips (eso es solo un filtro visual). No
-  // piden datos nuevos: salen de lo que ya llega por props.
+  // KPIs de cabecera — sobre todas las columnas de servicio. No piden datos
+  // nuevos: salen de lo que ya llega por props.
   const kpi = useMemo(() => {
     const activas = empresas.filter((e) => e.estado === "activo");
     let servicios = 0;
@@ -180,7 +178,7 @@ export function PanelGeneralClient({
     });
   }, [empresas, search, filtroEstado, soloSinResponsable, empresasSinResponsable, filtroResponsable]);
 
-  const gruposVisibles = GRUPOS.filter((g) => !ocultos[g.key]);
+  const gruposVisibles = GRUPOS;
   const columnasVisibles = gruposVisibles.flatMap((g) => g.cols.map((c) => ({ ...c, grupo: g.key })));
 
   // Datos por fila que comparten la tabla real y el panel fijo de "Empresa"
@@ -197,8 +195,7 @@ export function PanelGeneralClient({
 
   // El panel fijo de "Empresa" necesita saber cuánto mide el encabezado real
   // (dos filas: nombre de módulo + nombre de columna) para arrancar a la
-  // misma altura — se mide en vez de hardcodear el número porque cambia
-  // según qué chips de módulo estén activos/ocultos.
+  // misma altura — se mide en vez de hardcodearlo.
   useLayoutEffect(() => {
     const el = theadRef.current;
     if (!el) return;
@@ -247,15 +244,6 @@ export function PanelGeneralClient({
       return confirmando.servicio === c.servicio && confirmando.subtipo === c.subtipo;
     }
     return true;
-  }
-
-  function toggleGrupo(key: string) {
-    setOcultos((prev) => {
-      const next = { ...prev };
-      if (next[key]) delete next[key];
-      else next[key] = true;
-      return next;
-    });
   }
 
   function verSinAsignar() {
@@ -366,39 +354,6 @@ export function PanelGeneralClient({
             ))}
           </select>
 
-          {soloSinResponsable && (
-            <button
-              onClick={() => setSoloSinResponsable(false)}
-              className="flex items-center gap-1.5 bg-alerta-bg text-alerta-fg text-xs font-semibold px-2.5 py-[7px] rounded-full hover:brightness-[0.98] transition-[filter]"
-            >
-              Sin asignar
-              <X size={12} />
-            </button>
-          )}
-
-          <div className="hidden sm:block w-px h-[22px] bg-line-input mx-0.5" />
-
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-faint mr-0.5">
-              Módulos
-            </span>
-            {GRUPOS.map((g) => {
-              const on = !ocultos[g.key];
-              return (
-                <button
-                  key={g.key}
-                  onClick={() => toggleGrupo(g.key)}
-                  className={clsx(
-                    "text-xs font-semibold px-[11px] py-1.5 rounded-full border transition-colors",
-                    on ? "bg-bordo-tint text-bordo border-bordo-border" : "bg-transparent text-ink-faint border-line-input"
-                  )}
-                >
-                  {g.label}
-                </button>
-              );
-            })}
-          </div>
-
           {isAdmin && (
             <a
               href="/api/exportar/clientes"
@@ -408,6 +363,16 @@ export function PanelGeneralClient({
               <Download size={13} />
               Exportar
             </a>
+          )}
+
+          {soloSinResponsable && (
+            <button
+              onClick={() => setSoloSinResponsable(false)}
+              className="flex items-center gap-1.5 bg-alerta-bg text-alerta-fg text-xs font-semibold px-2.5 py-[7px] rounded-full hover:brightness-[0.98] transition-[filter]"
+            >
+              Sin asignar
+              <X size={12} />
+            </button>
           )}
 
           {isAdmin && (
