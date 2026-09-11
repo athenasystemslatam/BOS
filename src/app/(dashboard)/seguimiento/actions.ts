@@ -31,6 +31,7 @@ export async function editarDatosCliente(
     emails_contacto: string[];
     cuil_arca: string | null;
     telefono: string | null;
+    observaciones: string | null;
     claves_acceso: ClaveAcceso[];
   }
 ) {
@@ -49,6 +50,7 @@ export async function editarDatosCliente(
 
   const cuil_arca = datos.cuil_arca?.trim() || null;
   const telefono = datos.telefono?.trim() || null;
+  const observaciones = datos.observaciones?.trim() || null;
 
   const claves_acceso = (Array.isArray(datos.claves_acceso) ? datos.claves_acceso : [])
     .map((c) => ({
@@ -65,6 +67,7 @@ export async function editarDatosCliente(
       emails_contacto: emails,
       cuil_arca,
       telefono,
+      observaciones,
       claves_acceso,
       fecha_modificacion: new Date().toISOString(),
     })

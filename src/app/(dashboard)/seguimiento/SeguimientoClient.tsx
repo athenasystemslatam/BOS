@@ -186,6 +186,7 @@ function ClavesModal({
   const [emails, setEmails] = useState<string[]>(cliente.emails_contacto ?? []);
   const [cuil, setCuil] = useState(cliente.cuil_arca ?? "");
   const [tel, setTel] = useState(cliente.telefono ?? "");
+  const [obs, setObs] = useState(cliente.observaciones ?? "");
   const [clavesEdit, setClavesEdit] = useState<ClaveAcceso[]>(claves);
   const [err, setErr] = useState<string | null>(null);
   const [guardando, startGuardar] = useTransition();
@@ -197,6 +198,7 @@ function ClavesModal({
         emails_contacto: emails,
         cuil_arca: cuil.trim() || null,
         telefono: tel.trim() || null,
+        observaciones: obs.trim() || null,
         claves_acceso: clavesEdit,
       });
       if (r?.error) setErr(r.error);
@@ -278,6 +280,19 @@ function ClavesModal({
               <ClavesAccesoEditor claves={clavesEdit} onChange={setClavesEdit} sugerencias={[]} />
             </div>
 
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                Observaciones
+              </p>
+              <textarea
+                value={obs}
+                onChange={(e) => setObs(e.target.value)}
+                rows={3}
+                placeholder="Notas adicionales…"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo resize-none"
+              />
+            </div>
+
             {err && (
               <p className="text-xs text-danger bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                 {err}
@@ -291,6 +306,7 @@ function ClavesModal({
                   setEmails(cliente.emails_contacto ?? []);
                   setCuil(cliente.cuil_arca ?? "");
                   setTel(cliente.telefono ?? "");
+                  setObs(cliente.observaciones ?? "");
                   setClavesEdit(claves);
                   setErr(null);
                 }}
@@ -393,6 +409,18 @@ function ClavesModal({
               <p className="text-[12px] text-gray-400 text-center py-4">
                 Sin claves de acceso registradas.
               </p>
+            )}
+
+            {/* Observaciones */}
+            {cliente.observaciones && (
+              <div className="mt-4">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                  Observaciones
+                </p>
+                <p className="bg-gray-50 rounded-lg px-3 py-2 text-[13px] text-gray-700 whitespace-pre-wrap">
+                  {cliente.observaciones}
+                </p>
+              </div>
             )}
           </>
         )}
