@@ -51,6 +51,7 @@ export default async function PanelGeneralPage() {
       serviciosActivos={serviciosActivos}
       sueldosSinLiquidadora={sueldosSinLiquidadora}
       isAdmin={yo?.isAdmin ?? false}
+      miNombre={yo?.nombre ?? null}
     />
   );
 }

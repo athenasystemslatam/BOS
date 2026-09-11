@@ -95,7 +95,12 @@ export function EmpresasClient({
   lsdHasta: Record<string, { anio: number; mes: number }>;
 }) {
   const [search, setSearch] = useState("");
-  const [filtroLiq, setFiltroLiq] = useState("");
+  // Un no-admin que ya tiene al menos un cliente a cargo arranca viendo su
+  // propia cartera en vez de "Todas" — un admin sigue viendo todo por
+  // defecto. creadoPor es el id de la liquidadora logueada (ver page.tsx).
+  const [filtroLiq, setFiltroLiq] = useState(() =>
+    !isAdmin && creadoPor && clientes.some((c) => c.liquidador_id === creadoPor) ? creadoPor : ""
+  );
   const [filtroEstado, setFiltroEstado] = useState("activo");
   const [editando, setEditando] = useState<ClienteConLiq | null>(null);
   const [asignando, setAsignando] = useState<ClienteConLiq | null>(null);

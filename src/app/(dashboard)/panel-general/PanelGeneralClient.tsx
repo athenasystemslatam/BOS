@@ -75,6 +75,7 @@ export function PanelGeneralClient({
   serviciosActivos,
   sueldosSinLiquidadora,
   isAdmin,
+  miNombre,
 }: {
   empresas: VistEmpresa[];
   equipo: EquipoMiembro[];
@@ -82,11 +83,20 @@ export function PanelGeneralClient({
   serviciosActivos: Record<string, string[]>;
   sueldosSinLiquidadora: string[];
   isAdmin: boolean;
+  miNombre: string | null;
 }) {
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<"activo" | "inactivo" | "">("activo");
   const [soloSinResponsable, setSoloSinResponsable] = useState(false);
-  const [filtroResponsable, setFiltroResponsable] = useState("");
+  // Un no-admin que ya figura como responsable de al menos un cliente
+  // arranca viendo su propia cartera en vez de "Cualquier responsable" — un
+  // admin sigue viendo todo por defecto. La vista guarda nombres (no ids)
+  // en las columnas de responsable, por eso se compara así.
+  const [filtroResponsable, setFiltroResponsable] = useState(() =>
+    !isAdmin && miNombre && empresas.some((e) => RESPONSABLE_FIELDS.some((f) => e[f] === miNombre))
+      ? miNombre
+      : ""
+  );
   const [hoverRow, setHoverRow] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
