@@ -625,8 +625,13 @@ export function PanelGeneralClient({
                             key={g.key}
                             rowSpan={2}
                             className={clsx(
-                              "bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] border-b-2 border-bordo",
-                              gi > 0 && "border-l border-line-group"
+                              // border-b-bordo / border-l-line-group (por lado,
+                              // no el shorthand): con "border-bordo" +
+                              // "border-line-group" juntos, el segundo pisa el
+                              // color de TODOS los lados y la raya de abajo
+                              // quedaba gris en Contable/Monotributo.
+                              "bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] border-b-2 border-b-bordo",
+                              gi > 0 && "border-l border-l-line-group"
                             )}
                           >
                             <span className="font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase text-ink whitespace-nowrap">
@@ -676,8 +681,8 @@ export function PanelGeneralClient({
                             <th
                               key={c.key}
                               className={clsx(
-                                "bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b-2 border-bordo",
-                                i === 0 && gi > 0 && "border-l border-line-group"
+                                "bg-paper text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-medium tracking-[.1em] uppercase text-ink-faint border-b-2 border-b-bordo",
+                                i === 0 && gi > 0 && "border-l border-l-line-group"
                               )}
                             >
                               {c.label}
