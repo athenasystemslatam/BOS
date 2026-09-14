@@ -40,6 +40,12 @@ const RESPONSABLE_FIELDS = Object.values(VISTA_FIELD);
 
 const TODAS_LAS_COLUMNAS = new Set<string>(GRUPOS.flatMap((g) => g.cols.map((c) => c.key as string)));
 
+const TIPO_CONTRIB_LABEL: Record<TipoContribuyente, string> = {
+  empresa: "Empresa",
+  monotributista: "Monotributista",
+  inscripto: "Inscripto",
+};
+
 const STOPWORDS = new Set(["de", "del", "la", "el", "y", "&", "s.a.", "s.r.l.", "sa", "srl"]);
 
 function sigla(nombre: string) {
@@ -469,12 +475,17 @@ export function PanelGeneralClient({
                         </p>
                       )}
                     </div>
-                    <span className={clsx(
-                      "shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      empresa.estado === "activo" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-                    )}>
-                      {empresa.estado === "activo" ? "Activa" : "Inactiva"}
-                    </span>
+                    <div className="shrink-0 flex flex-col items-end gap-1">
+                      <span className={clsx(
+                        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                        empresa.estado === "activo" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+                      )}>
+                        {empresa.estado === "activo" ? "Activa" : "Inactiva"}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-500">
+                        {TIPO_CONTRIB_LABEL[empresa.tipo_contribuyente] ?? empresa.tipo_contribuyente}
+                      </span>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     {GRUPOS.flatMap((g) => g.cols.map((c) => ({ ...c, grupoLabel: g.label }))).map(({ key, label, grupoLabel }) => {
@@ -639,11 +650,12 @@ export function PanelGeneralClient({
                 onWheel={() => { ladoActivoRef.current = "body"; }}
                 className="flex-1 min-w-0 overflow-auto pr-[26px] [scrollbar-gutter:stable]"
               >
-                <table className="w-full min-w-[880px] border-separate border-spacing-0 text-[12.5px] table-fixed">
+                <table className="w-full min-w-[1010px] border-separate border-spacing-0 text-[12.5px] table-fixed">
                 <colgroup>
                   {columnasVisibles.map((c) => (
                     <col key={c.key} className="w-[170px]" />
                   ))}
+                  <col className="w-[132px]" />
                   <col className="w-[116px]" />
                   {isAdmin && <col className="w-[190px]" />}
                 </colgroup>
@@ -694,9 +706,19 @@ export function PanelGeneralClient({
                         </th>
                       );
                     })}
+                    {/* Tipo (de contribuyente) y Estado forman un mismo
+                        grupo de "info general del cliente" — la raya
+                        divisoria de módulos arranca en Tipo, no se repite
+                        entre Tipo y Estado. */}
                     <th
                       rowSpan={2}
                       className="bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-b-line-rule border-l border-l-line-group"
+                    >
+                      Tipo
+                    </th>
+                    <th
+                      rowSpan={2}
+                      className="bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-b-line-rule"
                     >
                       Estado
                     </th>
@@ -813,8 +835,15 @@ export function PanelGeneralClient({
                           );
                         })}
 
-                        {/* Estado */}
+                        {/* Tipo de contribuyente */}
                         <td className={clsx("px-3.5 py-[13px] text-center border-b border-b-line-row border-l border-l-line-group whitespace-nowrap", rowBg)}>
+                          <span className="text-[12.5px] font-medium text-ink-cell">
+                            {TIPO_CONTRIB_LABEL[empresa.tipo_contribuyente] ?? empresa.tipo_contribuyente}
+                          </span>
+                        </td>
+
+                        {/* Estado */}
+                        <td className={clsx("px-3.5 py-[13px] text-center border-b border-b-line-row whitespace-nowrap", rowBg)}>
                           {/* Espaciador invisible: mismo molde exacto (tamaño
                               de fuente + line-height) que el bloque
                               nombre+CUIT de la mitad izquierda. inline-block
