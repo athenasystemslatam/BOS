@@ -112,10 +112,8 @@ export function PanelGeneralClient({
   // "temblaba"). El scroll vertical de las dos mitades se sincroniza abajo.
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const frozenScrollRef = useRef<HTMLDivElement>(null);
-  const theadRef = useRef<HTMLTableSectionElement>(null);
   const filaRef = useRef<HTMLTableRowElement>(null);
   const filaBodyRef = useRef<HTMLTableRowElement>(null);
-  const [headerAltura, setHeaderAltura] = useState(0);
   const [filaAltura, setFilaAltura] = useState(0);
   // Alto de la barra de scroll horizontal de la mitad derecha (0 si no hay).
   // La izquierda no la tiene, así que sin compensar esto la derecha puede
@@ -209,23 +207,27 @@ export function PanelGeneralClient({
     [filtradas]
   );
 
-  // Las dos mitades tienen que quedar alineadas fila a fila. El encabezado
-  // de la derecha son dos filas (módulo + subcolumna); la izquierda lo
-  // iguala con esa altura medida. Para las filas del cuerpo se mide la
-  // altura natural de AMBOS lados (la primera fila de cada tabla) y se le
-  // impone a las dos el techo redondeado hacia arriba — si se dejara que
-  // cada lado use su altura natural, la diferencia sub-pixel entre uno y
+  // Las dos mitades tienen que quedar alineadas fila a fila.
+  //
+  // El encabezado YA NO se mide por JS (eso hacía que, nada más entrar a
+  // la pantalla, se viera el "Cliente" de la izquierda chico y después
+  // estirarse de golpe cuando el efecto corregía la altura — el HTML del
+  // servidor se pinta antes de que el JS llegue a medir/corregir). Ahora
+  // el <thead> izquierdo replica la fila 1 invisible de Impuestos (mismo
+  // padding/tipografía, solo que sin texto visible) para que el propio
+  // layout nativo de la tabla le dé la misma altura que a la derecha,
+  // sin depender de ninguna medición — correcto ya en el primer pintado.
+  //
+  // Las filas del cuerpo sí se siguen midiendo (acá no hay un patrón fijo
+  // que copiar: la altura depende del contenido real de cada lado) — se
+  // toma la altura natural de AMBOS lados (la primera fila de cada tabla)
+  // y se le impone a las dos el techo redondeado hacia arriba; si se
+  // dejara que cada lado use la suya, la diferencia sub-pixel entre uno y
   // otro se va sumando fila a fila y el scroll vertical se desfasa cada
   // vez más.
   const hayFilas = filtradas.length > 0;
   useLayoutEffect(() => {
-    const th = theadRef.current;
     const medir = () => {
-      // Sin redondear: el <th> "Cliente" de la izquierda es más bajo que
-      // su contenido, así que toma exactamente esta altura y queda igual
-      // que el encabezado de la derecha (si redondeara hacia arriba
-      // quedaría ~1px más y las filas del cuerpo arrancarían desfasadas).
-      if (th) setHeaderAltura(th.getBoundingClientRect().height);
       const izq = filaRef.current?.getBoundingClientRect().height ?? 0;
       const der = filaBodyRef.current?.getBoundingClientRect().height ?? 0;
       const alto = Math.max(izq, der);
@@ -235,7 +237,6 @@ export function PanelGeneralClient({
     };
     medir();
     const ro = new ResizeObserver(medir);
-    if (th) ro.observe(th);
     if (filaRef.current) ro.observe(filaRef.current);
     if (filaBodyRef.current) ro.observe(filaBodyRef.current);
     if (bodyScrollRef.current) ro.observe(bodyScrollRef.current);
@@ -555,11 +556,26 @@ export function PanelGeneralClient({
                     <col className="w-[294px]" />
                   </colgroup>
                   <thead className="sticky top-0 z-20 bg-paper">
+                    {/* Fila 1: espaciador invisible, mismo molde exacto que
+                        la fila 1 de Impuestos (mismo padding/tipografía,
+                        sin texto visible) — así el layout nativo de ESTA
+                        tabla (sin JS de por medio) le da al encabezado la
+                        misma altura que al de la derecha, correcto ya
+                        desde el primer pintado del servidor. Antes se
+                        medía la altura de la derecha por JS y se la
+                        aplicaba acá — por eso se veía "Cliente" chico un
+                        instante y después estirarse de golpe. */}
+                    <tr aria-hidden>
+                      <th className="bg-paper pt-[18px] pb-1.5 border-r border-r-line-group">
+                        <div className="pb-[7px] px-3.5 flex items-center justify-center gap-2.5">
+                          <span className="invisible font-archivo text-[11.5px] font-semibold tracking-[.1em] uppercase whitespace-nowrap">
+                            Cliente
+                          </span>
+                        </div>
+                      </th>
+                    </tr>
                     <tr>
-                      <th
-                        style={{ height: headerAltura || undefined }}
-                        className="bg-paper align-bottom text-left pl-[26px] pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule border-r border-line-group box-border"
-                      >
+                      <th className="bg-paper align-bottom text-left pl-[26px] pr-4 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-b-line-rule border-r border-r-line-group box-border">
                         Cliente
                       </th>
                     </tr>
@@ -576,7 +592,7 @@ export function PanelGeneralClient({
                           onMouseEnter={() => setHoverRow(empresa.id)}
                           onMouseLeave={() => setHoverRow(null)}
                         >
-                          <td className={clsx("pl-[26px] pr-4 py-[13px] border-b border-line-row border-r border-line-group align-middle whitespace-nowrap", rowBg)}>
+                          <td className={clsx("pl-[26px] pr-4 py-[13px] border-b border-b-line-row border-r border-r-line-group align-middle whitespace-nowrap", rowBg)}>
                             <div className="flex items-center gap-[11px]">
                               <span
                                 className={clsx(
@@ -620,7 +636,7 @@ export function PanelGeneralClient({
                   <col className="w-[116px]" />
                   {isAdmin && <col className="w-[190px]" />}
                 </colgroup>
-                <thead ref={theadRef} className="sticky top-0 z-20 bg-paper">
+                <thead className="sticky top-0 z-20 bg-paper">
                   {/* Fila 1: nombre de módulo. Los de una sola columna
                       (Sueldos/Contable/Monotributo) ocupan directamente las
                       dos filas — no tiene sentido repetir "Responsable"
@@ -669,12 +685,12 @@ export function PanelGeneralClient({
                     })}
                     <th
                       rowSpan={2}
-                      className="bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-line-rule border-l border-line-group"
+                      className="bg-paper align-bottom text-center px-3.5 pb-[9px] pt-[11px] text-[10px] font-semibold tracking-[.14em] uppercase text-ink-faint border-b border-b-line-rule border-l border-l-line-group"
                     >
                       Estado
                     </th>
                     {isAdmin && (
-                      <th rowSpan={2} className="bg-paper border-b border-line-rule border-l border-line-group" />
+                      <th rowSpan={2} className="bg-paper border-b border-b-line-rule border-l border-l-line-group" />
                     )}
                   </tr>
                   {/* Fila 2: solo subcolumnas de los grupos con más de una
@@ -738,9 +754,9 @@ export function PanelGeneralClient({
                               key={c.key}
                               onMouseEnter={() => setHoverRow(empresa.id)}
                               className={clsx(
-                                "px-3.5 py-[13px] text-center align-middle border-b border-line-row whitespace-nowrap",
+                                "px-3.5 py-[13px] text-center align-middle border-b border-b-line-row whitespace-nowrap",
                                 rowBg,
-                                primero && "border-l border-line-group"
+                                primero && "border-l border-l-line-group"
                               )}
                             >
                               {warning ? (
@@ -789,7 +805,7 @@ export function PanelGeneralClient({
                         })}
 
                         {/* Estado */}
-                        <td className={clsx("px-3.5 py-[13px] text-center border-b border-line-row border-l border-line-group whitespace-nowrap", rowBg)}>
+                        <td className={clsx("px-3.5 py-[13px] text-center border-b border-b-line-row border-l border-l-line-group whitespace-nowrap", rowBg)}>
                           <span className={clsx("inline-flex items-center gap-[7px] text-[11.5px] font-medium", activa ? "text-activo" : "text-ink-subtle")}>
                             <span className={clsx("w-[5px] h-[5px] rounded-full shrink-0", activa ? "bg-activo-dot" : "bg-dot")} />
                             {activa ? "Activa" : "Inactiva"}
@@ -798,7 +814,7 @@ export function PanelGeneralClient({
 
                         {/* Acciones */}
                         {isAdmin && (
-                          <td className={clsx("px-3.5 py-[13px] text-center border-b border-line-row border-l border-line-group whitespace-nowrap group/acciones", rowBg)}>
+                          <td className={clsx("px-3.5 py-[13px] text-center border-b border-b-line-row border-l border-l-line-group whitespace-nowrap group/acciones", rowBg)}>
                             <span className="inline-flex items-center gap-1">
                               <a
                                 href={`/api/exportar/clientes?id=${empresa.id}`}
