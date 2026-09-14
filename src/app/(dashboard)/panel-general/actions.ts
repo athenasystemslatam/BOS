@@ -36,6 +36,9 @@ export async function crearClienteConServicios(formData: FormData) {
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
   const emails_contacto = parseEmailsContacto(formData);
   const telefono = (formData.get("telefono") as string)?.trim() || null;
+  const jurisdiccion_empresa = (formData.get("jurisdiccion_empresa") as string)?.trim() || null;
+  const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
+  const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
 
   if (!nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -60,6 +63,9 @@ export async function crearClienteConServicios(formData: FormData) {
       tipo_contribuyente,
       emails_contacto,
       telefono,
+      jurisdiccion_empresa,
+      domicilio_fiscal,
+      domicilio_legal,
     })
     .select("id")
     .single();
@@ -68,6 +74,8 @@ export async function crearClienteConServicios(formData: FormData) {
     if (clienteError.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
     if (clienteError.message.includes("telefono"))
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
+    if (clienteError.message.includes("jurisdiccion_empresa") || clienteError.message.includes("domicilio_"))
+      return { error: 'Para guardar jurisdicción/domicilios, ejecutá primero en Supabase: alter table clientes add column if not exists jurisdiccion_empresa text, add column if not exists domicilio_fiscal text, add column if not exists domicilio_legal text;' };
     return { error: clienteError.message };
   }
 
@@ -182,6 +190,9 @@ export async function editarClienteConServicios(formData: FormData) {
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
   const emails_contacto = parseEmailsContacto(formData);
   const telefono = (formData.get("telefono") as string)?.trim() || null;
+  const jurisdiccion_empresa = (formData.get("jurisdiccion_empresa") as string)?.trim() || null;
+  const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
+  const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
 
   if (!id || !nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -206,6 +217,9 @@ export async function editarClienteConServicios(formData: FormData) {
       tipo_contribuyente,
       emails_contacto,
       telefono,
+      jurisdiccion_empresa,
+      domicilio_fiscal,
+      domicilio_legal,
       fecha_modificacion: new Date().toISOString(),
     })
     .eq("id", id);
@@ -214,6 +228,8 @@ export async function editarClienteConServicios(formData: FormData) {
     if (clienteError.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
     if (clienteError.message.includes("telefono"))
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
+    if (clienteError.message.includes("jurisdiccion_empresa") || clienteError.message.includes("domicilio_"))
+      return { error: 'Para guardar jurisdicción/domicilios, ejecutá primero en Supabase: alter table clientes add column if not exists jurisdiccion_empresa text, add column if not exists domicilio_fiscal text, add column if not exists domicilio_legal text;' };
     return { error: clienteError.message };
   }
 

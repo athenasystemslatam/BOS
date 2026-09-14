@@ -208,6 +208,33 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                   <Field label="Emails de contacto">
                     <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
                   </Field>
+
+                  <Field label="Jurisdicción de la empresa">
+                    <input
+                      name="jurisdiccion_empresa"
+                      type="text"
+                      placeholder="Ej: CABA"
+                      className={inputCls}
+                    />
+                  </Field>
+
+                  <Field label="Domicilio fiscal">
+                    <input
+                      name="domicilio_fiscal"
+                      type="text"
+                      placeholder="Calle, número, piso, localidad…"
+                      className={inputCls}
+                    />
+                  </Field>
+
+                  <Field label="Domicilio legal">
+                    <input
+                      name="domicilio_legal"
+                      type="text"
+                      placeholder="Calle, número, piso, localidad…"
+                      className={inputCls}
+                    />
+                  </Field>
                 </div>
 
                 {/* Servicios activos — acá siempre es Sueldos (es la única

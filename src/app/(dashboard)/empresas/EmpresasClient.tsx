@@ -301,7 +301,7 @@ export function EmpresasClient({
             {/* Tabla desktop */}
             <div className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
-                <table className="w-full min-w-[1200px]">
+                <table className="w-full min-w-[1320px]">
                 <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                   <tr className="text-xs text-gray-400 uppercase tracking-wide">
                     <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left font-medium">Cliente</th>
@@ -310,7 +310,13 @@ export function EmpresasClient({
                     <th className="px-4 py-3 text-center font-medium">Tipo</th>
                     <th className="px-4 py-3 text-center font-medium">Sindicato</th>
                     <th className="px-4 py-3 text-left font-medium">LSD</th>
-                    <th className="px-4 py-3 text-left font-medium">Jurisdicción</th>
+                    {/* "Jurisdicción" (laboral) ya existía — es la de Rúbrica
+                        LSD (CABA/PBA/Otra). Se le agrega la etiqueta "laboral"
+                        acá nomás para no confundirla con "Jurisd. empresa",
+                        el campo nuevo (información básica, sin relación con
+                        LSD) que se agrega al lado. */}
+                    <th className="px-4 py-3 text-left font-medium">Jurisd. laboral</th>
+                    <th className="px-4 py-3 text-left font-medium">Jurisd. empresa</th>
                     <th className="px-4 py-3 text-left font-medium">Red bancaria</th>
                     <th className="px-4 py-3 text-left font-medium">Inicio liquidación</th>
                     <th className="px-4 py-3 text-center font-medium">Estado</th>
@@ -401,6 +407,9 @@ export function EmpresasClient({
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
                         {c.jurisdiccion ?? <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
+                        {c.jurisdiccion_empresa ?? <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
                         {c.red_bancaria ?? <span className="text-gray-300">—</span>}

@@ -37,6 +37,12 @@ export async function crearEmpresa(formData: FormData) {
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
   const emails_contacto = parseEmailsContacto(formData);
   const telefono = (formData.get("telefono") as string)?.trim() || null;
+  // jurisdiccion_empresa/domicilio_*: información básica general — no
+  // confundir con "jurisdiccion" más abajo, que es la jurisdicción LABORAL
+  // de Rúbrica LSD (otro campo, otro propósito).
+  const jurisdiccion_empresa = (formData.get("jurisdiccion_empresa") as string)?.trim() || null;
+  const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
+  const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
@@ -81,6 +87,9 @@ export async function crearEmpresa(formData: FormData) {
       cuil_arca,
       emails_contacto,
       telefono,
+      jurisdiccion_empresa,
+      domicilio_fiscal,
+      domicilio_legal,
       liquidador_id,
       tipo_contribuyente,
       fecha_inicio_liquidacion,
@@ -110,6 +119,9 @@ export async function crearEmpresa(formData: FormData) {
     }
     if (error.message.includes("telefono")) {
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
+    }
+    if (error.message.includes("jurisdiccion_empresa") || error.message.includes("domicilio_")) {
+      return { error: 'Para guardar jurisdicción/domicilios, ejecutá primero en Supabase: alter table clientes add column if not exists jurisdiccion_empresa text, add column if not exists domicilio_fiscal text, add column if not exists domicilio_legal text;' };
     }
     return { error: error.message };
   }
@@ -144,6 +156,9 @@ export async function editarEmpresa(formData: FormData) {
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
   const emails_contacto = parseEmailsContacto(formData);
   const telefono = (formData.get("telefono") as string)?.trim() || null;
+  const jurisdiccion_empresa = (formData.get("jurisdiccion_empresa") as string)?.trim() || null;
+  const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
+  const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
   let liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
@@ -204,6 +219,9 @@ export async function editarEmpresa(formData: FormData) {
     cuil_arca,
     emails_contacto,
     telefono,
+    jurisdiccion_empresa,
+    domicilio_fiscal,
+    domicilio_legal,
     liquidador_id,
     tipo_contribuyente,
     fecha_inicio_liquidacion,
@@ -233,6 +251,9 @@ export async function editarEmpresa(formData: FormData) {
     }
     if (error.message.includes("telefono")) {
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
+    }
+    if (error.message.includes("jurisdiccion_empresa") || error.message.includes("domicilio_")) {
+      return { error: 'Para guardar jurisdicción/domicilios, ejecutá primero en Supabase: alter table clientes add column if not exists jurisdiccion_empresa text, add column if not exists domicilio_fiscal text, add column if not exists domicilio_legal text;' };
     }
     return { error: error.message };
   }

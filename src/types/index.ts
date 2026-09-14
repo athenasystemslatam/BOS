@@ -40,6 +40,13 @@ export interface Cliente {
   cuil_arca?: string;
   emails_contacto?: string[];
   telefono?: string;
+  // Jurisdicción "de la empresa" (información básica) — distinta de
+  // `jurisdiccion` más abajo, que es la jurisdicción LABORAL usada
+  // específicamente por Rúbrica LSD (CABA/PBA/Otra + fechas de
+  // vencimiento). No confundir ni unificar los dos campos.
+  jurisdiccion_empresa?: string;
+  domicilio_fiscal?: string;
+  domicilio_legal?: string;
   liquidador_id: string;
   tipo_contribuyente: TipoContribuyente;
   es_quincenal: boolean;

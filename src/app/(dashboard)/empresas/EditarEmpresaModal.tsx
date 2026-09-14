@@ -189,6 +189,48 @@ export function EditarEmpresaModal({
               <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
             </div>
 
+            {/* Jurisdicción de la empresa */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Jurisdicción de la empresa
+              </label>
+              <input
+                name="jurisdiccion_empresa"
+                type="text"
+                defaultValue={cliente.jurisdiccion_empresa ?? ""}
+                placeholder="Ej: CABA"
+                className={inputCls}
+              />
+            </div>
+
+            {/* Domicilio fiscal */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Domicilio fiscal
+              </label>
+              <input
+                name="domicilio_fiscal"
+                type="text"
+                defaultValue={cliente.domicilio_fiscal ?? ""}
+                placeholder="Calle, número, piso, localidad…"
+                className={inputCls}
+              />
+            </div>
+
+            {/* Domicilio legal */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Domicilio legal
+              </label>
+              <input
+                name="domicilio_legal"
+                type="text"
+                defaultValue={cliente.domicilio_legal ?? ""}
+                placeholder="Calle, número, piso, localidad…"
+                className={inputCls}
+              />
+            </div>
+
             {/* Tipo + Liquidadora */}
             <div className="grid grid-cols-2 gap-4">
               <div>
