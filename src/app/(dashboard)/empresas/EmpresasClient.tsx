@@ -312,11 +312,13 @@ export function EmpresasClient({
                     <th className="px-4 py-3 text-left font-medium">LSD</th>
                     {/* "Jurisdicción" (laboral) ya existía — es la de Rúbrica
                         LSD (CABA/PBA/Otra). Se le agrega la etiqueta "laboral"
-                        acá nomás para no confundirla con "Jurisd. empresa",
-                        el campo nuevo (información básica, sin relación con
-                        LSD) que se agrega al lado. */}
+                        acá nomás para no confundirla con "Jurisd. fiscal", el
+                        campo nuevo (información básica, sin relación con
+                        LSD) que se agrega al lado. La jurisdicción legal y
+                        los locales, por no ser tan seguido consultados en
+                        una lista, quedan solo en la ficha de editar. */}
                     <th className="px-4 py-3 text-left font-medium">Jurisd. laboral</th>
-                    <th className="px-4 py-3 text-left font-medium">Jurisd. empresa</th>
+                    <th className="px-4 py-3 text-left font-medium">Jurisd. fiscal</th>
                     <th className="px-4 py-3 text-left font-medium">Red bancaria</th>
                     <th className="px-4 py-3 text-left font-medium">Inicio liquidación</th>
                     <th className="px-4 py-3 text-center font-medium">Estado</th>
@@ -409,7 +411,7 @@ export function EmpresasClient({
                         {c.jurisdiccion ?? <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
-                        {c.jurisdiccion_empresa ?? <span className="text-gray-300">—</span>}
+                        {c.jurisdiccion_fiscal ?? <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3.5 text-[13px] text-gray-600 whitespace-nowrap">
                         {c.red_bancaria ?? <span className="text-gray-300">—</span>}

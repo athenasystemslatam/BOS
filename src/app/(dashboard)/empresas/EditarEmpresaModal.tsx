@@ -3,10 +3,11 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { editarEmpresa } from "./actions";
-import { Cliente, Liquidadora, ClaveAcceso } from "@/types";
+import { Cliente, Liquidadora, ClaveAcceso, Local } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
+import { LocalesEditor } from "@/components/LocalesEditor";
 
 const inputCls =
   "w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo focus:ring-1 focus:ring-bordo/20 transition-colors bg-white";
@@ -61,6 +62,8 @@ export function EditarEmpresaModal({
   );
   const [claves, setClaves] = useState<ClaveAcceso[]>(cliente.claves_acceso ?? []);
   const [emailsContacto, setEmailsContacto] = useState<string[]>(cliente.emails_contacto ?? []);
+  const [tieneLocales, setTieneLocales] = useState(!!cliente.tiene_locales);
+  const [locales, setLocales] = useState<Local[]>(cliente.locales ?? []);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -86,6 +89,8 @@ export function EditarEmpresaModal({
       "emails_contacto",
       JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
     );
+    formData.set("tiene_locales", String(tieneLocales));
+    formData.set("locales", JSON.stringify(tieneLocales ? locales : []));
     if (jurisdiccion !== "Otra") formData.set("jurisdiccion", jurisdiccion);
     if (tieneRubrica && (jurisdiccion === "PBA" || jurisdiccion === "CABA")) {
       if (lsdDesdeAnio) formData.set("lsd_desde_anio", String(lsdDesdeAnio));
@@ -189,46 +194,68 @@ export function EditarEmpresaModal({
               <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
             </div>
 
-            {/* Jurisdicción de la empresa */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                Jurisdicción de la empresa
-              </label>
-              <input
-                name="jurisdiccion_empresa"
-                type="text"
-                defaultValue={cliente.jurisdiccion_empresa ?? ""}
-                placeholder="Ej: CABA"
-                className={inputCls}
-              />
+            {/* Fiscal y legal pueden no coincidir en jurisdicción (ej.
+                fiscal en CABA, legal en PBA) — por eso cada domicilio lleva
+                su propia jurisdicción en vez de una sola general. */}
+            <div className="grid grid-cols-[1fr_120px] gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Domicilio fiscal</label>
+                <input
+                  name="domicilio_fiscal"
+                  type="text"
+                  defaultValue={cliente.domicilio_fiscal ?? ""}
+                  placeholder="Calle, número, piso, localidad…"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Jurisdicción</label>
+                <input
+                  name="jurisdiccion_fiscal"
+                  type="text"
+                  defaultValue={cliente.jurisdiccion_fiscal ?? ""}
+                  placeholder="Ej: CABA"
+                  className={inputCls}
+                />
+              </div>
             </div>
 
-            {/* Domicilio fiscal */}
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                Domicilio fiscal
-              </label>
-              <input
-                name="domicilio_fiscal"
-                type="text"
-                defaultValue={cliente.domicilio_fiscal ?? ""}
-                placeholder="Calle, número, piso, localidad…"
-                className={inputCls}
-              />
+            <div className="grid grid-cols-[1fr_120px] gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Domicilio legal</label>
+                <input
+                  name="domicilio_legal"
+                  type="text"
+                  defaultValue={cliente.domicilio_legal ?? ""}
+                  placeholder="Calle, número, piso, localidad…"
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Jurisdicción</label>
+                <input
+                  name="jurisdiccion_legal"
+                  type="text"
+                  defaultValue={cliente.jurisdiccion_legal ?? ""}
+                  placeholder="Ej: CABA"
+                  className={inputCls}
+                />
+              </div>
             </div>
 
-            {/* Domicilio legal */}
+            {/* ¿Tiene locales? */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                Domicilio legal
-              </label>
-              <input
-                name="domicilio_legal"
-                type="text"
-                defaultValue={cliente.domicilio_legal ?? ""}
-                placeholder="Calle, número, piso, localidad…"
-                className={inputCls}
-              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-gray-500">
+                  ¿Tiene locales? <span className="font-normal text-gray-400">(sucursales en otras jurisdicciones)</span>
+                </span>
+                <Toggle value={tieneLocales} onChange={setTieneLocales} />
+              </div>
+              {tieneLocales && (
+                <div className="mt-2">
+                  <LocalesEditor locales={locales} onChange={setLocales} />
+                </div>
+              )}
             </div>
 
             {/* Tipo + Liquidadora */}

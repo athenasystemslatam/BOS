@@ -23,6 +23,23 @@ function parseEmailsContacto(formData: FormData): string[] {
   }
 }
 
+// Sucursales/locales en otras jurisdicciones (ver LocalesEditor) — solo se
+// guardan si "tiene_locales" viene activo, ver más abajo.
+function parseLocales(formData: FormData): { domicilio: string; jurisdiccion: string }[] {
+  try {
+    const raw = JSON.parse((formData.get("locales") as string) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((l) => ({ domicilio: String(l?.domicilio ?? "").trim(), jurisdiccion: String(l?.jurisdiccion ?? "").trim() }))
+      .filter((l) => l.domicilio || l.jurisdiccion);
+  } catch {
+    return [];
+  }
+}
+
+const ERROR_JURISDICCION_LOCALES =
+  'Para guardar jurisdicción/domicilios/locales, ejecutá primero en Supabase: alter table clientes add column if not exists domicilio_fiscal text, add column if not exists jurisdiccion_fiscal text, add column if not exists domicilio_legal text, add column if not exists jurisdiccion_legal text, add column if not exists tiene_locales boolean default false, add column if not exists locales jsonb default \'[]\'::jsonb;';
+
 export async function crearEmpresa(formData: FormData) {
   try {
     await requireAdmin();
@@ -37,12 +54,15 @@ export async function crearEmpresa(formData: FormData) {
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
   const emails_contacto = parseEmailsContacto(formData);
   const telefono = (formData.get("telefono") as string)?.trim() || null;
-  // jurisdiccion_empresa/domicilio_*: información básica general — no
-  // confundir con "jurisdiccion" más abajo, que es la jurisdicción LABORAL
-  // de Rúbrica LSD (otro campo, otro propósito).
-  const jurisdiccion_empresa = (formData.get("jurisdiccion_empresa") as string)?.trim() || null;
+  // domicilio_*/jurisdiccion_*: información básica general — no confundir
+  // con "jurisdiccion" más abajo, que es la jurisdicción LABORAL de Rúbrica
+  // LSD (otro campo, otro propósito).
   const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
+  const jurisdiccion_fiscal = (formData.get("jurisdiccion_fiscal") as string)?.trim() || null;
   const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
+  const jurisdiccion_legal = (formData.get("jurisdiccion_legal") as string)?.trim() || null;
+  const tiene_locales = formData.get("tiene_locales") === "true";
+  const locales = tiene_locales ? parseLocales(formData) : [];
   const liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
@@ -87,9 +107,12 @@ export async function crearEmpresa(formData: FormData) {
       cuil_arca,
       emails_contacto,
       telefono,
-      jurisdiccion_empresa,
       domicilio_fiscal,
+      jurisdiccion_fiscal,
       domicilio_legal,
+      jurisdiccion_legal,
+      tiene_locales,
+      locales,
       liquidador_id,
       tipo_contribuyente,
       fecha_inicio_liquidacion,
@@ -120,8 +143,12 @@ export async function crearEmpresa(formData: FormData) {
     if (error.message.includes("telefono")) {
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     }
-    if (error.message.includes("jurisdiccion_empresa") || error.message.includes("domicilio_")) {
-      return { error: 'Para guardar jurisdicción/domicilios, ejecutá primero en Supabase: alter table clientes add column if not exists jurisdiccion_empresa text, add column if not exists domicilio_fiscal text, add column if not exists domicilio_legal text;' };
+    if (
+      error.message.includes("jurisdiccion_") ||
+      error.message.includes("domicilio_") ||
+      error.message.includes("locales")
+    ) {
+      return { error: ERROR_JURISDICCION_LOCALES };
     }
     return { error: error.message };
   }
@@ -156,9 +183,12 @@ export async function editarEmpresa(formData: FormData) {
   const cuil_arca = (formData.get("cuil_arca") as string)?.trim() || null;
   const emails_contacto = parseEmailsContacto(formData);
   const telefono = (formData.get("telefono") as string)?.trim() || null;
-  const jurisdiccion_empresa = (formData.get("jurisdiccion_empresa") as string)?.trim() || null;
   const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
+  const jurisdiccion_fiscal = (formData.get("jurisdiccion_fiscal") as string)?.trim() || null;
   const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
+  const jurisdiccion_legal = (formData.get("jurisdiccion_legal") as string)?.trim() || null;
+  const tiene_locales = formData.get("tiene_locales") === "true";
+  const locales = tiene_locales ? parseLocales(formData) : [];
   let liquidador_id = formData.get("liquidador_id") as string;
   const tipo_contribuyente = formData.get("tipo_contribuyente") as string;
   const fecha_inicio_liquidacion = (formData.get("fecha_inicio_liquidacion") as string)?.trim() || null;
@@ -219,9 +249,12 @@ export async function editarEmpresa(formData: FormData) {
     cuil_arca,
     emails_contacto,
     telefono,
-    jurisdiccion_empresa,
     domicilio_fiscal,
+    jurisdiccion_fiscal,
     domicilio_legal,
+    jurisdiccion_legal,
+    tiene_locales,
+    locales,
     liquidador_id,
     tipo_contribuyente,
     fecha_inicio_liquidacion,
@@ -252,8 +285,12 @@ export async function editarEmpresa(formData: FormData) {
     if (error.message.includes("telefono")) {
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     }
-    if (error.message.includes("jurisdiccion_empresa") || error.message.includes("domicilio_")) {
-      return { error: 'Para guardar jurisdicción/domicilios, ejecutá primero en Supabase: alter table clientes add column if not exists jurisdiccion_empresa text, add column if not exists domicilio_fiscal text, add column if not exists domicilio_legal text;' };
+    if (
+      error.message.includes("jurisdiccion_") ||
+      error.message.includes("domicilio_") ||
+      error.message.includes("locales")
+    ) {
+      return { error: ERROR_JURISDICCION_LOCALES };
     }
     return { error: error.message };
   }

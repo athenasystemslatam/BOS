@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { crearEmpresa } from "./actions";
-import { Liquidadora, ClaveAcceso } from "@/types";
+import { Liquidadora, ClaveAcceso, Local } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
+import { LocalesEditor } from "@/components/LocalesEditor";
 
 function Field({
   label,
@@ -63,6 +64,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
   const [sindicatoNombre, setSindicatoNombre] = useState("");
   const [claves, setClaves] = useState<ClaveAcceso[]>([]);
   const [emailsContacto, setEmailsContacto] = useState<string[]>([]);
+  const [tieneLocales, setTieneLocales] = useState(false);
+  const [locales, setLocales] = useState<Local[]>([]);
 
   const terminacion = cuit.replace(/\D/g, "").length === 11
     ? cuit.replace(/\D/g, "")[10]
@@ -92,6 +95,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     setJurisdiccion("CABA");
     setSindicatoNombre("");
     setClaves([]);
+    setTieneLocales(false);
+    setLocales([]);
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -106,6 +111,8 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
       "emails_contacto",
       JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
     );
+    formData.set("tiene_locales", String(tieneLocales));
+    formData.set("locales", JSON.stringify(tieneLocales ? locales : []));
     if (jurisdiccion !== "Otra") formData.set("jurisdiccion", jurisdiccion);
     if (tieneRubrica && (jurisdiccion === "PBA" || jurisdiccion === "CABA")) {
       if (lsdDesdeAnio) formData.set("lsd_desde_anio", String(lsdDesdeAnio));
@@ -209,32 +216,41 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                     <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
                   </Field>
 
-                  <Field label="Jurisdicción de la empresa">
-                    <input
-                      name="jurisdiccion_empresa"
-                      type="text"
-                      placeholder="Ej: CABA"
-                      className={inputCls}
-                    />
-                  </Field>
+                  {/* Fiscal y legal pueden no coincidir en jurisdicción (ej.
+                      fiscal en CABA, legal en PBA) — por eso cada domicilio
+                      lleva su propia jurisdicción en vez de una sola
+                      general. */}
+                  <div className="grid grid-cols-[1fr_120px] gap-4">
+                    <Field label="Domicilio fiscal">
+                      <input name="domicilio_fiscal" type="text" placeholder="Calle, número, piso, localidad…" className={inputCls} />
+                    </Field>
+                    <Field label="Jurisdicción">
+                      <input name="jurisdiccion_fiscal" type="text" placeholder="Ej: CABA" className={inputCls} />
+                    </Field>
+                  </div>
 
-                  <Field label="Domicilio fiscal">
-                    <input
-                      name="domicilio_fiscal"
-                      type="text"
-                      placeholder="Calle, número, piso, localidad…"
-                      className={inputCls}
-                    />
-                  </Field>
+                  <div className="grid grid-cols-[1fr_120px] gap-4">
+                    <Field label="Domicilio legal">
+                      <input name="domicilio_legal" type="text" placeholder="Calle, número, piso, localidad…" className={inputCls} />
+                    </Field>
+                    <Field label="Jurisdicción">
+                      <input name="jurisdiccion_legal" type="text" placeholder="Ej: CABA" className={inputCls} />
+                    </Field>
+                  </div>
 
-                  <Field label="Domicilio legal">
-                    <input
-                      name="domicilio_legal"
-                      type="text"
-                      placeholder="Calle, número, piso, localidad…"
-                      className={inputCls}
-                    />
-                  </Field>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500">
+                        ¿Tiene locales? <span className="font-normal text-gray-400">(sucursales en otras jurisdicciones)</span>
+                      </span>
+                      <Toggle value={tieneLocales} onChange={setTieneLocales} />
+                    </div>
+                    {tieneLocales && (
+                      <div className="mt-2">
+                        <LocalesEditor locales={locales} onChange={setLocales} />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Servicios activos — acá siempre es Sueldos (es la única

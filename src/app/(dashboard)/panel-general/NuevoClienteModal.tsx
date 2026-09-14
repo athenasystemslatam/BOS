@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
-import { EquipoMiembro, ClaveAcceso } from "@/types";
+import { EquipoMiembro, ClaveAcceso, Local } from "@/types";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
+import { LocalesEditor } from "@/components/LocalesEditor";
 import { crearClienteConServicios } from "./actions";
 
 type ServicioKey = `${string}:${string}`;
@@ -26,6 +27,8 @@ export function NuevoClienteModal({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [emailsContacto, setEmailsContacto] = useState<string[]>([]);
+  const [tieneLocales, setTieneLocales] = useState(false);
+  const [locales, setLocales] = useState<Local[]>([]);
 
   // serviciosActivos: key "servicio:subtipo" → responsable_id | ""
   const [serviciosActivos, setServiciosActivos] = useState<Record<ServicioKey, string>>({});
@@ -102,6 +105,8 @@ export function NuevoClienteModal({
       "emails_contacto",
       JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
     );
+    formData.set("tiene_locales", String(tieneLocales));
+    formData.set("locales", JSON.stringify(tieneLocales ? locales : []));
 
     if ("sueldos:general" in serviciosActivos) {
       formData.set("sueldos_fecha_inicio_liquidacion", fechaInicioLiquidacion);
@@ -206,37 +211,67 @@ export function NuevoClienteModal({
               <EmailsContactoEditor emails={emailsContacto} onChange={setEmailsContacto} />
             </div>
 
-            <div>
-              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
-                Jurisdicción de la empresa
-              </label>
-              <input
-                name="jurisdiccion_empresa"
-                className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
-                placeholder="Ej. CABA"
-              />
+            {/* Fiscal y legal pueden no coincidir en jurisdicción (ej. fiscal
+                en CABA, legal en PBA) — por eso cada domicilio lleva su
+                propia jurisdicción en vez de una sola general. */}
+            <div className="grid grid-cols-[1fr_120px] gap-2.5">
+              <div>
+                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                  Domicilio fiscal
+                </label>
+                <input
+                  name="domicilio_fiscal"
+                  className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
+                  placeholder="Calle, número, piso, localidad…"
+                />
+              </div>
+              <div>
+                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                  Jurisdicción
+                </label>
+                <input
+                  name="jurisdiccion_fiscal"
+                  className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
+                  placeholder="Ej. CABA"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-[1fr_120px] gap-2.5">
+              <div>
+                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                  Domicilio legal
+                </label>
+                <input
+                  name="domicilio_legal"
+                  className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
+                  placeholder="Calle, número, piso, localidad…"
+                />
+              </div>
+              <div>
+                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                  Jurisdicción
+                </label>
+                <input
+                  name="jurisdiccion_legal"
+                  className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
+                  placeholder="Ej. CABA"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
-                Domicilio fiscal
-              </label>
-              <input
-                name="domicilio_fiscal"
-                className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
-                placeholder="Calle, número, piso, localidad…"
-              />
-            </div>
-
-            <div>
-              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
-                Domicilio legal
-              </label>
-              <input
-                name="domicilio_legal"
-                className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
-                placeholder="Calle, número, piso, localidad…"
-              />
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle">
+                  ¿Tiene locales? <span className="normal-case font-normal text-ink-faint">(sucursales en otras jurisdicciones)</span>
+                </span>
+                <Toggle value={tieneLocales} onChange={setTieneLocales} />
+              </div>
+              {tieneLocales && (
+                <div className="mt-[9px]">
+                  <LocalesEditor locales={locales} onChange={setLocales} />
+                </div>
+              )}
             </div>
           </div>
 

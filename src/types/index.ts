@@ -21,6 +21,14 @@ export interface AccesoBloqueado {
   bloqueado_en: string;
 }
 
+// Local/sucursal adicional — Convenio Multilateral de IIBB reparte el
+// impuesto según en qué provincias hay establecimientos, no solo según el
+// domicilio fiscal. Se habilita con `tiene_locales` en Cliente.
+export interface Local {
+  domicilio: string;
+  jurisdiccion: string;
+}
+
 export interface Liquidadora {
   id: string;
   nombre: string;
@@ -40,13 +48,21 @@ export interface Cliente {
   cuil_arca?: string;
   emails_contacto?: string[];
   telefono?: string;
-  // Jurisdicción "de la empresa" (información básica) — distinta de
-  // `jurisdiccion` más abajo, que es la jurisdicción LABORAL usada
-  // específicamente por Rúbrica LSD (CABA/PBA/Otra + fechas de
-  // vencimiento). No confundir ni unificar los dos campos.
-  jurisdiccion_empresa?: string;
+  // Domicilio + jurisdicción fiscal y legal (información básica) — pueden
+  // no coincidir entre sí (ej. fiscal en CABA, legal en PBA), por eso cada
+  // domicilio lleva su propia jurisdicción en vez de una sola "jurisdicción
+  // de la empresa" general. Ninguno de los dos es `jurisdiccion` más abajo,
+  // que es la jurisdicción LABORAL usada específicamente por Rúbrica LSD
+  // (CABA/PBA/Otra + fechas de vencimiento) — no confundir ni unificar.
   domicilio_fiscal?: string;
+  jurisdiccion_fiscal?: string;
   domicilio_legal?: string;
+  jurisdiccion_legal?: string;
+  // Sucursales/locales en otras jurisdicciones (Convenio Multilateral de
+  // IIBB) — tiene_locales habilita/deshabilita la lista `locales` en la UI;
+  // al guardar con el toggle apagado, `locales` se vacía.
+  tiene_locales?: boolean;
+  locales?: Local[];
   liquidador_id: string;
   tipo_contribuyente: TipoContribuyente;
   es_quincenal: boolean;
