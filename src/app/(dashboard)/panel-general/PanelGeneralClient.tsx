@@ -117,21 +117,35 @@ export function PanelGeneralClient({
   // scrollear ~15px más y las dos se despegan cerca del final.
   const [scrollbarComp, setScrollbarComp] = useState(0);
 
-  // Sincronizar el scroll vertical entre las dos mitades. Se aplica directo
-  // en el evento (sin rAF) para que queden lo más pegadas posible; el lock
-  // evita el ida y vuelta infinito entre los dos onScroll.
-  const syncLock = useRef(false);
-  function syncVertical(desde: "body" | "frozen") {
-    if (syncLock.current) {
-      syncLock.current = false;
-      return;
+  // Sincronizar el scroll vertical entre las dos mitades. Antes se copiaba
+  // el scrollTop en el evento "scroll" de cada lado — ese evento a veces
+  // llega con un frame de atraso respecto al scroll real (se nota
+  // scrolleando seguido: las dos mitades se ven "a destiempo" por una
+  // fracción de segundo). Ahora se copia en cada frame de pantalla
+  // (requestAnimationFrame) mientras el mouse está scrolleando, así queda
+  // pegado al scroll real en vez de esperar a que el evento se despache.
+  // ladoActivoRef indica cuál de las dos mitades manda: se marca con
+  // onWheel (no con onScroll, que también se dispararía por la propia
+  // copia y generaría un ida y vuelta) — la tabla de escritorio es de
+  // mouse/trackpad únicamente, en mobile se usan las tarjetas.
+  const ladoActivoRef = useRef<"body" | "frozen">("body");
+  useLayoutEffect(() => {
+    let raf: number;
+    function loop() {
+      const body = bodyScrollRef.current;
+      const frozen = frozenScrollRef.current;
+      if (body && frozen) {
+        if (ladoActivoRef.current === "frozen") {
+          if (body.scrollTop !== frozen.scrollTop) body.scrollTop = frozen.scrollTop;
+        } else if (frozen.scrollTop !== body.scrollTop) {
+          frozen.scrollTop = body.scrollTop;
+        }
+      }
+      raf = requestAnimationFrame(loop);
     }
-    const src = desde === "body" ? bodyScrollRef.current : frozenScrollRef.current;
-    const dst = desde === "body" ? frozenScrollRef.current : bodyScrollRef.current;
-    if (!src || !dst || dst.scrollTop === src.scrollTop) return;
-    syncLock.current = true;
-    dst.scrollTop = src.scrollTop;
-  }
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const sinLiqSet = useMemo(() => new Set(sueldosSinLiquidadora), [sueldosSinLiquidadora]);
 
@@ -522,13 +536,14 @@ export function PanelGeneralClient({
                contenedor a la izquierda SIN scroll horizontal (por eso nunca
                tiembla ni deja asomar contenido), y todo el resto scrollea de
                costado a la derecha. El scroll vertical se sincroniza entre
-               las dos mitades (ver syncVertical). Reemplaza al viejo panel
-               con transform, que iba un frame atrás del scroll. */
+               las dos mitades por requestAnimationFrame (ver ladoActivoRef
+               más arriba). Reemplaza al viejo panel con transform, que iba
+               un frame atrás del scroll. */
             <div className="flex-1 min-h-0 flex overflow-hidden">
               {/* ── Mitad izquierda: solo Cliente ── */}
               <div
                 ref={frozenScrollRef}
-                onScroll={() => syncVertical("frozen")}
+                onWheel={() => { ladoActivoRef.current = "frozen"; }}
                 className="shrink-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {/* border-separate (no collapse): con collapse, Chrome se
@@ -608,7 +623,7 @@ export function PanelGeneralClient({
               {/* ── Mitad derecha: todo lo demás (scroll horizontal + vertical) ── */}
               <div
                 ref={bodyScrollRef}
-                onScroll={() => syncVertical("body")}
+                onWheel={() => { ladoActivoRef.current = "body"; }}
                 className="flex-1 min-w-0 overflow-auto pr-[26px] [scrollbar-gutter:stable]"
               >
                 <table className="w-full min-w-[880px] border-separate border-spacing-0 text-[12.5px] table-fixed">
