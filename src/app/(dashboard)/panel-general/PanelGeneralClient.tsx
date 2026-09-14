@@ -112,9 +112,6 @@ export function PanelGeneralClient({
   // "temblaba"). El scroll vertical de las dos mitades se sincroniza abajo.
   const bodyScrollRef = useRef<HTMLDivElement>(null);
   const frozenScrollRef = useRef<HTMLDivElement>(null);
-  const filaRef = useRef<HTMLTableRowElement>(null);
-  const filaBodyRef = useRef<HTMLTableRowElement>(null);
-  const [filaAltura, setFilaAltura] = useState(0);
   // Alto de la barra de scroll horizontal de la mitad derecha (0 si no hay).
   // La izquierda no la tiene, así que sin compensar esto la derecha puede
   // scrollear ~15px más y las dos se despegan cerca del final.
@@ -207,38 +204,26 @@ export function PanelGeneralClient({
     [filtradas]
   );
 
-  // Las dos mitades tienen que quedar alineadas fila a fila.
-  //
-  // El encabezado YA NO se mide por JS (eso hacía que, nada más entrar a
-  // la pantalla, se viera el "Cliente" de la izquierda chico y después
-  // estirarse de golpe cuando el efecto corregía la altura — el HTML del
-  // servidor se pinta antes de que el JS llegue a medir/corregir). Ahora
-  // el <thead> izquierdo replica la fila 1 invisible de Impuestos (mismo
-  // padding/tipografía, solo que sin texto visible) para que el propio
-  // layout nativo de la tabla le dé la misma altura que a la derecha,
-  // sin depender de ninguna medición — correcto ya en el primer pintado.
-  //
-  // Las filas del cuerpo sí se siguen midiendo (acá no hay un patrón fijo
-  // que copiar: la altura depende del contenido real de cada lado) — se
-  // toma la altura natural de AMBOS lados (la primera fila de cada tabla)
-  // y se le impone a las dos el techo redondeado hacia arriba; si se
-  // dejara que cada lado use la suya, la diferencia sub-pixel entre uno y
-  // otro se va sumando fila a fila y el scroll vertical se desfasa cada
-  // vez más.
+  // Las dos mitades tienen que quedar alineadas fila a fila — encabezado Y
+  // filas del cuerpo se resuelven ahora con el mismo truco (ver el
+  // <thead> izquierdo más abajo): en vez de medir por JS el alto real de
+  // un lado y aplicárselo al otro (eso hacía que, nada más entrar a la
+  // pantalla, se viera todo chico y estirarse de golpe apenas el efecto
+  // corregía la altura — el HTML del servidor se pinta antes de que el JS
+  // llegue a medir/corregir), cada fila de la derecha lleva un espaciador
+  // invisible con el mismo molde exacto (mismo tamaño de fuente/line-height)
+  // que el bloque nombre+CUIT de la izquierda. Al ser el mismo molde de
+  // CSS en las dos tablas, el layout nativo de cada una les da la misma
+  // altura de fila sin depender de ninguna medición — correcto ya desde
+  // el primer pintado, sin flash posible.
   const hayFilas = filtradas.length > 0;
   useLayoutEffect(() => {
     const medir = () => {
-      const izq = filaRef.current?.getBoundingClientRect().height ?? 0;
-      const der = filaBodyRef.current?.getBoundingClientRect().height ?? 0;
-      const alto = Math.max(izq, der);
-      if (alto) setFilaAltura(Math.ceil(alto));
       const b = bodyScrollRef.current;
       if (b) setScrollbarComp(b.offsetHeight - b.clientHeight);
     };
     medir();
     const ro = new ResizeObserver(medir);
-    if (filaRef.current) ro.observe(filaRef.current);
-    if (filaBodyRef.current) ro.observe(filaBodyRef.current);
     if (bodyScrollRef.current) ro.observe(bodyScrollRef.current);
     window.addEventListener("resize", medir);
     return () => {
@@ -581,14 +566,12 @@ export function PanelGeneralClient({
                     </tr>
                   </thead>
                   <tbody>
-                    {filasConEstilo.map(({ empresa, activa, zebra }, ri) => {
+                    {filasConEstilo.map(({ empresa, activa, zebra }) => {
                       const filaHover = hoverRow === empresa.id;
                       const rowBg = filaHover ? "bg-paper-hover" : zebra;
                       return (
                         <tr
                           key={empresa.id}
-                          ref={ri === 0 ? filaRef : undefined}
-                          style={{ height: filaAltura || undefined }}
                           onMouseEnter={() => setHoverRow(empresa.id)}
                           onMouseLeave={() => setHoverRow(null)}
                         >
@@ -719,7 +702,7 @@ export function PanelGeneralClient({
                 </thead>
 
                 <tbody>
-                  {filasConEstilo.map(({ empresa, activa, zebra }, ri) => {
+                  {filasConEstilo.map(({ empresa, activa, zebra }) => {
                     const activos = serviciosActivos[empresa.id] ?? [];
                     const confirmBajaCliente: Confirmando = { tipo: "cliente", clienteId: empresa.id };
                     const pendienteBajaCliente = esConfirmando(confirmBajaCliente);
@@ -729,8 +712,6 @@ export function PanelGeneralClient({
                     return (
                       <tr
                         key={empresa.id}
-                        ref={ri === 0 ? filaBodyRef : undefined}
-                        style={{ height: filaAltura || undefined }}
                         onMouseEnter={() => setHoverRow(empresa.id)}
                         onMouseLeave={() => setHoverRow(null)}
                       >
@@ -806,6 +787,17 @@ export function PanelGeneralClient({
 
                         {/* Estado */}
                         <td className={clsx("px-3.5 py-[13px] text-center border-b border-b-line-row border-l border-l-line-group whitespace-nowrap", rowBg)}>
+                          {/* Espaciador invisible: mismo molde exacto (tamaño
+                              de fuente + line-height) que el bloque
+                              nombre+CUIT de la mitad izquierda. inline-block
+                              + w-0 + overflow-hidden: no ocupa ancho ni se ve,
+                              pero su alto entra en el cálculo de la línea, así
+                              esta fila queda tan alta como la de enfrente sin
+                              medir nada por JS — ver comentario más arriba. */}
+                          <span className="invisible inline-block w-0 overflow-hidden align-middle" aria-hidden>
+                            <span className="block text-[13px] font-medium tracking-[-.012em] whitespace-nowrap">X</span>
+                            <span className="block font-plex text-[10.5px] mt-[3px] whitespace-nowrap">X</span>
+                          </span>
                           <span className={clsx("inline-flex items-center gap-[7px] text-[11.5px] font-medium", activa ? "text-activo" : "text-ink-subtle")}>
                             <span className={clsx("w-[5px] h-[5px] rounded-full shrink-0", activa ? "bg-activo-dot" : "bg-dot")} />
                             {activa ? "Activa" : "Inactiva"}
