@@ -201,6 +201,7 @@ export interface VistEmpresa {
   estado: EstadoCliente;
   emails_contacto: string[];
   fecha_inicio_liquidacion: string | null;
+  tipo_contribuyente: TipoContribuyente;
   responsable_sueldos: string | null;
   responsable_impuestos_iva: string | null;
   responsable_impuestos_iibb: string | null;

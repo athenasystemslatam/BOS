@@ -3,7 +3,7 @@
 import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Download, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import clsx from "clsx";
-import { EquipoMiembro, VistEmpresa } from "@/types";
+import { EquipoMiembro, TipoContribuyente, VistEmpresa } from "@/types";
 import { NuevoClienteModal } from "./NuevoClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
 import { darDeBajaServicio, darDeBajaCliente } from "./actions";
@@ -87,6 +87,7 @@ export function PanelGeneralClient({
 }) {
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<"activo" | "inactivo" | "">("activo");
+  const [filtroTipo, setFiltroTipo] = useState<TipoContribuyente | "">("");
   const [soloSinResponsable, setSoloSinResponsable] = useState(false);
   // Un no-admin que ya figura como responsable de al menos un cliente
   // arranca viendo su propia cartera en vez de "Cualquier responsable" — un
@@ -194,6 +195,7 @@ export function PanelGeneralClient({
     return empresas.filter((e) => {
       if (q && !normalizar(e.nombre).includes(q) && !(qCuit && e.cuit.includes(qCuit))) return false;
       if (filtroEstado && e.estado !== filtroEstado) return false;
+      if (filtroTipo && e.tipo_contribuyente !== filtroTipo) return false;
       if (soloSinResponsable && !empresasSinResponsable.has(e.id)) return false;
       // "Cualquier área": alcanza con que la persona sea responsable de un
       // solo servicio (ej. solo IVA) para que la empresa aparezca — no hace
@@ -201,7 +203,7 @@ export function PanelGeneralClient({
       if (filtroResponsable && !RESPONSABLE_FIELDS.some((f) => e[f] === filtroResponsable)) return false;
       return true;
     });
-  }, [empresas, search, filtroEstado, soloSinResponsable, empresasSinResponsable, filtroResponsable]);
+  }, [empresas, search, filtroEstado, filtroTipo, soloSinResponsable, empresasSinResponsable, filtroResponsable]);
 
   const gruposVisibles = GRUPOS;
   const columnasVisibles = gruposVisibles.flatMap((g) => g.cols.map((c) => ({ ...c, grupo: g.key })));
@@ -387,6 +389,17 @@ export function PanelGeneralClient({
             ))}
           </select>
 
+          <select
+            value={filtroTipo}
+            onChange={(e) => setFiltroTipo(e.target.value as TipoContribuyente | "")}
+            className="text-[12.5px] text-ink border border-line-input rounded-[9px] pl-3 pr-2 py-[9px] bg-paper outline-none focus:border-bordo"
+          >
+            <option value="">Cualquier tipo</option>
+            <option value="empresa">Empresa</option>
+            <option value="monotributista">Monotributista</option>
+            <option value="inscripto">Inscripto</option>
+          </select>
+
           {isAdmin && (
             <a
               href="/api/exportar/clientes"
@@ -431,7 +444,7 @@ export function PanelGeneralClient({
           {filtradas.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-6 py-16 text-center">
               <p className="text-gray-400 text-sm">
-                {search || filtroEstado !== "activo"
+                {search || filtroEstado !== "activo" || filtroTipo
                   ? "No hay clientes que coincidan con los filtros"
                   : "No hay clientes cargados aún"}
               </p>
