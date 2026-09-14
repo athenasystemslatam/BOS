@@ -24,7 +24,7 @@ import {
   RotateCcw,
   Pencil,
 } from "lucide-react";
-import { Cliente, ClaveAcceso, Liquidadora, Periodo, Tarea } from "@/types";
+import { Cliente, ClaveAcceso, EmailContacto, Liquidadora, Periodo, Tarea } from "@/types";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import {
@@ -182,8 +182,16 @@ function ClavesModal({
   onSaved: () => void;
 }) {
   const claves: ClaveAcceso[] = cliente.claves_acceso ?? [];
+  // Clientes editados antes de agregar la aclaración por email todavía no
+  // tienen emails_contacto_detalle cargado — se completa con la columna
+  // vieja (solo direcciones) para no perderlos de vista, con aclaración
+  // vacía hasta que alguien la cargue.
+  const emailsIniciales: EmailContacto[] =
+    cliente.emails_contacto_detalle && cliente.emails_contacto_detalle.length > 0
+      ? cliente.emails_contacto_detalle
+      : (cliente.emails_contacto ?? []).map((email) => ({ email, aclaracion: "" }));
   const [edit, setEdit] = useState(false);
-  const [emails, setEmails] = useState<string[]>(cliente.emails_contacto ?? []);
+  const [emails, setEmails] = useState<EmailContacto[]>(emailsIniciales);
   const [cuil, setCuil] = useState(cliente.cuil_arca ?? "");
   const [tel, setTel] = useState(cliente.telefono ?? "");
   const [obs, setObs] = useState(cliente.observaciones ?? "");
@@ -195,7 +203,7 @@ function ClavesModal({
     setErr(null);
     startGuardar(async () => {
       const r = await editarDatosCliente(cliente.id, {
-        emails_contacto: emails,
+        emails_contacto_detalle: emails,
         cuil_arca: cuil.trim() || null,
         telefono: tel.trim() || null,
         observaciones: obs.trim() || null,
@@ -303,7 +311,7 @@ function ClavesModal({
               <button
                 onClick={() => {
                   setEdit(false);
-                  setEmails(cliente.emails_contacto ?? []);
+                  setEmails(emailsIniciales);
                   setCuil(cliente.cuil_arca ?? "");
                   setTel(cliente.telefono ?? "");
                   setObs(cliente.observaciones ?? "");
@@ -326,19 +334,24 @@ function ClavesModal({
         ) : (
           <>
             {/* Emails de contacto */}
-            {cliente.emails_contacto && cliente.emails_contacto.length > 0 && (
+            {emailsIniciales.length > 0 && (
               <div className="mb-4">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Email{cliente.emails_contacto.length > 1 ? "s" : ""} de contacto
+                  Email{emailsIniciales.length > 1 ? "s" : ""} de contacto
                 </p>
                 <div className="space-y-1.5">
-                  {cliente.emails_contacto.map((email, i) => (
+                  {emailsIniciales.map((e, i) => (
                     <div
                       key={i}
                       className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 font-mono text-[13px] text-gray-700"
                     >
-                      {email}
-                      <CopyButton value={email} />
+                      {e.email}
+                      <CopyButton value={e.email} />
+                      {e.aclaracion && (
+                        <span className="ml-auto shrink-0 font-sans text-[11px] font-medium text-bordo bg-bordo/5 px-2 py-0.5 rounded-full">
+                          {e.aclaracion}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

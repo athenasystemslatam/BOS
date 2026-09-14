@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
-import { EquipoMiembro, ClaveAcceso, Local } from "@/types";
+import { EquipoMiembro, ClaveAcceso, EmailContacto, Local } from "@/types";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
@@ -40,7 +40,7 @@ export function EditarClienteModal({
   const [jurisdiccionLegal, setJurisdiccionLegal] = useState("");
   const [tieneLocales, setTieneLocales] = useState(false);
   const [locales, setLocales] = useState<Local[]>([]);
-  const [emailsContacto, setEmailsContacto] = useState<string[]>([]);
+  const [emailsContacto, setEmailsContacto] = useState<EmailContacto[]>([]);
 
   // serviciosActivos: key "servicio:subtipo" → responsable_id | ""
   const [serviciosActivos, setServiciosActivos] = useState<Record<ServicioKey, string>>({});
@@ -79,7 +79,14 @@ export function EditarClienteModal({
       setJurisdiccionLegal(cliente.jurisdiccion_legal ?? "");
       setTieneLocales(!!cliente.tiene_locales);
       setLocales(Array.isArray(cliente.locales) ? cliente.locales : []);
-      setEmailsContacto(cliente.emails_contacto ?? []);
+      // Clientes editados antes de agregar la aclaración por email todavía
+      // no tienen emails_contacto_detalle cargado — se completa con la
+      // columna vieja (solo direcciones) para no perderlos de vista.
+      setEmailsContacto(
+        Array.isArray(cliente.emails_contacto_detalle) && cliente.emails_contacto_detalle.length > 0
+          ? cliente.emails_contacto_detalle
+          : (cliente.emails_contacto ?? []).map((email: string) => ({ email, aclaracion: "" }))
+      );
 
       const activos: Record<ServicioKey, string> = {};
       for (const s of servicios) {
@@ -151,8 +158,12 @@ export function EditarClienteModal({
 
     formData.set("servicios", JSON.stringify(serviciosPayload));
     formData.set(
-      "emails_contacto",
-      JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
+      "emails_contacto_detalle",
+      JSON.stringify(
+        emailsContacto
+          .map((e) => ({ email: e.email.trim(), aclaracion: e.aclaracion.trim() }))
+          .filter((e) => e.email)
+      )
     );
     formData.set("tiene_locales", String(tieneLocales));
     formData.set("locales", JSON.stringify(tieneLocales ? locales : []));

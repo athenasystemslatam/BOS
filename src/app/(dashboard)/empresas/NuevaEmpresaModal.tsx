@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { crearEmpresa } from "./actions";
-import { Liquidadora, ClaveAcceso, Local } from "@/types";
+import { Liquidadora, ClaveAcceso, EmailContacto, Local } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
@@ -63,7 +63,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
   const [jurisdiccion, setJurisdiccion] = useState("CABA");
   const [sindicatoNombre, setSindicatoNombre] = useState("");
   const [claves, setClaves] = useState<ClaveAcceso[]>([]);
-  const [emailsContacto, setEmailsContacto] = useState<string[]>([]);
+  const [emailsContacto, setEmailsContacto] = useState<EmailContacto[]>([]);
   const [tieneLocales, setTieneLocales] = useState(false);
   const [locales, setLocales] = useState<Local[]>([]);
 
@@ -108,8 +108,12 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
     formData.set(
-      "emails_contacto",
-      JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
+      "emails_contacto_detalle",
+      JSON.stringify(
+        emailsContacto
+          .map((e) => ({ email: e.email.trim(), aclaracion: e.aclaracion.trim() }))
+          .filter((e) => e.email)
+      )
     );
     formData.set("tiene_locales", String(tieneLocales));
     formData.set("locales", JSON.stringify(tieneLocales ? locales : []));

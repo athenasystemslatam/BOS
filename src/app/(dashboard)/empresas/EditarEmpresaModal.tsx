@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { editarEmpresa } from "./actions";
-import { Cliente, Liquidadora, ClaveAcceso, Local } from "@/types";
+import { Cliente, Liquidadora, ClaveAcceso, EmailContacto, Local } from "@/types";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
@@ -61,7 +61,14 @@ export function EditarEmpresaModal({
     JURISDICCIONES.includes(cliente.jurisdiccion ?? "") ? (cliente.jurisdiccion as string) : "Otra"
   );
   const [claves, setClaves] = useState<ClaveAcceso[]>(cliente.claves_acceso ?? []);
-  const [emailsContacto, setEmailsContacto] = useState<string[]>(cliente.emails_contacto ?? []);
+  // Clientes editados antes de agregar la aclaración por email todavía no
+  // tienen emails_contacto_detalle cargado — se completa con la columna
+  // vieja (solo direcciones) para no perderlos de vista.
+  const [emailsContacto, setEmailsContacto] = useState<EmailContacto[]>(
+    cliente.emails_contacto_detalle && cliente.emails_contacto_detalle.length > 0
+      ? cliente.emails_contacto_detalle
+      : (cliente.emails_contacto ?? []).map((email) => ({ email, aclaracion: "" }))
+  );
   const [tieneLocales, setTieneLocales] = useState(!!cliente.tiene_locales);
   const [locales, setLocales] = useState<Local[]>(cliente.locales ?? []);
   const [error, setError] = useState<string | null>(null);
@@ -86,8 +93,12 @@ export function EditarEmpresaModal({
     formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
     formData.set(
-      "emails_contacto",
-      JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
+      "emails_contacto_detalle",
+      JSON.stringify(
+        emailsContacto
+          .map((e) => ({ email: e.email.trim(), aclaracion: e.aclaracion.trim() }))
+          .filter((e) => e.email)
+      )
     );
     formData.set("tiene_locales", String(tieneLocales));
     formData.set("locales", JSON.stringify(tieneLocales ? locales : []));

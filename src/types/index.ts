@@ -29,6 +29,18 @@ export interface Local {
   jurisdiccion: string;
 }
 
+// Email de contacto con aclaración de a qué área corresponde (sueldos,
+// impuestos, administración...) — reemplaza en los formularios/edición a
+// `emails_contacto` (Cliente.emails_contacto de abajo), que sigue existiendo
+// en la base tal cual estaba (solo las direcciones, sin aclaración) para no
+// tener que migrar en el lugar una columna con datos reales de producción;
+// se sigue escribiendo en paralelo al guardar para que lo que ya la lee
+// (exportar a Excel, tarjetas mobile) no tenga que cambiar.
+export interface EmailContacto {
+  email: string;
+  aclaracion: string;
+}
+
 export interface Liquidadora {
   id: string;
   nombre: string;
@@ -47,6 +59,7 @@ export interface Cliente {
   terminacion_cuit: number;
   cuil_arca?: string;
   emails_contacto?: string[];
+  emails_contacto_detalle?: EmailContacto[];
   telefono?: string;
   // Domicilio + jurisdicción fiscal y legal (información básica) — pueden
   // no coincidir entre sí (ej. fiscal en CABA, legal en PBA), por eso cada

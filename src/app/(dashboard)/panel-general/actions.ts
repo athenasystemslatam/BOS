@@ -12,11 +12,18 @@ function parseCuit(raw: string) {
 
 const MAX_EMAILS_CONTACTO = 5;
 
-function parseEmailsContacto(formData: FormData): string[] {
+// emails_contacto_detalle es la fuente nueva (email + aclaración de área).
+// emails_contacto (solo direcciones, la columna vieja) se sigue derivando y
+// guardando en paralelo para no tener que tocar lo que ya la lee (exportar
+// a Excel, tarjetas mobile) — ver comentario en types/index.ts.
+function parseEmailsContactoDetalle(formData: FormData): { email: string; aclaracion: string }[] {
   try {
-    const raw = JSON.parse((formData.get("emails_contacto") as string) || "[]");
+    const raw = JSON.parse((formData.get("emails_contacto_detalle") as string) || "[]");
     if (!Array.isArray(raw)) return [];
-    return raw.map((e) => String(e).trim()).filter(Boolean).slice(0, MAX_EMAILS_CONTACTO);
+    return raw
+      .map((e) => ({ email: String(e?.email ?? "").trim(), aclaracion: String(e?.aclaracion ?? "").trim() }))
+      .filter((e) => e.email)
+      .slice(0, MAX_EMAILS_CONTACTO);
   } catch {
     return [];
   }
@@ -39,6 +46,9 @@ function parseLocales(formData: FormData): { domicilio: string; jurisdiccion: st
 const ERROR_JURISDICCION_LOCALES =
   'Para guardar jurisdicción/domicilios/locales, ejecutá primero en Supabase: alter table clientes add column if not exists domicilio_fiscal text, add column if not exists jurisdiccion_fiscal text, add column if not exists domicilio_legal text, add column if not exists jurisdiccion_legal text, add column if not exists tiene_locales boolean default false, add column if not exists locales jsonb default \'[]\'::jsonb;';
 
+const ERROR_EMAILS_DETALLE =
+  'Para guardar la aclaración de los emails, ejecutá primero en Supabase: alter table clientes add column if not exists emails_contacto_detalle jsonb default \'[]\'::jsonb;';
+
 export async function crearClienteConServicios(formData: FormData) {
   try {
     await requireAdmin();
@@ -51,7 +61,8 @@ export async function crearClienteConServicios(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuitRaw = (formData.get("cuit") as string)?.trim();
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
-  const emails_contacto = parseEmailsContacto(formData);
+  const emails_contacto_detalle = parseEmailsContactoDetalle(formData);
+  const emails_contacto = emails_contacto_detalle.map((e) => e.email);
   const telefono = (formData.get("telefono") as string)?.trim() || null;
   const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
   const jurisdiccion_fiscal = (formData.get("jurisdiccion_fiscal") as string)?.trim() || null;
@@ -82,6 +93,7 @@ export async function crearClienteConServicios(formData: FormData) {
       terminacion_cuit: parsed.terminacion,
       tipo_contribuyente,
       emails_contacto,
+      emails_contacto_detalle,
       telefono,
       domicilio_fiscal,
       jurisdiccion_fiscal,
@@ -103,6 +115,7 @@ export async function crearClienteConServicios(formData: FormData) {
       clienteError.message.includes("locales")
     )
       return { error: ERROR_JURISDICCION_LOCALES };
+    if (clienteError.message.includes("emails_contacto_detalle")) return { error: ERROR_EMAILS_DETALLE };
     return { error: clienteError.message };
   }
 
@@ -215,7 +228,8 @@ export async function editarClienteConServicios(formData: FormData) {
   const nombre = (formData.get("nombre") as string)?.trim();
   const cuitRaw = (formData.get("cuit") as string)?.trim();
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
-  const emails_contacto = parseEmailsContacto(formData);
+  const emails_contacto_detalle = parseEmailsContactoDetalle(formData);
+  const emails_contacto = emails_contacto_detalle.map((e) => e.email);
   const telefono = (formData.get("telefono") as string)?.trim() || null;
   const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
   const jurisdiccion_fiscal = (formData.get("jurisdiccion_fiscal") as string)?.trim() || null;
@@ -246,6 +260,7 @@ export async function editarClienteConServicios(formData: FormData) {
       terminacion_cuit: parsed.terminacion,
       tipo_contribuyente,
       emails_contacto,
+      emails_contacto_detalle,
       telefono,
       domicilio_fiscal,
       jurisdiccion_fiscal,
@@ -267,6 +282,7 @@ export async function editarClienteConServicios(formData: FormData) {
       clienteError.message.includes("locales")
     )
       return { error: ERROR_JURISDICCION_LOCALES };
+    if (clienteError.message.includes("emails_contacto_detalle")) return { error: ERROR_EMAILS_DETALLE };
     return { error: clienteError.message };
   }
 

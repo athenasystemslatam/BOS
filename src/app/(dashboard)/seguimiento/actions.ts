@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireLiquidadoraOrAdmin, requireAreaOrAdmin } from "@/lib/auth";
 
 import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
-import { ClaveAcceso, Periodo, Tarea } from "@/types";
+import { ClaveAcceso, EmailContacto, Periodo, Tarea } from "@/types";
 import type { CampoManual } from "@/lib/drive";
 export type { CampoManual } from "@/lib/drive";
 
@@ -28,7 +28,7 @@ const MAX_EMAILS_CONTACTO = 5;
 export async function editarDatosCliente(
   clienteId: string,
   datos: {
-    emails_contacto: string[];
+    emails_contacto_detalle: EmailContacto[];
     cuil_arca: string | null;
     telefono: string | null;
     observaciones: string | null;
@@ -43,10 +43,15 @@ export async function editarDatosCliente(
 
   const admin = createAdminClient();
 
-  const emails = (datos.emails_contacto ?? [])
-    .map((e) => String(e).trim())
-    .filter(Boolean)
+  // emails_contacto_detalle es la fuente nueva (email + aclaración de
+  // área). emails_contacto (solo direcciones, la columna vieja) se sigue
+  // derivando y guardando en paralelo para no tener que tocar lo que ya la
+  // lee (exportar a Excel, tarjetas mobile) — ver types/index.ts.
+  const emails_contacto_detalle = (Array.isArray(datos.emails_contacto_detalle) ? datos.emails_contacto_detalle : [])
+    .map((e) => ({ email: String(e?.email ?? "").trim(), aclaracion: String(e?.aclaracion ?? "").trim() }))
+    .filter((e) => e.email)
     .slice(0, MAX_EMAILS_CONTACTO);
+  const emails_contacto = emails_contacto_detalle.map((e) => e.email);
 
   const cuil_arca = datos.cuil_arca?.trim() || null;
   const telefono = datos.telefono?.trim() || null;
@@ -64,7 +69,8 @@ export async function editarDatosCliente(
   const { error } = await admin
     .from("clientes")
     .update({
-      emails_contacto: emails,
+      emails_contacto,
+      emails_contacto_detalle,
       cuil_arca,
       telefono,
       observaciones,
@@ -82,6 +88,11 @@ export async function editarDatosCliente(
     if (error.message.includes("telefono")) {
       return {
         error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;',
+      };
+    }
+    if (error.message.includes("emails_contacto_detalle")) {
+      return {
+        error: 'Para guardar la aclaración de los emails, ejecutá primero en Supabase: alter table clientes add column if not exists emails_contacto_detalle jsonb default \'[]\'::jsonb;',
       };
     }
     return { error: error.message };

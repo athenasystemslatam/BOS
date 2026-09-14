@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import clsx from "clsx";
-import { EquipoMiembro, ClaveAcceso, Local } from "@/types";
+import { EquipoMiembro, ClaveAcceso, EmailContacto, Local } from "@/types";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
@@ -26,7 +26,7 @@ export function NuevoClienteModal({
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [emailsContacto, setEmailsContacto] = useState<string[]>([]);
+  const [emailsContacto, setEmailsContacto] = useState<EmailContacto[]>([]);
   const [tieneLocales, setTieneLocales] = useState(false);
   const [locales, setLocales] = useState<Local[]>([]);
 
@@ -102,8 +102,12 @@ export function NuevoClienteModal({
 
     formData.set("servicios", JSON.stringify(serviciosPayload));
     formData.set(
-      "emails_contacto",
-      JSON.stringify(emailsContacto.map((e) => e.trim()).filter(Boolean))
+      "emails_contacto_detalle",
+      JSON.stringify(
+        emailsContacto
+          .map((e) => ({ email: e.email.trim(), aclaracion: e.aclaracion.trim() }))
+          .filter((e) => e.email)
+      )
     );
     formData.set("tiene_locales", String(tieneLocales));
     formData.set("locales", JSON.stringify(tieneLocales ? locales : []));

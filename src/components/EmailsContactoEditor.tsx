@@ -1,23 +1,26 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
+import type { EmailContacto } from "@/types";
 
 const MAX_EMAILS = 5;
 
-// Editor de la lista de emails de contacto de un cliente — mismo patrón de
-// agregar/sacar filas que ClavesAccesoEditor, compartido entre los 4
-// modales de Nueva/Editar empresa (Panel General y Clientes). Tope de 5
-// (ver también el recorte del lado del servidor en actions.ts de ambas
-// secciones) para que la ficha del cliente no crezca sin límite.
+// Editor de la lista de emails de contacto de un cliente, cada uno con su
+// aclaración de área (sueldos, impuestos, administración...) — mismo patrón
+// de agregar/sacar filas que ClavesAccesoEditor/LocalesEditor, compartido
+// entre los 4 modales de Nueva/Editar empresa (Panel General y Clientes) y
+// la llavecita de Seguimiento. Tope de 5 (ver también el recorte del lado
+// del servidor en actions.ts) para que la ficha del cliente no crezca sin
+// límite.
 export function EmailsContactoEditor({
   emails,
   onChange,
 }: {
-  emails: string[];
-  onChange: (e: string[]) => void;
+  emails: EmailContacto[];
+  onChange: (e: EmailContacto[]) => void;
 }) {
-  function update(i: number, value: string) {
-    onChange(emails.map((e, idx) => (idx === i ? value : e)));
+  function update(i: number, field: keyof EmailContacto, value: string) {
+    onChange(emails.map((e, idx) => (idx === i ? { ...e, [field]: value } : e)));
   }
 
   function remove(i: number) {
@@ -26,19 +29,26 @@ export function EmailsContactoEditor({
 
   function add() {
     if (emails.length >= MAX_EMAILS) return;
-    onChange([...emails, ""]);
+    onChange([...emails, { email: "", aclaracion: "" }]);
   }
 
   return (
     <div className="space-y-2">
-      {emails.map((email, i) => (
+      {emails.map((e, i) => (
         <div key={i} className="flex items-center gap-2">
           <input
             type="email"
-            value={email}
-            onChange={(e) => update(i, e.target.value)}
+            value={e.email}
+            onChange={(ev) => update(i, "email", ev.target.value)}
             placeholder="contacto@cliente.com"
             className="flex-1 min-w-0 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
+          />
+          <input
+            type="text"
+            value={e.aclaracion}
+            onChange={(ev) => update(i, "aclaracion", ev.target.value)}
+            placeholder="Área (sueldos, impuestos…)"
+            className="w-[150px] shrink-0 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
           />
           <button
             type="button"
