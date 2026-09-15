@@ -1113,7 +1113,7 @@ export function SeguimientoClient({
                 {/* Top row: name + status */}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-semibold text-gray-800 truncate">{cliente.nombre}</p>
+                    <p className="text-[14px] font-semibold text-gray-800 truncate" title={cliente.nombre}>{cliente.nombre}</p>
                     <p className="text-[11px] text-gray-400 mt-0.5">{cliente.liquidadora?.nombre ?? "—"}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1404,7 +1404,10 @@ export function SeguimientoClient({
                             {cliente.nombre.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-[13px] font-medium text-gray-800 truncate max-w-[150px]">
+                            <p
+                              className="text-[13px] font-medium text-gray-800 truncate max-w-[150px]"
+                              title={cliente.nombre}
+                            >
                               {cliente.nombre}
                             </p>
                             <p className="text-[10px] text-gray-400 font-mono">
