@@ -157,6 +157,14 @@ export async function toggleManual(
   return error ? { error: error.message } : { success: true };
 }
 
+// A diferencia de recibos/F.931/etc. (que sí son por mes), la cantidad de
+// legajos es un dato del CLIENTE — casi nunca cambia de un mes a otro. Por
+// eso editarlo desde cualquier período lo actualiza en todos los períodos
+// de ese cliente, pasados y futuros (no solo copia hacia adelante al crear
+// un período nuevo, como hace copiarLegajosDelHistorial — acá se
+// sobreescribe todo lo que ya existía). Si mañana un cliente toma o
+// despide gente y el número realmente cambia solo de ahí en más, hay que
+// tenerlo en cuenta: por ahora se pisa parejo en todos los meses.
 export async function updateLegajos(
   clienteId: string,
   periodoId: string,
@@ -169,13 +177,26 @@ export async function updateLegajos(
   }
 
   const admin = createAdminClient();
-  const { error } = await admin
+
+  // Asegurar que la fila del período que se está viendo exista con este
+  // valor (puede no existir todavía si es la primera vez que se toca ese
+  // período para este cliente).
+  const { error: errorActual } = await admin
     .from("tareas")
     .upsert(
       { cliente_id: clienteId, periodo_id: periodoId, legajos_cantidad: cantidad },
       { onConflict: "cliente_id,periodo_id" }
     );
-  return error ? { error: error.message } : { success: true };
+  if (errorActual) return { error: errorActual.message };
+
+  // Propagar el mismo valor a todos los demás períodos ya existentes de
+  // este cliente (pasados y futuros).
+  const { error: errorResto } = await admin
+    .from("tareas")
+    .update({ legajos_cantidad: cantidad })
+    .eq("cliente_id", clienteId);
+
+  return errorResto ? { error: errorResto.message } : { success: true };
 }
 
 // A propósito sin requireLiquidadoraOrAdmin: cualquier usuario autenticado y
