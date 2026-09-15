@@ -92,7 +92,6 @@ export function PanelGeneralClient({
   miNombre: string | null;
 }) {
   const [search, setSearch] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState<"activo" | "inactivo" | "">("activo");
   const [filtroTipo, setFiltroTipo] = useState<TipoContribuyente | "">("");
   const [soloSinResponsable, setSoloSinResponsable] = useState(false);
   // Un no-admin que ya figura como responsable de al menos un cliente
@@ -200,7 +199,6 @@ export function PanelGeneralClient({
     const qCuit = q.replace(/\D/g, "");
     return empresas.filter((e) => {
       if (q && !normalizar(e.nombre).includes(q) && !(qCuit && e.cuit.includes(qCuit))) return false;
-      if (filtroEstado && e.estado !== filtroEstado) return false;
       if (filtroTipo && e.tipo_contribuyente !== filtroTipo) return false;
       if (soloSinResponsable && !empresasSinResponsable.has(e.id)) return false;
       // "Cualquier área": alcanza con que la persona sea responsable de un
@@ -209,7 +207,7 @@ export function PanelGeneralClient({
       if (filtroResponsable && !RESPONSABLE_FIELDS.some((f) => e[f] === filtroResponsable)) return false;
       return true;
     });
-  }, [empresas, search, filtroEstado, filtroTipo, soloSinResponsable, empresasSinResponsable, filtroResponsable]);
+  }, [empresas, search, filtroTipo, soloSinResponsable, empresasSinResponsable, filtroResponsable]);
 
   const gruposVisibles = GRUPOS;
   const columnasVisibles = gruposVisibles.flatMap((g) => g.cols.map((c) => ({ ...c, grupo: g.key })));
@@ -289,7 +287,6 @@ export function PanelGeneralClient({
 
   function verSinAsignar() {
     setSoloSinResponsable(true);
-    setFiltroEstado("activo");
     setSearch("");
   }
 
@@ -361,27 +358,6 @@ export function PanelGeneralClient({
             />
           </div>
 
-          <div className="flex items-center gap-[3px] p-[3px] bg-[#E4E0D8] rounded-[9px]">
-            {(
-              [
-                { v: "activo", label: "Activas" },
-                { v: "inactivo", label: "Inactivas" },
-                { v: "", label: "Todas" },
-              ] as const
-            ).map(({ v, label }) => (
-              <button
-                key={label}
-                onClick={() => setFiltroEstado(v)}
-                className={clsx(
-                  "text-xs font-semibold px-3 py-1.5 rounded-[7px] transition-colors",
-                  filtroEstado === v ? "bg-paper text-bordo shadow-[0_1px_2px_rgba(23,20,26,.12)]" : "text-ink-subtle hover:text-ink"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
           <div className="hidden sm:block w-px h-[22px] bg-line-input mx-0.5" />
 
           <select
@@ -450,7 +426,7 @@ export function PanelGeneralClient({
           {filtradas.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-6 py-16 text-center">
               <p className="text-gray-400 text-sm">
-                {search || filtroEstado !== "activo" || filtroTipo
+                {search || filtroTipo
                   ? "No hay clientes que coincidan con los filtros"
                   : "No hay clientes cargados aún"}
               </p>
