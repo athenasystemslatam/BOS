@@ -105,20 +105,22 @@ export default async function DashboardPage({
 
   const resumen = liquidadorasList.map((liq) => {
     const mis = clientesList.filter((c) => c.liquidador_id === liq.id);
-    let recibosOk = 0, f931Ok = 0, sacOk = 0, pendientes = 0;
+    let recibosOk = 0, f931Ok = 0, sacOk = 0, pendientes = 0, legajos = 0;
     for (const c of mis) {
       const t = tareasMap.get(c.id);
       if (!t) { pendientes++; continue; }
       if (t.recibos_manual || t.recibos_drive) recibosOk++;
       if (t.f931_manual || t.f931_drive) f931Ok++;
       if (esMesSAC && (t.sac_manual || t.sac_drive)) sacOk++;
+      legajos += t.legajos_cantidad ?? 0;
       if (
         !(t.recibos_manual || t.recibos_drive) ||
         !(t.f931_manual || t.f931_drive)
       ) pendientes++;
     }
-    return { liq, total: mis.length, recibosOk, f931Ok, sacOk, pendientes };
+    return { liq, total: mis.length, recibosOk, f931Ok, sacOk, pendientes, legajos };
   });
+  const totalLegajos = resumen.reduce((sum, r) => sum + r.legajos, 0);
 
   // F.931 por grupo de CUIT — vencimientos del mes de trabajo
   const gruposF931 = getVencimientosGrupos(anioActual, mesActual).map((g) => {
@@ -192,7 +194,7 @@ export default async function DashboardPage({
             <table className="w-full min-w-[520px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50">
-                  {["Liquidadora", "Clientes", "Recibos", "F.931", ...(esMesSAC ? ["SAC"] : []), "Pendientes"].map((h) => (
+                  {["Liquidadora", "Clientes", "Legajos", "Recibos", "F.931", ...(esMesSAC ? ["SAC"] : []), "Pendientes"].map((h) => (
                     <th
                       key={h}
                       className={clsx(
@@ -206,7 +208,7 @@ export default async function DashboardPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {resumen.map(({ liq, total: tot, recibosOk, f931Ok, sacOk, pendientes }) => (
+                {resumen.map(({ liq, total: tot, recibosOk, f931Ok, sacOk, pendientes, legajos }) => (
                   <tr key={liq.id} className="hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-2.5">
@@ -217,6 +219,7 @@ export default async function DashboardPage({
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-center text-[13px] text-gray-600">{tot}</td>
+                    <td className="px-4 py-3.5 text-center text-[13px] text-gray-600">{legajos}</td>
                     <td className="px-4 py-3.5 text-center">
                       <ProgressPill done={recibosOk} total={tot} />
                     </td>
@@ -240,6 +243,17 @@ export default async function DashboardPage({
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-100">
+                  <td className="px-6 py-3 text-[12px] font-semibold text-gray-500">Total</td>
+                  <td className="px-4 py-3 text-center text-[13px] font-semibold text-gray-700">{total}</td>
+                  <td className="px-4 py-3 text-center text-[13px] font-semibold text-gray-700">{totalLegajos}</td>
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3" />
+                  {esMesSAC && <td className="px-4 py-3" />}
+                  <td className="px-4 py-3" />
+                </tr>
+              </tfoot>
             </table>
             </div>
           )}
