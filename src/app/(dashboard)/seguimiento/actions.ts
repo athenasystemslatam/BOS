@@ -239,49 +239,71 @@ export async function fetchPeriodo(
     data = nuevo;
   }
 
-  // Copiar legajos_cantidad del mes anterior para clientes que aún no lo tienen en este período
+  // Repetir legajos_cantidad para clientes que todavía no lo tienen en este
+  // período — el número de legajos casi nunca cambia mes a mes, así que no
+  // tiene sentido pedirlo de nuevo cada vez. Antes solo miraba el mes
+  // inmediatamente anterior: si un mes se saltaba (nadie entró a Seguimiento
+  // ese mes, o el período se creó desde Dashboard sin pasar por acá), la
+  // cadena se cortaba ahí y de ahí en más había que volver a cargarlo a
+  // mano. Ahora busca, período por período hacia atrás, el último valor
+  // cargado de cada cliente (sin importar cuántos meses de por medio),
+  // así "repite" indefinidamente hasta que alguien lo cambie.
   if (data) {
-    const periodoId = (data as Periodo).id;
-    const mesPrev = mes === 1 ? 12 : mes - 1;
-    const anioPrev = mes === 1 ? anio - 1 : anio;
-
-    const { data: periodoAnterior } = await admin
-      .from("periodos")
-      .select("id")
-      .eq("anio", anioPrev)
-      .eq("mes", mesPrev)
-      .maybeSingle();
-
-    if (periodoAnterior) {
-      // Legajos ya guardados en este período (no sobreescribir)
-      const { data: yaExistentes } = await admin
-        .from("tareas")
-        .select("cliente_id")
-        .eq("periodo_id", periodoId)
-        .gt("legajos_cantidad", 0);
-      const conLegajos = new Set((yaExistentes ?? []).map((t) => t.cliente_id));
-
-      const { data: tareasAnteriores } = await admin
-        .from("tareas")
-        .select("cliente_id, legajos_cantidad")
-        .eq("periodo_id", periodoAnterior.id)
-        .gt("legajos_cantidad", 0);
-
-      const toCopy = (tareasAnteriores ?? []).filter((t) => !conLegajos.has(t.cliente_id));
-      if (toCopy.length > 0) {
-        await admin.from("tareas").upsert(
-          toCopy.map((t) => ({
-            cliente_id: t.cliente_id,
-            periodo_id: periodoId,
-            legajos_cantidad: t.legajos_cantidad,
-          })),
-          { onConflict: "cliente_id,periodo_id" }
-        );
-      }
-    }
+    await copiarLegajosDelHistorial(admin, (data as Periodo).id, anio, mes);
   }
 
   return data as Periodo | null;
+}
+
+/** Completa legajos_cantidad en `periodoId` para todo cliente que no lo
+ * tenga cargado ahí todavía, usando el último valor > 0 que ese cliente
+ * tuvo en cualquier período anterior a (anio, mes) — no solo el mes previo.
+ * No pisa nada ya cargado en `periodoId`. Helper interno de fetchPeriodo —
+ * sin `export` a propósito: este archivo es "use server" y todo lo
+ * exportado se trata como Server Action (necesita argumentos serializables
+ * para la RPC cliente→servidor); acá se le pasa el client de Supabase
+ * directo, así que tiene que quedar privado. Dashboard de Sueldos, que
+ * antes creaba el período por su cuenta sin este paso, ahora llama a
+ * fetchPeriodo (sí exportada, solo recibe anio/mes) en vez de duplicar la
+ * lógica. */
+async function copiarLegajosDelHistorial(
+  admin: ReturnType<typeof createAdminClient>,
+  periodoId: string,
+  anio: number,
+  mes: number
+) {
+  const [{ data: periodos }, { data: yaExistentes }, { data: tareasConLegajos }] = await Promise.all([
+    admin.from("periodos").select("id, anio, mes"),
+    admin.from("tareas").select("cliente_id").eq("periodo_id", periodoId).gt("legajos_cantidad", 0),
+    admin.from("tareas").select("cliente_id, periodo_id, legajos_cantidad").gt("legajos_cantidad", 0),
+  ]);
+
+  const ordenPeriodo = new Map((periodos ?? []).map((p) => [p.id, p.anio * 100 + p.mes]));
+  const ordenActual = anio * 100 + mes;
+  const conLegajos = new Set((yaExistentes ?? []).map((t) => t.cliente_id));
+
+  // Último valor > 0 de cada cliente en un período estrictamente anterior.
+  const masReciente = new Map<string, { orden: number; legajos: number }>();
+  for (const t of tareasConLegajos ?? []) {
+    const orden = ordenPeriodo.get(t.periodo_id);
+    if (orden === undefined || orden >= ordenActual) continue;
+    const actual = masReciente.get(t.cliente_id);
+    if (!actual || orden > actual.orden) {
+      masReciente.set(t.cliente_id, { orden, legajos: t.legajos_cantidad });
+    }
+  }
+
+  const toCopy = Array.from(masReciente.entries()).filter(([clienteId]) => !conLegajos.has(clienteId));
+  if (toCopy.length > 0) {
+    await admin.from("tareas").upsert(
+      toCopy.map(([cliente_id, v]) => ({
+        cliente_id,
+        periodo_id: periodoId,
+        legajos_cantidad: v.legajos,
+      })),
+      { onConflict: "cliente_id,periodo_id" }
+    );
+  }
 }
 
 export async function updateRecordatorio(

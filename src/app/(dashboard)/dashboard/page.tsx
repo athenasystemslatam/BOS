@@ -4,6 +4,7 @@ import { getVencimientosGrupos, getMesTrabajoActual, MESES_NOMBRES } from "@/lib
 import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 import { MonthSelector } from "./MonthSelector";
+import { fetchPeriodo } from "../seguimiento/actions";
 
 const CAMPO_LABELS: Record<string, string> = {
   f931: "F.931", recibos: "Recibos", rec_q1: "Recibos Q1",
@@ -58,19 +59,12 @@ export default async function DashboardPage({
   // solo de las que sí tienen el servicio activo, no de todas las activas.
   const idsConSueldos = new Set((serviciosSueldos ?? []).map((s) => s.cliente_id));
 
-  let { data: periodoActual } = await supabase
-    .from("periodos").select("*").eq("anio", anioActual).eq("mes", mesActual).maybeSingle();
-
-  if (!periodoActual) {
-    const { data: nuevo } = await supabase
-      .from("periodos")
-      .upsert(
-        { anio: anioActual, mes: mesActual, nombre_mes: `${MESES_NOMBRES[mesActual]} ${anioActual}` },
-        { onConflict: "anio,mes" }
-      )
-      .select().single();
-    periodoActual = nuevo;
-  }
+  // Misma función que usa Seguimiento para crear/pedir el período — antes
+  // este dashboard lo creaba por su cuenta con un simple upsert, sin repetir
+  // los legajos del mes anterior; si alguien entraba acá primero en un mes
+  // nuevo, esa copia no pasaba y quedaba en 0 hasta que alguien lo cargara
+  // a mano en Seguimiento.
+  const periodoActual = await fetchPeriodo(anioActual, mesActual);
 
   const { data: tareas } = periodoActual
     ? await supabase.from("tareas").select("*").eq("periodo_id", periodoActual.id)

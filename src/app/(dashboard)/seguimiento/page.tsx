@@ -1,9 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
-import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
+import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { SeguimientoClient } from "./SeguimientoClient";
-import { fetchRecordatoriosPrevios } from "./actions";
+import { fetchRecordatoriosPrevios, fetchPeriodo } from "./actions";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -15,25 +15,11 @@ export default async function SeguimientoPage() {
 
   const { mes, anio } = getMesTrabajoActual();
 
-  // Fetch or create current period — admin client para evitar bloqueos RLS en INSERT
-  let { data: periodo } = await admin
-    .from("periodos")
-    .select("*")
-    .eq("anio", anio)
-    .eq("mes", mes)
-    .maybeSingle();
-
-  if (!periodo) {
-    const { data: nuevo } = await admin
-      .from("periodos")
-      .upsert(
-        { anio, mes, nombre_mes: `${MESES_NOMBRES[mes]} ${anio}` },
-        { onConflict: "anio,mes" }
-      )
-      .select()
-      .single();
-    periodo = nuevo;
-  }
+  // Fetch or create current period (+ repetir legajos del historial si
+  // corresponde) — misma función que usa el selector de mes dentro de
+  // Seguimiento, así el período queda creado con ese paso sin importar por
+  // dónde se cree primero.
+  const periodo = await fetchPeriodo(anio, mes);
 
   // All periods for reference
   const { data: periodos } = await admin
