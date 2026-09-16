@@ -38,7 +38,7 @@ type Balance = {
   responsable2: { id: string; nombre: string } | null;
 };
 
-const ANIOS = [2026, 2025, 2024, 2023];
+const ANIOS = [2026, 2025];
 
 const ESTADO_BALANCE: Record<string, { label: string; cls: string }> = {
   sin_asignar: { label: "Sin asignar", cls: "bg-gray-100 text-gray-500" },
