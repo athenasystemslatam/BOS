@@ -68,7 +68,7 @@ const SECTIONS: {
     label: MODULO_LABELS.contable,
     modulo: "contable",
     items: [
-      { href: "/contable",              label: "Balances",     icon: BookOpen,        adminOnly: false },
+      { href: "/contable",              label: "Seguimiento",  icon: BookOpen,        adminOnly: false },
       { href: "/contable/dashboard",    label: "Dashboard",    icon: LayoutDashboard, adminOnly: false },
       { href: "/contable/vencimientos", label: "Vencimientos", icon: Calendar,        adminOnly: false },
       { href: "/contable/equipo",       label: "Equipo",       icon: Users,           adminOnly: false },
