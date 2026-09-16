@@ -48,6 +48,14 @@ const ESTADO_BALANCE: Record<string, { label: string; cls: string }> = {
   frenado:     { label: "Frenado",     cls: "bg-red-100 text-red-600" },
 };
 
+const AVANCE_OPTIONS = [0, 25, 50, 75, 100];
+
+function avanceCls(v: number): string {
+  if (v >= 100) return "bg-emerald-100 text-emerald-700";
+  if (v > 0) return "bg-amber-100 text-amber-700";
+  return "bg-gray-100 text-gray-500";
+}
+
 const ESTADO_EECC: Record<string, { label: string; cls: string }> = {
   pendiente:       { label: "Pendiente",   cls: "text-gray-400" },
   en_proceso:      { label: "En proceso",  cls: "text-amber-600" },
@@ -415,18 +423,31 @@ export function ContableClient({
                   {/* Avance */}
                   <td className="px-3 py-2.5">
                     {puedeEditar ? (
-                      <input
-                        type="number"
-                        min={0} max={100}
-                        defaultValue={b.avance}
-                        onBlur={(e) => {
-                          const val = Math.min(100, Math.max(0, Number(e.target.value)));
-                          update(b.id, { avance: val });
-                        }}
-                        className="w-10 text-[12px] text-center text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-300 rounded"
-                      />
+                      <div className="relative inline-block">
+                        <span className={clsx(
+                          "flex items-center gap-0.5 text-[11px] font-medium rounded-full pl-2.5 pr-1.5 py-1",
+                          avanceCls(b.avance)
+                        )}>
+                          {b.avance}%
+                          <ChevronDown size={10} className="opacity-50 shrink-0" />
+                        </span>
+                        <select
+                          value={b.avance}
+                          onChange={(e) => update(b.id, { avance: Number(e.target.value) })}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full"
+                        >
+                          {!AVANCE_OPTIONS.includes(b.avance) && (
+                            <option value={b.avance}>{b.avance}%</option>
+                          )}
+                          {AVANCE_OPTIONS.map((v) => (
+                            <option key={v} value={v}>{v}%</option>
+                          ))}
+                        </select>
+                      </div>
                     ) : (
-                      <span className="text-[12px] text-gray-500">{b.avance}%</span>
+                      <span className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", avanceCls(b.avance))}>
+                        {b.avance}%
+                      </span>
                     )}
                   </td>
 
