@@ -325,12 +325,12 @@ export function ContableClient({
             <tr className="bg-gray-50 border-b border-gray-200">
               {/* Group 1: cliente + fechas */}
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">Cierre</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">VTO Bal.</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">VTO 855</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">Cierre</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">VTO Bal.</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">VTO 855</th>
               {/* Group 2: estado */}
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Estado</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-16">%</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Estado</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-16">%</th>
               {/* Group 3: responsables */}
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Responsable</th>
               {/* Group 4: info */}
@@ -378,22 +378,22 @@ export function ContableClient({
                   </td>
 
                   {/* Cierre */}
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5 text-center">
                     <span className="text-[12px] text-gray-600">{fmt(b.fecha_cierre)}</span>
                   </td>
 
                   {/* VTO Balance */}
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5 text-center">
                     <span className="text-[12px] text-gray-500">{fmt(vtoBalance)}</span>
                   </td>
 
                   {/* VTO 855 */}
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5 text-center">
                     <span className="text-[12px] text-gray-500">{fmt(vto855)}</span>
                   </td>
 
                   {/* Estado */}
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5 text-center">
                     {puedeEditar ? (
                       <div className="relative inline-block">
                         <span className={clsx(
@@ -421,7 +421,7 @@ export function ContableClient({
                   </td>
 
                   {/* Avance */}
-                  <td className="px-3 py-2.5">
+                  <td className="px-3 py-2.5 text-center">
                     {puedeEditar ? (
                       <div className="relative inline-block">
                         <span className={clsx(
