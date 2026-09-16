@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Search, Pencil, History } from "lucide-react";
 import clsx from "clsx";
 import { Cliente, Liquidadora, TipoContribuyente } from "@/types";
+import { ExpandableCard } from "@/components/ExpandableCard";
 import { NuevaEmpresaModal } from "./NuevaEmpresaModal";
 import { EditarEmpresaModal } from "./EditarEmpresaModal";
 import { AsignacionModal } from "./AsignacionModal";
@@ -299,7 +300,7 @@ export function EmpresasClient({
             </div>
 
             {/* Tabla desktop */}
-            <div className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <ExpandableCard className="hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable]">
                 <table className="w-full min-w-[1320px]">
                 <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
@@ -449,7 +450,7 @@ export function EmpresasClient({
                 </tbody>
               </table>
               </div>
-            </div>
+            </ExpandableCard>
           </>
         )}
         </div>

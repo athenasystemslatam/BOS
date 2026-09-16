@@ -4,6 +4,7 @@ import { getVencimientosGrupos, getMesTrabajoActual, MESES_NOMBRES } from "@/lib
 import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 import { MonthSelector } from "./MonthSelector";
+import { ExpandableCard } from "@/components/ExpandableCard";
 import { fetchPeriodo } from "../seguimiento/actions";
 
 const CAMPO_LABELS: Record<string, string> = {
@@ -171,7 +172,7 @@ export default async function DashboardPage({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
         {/* Avance por liquidadora */}
-        <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+        <ExpandableCard className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-[14px] font-semibold text-gray-900">Avance por liquidadora</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
@@ -251,7 +252,7 @@ export default async function DashboardPage({
             </table>
             </div>
           )}
-        </div>
+        </ExpandableCard>
 
         {/* F.931 por grupo de CUIT */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
@@ -347,7 +348,7 @@ export default async function DashboardPage({
 
       {/* Modificaciones fuera de término */}
       {alertasPostcierre && alertasPostcierre.length > 0 && (
-        <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50 overflow-hidden">
+        <ExpandableCard className="mt-5 rounded-xl border border-orange-200 bg-orange-50 overflow-hidden">
           <div className="flex items-center gap-2 px-5 py-3 border-b border-orange-200">
             <AlertTriangle size={13} className="shrink-0 text-orange-500" />
             <span className="text-[13px] font-semibold text-orange-900">Modificaciones fuera de término</span>
@@ -377,7 +378,7 @@ export default async function DashboardPage({
             </tbody>
           </table>
           </div>
-        </div>
+        </ExpandableCard>
       )}
     </div>
   );

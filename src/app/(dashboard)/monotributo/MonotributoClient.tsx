@@ -8,6 +8,7 @@ import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
+import { ExpandableCard } from "@/components/ExpandableCard";
 import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea } from "./actions";
 
@@ -298,7 +299,7 @@ export function MonotributoClient({
       </div>
 
       {/* Table */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <ExpandableCard className="flex-1 min-h-0 overflow-y-auto">
         <div className="overflow-x-auto pb-2">
         <table className="w-full text-sm whitespace-nowrap table-fixed">
           <thead>
@@ -590,7 +591,7 @@ export function MonotributoClient({
           </tbody>
         </table>
         </div>
-      </div>
+      </ExpandableCard>
     </div>
     {reasignando && (
       <AsignacionServicioModal

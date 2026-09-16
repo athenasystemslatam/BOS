@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
+import { ExpandableCard } from "@/components/ExpandableCard";
 
 // Vencimientos aproximados por subtipo (día del mes siguiente)
 // Estos son genéricos — cada cliente puede tener fechas distintas
@@ -103,7 +104,7 @@ export default async function ImpuestosVencimientosPage({
           const proximo = !vencido && dias <= 7;
 
           return (
-            <div key={subtipo} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <ExpandableCard key={subtipo} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className={clsx(
                 "px-6 py-4 border-b flex items-center gap-4 flex-wrap",
                 vencido || urgente ? "border-red-100 bg-red-50" : proximo ? "border-amber-100 bg-amber-50" : "border-gray-100"
@@ -153,7 +154,7 @@ export default async function ImpuestosVencimientosPage({
                   </tbody>
                 </table>
               )}
-            </div>
+            </ExpandableCard>
           );
         })}
       </div>

@@ -3,6 +3,7 @@ import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { TrendingUp, CheckCircle2, Circle } from "lucide-react";
 import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
+import { ExpandableCard } from "@/components/ExpandableCard";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 
@@ -157,7 +158,7 @@ export default async function MonotributoDashboardPage({
       </div>
 
       {/* Por responsable */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <ExpandableCard className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-[14px] font-semibold text-gray-900">Avance por responsable</h2>
           <p className="text-[11px] text-gray-400 mt-0.5">{MESES_NOMBRES[mes]} {anio}</p>
@@ -215,7 +216,7 @@ export default async function MonotributoDashboardPage({
             </tbody>
           </table>
         )}
-      </div>
+      </ExpandableCard>
     </div>
   );
 }

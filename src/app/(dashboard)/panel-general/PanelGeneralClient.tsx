@@ -4,6 +4,7 @@ import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react
 import { Download, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import clsx from "clsx";
 import { EquipoMiembro, TipoContribuyente, VistEmpresa } from "@/types";
+import { ExpandableCard } from "@/components/ExpandableCard";
 import { NuevoClienteModal } from "./NuevoClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
 import { darDeBajaServicio, darDeBajaCliente } from "./actions";
@@ -513,7 +514,7 @@ export function PanelGeneralClient({
         </div>
 
         {/* Tabla desktop */}
-        <div className="hidden md:flex flex-1 min-h-0 bg-paper border border-line-panel rounded-[14px] flex-col overflow-hidden">
+        <ExpandableCard className="hidden md:flex flex-1 min-h-0 bg-paper border border-line-panel rounded-[14px] flex-col overflow-hidden">
           {filtradas.length > 0 && (
             <div className="shrink-0 border-b border-line-soft px-[26px] py-[11px] flex items-center justify-between gap-5 text-[11.5px]">
               <p className="text-ink-subtle">
@@ -893,7 +894,7 @@ export function PanelGeneralClient({
               </div>
             </div>
           )}
-        </div>
+        </ExpandableCard>
       </div>
 
       {creando && (

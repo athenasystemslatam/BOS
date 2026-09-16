@@ -3,6 +3,7 @@ import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
 import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
+import { ExpandableCard } from "@/components/ExpandableCard";
 
 const SUBTIPOS = [
   { key: "iva", label: "IVA" },
@@ -133,7 +134,7 @@ export default async function ImpuestosDashboardPage({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Avance por responsable */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <ExpandableCard className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
             <TrendingUp size={14} className="text-blue-500" />
             <h2 className="text-[14px] font-semibold text-gray-900">Por responsable</h2>
@@ -188,7 +189,7 @@ export default async function ImpuestosDashboardPage({
               </tbody>
             </table>
           )}
-        </div>
+        </ExpandableCard>
 
         {/* Resumen del mes */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">

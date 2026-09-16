@@ -27,6 +27,7 @@ import {
 import { Cliente, ClaveAcceso, EmailContacto, Liquidadora, Periodo, Tarea } from "@/types";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
+import { ExpandableCard } from "@/components/ExpandableCard";
 import {
   editarDatosCliente,
   toggleManual,
@@ -1207,7 +1208,7 @@ export function SeguimientoClient({
 
       {/* Table — desktop only */}
       {currentPeriodo && clientesFiltrados.length > 0 && (
-        <div
+        <ExpandableCard
           className={clsx(
             "hidden md:flex md:flex-col h-full bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden transition-opacity",
             isPending && "opacity-60"
@@ -1623,7 +1624,7 @@ export function SeguimientoClient({
               </tbody>
             </table>
           </div>
-        </div>
+        </ExpandableCard>
       )}
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil, ArrowRightLeft } from "lucide-react";
 import clsx from "clsx";
 import { AccesoBloqueado, Liquidadora } from "@/types";
+import { ExpandableCard } from "@/components/ExpandableCard";
 import { NuevaLiquidadoraModal } from "./NuevaLiquidadoraModal";
 import { EditarLiquidadoraModal } from "./EditarLiquidadoraModal";
 import { TransferirCarteraModal } from "./TransferirCarteraModal";
@@ -82,7 +83,7 @@ export function LiquidadorasClient({
           ))}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <ExpandableCard className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           {filtradas.length === 0 ? (
             <div className="px-6 py-16 text-center">
               <p className="text-gray-400 text-sm">No hay liquidadoras en esta categoría</p>
@@ -201,7 +202,7 @@ export function LiquidadorasClient({
             </table>
             </div>
           )}
-        </div>
+        </ExpandableCard>
 
         {isAdmin && <BloqueosPanel bloqueados={bloqueados} />}
       </div>
