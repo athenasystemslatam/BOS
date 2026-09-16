@@ -94,7 +94,7 @@ export default async function VencimientosPage() {
                   key={mes}
                   id={esActual ? "mes-actual-row" : undefined}
                   className={clsx(
-                    "transition-colors",
+                    "transition-colors scroll-mt-16",
                     esActual ? "bg-bordo/5" : "hover:bg-gray-50/60"
                   )}
                 >
