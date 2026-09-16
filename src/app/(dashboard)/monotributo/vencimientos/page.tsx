@@ -2,7 +2,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
-import { ExpandableCard } from "@/components/ExpandableCard";
 
 // Vencimiento cuota monotributo: día 20 de cada mes (mismo mes, no el siguiente)
 // Meses de recategorización: febrero (mes 2) y agosto (mes 8)
@@ -197,7 +196,7 @@ export default async function MonotributoVencimientosPage({
       </div>
 
       {/* Calendario anual */}
-      <ExpandableCard className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-[14px] font-semibold text-gray-900">Calendario {anio}</h2>
           <p className="text-[11px] text-gray-400 mt-0.5">Cuota mensual — vencimiento día 20 de cada mes</p>
@@ -263,7 +262,7 @@ export default async function MonotributoVencimientosPage({
             </tbody>
           </table>
         </div>
-      </ExpandableCard>
+      </div>
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
-import { ExpandableCard } from "@/components/ExpandableCard";
 import type { ClaveAcceso } from "@/types";
 import { upsertImpuestoTarea } from "./actions";
 
@@ -345,7 +344,7 @@ export function ImpuestosClient({
       </div>
 
       {/* Table */}
-      <ExpandableCard className="flex-1 min-h-0 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="overflow-x-auto pb-2">
         <table className="w-full text-sm whitespace-nowrap table-fixed">
           <thead>
@@ -488,7 +487,7 @@ export function ImpuestosClient({
           </tbody>
         </table>
         </div>
-      </ExpandableCard>
+      </div>
     </div>
     {reasignando && (
       <AsignacionServicioModal

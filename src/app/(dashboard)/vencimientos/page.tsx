@@ -4,7 +4,6 @@ import { CALENDAR_2026, getMesTrabajoActual } from "@/lib/vencimientos";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
 import { ScrollToMesActual } from "./ScrollToMesActual";
-import { ExpandableCard } from "@/components/ExpandableCard";
 
 export default async function VencimientosPage() {
   const supabase = createAdminClient();
@@ -66,7 +65,7 @@ export default async function VencimientosPage() {
       </p>
 
       {/* Tabla */}
-      <ExpandableCard className="flex-1 min-h-0 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="flex-1 min-h-0 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="h-full overflow-auto [scrollbar-gutter:stable]">
         <table className="w-full min-w-[480px]">
           <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-100">
@@ -170,7 +169,7 @@ export default async function VencimientosPage() {
           </tbody>
         </table>
         </div>
-      </ExpandableCard>
+      </div>
 
       <ScrollToMesActual />
     </div>

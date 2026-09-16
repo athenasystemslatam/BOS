@@ -4,7 +4,6 @@ import { useState } from "react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { ProductividadTabs } from "@/components/ProductividadTabs";
-import { ExpandableCard } from "@/components/ExpandableCard";
 
 export interface FilaLiquidadora {
   id: string;
@@ -98,7 +97,7 @@ export function ProductividadClient({ filas }: {
         <p className="text-[11px] text-gray-400 mb-3">
           Días al vencimiento: positivo = completado antes, negativo = completado después. &quot;sin ts&quot; = marcado antes de julio 2026 (sin registro de hora).
         </p>
-        <ExpandableCard className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px]">
               <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
@@ -159,7 +158,7 @@ export function ProductividadClient({ filas }: {
               </tbody>
             </table>
           </div>
-        </ExpandableCard>
+        </div>
         </>
       )}
     </div>
