@@ -4,10 +4,10 @@ import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, Check, Minus } from "lucide-react";
 import clsx from "clsx";
-import { updateBalance } from "./actions";
+import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
-import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
+import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import type { ClaveAcceso } from "@/types";
 
 const ACCENT_CONTABLE = { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700" };
@@ -373,7 +373,11 @@ export function ContableClient({
                       <p className="text-[13px] font-medium text-gray-800 truncate max-w-[200px]">
                         {b.clientes?.nombre ?? "—"}
                       </p>
-                      <ClavesModuloPopover claves={b.clientes?.claves_acceso} modulo="contable" />
+                      <FichaClienteBoton
+                        clienteId={b.cliente_id}
+                        nombre={b.clientes?.nombre ?? "—"}
+                        fetchAction={getFichaCliente}
+                      />
                     </div>
                   </td>
 

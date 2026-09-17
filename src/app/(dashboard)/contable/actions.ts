@@ -3,6 +3,26 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAreaOrAdmin } from "@/lib/auth";
+import type { Cliente } from "@/types";
+
+// Ficha de cliente de solo lectura para el módulo Contable — misma info que
+// la ficha maestra de Panel General (edición sigue siendo solo desde ahí),
+// pero accesible para todo el equipo de Contable, no solo admins.
+export async function getFichaCliente(clienteId: string): Promise<Cliente | null> {
+  try {
+    await requireAreaOrAdmin("contable");
+  } catch {
+    return null;
+  }
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("clientes")
+    .select("*")
+    .eq("id", clienteId)
+    .maybeSingle();
+  return (data as Cliente) ?? null;
+}
 
 export async function updateBalance(
   id: string,
