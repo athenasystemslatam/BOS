@@ -325,10 +325,9 @@ export function ContableClient({
       </div>
 
       {/* Table */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="overflow-x-auto pb-2">
+      <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable] pb-2">
         <table className="w-full text-sm whitespace-nowrap table-fixed">
-          <thead>
+          <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50 border-b border-gray-200">
               {/* Group 1: cliente + fechas */}
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
@@ -622,7 +621,6 @@ export function ContableClient({
             })}
           </tbody>
         </table>
-        </div>
       </div>
 
       {showModal && (

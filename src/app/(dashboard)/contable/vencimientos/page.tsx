@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
 
-const ANIOS = [2026, 2025, 2024, 2023];
+const ANIOS = [2026, 2025];
 
 function addDays(dateStr: string, days: number) {
   const d = new Date(dateStr + "T00:00:00");

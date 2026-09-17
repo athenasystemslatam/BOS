@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { TrendingUp, Building2, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
 
-const ANIOS = [2026, 2025, 2024, 2023];
+const ANIOS = [2026, 2025];
 
 function addDays(dateStr: string, days: number) {
   const d = new Date(dateStr + "T00:00:00");
@@ -134,8 +134,9 @@ export default async function ContableDashboardPage({
           {porResponsable.length === 0 ? (
             <div className="py-14 text-center text-[13px] text-gray-400">Sin responsables asignados</div>
           ) : (
+            <div className="max-h-[420px] overflow-auto [scrollbar-gutter:stable]">
             <table className="w-full">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                   <th className="px-6 py-3 text-left">Responsable</th>
                   <th className="px-4 py-3 text-center">Total</th>
@@ -170,6 +171,7 @@ export default async function ContableDashboardPage({
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
@@ -217,7 +219,7 @@ export default async function ContableDashboardPage({
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-[12px] whitespace-nowrap">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                   <th className="px-6 py-3 text-left">Cliente</th>
                   <th className="px-4 py-3 text-left">Cierre</th>

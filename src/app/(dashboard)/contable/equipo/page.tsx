@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import clsx from "clsx";
 
-const ANIOS = [2026, 2025, 2024, 2023];
+const ANIOS = [2026, 2025];
 
 export default async function ContableEquipoPage({
   searchParams,
