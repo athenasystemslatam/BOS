@@ -17,6 +17,8 @@ export default async function ContablePage({
     { data: equipoRaw },
     { data: modulosRaw },
     { data: clientesContable },
+    { data: equipoTodos },
+    { data: equipoModulosTodos },
   ] = await Promise.all([
     admin
       .from("balances")
@@ -34,12 +36,24 @@ export default async function ContablePage({
       .select("cliente_id, clientes(id, nombre, cuit)")
       .eq("servicio", "contable")
       .eq("estado", true),
+    // Para el modal de edición de ficha (reutiliza EditarClienteModal de
+    // Panel General), que necesita el equipo completo y sus módulos, no
+    // solo el de Contable, ya que edita servicios de todos los módulos.
+    admin.from("liquidadoras").select("id, nombre, activa, rol").eq("activa", true).order("nombre"),
+    admin.from("equipo_modulos").select("equipo_id, modulo"),
   ]);
 
   const equipoIdsContable = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipoContable = (equipoRaw ?? []).filter((e) =>
     equipoIdsContable.has(e.id)
   );
+
+  const equipo = (equipoTodos ?? []).map((e) => ({
+    id: e.id,
+    nombre: e.nombre,
+    activo: e.activa,
+    rol: e.rol,
+  }));
 
   // Clients with contable service
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +69,8 @@ export default async function ContablePage({
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
       puedeEditar={!!yo?.isAdmin || areas.includes("contable")}
+      equipo={equipo}
+      equipoModulos={equipoModulosTodos ?? []}
     />
   );
 }

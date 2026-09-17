@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IdCard, X, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { IdCard, X, Eye, EyeOff, ExternalLink, Pencil } from "lucide-react";
 import type { Cliente, ModuloClave } from "@/types";
 
 const MODULO_LABEL: Record<ModuloClave, string> = {
@@ -54,10 +54,17 @@ export function FichaClienteBoton({
   clienteId,
   nombre,
   fetchAction,
+  puedeEditar,
+  onEditar,
 }: {
   clienteId: string;
   nombre: string;
   fetchAction: (id: string) => Promise<Cliente | null>;
+  /** Si puede editar, se muestra un botón "Editar" que delega en onEditar (la
+   *  edición en sí vive en EditarClienteModal de Panel General — acá solo se
+   *  ve y se dispara). */
+  puedeEditar?: boolean;
+  onEditar?: () => void;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -97,12 +104,25 @@ export function FichaClienteBoton({
                 <p className="text-[10.5px] font-semibold tracking-[.18em] uppercase text-gray-400">Ficha de cliente</p>
                 <h2 className="text-[17px] font-semibold text-gray-900 mt-1">{nombre}</h2>
               </div>
-              <button
-                onClick={() => setAbierto(false)}
-                className="text-gray-400 hover:text-gray-700 transition-colors"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-3">
+                {puedeEditar && onEditar && (
+                  <button
+                    onClick={() => {
+                      setAbierto(false);
+                      onEditar();
+                    }}
+                    className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 hover:text-gray-900 transition-colors"
+                  >
+                    <Pencil size={13} /> Editar
+                  </button>
+                )}
+                <button
+                  onClick={() => setAbierto(false)}
+                  className="text-gray-400 hover:text-gray-700 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5">
@@ -228,9 +248,11 @@ export function FichaClienteBoton({
               )}
             </div>
 
-            <div className="px-6 py-3.5 border-t border-gray-100 text-[11px] text-gray-400 shrink-0">
-              Para editar, ir a Clientes → {nombre} → Editar
-            </div>
+            {!puedeEditar && (
+              <div className="px-6 py-3.5 border-t border-gray-100 text-[11px] text-gray-400 shrink-0">
+                Para editar, ir a Clientes → {nombre} → Editar
+              </div>
+            )}
           </div>
         </div>
       )}

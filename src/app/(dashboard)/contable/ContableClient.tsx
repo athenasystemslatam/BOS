@@ -8,7 +8,8 @@ import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
-import type { ClaveAcceso } from "@/types";
+import { EditarClienteModal } from "../panel-general/EditarClienteModal";
+import type { ClaveAcceso, EquipoMiembro } from "@/types";
 
 const ACCENT_CONTABLE = { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700" };
 
@@ -92,7 +93,10 @@ export function ContableClient({
   equipoContable,
   clientesConServicio,
   anio,
+  isAdmin,
   puedeEditar,
+  equipo,
+  equipoModulos,
 }: {
   balances: Balance[];
   equipoContable: { id: string; nombre: string }[];
@@ -100,6 +104,8 @@ export function ContableClient({
   anio: number;
   isAdmin: boolean;
   puedeEditar: boolean;
+  equipo: EquipoMiembro[];
+  equipoModulos: { equipo_id: string; modulo: string }[];
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -107,6 +113,7 @@ export function ContableClient({
   const [filterResp, setFilterResp] = useState("");
   const [filterEstado, setFilterEstado] = useState("");
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
+  const [editandoClienteId, setEditandoClienteId] = useState<string | null>(null);
 
   const [balancesMap, setBalancesMap] = useState<Map<string, Balance>>(() => {
     const m = new Map<string, Balance>();
@@ -377,6 +384,8 @@ export function ContableClient({
                         clienteId={b.cliente_id}
                         nombre={b.clientes?.nombre ?? "—"}
                         fetchAction={getFichaCliente}
+                        puedeEditar={isAdmin}
+                        onEditar={() => setEditandoClienteId(b.cliente_id)}
                       />
                     </div>
                   </td>
@@ -633,6 +642,14 @@ export function ContableClient({
           onSelect={(nombre) => setFilterResp((prev) => (prev === nombre ? "" : nombre))}
           onClose={() => setMostrarEquipo(false)}
           accent={ACCENT_CONTABLE}
+        />
+      )}
+      {editandoClienteId && (
+        <EditarClienteModal
+          clienteId={editandoClienteId}
+          equipo={equipo}
+          equipoModulos={equipoModulos}
+          onClose={() => setEditandoClienteId(null)}
         />
       )}
     </div>
