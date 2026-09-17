@@ -44,7 +44,7 @@ const ANIOS = [2026, 2025];
 const ESTADO_BALANCE: Record<string, { label: string; cls: string }> = {
   sin_asignar: { label: "Sin asignar", cls: "bg-gray-100 text-gray-500" },
   asignado:    { label: "Asignado",    cls: "bg-blue-100 text-blue-700" },
-  en_proceso:  { label: "En proceso",  cls: "bg-amber-100 text-amber-700" },
+  legalizado:  { label: "Legalizado",  cls: "bg-amber-100 text-amber-700" },
   finalizado:  { label: "Finalizado",  cls: "bg-emerald-100 text-emerald-700" },
   frenado:     { label: "Frenado",     cls: "bg-red-100 text-red-600" },
 };
@@ -197,7 +197,7 @@ export function ContableClient({
   const stats = useMemo(() => ({
     total: balances.length,
     finalizados: balances.filter((b) => b.estado === "finalizado").length,
-    enProceso: balances.filter((b) => b.estado === "en_proceso" || b.estado === "asignado").length,
+    enProceso: balances.filter((b) => b.estado === "legalizado" || b.estado === "asignado").length,
     sinAsignar: balances.filter((b) => b.estado === "sin_asignar").length,
   }), [balances]);
 

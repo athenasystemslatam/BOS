@@ -35,7 +35,7 @@ export default async function ContableEquipoPage({
     );
     const finalizados = asignados.filter((b) => b.estado === "finalizado").length;
     const enProceso = asignados.filter(
-      (b) => b.estado === "en_proceso" || b.estado === "asignado"
+      (b) => b.estado === "legalizado" || b.estado === "asignado"
     ).length;
     const avanceProm =
       asignados.length > 0

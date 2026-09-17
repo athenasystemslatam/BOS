@@ -42,7 +42,7 @@ export default async function ContableDashboardPage({
 
   const total = balances.length;
   const finalizados = balances.filter((b) => b.estado === "finalizado").length;
-  const enProceso = balances.filter((b) => b.estado === "en_proceso").length;
+  const enProceso = balances.filter((b) => b.estado === "legalizado").length;
   const asignados = balances.filter((b) => b.estado === "asignado").length;
   const frenados = balances.filter((b) => b.estado === "frenado").length;
   const sinAsignar = balances.filter((b) => b.estado === "sin_asignar").length;
@@ -184,7 +184,7 @@ export default async function ContableDashboardPage({
           <div className="p-5 space-y-3">
             {[
               { label: "Finalizado", count: finalizados, color: "bg-emerald-500" },
-              { label: "En proceso", count: enProceso, color: "bg-amber-400" },
+              { label: "Legalizado", count: enProceso, color: "bg-amber-400" },
               { label: "Asignado", count: asignados, color: "bg-blue-400" },
               { label: "Frenado", count: frenados, color: "bg-red-400" },
               { label: "Sin asignar", count: sinAsignar, color: "bg-gray-300" },
@@ -319,7 +319,7 @@ function RatioCell({ done, total }: { done: number; total: number }) {
 const ESTADO_BALANCE: Record<string, { label: string; cls: string }> = {
   sin_asignar: { label: "Sin asignar", cls: "bg-gray-100 text-gray-500" },
   asignado:    { label: "Asignado",    cls: "bg-blue-100 text-blue-700" },
-  en_proceso:  { label: "En proceso",  cls: "bg-amber-100 text-amber-700" },
+  legalizado:  { label: "Legalizado",  cls: "bg-amber-100 text-amber-700" },
   finalizado:  { label: "Finalizado",  cls: "bg-emerald-100 text-emerald-700" },
   frenado:     { label: "Frenado",     cls: "bg-red-100 text-red-600" },
 };

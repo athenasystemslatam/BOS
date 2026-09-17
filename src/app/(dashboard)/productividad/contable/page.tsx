@@ -49,7 +49,7 @@ export default async function ProductividadContablePage() {
       if (!fila) continue;
 
       const finalizados = items.filter((b) => b.estado === "finalizado").length;
-      const enProceso = items.filter((b) => b.estado === "en_proceso").length;
+      const enProceso = items.filter((b) => b.estado === "legalizado").length;
       const frenados = items.filter((b) => b.estado === "frenado").length;
       const sinEmpezar = items.filter((b) => b.estado === "sin_asignar" || b.estado === "asignado").length;
       const avancePromedio = items.length > 0

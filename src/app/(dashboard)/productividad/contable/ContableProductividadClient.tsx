@@ -77,7 +77,7 @@ export function ContableProductividadClient({ filas }: { filas: FilaResponsableC
                   <th className="px-5 py-3 text-left font-medium">Año fiscal</th>
                   <th className="px-4 py-3 text-center font-medium">Balances</th>
                   <th className="px-4 py-3 text-center font-medium">Finalizados</th>
-                  <th className="px-4 py-3 text-center font-medium">En proceso</th>
+                  <th className="px-4 py-3 text-center font-medium">Legalizado</th>
                   <th className="px-4 py-3 text-center font-medium">Frenados</th>
                   <th className="px-4 py-3 text-center font-medium">Sin empezar</th>
                   <th className="px-4 py-3 text-center font-medium">Avance prom.</th>
