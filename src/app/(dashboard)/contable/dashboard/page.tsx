@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TrendingUp, Building2, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import clsx from "clsx";
+import { ESTADO_BALANCE } from "../semaforo";
 
 const ANIOS = [2026, 2025];
 
@@ -183,11 +184,11 @@ export default async function ContableDashboardPage({
           </div>
           <div className="p-5 space-y-3">
             {[
-              { label: "Finalizado", count: finalizados, color: "bg-emerald-500" },
-              { label: "Legalizado", count: enProceso, color: "bg-amber-400" },
-              { label: "Asignado", count: asignados, color: "bg-blue-400" },
-              { label: "Frenado", count: frenados, color: "bg-red-400" },
-              { label: "Sin asignar", count: sinAsignar, color: "bg-gray-300" },
+              { label: "Finalizado", count: finalizados, color: ESTADO_BALANCE.finalizado.bar },
+              { label: "Legalizado", count: enProceso, color: ESTADO_BALANCE.legalizado.bar },
+              { label: "Asignado", count: asignados, color: ESTADO_BALANCE.asignado.bar },
+              { label: "Frenado", count: frenados, color: ESTADO_BALANCE.frenado.bar },
+              { label: "Sin asignar", count: sinAsignar, color: ESTADO_BALANCE.sin_asignar.bar },
             ].map(({ label, count, color }) => (
               <div key={label}>
                 <div className="flex items-center justify-between mb-1">
@@ -315,14 +316,6 @@ function RatioCell({ done, total }: { done: number; total: number }) {
     </div>
   );
 }
-
-const ESTADO_BALANCE: Record<string, { label: string; cls: string }> = {
-  sin_asignar: { label: "Sin asignar", cls: "bg-gray-100 text-gray-500" },
-  asignado:    { label: "Asignado",    cls: "bg-blue-100 text-blue-700" },
-  legalizado:  { label: "Legalizado",  cls: "bg-amber-100 text-amber-700" },
-  finalizado:  { label: "Finalizado",  cls: "bg-emerald-100 text-emerald-700" },
-  frenado:     { label: "Frenado",     cls: "bg-red-100 text-red-600" },
-};
 
 function EstadoBadge({ estado }: { estado: string }) {
   const { label, cls } = ESTADO_BALANCE[estado] ?? ESTADO_BALANCE.sin_asignar;

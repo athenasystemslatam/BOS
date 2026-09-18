@@ -8,6 +8,7 @@ import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
+import { ESTADO_BALANCE, ESTADO_EECC, avanceCls } from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
 import type { ClaveAcceso, EquipoMiembro } from "@/types";
 
@@ -41,28 +42,7 @@ type Balance = {
 
 const ANIOS = [2026, 2025];
 
-const ESTADO_BALANCE: Record<string, { label: string; cls: string }> = {
-  sin_asignar: { label: "Sin asignar", cls: "bg-gray-100 text-gray-500" },
-  asignado:    { label: "Asignado",    cls: "bg-blue-100 text-blue-700" },
-  legalizado:  { label: "Legalizado",  cls: "bg-amber-100 text-amber-700" },
-  finalizado:  { label: "Finalizado",  cls: "bg-emerald-100 text-emerald-700" },
-  frenado:     { label: "Frenado",     cls: "bg-red-100 text-red-600" },
-};
-
 const AVANCE_OPTIONS = [0, 25, 50, 75, 100];
-
-function avanceCls(v: number): string {
-  if (v >= 100) return "bg-emerald-100 text-emerald-700";
-  if (v > 0) return "bg-amber-100 text-amber-700";
-  return "bg-gray-100 text-gray-500";
-}
-
-const ESTADO_EECC: Record<string, { label: string; cls: string }> = {
-  pendiente:       { label: "Pendiente",   cls: "text-gray-400" },
-  en_proceso:      { label: "En proceso",  cls: "text-amber-600" },
-  legalizado:      { label: "Legalizado",  cls: "text-emerald-600 font-medium" },
-  presentado_arca: { label: "En ARCA",     cls: "text-blue-600 font-medium" },
-};
 
 // Returns ISO date string or null
 function addDays(dateStr: string, days: number): string {
@@ -345,7 +325,7 @@ export function ContableClient({
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">E3</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">Rec.</th>
               {/* Group 5: formularios */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-28">EECC</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-40">EECC</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">855</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F899</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F713</th>
@@ -562,19 +542,27 @@ export function ContableClient({
                   <td className="px-3 py-2.5 text-center">
                     {puedeEditar ? (
                       <div className="relative inline-block">
+                        <span className={clsx(
+                          "flex items-center gap-0.5 text-[11px] font-medium rounded-full pl-2.5 pr-1.5 py-1",
+                          eeccInfo.cls
+                        )}>
+                          {eeccInfo.label}
+                          <ChevronDown size={10} className="opacity-50 shrink-0" />
+                        </span>
                         <select
                           value={b.estado_eecc}
                           onChange={(e) => update(b.id, { estado_eecc: e.target.value })}
-                          className={clsx("appearance-none text-[11px] bg-transparent border-0 focus:outline-none pr-3 cursor-pointer", eeccInfo.cls)}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full"
                         >
                           {Object.entries(ESTADO_EECC).map(([v, { label }]) => (
                             <option key={v} value={v}>{label}</option>
                           ))}
                         </select>
-                        <ChevronDown size={9} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                       </div>
                     ) : (
-                      <span className={clsx("text-[11px]", eeccInfo.cls)}>{eeccInfo.label}</span>
+                      <span className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", eeccInfo.cls)}>
+                        {eeccInfo.label}
+                      </span>
                     )}
                   </td>
 

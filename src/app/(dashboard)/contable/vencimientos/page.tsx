@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
+import { ESTADO_BALANCE } from "../semaforo";
 
 const ANIOS = [2026, 2025];
 
@@ -13,14 +14,6 @@ function addDays(dateStr: string, days: number) {
 function fmt(d: Date) {
   return d.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
 }
-
-const ESTADO_BALANCE: Record<string, { label: string; cls: string }> = {
-  sin_asignar: { label: "Sin asignar", cls: "bg-gray-100 text-gray-500" },
-  asignado:    { label: "Asignado",    cls: "bg-blue-100 text-blue-700" },
-  legalizado:  { label: "Legalizado",  cls: "bg-amber-100 text-amber-700" },
-  finalizado:  { label: "Finalizado",  cls: "bg-emerald-100 text-emerald-700" },
-  frenado:     { label: "Frenado",     cls: "bg-red-100 text-red-600" },
-};
 
 export default async function ContableVencimientosPage({
   searchParams,
