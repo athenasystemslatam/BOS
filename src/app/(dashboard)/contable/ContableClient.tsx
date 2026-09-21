@@ -196,10 +196,6 @@ export function ContableClient({
     { value: "enviada", label: "Enviada" },
     { value: "no_corresponde", label: "N/A" },
   ];
-  const FORM_OPTIONS_BASE = [
-    { value: "pendiente", label: "Pendiente" },
-    { value: "presentado", label: "Presentado" },
-  ];
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -566,17 +562,13 @@ export function ContableClient({
                     )}
                   </td>
 
-                  {/* 855 */}
-                  <FormCell estado={b.f855_estado} field="f855_estado" balanceId={b.id}
-                    options={FORM_OPTIONS_BASE} puedeEditar={puedeEditar} onUpdate={update} />
-
-                  {/* F899 */}
-                  <FormCell estado={b.f899_estado} field="f899_estado" balanceId={b.id}
-                    options={FORM_OPTIONS_BASE} puedeEditar={puedeEditar} onUpdate={update} />
-
-                  {/* F713 */}
-                  <FormCell estado={b.f713_estado} field="f713_estado" balanceId={b.id}
-                    options={FORM_OPTIONS_BASE} puedeEditar={puedeEditar} onUpdate={update} />
+                  {/* 855 · F899 · F713 — binarios: presentado / no presentado */}
+                  <FormCheckCell estado={b.f855_estado} field="f855_estado" balanceId={b.id}
+                    puedeEditar={puedeEditar} onUpdate={update} />
+                  <FormCheckCell estado={b.f899_estado} field="f899_estado" balanceId={b.id}
+                    puedeEditar={puedeEditar} onUpdate={update} />
+                  <FormCheckCell estado={b.f713_estado} field="f713_estado" balanceId={b.id}
+                    puedeEditar={puedeEditar} onUpdate={update} />
 
                   {/* F657 */}
                   <FormCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
@@ -639,6 +631,37 @@ export function ContableClient({
         />
       )}
     </div>
+  );
+}
+
+// Formularios binarios (855, F899, F713): casilla tildada = "presentado",
+// destildada = "pendiente". Mismos valores que ya guarda la base.
+function FormCheckCell({
+  estado,
+  field,
+  balanceId,
+  puedeEditar,
+  onUpdate,
+}: {
+  estado: string;
+  field: string;
+  balanceId: string;
+  puedeEditar: boolean;
+  onUpdate: (id: string, updates: Partial<Balance>) => void;
+}) {
+  return (
+    <td className="px-3 py-2.5 text-center">
+      <input
+        type="checkbox"
+        checked={estado === "presentado"}
+        disabled={!puedeEditar}
+        onChange={(e) =>
+          onUpdate(balanceId, { [field]: e.target.checked ? "presentado" : "pendiente" } as Partial<Balance>)
+        }
+        title={estado === "presentado" ? "Presentado" : "No presentado"}
+        className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
+      />
+    </td>
   );
 }
 
