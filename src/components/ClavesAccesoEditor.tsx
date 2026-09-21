@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Copy, Check } from "lucide-react";
 import type { ClaveAcceso } from "@/types";
 
 const SISTEMA_ESTRELLA = "La Estrella";
@@ -25,6 +25,15 @@ export function ClavesAccesoEditor({
   sugerencias: string[];
 }) {
   const [showPass, setShowPass] = useState<Record<number, boolean>>({});
+  const [copiado, setCopiado] = useState<number | null>(null);
+
+  // Un campo de contraseña oculto no deja copiar su contenido, y en uno
+  // visible el doble clic dejaría afuera símbolos como *: por eso el botón.
+  function copiar(i: number, valor: string) {
+    navigator.clipboard.writeText(valor);
+    setCopiado(i);
+    setTimeout(() => setCopiado((c) => (c === i ? null : c)), 1500);
+  }
 
   function update(i: number, field: keyof ClaveAcceso, value: string) {
     const next = claves.map((c, idx) => (idx === i ? { ...c, [field]: value } : c));
@@ -52,7 +61,7 @@ export function ClavesAccesoEditor({
       {claves.map((c, i) => (
         <div
           key={i}
-          className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_1.7fr_0.8fr_auto] gap-2 sm:items-center"
+          className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_0.8fr_auto] gap-2 sm:items-center pb-2.5 border-b border-gray-100 last:border-0"
         >
           <input
             type="text"
@@ -78,22 +87,6 @@ export function ClavesAccesoEditor({
               className="text-xs border border-gray-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-bordo bg-white"
             />
           )}
-          <div className="relative">
-            <input
-              type={showPass[i] ? "text" : "password"}
-              placeholder={esEstrella(c.sistema) ? "Clave" : "Contraseña"}
-              value={c.contrasena}
-              onChange={(e) => update(i, "contrasena", e.target.value)}
-              className="text-xs border border-gray-200 rounded-md px-2.5 py-2 pr-8 focus:outline-none focus:border-bordo bg-white w-full"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPass((p) => ({ ...p, [i]: !p[i] }))}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              {showPass[i] ? <EyeOff size={13} /> : <Eye size={13} />}
-            </button>
-          </div>
           <select
             value={c.modulo ?? ""}
             onChange={(e) => update(i, "modulo", e.target.value)}
@@ -113,6 +106,38 @@ export function ClavesAccesoEditor({
           >
             <Trash2 size={14} />
           </button>
+          {/* La contraseña va en su propia fila, a todo el ancho: en la misma
+              fila que los otros 4 campos quedaba muy angosta para verla. */}
+          <div className="relative col-span-2 sm:col-span-4">
+            <input
+              type={showPass[i] ? "text" : "password"}
+              placeholder={esEstrella(c.sistema) ? "Clave" : "Contraseña"}
+              value={c.contrasena}
+              onChange={(e) => update(i, "contrasena", e.target.value)}
+              onDoubleClick={(e) => e.currentTarget.select()}
+              autoComplete="off"
+              className="text-xs font-mono border border-gray-200 rounded-md px-2.5 py-2 pr-16 focus:outline-none focus:border-bordo bg-white w-full"
+            />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => copiar(i, c.contrasena)}
+                disabled={!c.contrasena}
+                title="Copiar contraseña"
+                className="text-gray-400 hover:text-bordo disabled:opacity-30 transition-colors"
+              >
+                {copiado === i ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPass((p) => ({ ...p, [i]: !p[i] }))}
+                title={showPass[i] ? "Ocultar" : "Mostrar"}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                {showPass[i] ? <EyeOff size={13} /> : <Eye size={13} />}
+              </button>
+            </div>
+          </div>
         </div>
       ))}
 
