@@ -214,7 +214,7 @@ export function FichaClienteBoton({
                             )}
                             <div className="flex items-center gap-1 text-gray-500">
                               Clave:
-                              <span className="text-gray-700">
+                              <span className="text-gray-700 select-all break-all">
                                 {c.contrasena ? (verPass[i] ? c.contrasena : "••••••••") : "—"}
                               </span>
                               {c.contrasena && (

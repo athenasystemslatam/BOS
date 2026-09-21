@@ -52,7 +52,7 @@ export function ClavesAccesoEditor({
       {claves.map((c, i) => (
         <div
           key={i}
-          className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_1fr_0.8fr_auto] gap-2 sm:items-center"
+          className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_1.7fr_0.8fr_auto] gap-2 sm:items-center"
         >
           <input
             type="text"

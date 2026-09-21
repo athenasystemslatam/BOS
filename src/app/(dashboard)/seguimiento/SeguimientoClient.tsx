@@ -222,7 +222,7 @@ function ClavesModal({
       <div
         className={clsx(
           "bg-white rounded-xl shadow-xl border border-gray-100 w-full mx-4 p-5 max-h-[85vh] overflow-y-auto",
-          edit ? "max-w-lg" : "max-w-sm"
+          edit ? "max-w-2xl" : "max-w-md"
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -399,7 +399,7 @@ function ClavesModal({
                           <div className="flex items-center justify-between">
                             <span className="text-gray-400 text-[11px]">Identificador</span>
                             <div className="flex items-center font-mono text-gray-700">
-                              {clave.identificador}
+                              <span className="select-all break-all">{clave.identificador}</span>
                               <CopyButton value={clave.identificador} />
                             </div>
                           </div>
@@ -408,7 +408,7 @@ function ClavesModal({
                           <div className="flex items-center justify-between">
                             <span className="text-gray-400 text-[11px]">Usuario</span>
                             <div className="flex items-center font-mono text-gray-700">
-                              {clave.usuario}
+                              <span className="select-all break-all">{clave.usuario}</span>
                               <CopyButton value={clave.usuario} />
                             </div>
                           </div>
@@ -419,7 +419,7 @@ function ClavesModal({
                               {clave.sistema.trim().toLowerCase() === "la estrella" ? "Clave" : "Contraseña"}
                             </span>
                             <div className="flex items-center font-mono text-gray-700">
-                              {clave.contrasena}
+                              <span className="select-all break-all">{clave.contrasena}</span>
                               <CopyButton value={clave.contrasena} />
                             </div>
                           </div>
