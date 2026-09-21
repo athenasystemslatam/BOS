@@ -26,7 +26,7 @@ type Balance = {
   envio1: boolean; envio1_fecha: string | null;
   envio2: boolean; envio2_fecha: string | null;
   envio3: boolean; envio3_fecha: string | null;
-  info_recibida: boolean;
+  info_recibida: boolean; info_recibida_fecha: string | null;
   estado_eecc: string;
   f855_estado: string;
   f899_estado: string;
@@ -316,10 +316,8 @@ export function ContableClient({
               {/* Group 3: responsables */}
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Responsable</th>
               {/* Group 4: info */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">E1</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">E2</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">E3</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-12">Rec.</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Pedido de información</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Recepción de información</th>
               {/* Group 5: formularios */}
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-40">EECC</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">855</th>
@@ -334,7 +332,7 @@ export function ContableClient({
           <tbody className="divide-y divide-gray-100">
             {filas.length === 0 && (
               <tr>
-                <td colSpan={19} className="text-center text-gray-400 text-sm py-16">
+                <td colSpan={17}className="text-center text-gray-400 text-sm py-16">
                   {filterResp || filterEstado
                     ? "Sin resultados para el filtro aplicado"
                     : `No hay balances cargados para ${anio}`}
@@ -490,49 +488,21 @@ export function ContableClient({
                     )}
                   </td>
 
-                  {/* Envío 1 */}
-                  <td className="px-3 py-2.5 text-center">
-                    <input
-                      type="checkbox"
-                      checked={b.envio1}
-                      disabled={!puedeEditar}
-                      onChange={(e) => update(b.id, { envio1: e.target.checked })}
-                      className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
-                    />
-                  </td>
+                  {/* Pedido de información (envio1) */}
+                  <FechaCheckCell
+                    marcado={b.envio1}
+                    fecha={b.envio1_fecha}
+                    puedeEditar={puedeEditar}
+                    onChange={(marcado, fecha) => update(b.id, { envio1: marcado, envio1_fecha: fecha })}
+                  />
 
-                  {/* Envío 2 */}
-                  <td className="px-3 py-2.5 text-center">
-                    <input
-                      type="checkbox"
-                      checked={b.envio2}
-                      disabled={!puedeEditar}
-                      onChange={(e) => update(b.id, { envio2: e.target.checked })}
-                      className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
-                    />
-                  </td>
-
-                  {/* Envío 3 */}
-                  <td className="px-3 py-2.5 text-center">
-                    <input
-                      type="checkbox"
-                      checked={b.envio3}
-                      disabled={!puedeEditar}
-                      onChange={(e) => update(b.id, { envio3: e.target.checked })}
-                      className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
-                    />
-                  </td>
-
-                  {/* Recibido */}
-                  <td className="px-3 py-2.5 text-center">
-                    <input
-                      type="checkbox"
-                      checked={b.info_recibida}
-                      disabled={!puedeEditar}
-                      onChange={(e) => update(b.id, { info_recibida: e.target.checked })}
-                      className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
-                    />
-                  </td>
+                  {/* Recepción de información (info_recibida) */}
+                  <FechaCheckCell
+                    marcado={b.info_recibida}
+                    fecha={b.info_recibida_fecha}
+                    puedeEditar={puedeEditar}
+                    onChange={(marcado, fecha) => update(b.id, { info_recibida: marcado, info_recibida_fecha: fecha })}
+                  />
 
                   {/* EECC / Legalización */}
                   <td className="px-3 py-2.5 text-center">
@@ -631,6 +601,52 @@ export function ContableClient({
         />
       )}
     </div>
+  );
+}
+
+// Fecha de hoy según el reloj local (no toISOString, que da UTC y de noche
+// en Argentina ya marcaría el día siguiente).
+function hoyISO(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// DD/MM/AA
+function fmtCorta(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
+// Casilla que al tildarse registra sola la fecha del día, y al destildarse
+// la borra.
+function FechaCheckCell({
+  marcado,
+  fecha,
+  puedeEditar,
+  onChange,
+}: {
+  marcado: boolean;
+  fecha: string | null;
+  puedeEditar: boolean;
+  onChange: (marcado: boolean, fecha: string | null) => void;
+}) {
+  return (
+    <td className="px-3 py-2.5 text-center">
+      <div className="inline-flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={marcado}
+          disabled={!puedeEditar}
+          onChange={(e) => onChange(e.target.checked, e.target.checked ? hoyISO() : null)}
+          className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
+        />
+        <span className="w-[52px] text-left text-[11px] text-gray-500 tabular-nums">
+          {marcado ? fmtCorta(fecha) : ""}
+        </span>
+      </div>
+    </td>
   );
 }
 
