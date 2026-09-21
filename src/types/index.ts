@@ -12,6 +12,9 @@ export interface ClaveAcceso {
   usuario: string;
   contrasena: string;
   modulo?: ModuloClave;
+  // Solo para sistemas que se acceden con un número identificador en vez de
+  // usuario (hoy: "La Estrella", estrella sindical) — ver ClavesAccesoEditor.
+  identificador?: string;
 }
 
 export interface AccesoBloqueado {

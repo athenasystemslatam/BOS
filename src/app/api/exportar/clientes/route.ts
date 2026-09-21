@@ -127,6 +127,7 @@ export async function GET(req: NextRequest) {
     { header: "CUIT", key: "cuit", width: 16 },
     { header: "Sistema", key: "sistema", width: 20 },
     { header: "Usuario", key: "usuario", width: 20 },
+    { header: "Identificador", key: "identificador", width: 18 },
     { header: "Contraseña", key: "contrasena", width: 20 },
     { header: "Módulo", key: "modulo", width: 14 },
   ];
@@ -171,6 +172,7 @@ export async function GET(req: NextRequest) {
         cuit: formatCuit(c.cuit),
         sistema: clave.sistema,
         usuario: clave.usuario,
+        identificador: clave.identificador ?? "",
         contrasena: clave.contrasena,
         modulo: clave.modulo || "General",
       });

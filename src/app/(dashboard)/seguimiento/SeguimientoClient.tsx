@@ -395,6 +395,15 @@ function ClavesModal({
                     <div key={i} className="bg-gray-50 rounded-lg px-3 py-2.5 text-[12px]">
                       <p className="font-semibold text-gray-600 mb-1.5">{clave.sistema}</p>
                       <div className="space-y-1">
+                        {clave.identificador && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-400 text-[11px]">Identificador</span>
+                            <div className="flex items-center font-mono text-gray-700">
+                              {clave.identificador}
+                              <CopyButton value={clave.identificador} />
+                            </div>
+                          </div>
+                        )}
                         {clave.usuario && (
                           <div className="flex items-center justify-between">
                             <span className="text-gray-400 text-[11px]">Usuario</span>
@@ -406,7 +415,9 @@ function ClavesModal({
                         )}
                         {clave.contrasena && (
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-400 text-[11px]">Contraseña</span>
+                            <span className="text-gray-400 text-[11px]">
+                              {clave.sistema.trim().toLowerCase() === "la estrella" ? "Clave" : "Contraseña"}
+                            </span>
                             <div className="flex items-center font-mono text-gray-700">
                               {clave.contrasena}
                               <CopyButton value={clave.contrasena} />

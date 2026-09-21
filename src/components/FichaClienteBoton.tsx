@@ -203,9 +203,15 @@ export function FichaClienteBoton({
                                 </span>
                               )}
                             </div>
-                            <p className="text-gray-500">
-                              Usuario: <span className="text-gray-700">{c.usuario || "—"}</span>
-                            </p>
+                            {c.identificador ? (
+                              <p className="text-gray-500">
+                                Identificador: <span className="text-gray-700">{c.identificador}</span>
+                              </p>
+                            ) : (
+                              <p className="text-gray-500">
+                                Usuario: <span className="text-gray-700">{c.usuario || "—"}</span>
+                              </p>
+                            )}
                             <div className="flex items-center gap-1 text-gray-500">
                               Clave:
                               <span className="text-gray-700">

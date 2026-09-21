@@ -63,8 +63,9 @@ export async function editarDatosCliente(
       usuario: String(c?.usuario ?? "").trim(),
       contrasena: String(c?.contrasena ?? ""),
       modulo: String(c?.modulo ?? ""),
+      identificador: String(c?.identificador ?? "").trim(),
     }))
-    .filter((c) => c.sistema || c.usuario || c.contrasena);
+    .filter((c) => c.sistema || c.usuario || c.contrasena || c.identificador);
 
   const { error } = await admin
     .from("clientes")

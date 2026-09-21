@@ -4,6 +4,12 @@ import { useState } from "react";
 import { Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import type { ClaveAcceso } from "@/types";
 
+const SISTEMA_ESTRELLA = "La Estrella";
+
+function esEstrella(sistema: string): boolean {
+  return sistema.trim().toLowerCase() === SISTEMA_ESTRELLA.toLowerCase();
+}
+
 // Editor de claves de acceso, compartido entre Clientes → Editar y Panel
 // General → Nueva empresa (bloque de Sueldos) — antes vivía solo dentro de
 // EditarEmpresaModal.tsx; se extrajo acá para que ambas pantallas editen el
@@ -33,8 +39,12 @@ export function ClavesAccesoEditor({
     onChange([...claves, { sistema, usuario: "", contrasena: "", modulo: "" }]);
   }
 
-  const faltantes = sugerencias.filter(
-    (s) => !claves.some((c) => c.sistema.trim().toLowerCase() === s.toLowerCase())
+  // "La Estrella" (estrella sindical) se accede con Identificador en vez de
+  // Usuario, y puede tenerla cualquier cliente — por eso se ofrece siempre.
+  const faltantes = [...sugerencias, SISTEMA_ESTRELLA].filter(
+    (s, i, arr) =>
+      arr.findIndex((x) => x.toLowerCase() === s.toLowerCase()) === i &&
+      !claves.some((c) => c.sistema.trim().toLowerCase() === s.toLowerCase())
   );
 
   return (
@@ -51,17 +61,27 @@ export function ClavesAccesoEditor({
             onChange={(e) => update(i, "sistema", e.target.value)}
             className="text-xs border border-gray-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-bordo bg-white"
           />
-          <input
-            type="text"
-            placeholder="Usuario / CUIT"
-            value={c.usuario}
-            onChange={(e) => update(i, "usuario", e.target.value)}
-            className="text-xs border border-gray-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-bordo bg-white"
-          />
+          {esEstrella(c.sistema) ? (
+            <input
+              type="text"
+              placeholder="Identificador"
+              value={c.identificador ?? ""}
+              onChange={(e) => update(i, "identificador", e.target.value)}
+              className="text-xs border border-gray-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-bordo bg-white"
+            />
+          ) : (
+            <input
+              type="text"
+              placeholder="Usuario / CUIT"
+              value={c.usuario}
+              onChange={(e) => update(i, "usuario", e.target.value)}
+              className="text-xs border border-gray-200 rounded-md px-2.5 py-2 focus:outline-none focus:border-bordo bg-white"
+            />
+          )}
           <div className="relative">
             <input
               type={showPass[i] ? "text" : "password"}
-              placeholder="Contraseña"
+              placeholder={esEstrella(c.sistema) ? "Clave" : "Contraseña"}
               value={c.contrasena}
               onChange={(e) => update(i, "contrasena", e.target.value)}
               className="text-xs border border-gray-200 rounded-md px-2.5 py-2 pr-8 focus:outline-none focus:border-bordo bg-white w-full"
