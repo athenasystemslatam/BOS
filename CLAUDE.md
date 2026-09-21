@@ -17,11 +17,58 @@ Sistema interno de KMA Consultores para seguimiento de sueldos, impuestos, conta
 - **Al arrancar una sesión, correr `git pull` antes de tocar código.** Tanto Giuliana como Matías pushean cambios en sesiones separadas — el 24-ago se detectó que el checkout local estaba 4 commits atrás de `origin/main` (dashboards/vencimientos/equipo por módulo + email con dominio propio, ya en producción). Trabajar sobre un checkout viejo puede terminar reconstruyendo algo que ya existe, o generando conflictos al pushear.
 - **Si hace falta escritura directa a Supabase (SQL, no a través de la app) y no hay `.env.local` con credenciales reales**: el sandbox de Claude Code reemplaza automáticamente por `[SENSITIVE]` cualquier credencial real que `vercel env pull` intente guardar en disco — no es un bug, no intentar esquivarlo. La vía que funciona: armar el SQL y pedirle al usuario que lo pegue en Supabase Dashboard → SQL Editor (mismo lugar de siempre para migraciones). Para lectura, `claude-in-chrome` contra la app en producción no tiene ese problema — pero ojo, la sesión de Chrome logueada puede estar en "Modo consulta" (no admin) aunque parezca la cuenta correcta.
 
+- **Abrir Claude Code DENTRO de la carpeta del repo** (`C:\Users\ESTUDIO\Proyectos\BOS`), no desde otra carpeta: este archivo solo se lee automáticamente si la sesión arranca ahí, y la memoria de la conversación queda atada a la carpeta donde se abrió.
+
+---
+
+## Cómo trabajamos con Claude Code (reglas de la casa)
+
+Estas reglas antes vivían solo en la memoria local de una sesión y no viajaban entre cuentas/PCs; acá quedan para todas.
+
+**Antes de pushear**
+- Preguntar "¿pusheo?" como paso aparte antes de **cada** `git push`; esperar un "dale, pushea" explícito.
+- La confirmación es **por tema**: si hay más de un cambio/commit pendiente, decir cuáles son y preguntar cuáles subir. Nunca arrastrar cambios de otro tema en el mismo push.
+- Antes de mostrar un cambio como listo: `npx tsc --noEmit` y `npx next lint`; `npx next build` si el cambio es grande o cruza módulos. (Un "Invalid supabaseUrl" en el build local es ruido conocido: no hay credenciales en local.)
+- Antes de pushear: `git fetch` y mirar si `origin/main` avanzó (ver "Dos cuentas" abajo).
+
+**Después de pushear**
+- Verificar el deploy en `https://api.github.com/repos/athenasystemslatam/BOS/commits/<sha>/status`. Un `"pending"` con `"total_count": 0` **no** es "buildeando": es que Vercel todavía no reportó nada (una vez fue un incidente de Vercel). Esperar un estado real (`success`/`failure`/`error`). La API sin autenticar tiene un límite de ~60 consultas/hora: no consultar cada pocos segundos.
+- Recién con el deploy en verde avisar que está en producción.
+
+**Base de datos (Supabase)**
+- Claude no escribe en la base. Si hace falta, dejar el `.sql` en `supabase/` (commiteado) y **darle al usuario el SQL para que lo corra** en Supabase → SQL Editor. Correr el SQL **antes** de pushear el código que lo necesita.
+- Columnas nuevas: `alter table ... add column if not exists ...`.
+- Columnas con `CHECK`: ampliar el constraint **antes** de migrar datos a un valor nuevo (`drop constraint` + `add constraint` con la lista completa), si no el `UPDATE` falla.
+- Vistas (`vista_empresas`): antes de un `CREATE OR REPLACE VIEW`, reconstruirla desde la migración **más reciente** que la toque; solo se pueden agregar columnas al final, y usar una versión vieja tira columnas ya agregadas.
+
+**Texto y datos**
+- En texto visible decir **"cliente(s)"**, no "empresa(s)". No renombrar identificadores, tablas ni rutas (`/empresas`, `empresas.*`).
+- Cuenta compartida `athenasystems.latam@gmail.com`: la usan **Giuliana y Matías**; no asumir quién está escribiendo.
+- Matías no conoce bien Vercel/Supabase: explicar qué es cada panel antes de dar pasos; no asumir conocimientos de base de datos.
+- Ante un pedido ambiguo o un cambio grande, confirmar el alcance antes de implementar. Si hay que decidir, dar una recomendación, no un menú de opciones.
+- Ante un revert, ser exacto sobre qué está pusheado y qué es solo local. No reescribir historia ya pusheada (usar `git revert`, nunca `push --force`).
+
+---
+
+## Dos cuentas / dos colaboradores
+
+Giuliana y Matías pueden trabajar en paralelo, cada uno con su cuenta de Claude.
+
+- `main` es la fuente de verdad y despliega solo a producción. **La cuenta de la empresa (`athenasystems.latam@gmail.com`) tiene prioridad** y pushea a `main`.
+- Matías, desde su cuenta, trabaja en ramas propias `matias/<tema>` e integra por PR o rebase (Vercel arma un deploy de prueba por rama, sin tocar producción).
+- **Al arrancar:** `git fetch`, mirar `git log origin/main -10` y leer `NOTES.md`.
+- **Antes de cada push:** `git fetch`. Si `origin/main` avanzó, `git pull --rebase`, volver a correr `tsc`/`lint` y recién ahí pushear. Git ya rechaza un push desde una copia desactualizada (non-fast-forward): no se pisa nada, el commit local no se pierde.
+- **Nunca `git push --force`.**
+- Antes de tocar un archivo, ver si cambió reciente en `main`. No modificar ni borrar trabajo de la otra cuenta sin dejarlo escrito en `NOTES.md`.
+- **Cambios de base:** solo como archivos `.sql` en `supabase/` + una línea en `NOTES.md` ("SQL pendiente de correr"). Si dos personas cambian el esquema sin avisarse, Git no lo detecta.
+- **Al cerrar una sesión:** actualizar `NOTES.md` (qué se hizo, qué falta) y commitearlo.
+- Cada cuenta trabaja en **su propia copia del repo** (o su propia rama), nunca las dos en la misma carpeta con cambios sin commitear: se mezclan y Git no puede protegerlos.
+
 ---
 
 ## Stack
 
-- **Next.js 15** App Router — Server Components + Server Actions (`"use server"`)
+- **Next.js 14.2** App Router — Server Components + Server Actions (`"use server"`)
 - **Supabase** — PostgreSQL + Auth (magic link, sin contraseñas)
 - **Google Drive API** — service account `bos-drive-reader@bos-sueldos.iam.gserviceaccount.com`
 - **Resend** — emails de alerta F.931
