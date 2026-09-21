@@ -9,6 +9,7 @@ import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { LocalesEditor } from "@/components/LocalesEditor";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 
 function Field({
   label,
@@ -66,6 +67,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
   const [emailsContacto, setEmailsContacto] = useState<EmailContacto[]>([]);
   const [tieneLocales, setTieneLocales] = useState(false);
   const [locales, setLocales] = useState<Local[]>([]);
+  const backdrop = useBackdropClose(() => setOpen(false));
 
   const terminacion = cuit.replace(/\D/g, "").length === 11
     ? cuit.replace(/\D/g, "")[10]
@@ -147,7 +149,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
       {open && (
         <div
           className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-          onClick={() => setOpen(false)}
+          {...backdrop}
         >
           <div
             className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"

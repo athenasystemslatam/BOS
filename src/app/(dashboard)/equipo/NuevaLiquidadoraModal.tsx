@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { crearLiquidadora } from "./actions";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 
 const ROLES = [
   { value: "liquidadora", label: "Liquidadora" },
@@ -23,6 +24,7 @@ export function NuevaLiquidadoraModal() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const backdrop = useBackdropClose(() => setOpen(false));
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,7 +53,7 @@ export function NuevaLiquidadoraModal() {
       {open && (
         <div
           className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-          onClick={() => setOpen(false)}
+          {...backdrop}
         >
           <div
             className="bg-white rounded-xl shadow-xl w-full max-w-md"

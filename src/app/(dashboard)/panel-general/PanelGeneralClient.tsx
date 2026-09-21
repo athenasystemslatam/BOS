@@ -7,6 +7,7 @@ import { EquipoMiembro, TipoContribuyente, VistEmpresa } from "@/types";
 import { NuevoClienteModal } from "./NuevoClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
 import { darDeBajaServicio, darDeBajaCliente } from "./actions";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 
 // Rediseño Panel General (handoff sep-2026): Libros queda fuera de esta
 // pantalla por decisión del usuario — es otro módulo y se gestiona aparte.
@@ -110,6 +111,9 @@ export function PanelGeneralClient({
   // Baja pendiente de la última confirmación en ventana (tras "Confirmar").
   const [bajaFinal, setBajaFinal] = useState<Confirmando | null>(null);
   const [isPending, startTransition] = useTransition();
+  const backdropBaja = useBackdropClose(() => {
+    if (!isPending) setBajaFinal(null);
+  });
   const [actionError, setActionError] = useState<string | null>(null);
 
   // Columna "Cliente" fija al scrollear lateralmente: se parte la tabla en
@@ -933,7 +937,7 @@ export function PanelGeneralClient({
       {bajaFinal && bajaFinalInfo && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(23,20,26,.46)] p-4"
-          onClick={() => !isPending && setBajaFinal(null)}
+          {...backdropBaja}
         >
           <div
             className="bg-paper rounded-2xl shadow-[0_30px_70px_rgba(23,20,26,.3)] w-full max-w-md p-6"

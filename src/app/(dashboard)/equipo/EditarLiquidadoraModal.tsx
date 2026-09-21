@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { X, Send } from "lucide-react";
 import { editarLiquidadora, reenviarInvitacion } from "./actions";
 import { Liquidadora } from "@/types";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 
 const ROLES = [
   { value: "liquidadora", label: "Liquidadora" },
@@ -53,6 +54,7 @@ export function EditarLiquidadoraModal({
   const [isPending, startTransition] = useTransition();
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<string | null>(null);
+  const backdrop = useBackdropClose(onClose);
 
   async function handleResend() {
     setIsSending(true);
@@ -77,7 +79,7 @@ export function EditarLiquidadoraModal({
   return (
     <div
       className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
+      {...backdrop}
     >
       <div
         className="bg-white rounded-xl shadow-xl w-full max-w-md"

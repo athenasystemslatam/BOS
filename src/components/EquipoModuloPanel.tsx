@@ -2,6 +2,7 @@
 
 import { X, Users } from "lucide-react";
 import clsx from "clsx";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 
 export type EquipoModuloAccent = {
   dot: string;   // ej: "bg-blue-500"
@@ -26,9 +27,10 @@ export function EquipoModuloPanel({
   onClose: () => void;
   accent: EquipoModuloAccent;
 }) {
+  const backdrop = useBackdropClose(onClose);
   return (
-    <div className="fixed inset-0 z-40 flex justify-end" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/20" />
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <div className="absolute inset-0 bg-black/20" {...backdrop} />
       <div
         className="relative w-72 h-full bg-white shadow-xl border-l border-gray-200 flex flex-col"
         onClick={(e) => e.stopPropagation()}

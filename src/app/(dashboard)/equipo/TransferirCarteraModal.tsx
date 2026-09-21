@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { X, ArrowRightLeft } from "lucide-react";
 import { Liquidadora } from "@/types";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { getClientesActivosDeLiquidadora, transferirCartera } from "../empresas/actions";
 
@@ -28,6 +29,7 @@ export function TransferirCarteraModal({
   const [error, setError] = useState("");
   const [resultado, setResultado] = useState<{ total: number; transferidas: number } | null>(null);
   const [isPending, startTransition] = useTransition();
+  const backdrop = useBackdropClose(onClose);
 
   if (clientes === null) {
     getClientesActivosDeLiquidadora(liquidadora.id).then(setClientes);
@@ -55,7 +57,7 @@ export function TransferirCarteraModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={onClose}
+      {...backdrop}
     >
       <div
         className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col"

@@ -8,6 +8,7 @@ import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { LocalesEditor } from "@/components/LocalesEditor";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 
 const inputCls =
   "w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo focus:ring-1 focus:ring-bordo/20 transition-colors bg-white";
@@ -73,6 +74,7 @@ export function EditarEmpresaModal({
   const [locales, setLocales] = useState<Local[]>(cliente.locales ?? []);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const backdrop = useBackdropClose(onClose);
 
   const terminacion =
     cuit.replace(/\D/g, "").length === 11 ? cuit.replace(/\D/g, "")[10] : "—";
@@ -120,7 +122,7 @@ export function EditarEmpresaModal({
   return (
     <div
       className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
+      {...backdrop}
     >
       <div
         className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[92vh] flex flex-col"

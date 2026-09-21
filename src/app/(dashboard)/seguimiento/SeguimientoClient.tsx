@@ -27,6 +27,7 @@ import {
 import { Cliente, ClaveAcceso, EmailContacto, Liquidadora, Periodo, Tarea } from "@/types";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 import {
   editarDatosCliente,
   toggleManual,
@@ -198,6 +199,7 @@ function ClavesModal({
   const [clavesEdit, setClavesEdit] = useState<ClaveAcceso[]>(claves);
   const [err, setErr] = useState<string | null>(null);
   const [guardando, startGuardar] = useTransition();
+  const backdrop = useBackdropClose(onClose);
 
   function guardar() {
     setErr(null);
@@ -217,7 +219,7 @@ function ClavesModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-      onClick={onClose}
+      {...backdrop}
     >
       <div
         className={clsx(
