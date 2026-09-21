@@ -341,7 +341,10 @@ export function EmpresasClient({
                           </p>
                         )}
                         {c.observaciones && (
-                          <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]">
+                          <p
+                            className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[220px]"
+                            title={c.observaciones}
+                          >
                             {c.observaciones}
                           </p>
                         )}
