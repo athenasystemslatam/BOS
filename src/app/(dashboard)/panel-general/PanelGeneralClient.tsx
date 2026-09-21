@@ -107,6 +107,8 @@ export function PanelGeneralClient({
   const [creando, setCreando] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<Confirmando | null>(null);
+  // Baja pendiente de la última confirmación en ventana (tras "Confirmar").
+  const [bajaFinal, setBajaFinal] = useState<Confirmando | null>(null);
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -263,19 +265,51 @@ export function PanelGeneralClient({
           confirmando.servicio === c.servicio &&
           confirmando.subtipo === c.subtipo))
     ) {
-      // Segunda pulsación: ejecutar
-      startTransition(async () => {
-        const result =
-          c.tipo === "servicio"
-            ? await darDeBajaServicio(c.clienteId, c.servicio, c.subtipo)
-            : await darDeBajaCliente(c.clienteId);
-        if (result?.error) setActionError(result.error);
-        setConfirmando(null);
-      });
+      // Segunda pulsación: en vez de ejecutar, pide una última confirmación
+      // en una ventana (ver bajaFinal / ejecutarBaja).
+      setConfirmando(null);
+      setBajaFinal(c);
     } else {
       setConfirmando(c);
     }
   }
+
+  function ejecutarBaja() {
+    const c = bajaFinal;
+    if (!c) return;
+    startTransition(async () => {
+      const result =
+        c.tipo === "servicio"
+          ? await darDeBajaServicio(c.clienteId, c.servicio, c.subtipo)
+          : await darDeBajaCliente(c.clienteId);
+      if (result?.error) setActionError(result.error);
+      setBajaFinal(null);
+    });
+  }
+
+  // Texto de la ventana de confirmación final.
+  const bajaFinalInfo = (() => {
+    if (!bajaFinal) return null;
+    const nombre = empresas.find((e) => e.id === bajaFinal.clienteId)?.nombre ?? "este cliente";
+    if (bajaFinal.tipo === "cliente") {
+      return {
+        titulo: "¿Dar de baja al cliente?",
+        detalle: `Vas a dar de baja a «${nombre}». Va a pasar a Inactiva en todo el sistema.`,
+        boton: "Sí, dar de baja el cliente",
+      };
+    }
+    const key = `${bajaFinal.servicio}:${bajaFinal.subtipo}`;
+    const grupo = GRUPOS.find((g) => g.cols.some((c) => c.key === key));
+    const col = grupo?.cols.find((c) => c.key === key);
+    const servicioLabel = grupo
+      ? col && col.label !== "Responsable" ? `${grupo.label} — ${col.label}` : grupo.label
+      : key;
+    return {
+      titulo: "¿Dar de baja el servicio?",
+      detalle: `Vas a dar de baja el servicio ${servicioLabel} de «${nombre}». El cliente sigue activo con sus otros servicios.`,
+      boton: "Sí, dar de baja el servicio",
+    };
+  })();
 
   function esConfirmando(c: Confirmando) {
     if (!confirmando || confirmando.tipo !== c.tipo || confirmando.clienteId !== c.clienteId) return false;
@@ -895,6 +929,40 @@ export function PanelGeneralClient({
           )}
         </div>
       </div>
+
+      {bajaFinal && bajaFinalInfo && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(23,20,26,.46)] p-4"
+          onClick={() => !isPending && setBajaFinal(null)}
+        >
+          <div
+            className="bg-paper rounded-2xl shadow-[0_30px_70px_rgba(23,20,26,.3)] w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-archivo text-[19px] font-semibold tracking-[-.02em] text-ink">
+              {bajaFinalInfo.titulo}
+            </h2>
+            <p className="text-[13px] text-ink-muted mt-3">{bajaFinalInfo.detalle}</p>
+            <p className="text-[13px] font-semibold text-danger mt-2">¿Estás seguro?</p>
+            <div className="flex justify-end gap-2.5 mt-6">
+              <button
+                onClick={() => setBajaFinal(null)}
+                disabled={isPending}
+                className="px-4 py-2.5 text-[12.5px] font-medium text-ink-muted bg-white border border-line-input rounded-[9px] hover:bg-paper-hover transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={ejecutarBaja}
+                disabled={isPending}
+                className="px-[18px] py-2.5 text-[12.5px] font-semibold text-white bg-danger rounded-[9px] hover:brightness-95 transition-[filter] disabled:opacity-50"
+              >
+                {isPending ? "Dando de baja…" : bajaFinalInfo.boton}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {creando && (
         <NuevoClienteModal
