@@ -51,6 +51,7 @@ export function EditarClienteModal({
   const [sindicatoNombre, setSindicatoNombre] = useState("");
   const [tieneRubricaLsd, setTieneRubricaLsd] = useState(false);
   const [jurisdiccion, setJurisdiccion] = useState("CABA");
+  const [jurisdiccionOtra, setJurisdiccionOtra] = useState("");
 
   const [cuilArca, setCuilArca] = useState("");
   const [art, setArt] = useState("");
@@ -100,7 +101,14 @@ export function EditarClienteModal({
       setTieneSindicato(!!cliente.tiene_sindicato);
       setSindicatoNombre(cliente.sindicato_nombre ?? "");
       setTieneRubricaLsd(!!cliente.tiene_rubrica_lsd);
-      setJurisdiccion(cliente.jurisdiccion ?? "CABA");
+      setJurisdiccion(
+        JURISDICCIONES.includes(cliente.jurisdiccion ?? "") || !cliente.jurisdiccion
+          ? cliente.jurisdiccion ?? "CABA"
+          : "Otra"
+      );
+      setJurisdiccionOtra(
+        cliente.jurisdiccion && !JURISDICCIONES.includes(cliente.jurisdiccion) ? cliente.jurisdiccion : ""
+      );
 
       setCuilArca(cliente.cuil_arca ?? "");
       setArt(cliente.art ?? "");
@@ -174,7 +182,7 @@ export function EditarClienteModal({
       formData.set("sueldos_tiene_sindicato", String(tieneSindicato));
       formData.set("sueldos_sindicato_nombre", sindicatoNombre);
       formData.set("sueldos_tiene_rubrica_lsd", String(tieneRubricaLsd));
-      formData.set("sueldos_jurisdiccion", jurisdiccion);
+      formData.set("sueldos_jurisdiccion", jurisdiccion === "Otra" ? jurisdiccionOtra : jurisdiccion);
       formData.set("sueldos_cuil_arca", cuilArca);
       formData.set("sueldos_art", art);
       formData.set("sueldos_red_bancaria", redBancaria);
@@ -426,6 +434,30 @@ export function EditarClienteModal({
                                 )}
                               </div>
 
+                              <div>
+                                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                                  Jurisdicción laboral
+                                </label>
+                                <select
+                                  value={jurisdiccion}
+                                  onChange={(e) => setJurisdiccion(e.target.value)}
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
+                                >
+                                  {JURISDICCIONES.map((j) => (
+                                    <option key={j} value={j}>{j}</option>
+                                  ))}
+                                </select>
+                                {jurisdiccion === "Otra" && (
+                                  <input
+                                    type="text"
+                                    value={jurisdiccionOtra}
+                                    onChange={(e) => setJurisdiccionOtra(e.target.value)}
+                                    placeholder="Especificar jurisdicción"
+                                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] mt-2"
+                                  />
+                                )}
+                              </div>
+
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                   <span className="text-[12px] text-ink-muted">
@@ -433,17 +465,6 @@ export function EditarClienteModal({
                                   </span>
                                   <Toggle value={tieneRubricaLsd} onChange={setTieneRubricaLsd} />
                                 </div>
-                                {tieneRubricaLsd && (
-                                  <select
-                                    value={jurisdiccion}
-                                    onChange={(e) => setJurisdiccion(e.target.value)}
-                                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
-                                  >
-                                    {JURISDICCIONES.map((j) => (
-                                      <option key={j} value={j}>{j}</option>
-                                    ))}
-                                  </select>
-                                )}
                               </div>
 
                               <div className="pt-3 border-t border-line-soft space-y-3">
