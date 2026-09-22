@@ -9,7 +9,7 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
+  display: "optional",
 });
 
 // Rediseño Panel General (handoff sep-2026): Archivo para títulos/cifras,
@@ -20,13 +20,13 @@ const archivo = Archivo({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-archivo",
-  display: "swap",
+  display: "optional",
 });
 const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-plex-mono",
-  display: "swap",
+  display: "optional",
 });
 
 export const metadata: Metadata = {
