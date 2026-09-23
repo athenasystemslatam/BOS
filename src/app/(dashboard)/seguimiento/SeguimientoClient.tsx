@@ -1288,7 +1288,7 @@ export function SeguimientoClient({
             <p className="text-[11px] text-gray-400 flex items-center gap-2">
               <span>
                 {clientesFiltrados.length} clientes en{" "}
-                <span className="font-medium">{currentPeriodo.nombre_mes}</span>
+                <span className="font-bold">{currentPeriodo.nombre_mes}</span>
               </span>
               {ordenIds && (
                 <button
