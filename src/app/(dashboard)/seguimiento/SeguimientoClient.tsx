@@ -1664,14 +1664,14 @@ export function SeguimientoClient({
                       {/* Observaciones */}
                       <td className="px-4 py-2.5">
                         <div className="relative">
-                          <textarea
+                          <input
+                            type="text"
                             value={t.observaciones}
                             placeholder="Agregar nota..."
-                            rows={2}
                             onChange={(e) =>
                               handleObservaciones(cliente.id, e.target.value)
                             }
-                            className="w-full text-[12px] text-gray-600 border border-transparent rounded-md pl-2 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo focus:bg-white hover:border-gray-200 bg-transparent placeholder:text-gray-300 transition-colors resize-y leading-snug"
+                            className="w-full text-[12px] text-gray-600 border border-transparent rounded-md pl-2 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo focus:bg-white hover:border-gray-200 bg-transparent placeholder:text-gray-300 transition-colors"
                           />
                           <button
                             type="button"
