@@ -1286,7 +1286,7 @@ export function SeguimientoClient({
           {/* Barra de progreso */}
           <div className="shrink-0 px-6 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
             <p className="text-[11px] text-gray-400 flex items-center gap-2">
-              <span>
+              <span className="text-black">
                 {clientesFiltrados.length} clientes en{" "}
                 <span className="font-bold">{currentPeriodo.nombre_mes}</span>
               </span>
