@@ -23,6 +23,7 @@ import {
   GripVertical,
   RotateCcw,
   Pencil,
+  Maximize2,
 } from "lucide-react";
 import { Cliente, ClaveAcceso, EmailContacto, Liquidadora, Periodo, Tarea } from "@/types";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
@@ -455,6 +456,50 @@ function ClavesModal({
   );
 }
 
+function ObservacionModal({
+  nombre,
+  periodoLabel,
+  value,
+  onChange,
+  onClose,
+}: {
+  nombre: string;
+  periodoLabel: string;
+  value: string;
+  onChange: (valor: string) => void;
+  onClose: () => void;
+}) {
+  const backdrop = useBackdropClose(onClose);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+      {...backdrop}
+    >
+      <div
+        className="bg-white rounded-xl shadow-xl border border-gray-100 w-full max-w-lg mx-4 p-5 max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3 shrink-0">
+          <div>
+            <p className="text-[13px] font-semibold text-gray-800">{nombre}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{periodoLabel} · Observaciones</p>
+          </div>
+          <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+        <textarea
+          autoFocus
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Agregar nota..."
+          className="w-full flex-1 min-h-[240px] text-[13px] text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-bordo focus:ring-1 focus:ring-bordo resize-none"
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function SeguimientoClient({
@@ -484,6 +529,9 @@ export function SeguimientoClient({
 
   // Modal de claves
   const [clienteClaves, setClienteClaves] = useState<ClienteConLiq | null>(null);
+
+  // Modal de observaciones expandidas (para leer/editar notas largas cómodo)
+  const [obsExpandida, setObsExpandida] = useState<{ clienteId: string; nombre: string } | null>(null);
 
   // Recordatorios del período anterior
   const [recordatoriosPrevios, setRecordatoriosPrevios] = useState<Record<string, string>>(
@@ -835,6 +883,15 @@ export function SeguimientoClient({
             setClienteClaves(null);
             router.refresh();
           }}
+        />
+      )}
+      {obsExpandida && (
+        <ObservacionModal
+          nombre={obsExpandida.nombre}
+          periodoLabel={currentPeriodo?.nombre_mes ?? ""}
+          value={getEffective(obsExpandida.clienteId).observaciones}
+          onChange={(valor) => handleObservaciones(obsExpandida.clienteId, valor)}
+          onClose={() => setObsExpandida(null)}
         />
       )}
       {/* Header */}
@@ -1606,15 +1663,25 @@ export function SeguimientoClient({
 
                       {/* Observaciones */}
                       <td className="px-4 py-2.5">
-                        <textarea
-                          value={t.observaciones}
-                          placeholder="Agregar nota..."
-                          rows={2}
-                          onChange={(e) =>
-                            handleObservaciones(cliente.id, e.target.value)
-                          }
-                          className="w-full text-[12px] text-gray-600 border border-transparent rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo focus:bg-white hover:border-gray-200 bg-transparent placeholder:text-gray-300 transition-colors resize-y leading-snug"
-                        />
+                        <div className="relative">
+                          <textarea
+                            value={t.observaciones}
+                            placeholder="Agregar nota..."
+                            rows={2}
+                            onChange={(e) =>
+                              handleObservaciones(cliente.id, e.target.value)
+                            }
+                            className="w-full text-[12px] text-gray-600 border border-transparent rounded-md pl-2 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo focus:bg-white hover:border-gray-200 bg-transparent placeholder:text-gray-300 transition-colors resize-y leading-snug"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setObsExpandida({ clienteId: cliente.id, nombre: cliente.nombre })}
+                            title="Ver completo"
+                            className="absolute top-1 right-1 text-gray-300 hover:text-bordo transition-colors"
+                          >
+                            <Maximize2 size={11} />
+                          </button>
+                        </div>
                       </td>
 
                       {/* Recordatorio para el mes siguiente */}
