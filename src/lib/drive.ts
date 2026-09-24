@@ -270,6 +270,58 @@ async function findFolder(
   return match?.id ?? null;
 }
 
+const MES_WORDS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+/** Carpeta del año: "2026", "26", "AÑO 2026"… pero no una carpeta de mes que mencione el año. */
+function matchesAnioFolder(name: string, anio: number): boolean {
+  const nn = norm(name);
+  const y4 = String(anio);
+  const y2 = y4.slice(-2);
+  if (nn === y4 || nn === y2) return true;
+  if (nn.includes(y4)) return !MES_WORDS.some((m) => nn.includes(m));
+  return false;
+}
+
+// Palabras que delatan que una carpeta con "sueldo" en el nombre NO es la de liquidaciones
+// (ej: "LIBRO SUELDO DIGITAL", "BACK UP SUELDOS").
+const SUELDOS_EXCLUIR = new Set([
+  "libro", "libros", "lobros", "digital", "back", "backup", "archivos",
+  "impositiva", "impositivas", "bancos", "tarj", "iva", "notificaciones", "notific",
+]);
+
+function esSueldosPreferida(name: string): boolean {
+  const w = norm(name).split(" ");
+  if (!w.includes("sueldo") && !w.includes("sueldos")) return false;
+  return !w.some((t) => SUELDOS_EXCLUIR.has(t));
+}
+
+/** Elige la carpeta de sueldos del cliente. Con una sola candidata se comporta como
+ *  siempre; con varias (ej: SUELDOS + LIQUIDACIONES IMPOSITIVAS) prefiere las que
+ *  dicen "sueldo(s)" y, entre esas, la que tiene la carpeta del mes (o al menos la del año). */
+async function findSueldosFolder(
+  drive: drive_v3.Drive,
+  clienteFolderId: string,
+  mes: number,
+  anio: number
+): Promise<string | null> {
+  const folders = await listChildren(drive, clienteFolderId, true);
+  const cands = folders.filter((f) => f.id && SUELDOS_KEYS.some((k) => norm(f.name ?? "").includes(k)));
+  if (cands.length === 0) return null;
+  if (cands.length === 1) return cands[0].id!;
+
+  const preferidas = cands.filter((f) => esSueldosPreferida(f.name ?? ""));
+  const pool = preferidas.length > 0 ? preferidas : cands;
+
+  let conAnio: string | null = null;
+  for (const c of pool) {
+    const anioId = await findFolder(drive, c.id!, (n) => matchesAnioFolder(n, anio));
+    const mesId = await findFolder(drive, anioId ?? c.id!, (n) => matchesMesFolder(n, mes, anio));
+    if (mesId) return c.id!;
+    if (anioId && !conAnio) conAnio = c.id!;
+  }
+  return conAnio ?? pool[0].id!;
+}
+
 /** Recursively list all non-folder files, up to maxDepth levels */
 async function listFilesRecursive(
   drive: drive_v3.Drive,
@@ -450,8 +502,6 @@ export async function scanClientesForMonth(
     console.error("[Drive] ALERTA: collectClientFolders devolvió 0 carpetas — probable problema de auth o permisos");
   }
 
-  const MES_WORDS = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-
   const settled = await concurrent(clientes, 15, async (cliente) => {
     let clienteFolderId: string;
     if (cliente.drive_folder_id) {
@@ -465,9 +515,7 @@ export async function scanClientesForMonth(
       clienteFolderId = folder.id;
     }
 
-    const sueldosFound = await findFolder(drive, clienteFolderId, (n) =>
-      SUELDOS_KEYS.some((k) => norm(n).includes(k))
-    );
+    const sueldosFound = await findSueldosFolder(drive, clienteFolderId, mes, anio);
     // Si se configuró drive_folder_id manualmente y no tiene subcarpeta SUELDOS,
     // se asume que el folder apunta directamente a la raíz de sueldos
     const sueldosId = sueldosFound ?? (cliente.drive_folder_id ? clienteFolderId : null);
@@ -476,15 +524,7 @@ export async function scanClientesForMonth(
       return { clienteId: cliente.id, encontrados: new Map(), extras: new Map(), errorCode: "no-sueldos" } as ClienteScanResult;
     }
 
-    const anioId = await findFolder(drive, sueldosId, (n) => {
-      const nn = norm(n);
-      const y4 = String(anio);
-      const y2 = y4.slice(-2);
-      if (nn === y4 || nn === y2) return true;
-      // "AÑO 2026", "2025-2026" — contiene el año pero no es carpeta de mes
-      if (nn.includes(y4)) return !MES_WORDS.some((m) => nn.includes(m));
-      return false;
-    });
+    const anioId = await findFolder(drive, sueldosId, (n) => matchesAnioFolder(n, anio));
 
     // Fallback: si no hay carpeta de año, buscar el mes directamente en SUELDOS
     const searchBase = anioId ?? sueldosId;
