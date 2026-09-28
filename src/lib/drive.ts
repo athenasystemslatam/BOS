@@ -547,9 +547,11 @@ export async function scanClientesForMonth(
     };
 
     if (!mesId) {
-      // Fallback para estructura por categorías (ej: drive_folder_id apunta a folder con
-      // RECIBOS DE SUELDO / CARGAS SOCIALES / SINDICATOS sin organización año/mes)
-      if (cliente.drive_folder_id && !anioId) {
+      // Fallback para estructura por categorías (ej: RECIBOS DE SUELDO / CARGAS
+      // SOCIALES / SINDICATOS, con o sin numeración, sin carpeta de año ni mes
+      // adentro de SUELDOS) — antes solo se probaba con drive_folder_id cargado
+      // a mano, pero la misma estructura aparece en clientes sin ese campo.
+      if (!anioId) {
         const catChildren = await listChildren(drive, sueldosId);
         for (const child of catChildren) {
           if (!child.id || !child.name) continue;
