@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Rol } from "@/types";
 
@@ -16,7 +17,7 @@ export interface CurrentLiquidadora {
  * sigue autenticado pero pasa a modo consulta (o queda afuera del todo si
  * además está en `accesos_bloqueados` — eso lo corta middleware.ts).
  */
-export async function getCurrentLiquidadora(): Promise<CurrentLiquidadora | null> {
+export const getCurrentLiquidadora = cache(async (): Promise<CurrentLiquidadora | null> => {
   const supabase = await createClient();
 
   const {
@@ -33,7 +34,7 @@ export async function getCurrentLiquidadora(): Promise<CurrentLiquidadora | null
   if (!data || !data.activa) return null;
 
   return { ...data, isAdmin: data.rol === "admin" };
-}
+});
 
 /** Tira error si el usuario logueado no es admin. Para usar en Server Actions
  * que operan con el admin client, donde RLS no puede proteger la operación. */
@@ -59,7 +60,7 @@ export async function requireLiquidadoraOrAdmin(): Promise<CurrentLiquidadora> {
 /** Áreas (equipo_modulos.modulo) a las que pertenece el usuario logueado.
  * Fuente de verdad de "a qué módulo pertenece cada persona" — reemplaza el
  * chequeo implícito de antes ("está en liquidadoras" = "es de Sueldos"). */
-export async function getAreasDelUsuario(): Promise<string[]> {
+export const getAreasDelUsuario = cache(async (): Promise<string[]> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -80,7 +81,7 @@ export async function getAreasDelUsuario(): Promise<string[]> {
     .eq("equipo_id", liq.id);
 
   return (data ?? []).map((m) => m.modulo);
-}
+});
 
 /** Tira error si el usuario logueado no es admin ni pertenece al área
  * `modulo` (equipo_modulos). Mismo criterio que requireLiquidadoraOrAdmin,
