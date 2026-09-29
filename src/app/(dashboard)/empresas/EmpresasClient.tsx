@@ -12,8 +12,8 @@ import { MESES_NOMBRES } from "@/lib/vencimientos";
 type ClienteConLiq = Cliente & { liquidadora?: Liquidadora };
 
 const LSD_CUTOFFS: Record<string, { anio: number; mes: number }> = {
-  PBA: { anio: 2026, mes: 3 },
-  CABA: { anio: 2026, mes: 7 },
+  PBA: { anio: 2026, mes: 2 },
+  CABA: { anio: 2026, mes: 6 },
 };
 
 type LsdStatus = "sin-lsd" | "sin-config" | "pendiente" | "en-proceso" | "regularizada";
