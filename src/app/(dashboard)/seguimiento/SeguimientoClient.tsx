@@ -1443,6 +1443,13 @@ export function SeguimientoClient({
                         dragId === cliente.id && "opacity-40",
                         overId === cliente.id && dragId && dragId !== cliente.id && "border-t-2 border-bordo"
                       )}
+                      // Filas fuera de pantalla no se calculan ni se pintan hasta
+                      // que están por entrar en vista — con tablas de varios
+                      // cientos de clientes, evita el costo de renderizar todo
+                      // de una. contain-intrinsic-size le da al navegador una
+                      // altura aproximada para que el scroll no salte mientras
+                      // tanto (se ajusta sola a la real apenas se pinta).
+                      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 52px" }}
                     >
                       {/* Empresa */}
                       <td className={clsx("sticky left-0 z-10 px-4 py-2.5", celdaTint)}>
