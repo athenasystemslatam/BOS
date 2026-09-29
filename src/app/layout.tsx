@@ -52,6 +52,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
+      <head>
+        {/* Adelanta la conexión (DNS + TLS) con Supabase antes de que haga
+            falta — el login y otras llamadas desde el navegador le hablan
+            directo, así no esperan a recién ahí abrir la conexión. */}
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+      </head>
       <body className={`${inter.className} ${archivo.variable} ${plexMono.variable} antialiased`}>{children}</body>
     </html>
   );
