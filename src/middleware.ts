@@ -11,7 +11,7 @@ import { esDominioPermitido } from "@/lib/dominio";
 // MIDDLEWARE_CACHE_SECRET configurada, esto queda deshabilitado y se
 // comporta exactamente como antes (siempre consulta la base).
 const CHECK_COOKIE = "bos_chk";
-const CHECK_TTL_MS = 2 * 60 * 1000; // 2 minutos
+const CHECK_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
 async function firmar(payload: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
