@@ -627,6 +627,10 @@ export function PanelGeneralClient({
                           key={empresa.id}
                           onMouseEnter={() => setHoverRow(empresa.id)}
                           onMouseLeave={() => setHoverRow(null)}
+                          // Mismo valor que la fila espejo de la tabla de la
+                          // derecha (ver más abajo) — así las dos quedan
+                          // sincronizadas incluso mientras están "saltadas".
+                          style={{ contentVisibility: "auto", containIntrinsicSize: "auto 55px" }}
                         >
                           <td className={clsx("pl-[26px] pr-4 py-[13px] border-b border-b-line-row border-r border-r-line-group align-middle whitespace-nowrap", rowBg)}>
                             <div className="flex items-center gap-[11px]">
@@ -778,6 +782,10 @@ export function PanelGeneralClient({
                         key={empresa.id}
                         onMouseEnter={() => setHoverRow(empresa.id)}
                         onMouseLeave={() => setHoverRow(null)}
+                        // Mismo valor que la fila espejo de la tabla de la
+                        // izquierda (columna Cliente) — así las dos quedan
+                        // sincronizadas incluso mientras están "saltadas".
+                        style={{ contentVisibility: "auto", containIntrinsicSize: "auto 55px" }}
                       >
                         {/* Celdas de servicio */}
                         {columnasVisibles.map((c, ci) => {
