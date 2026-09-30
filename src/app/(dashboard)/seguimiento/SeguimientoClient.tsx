@@ -462,12 +462,14 @@ function ObservacionModal({
   value,
   onChange,
   onClose,
+  puedeEditar,
 }: {
   nombre: string;
   periodoLabel: string;
   value: string;
   onChange: (valor: string) => void;
   onClose: () => void;
+  puedeEditar: boolean;
 }) {
   const backdrop = useBackdropClose(onClose);
   return (
@@ -493,7 +495,8 @@ function ObservacionModal({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Agregar nota..."
-          className="w-full flex-1 min-h-[240px] text-[13px] text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-bordo focus:ring-1 focus:ring-bordo resize-none"
+          disabled={!puedeEditar}
+          className="w-full flex-1 min-h-[240px] text-[13px] text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-bordo focus:ring-1 focus:ring-bordo resize-none disabled:opacity-60 disabled:cursor-not-allowed"
         />
       </div>
     </div>
@@ -892,6 +895,7 @@ export function SeguimientoClient({
           value={getEffective(obsExpandida.clienteId).observaciones}
           onChange={(valor) => handleObservaciones(obsExpandida.clienteId, valor)}
           onClose={() => setObsExpandida(null)}
+          puedeEditar={puedeEditar}
         />
       )}
       {/* Header */}
@@ -1675,10 +1679,11 @@ export function SeguimientoClient({
                             type="text"
                             value={t.observaciones}
                             placeholder="Agregar nota..."
+                            disabled={!puedeEditar}
                             onChange={(e) =>
                               handleObservaciones(cliente.id, e.target.value)
                             }
-                            className="w-full text-[12px] text-gray-600 border border-transparent rounded-md pl-2 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo focus:bg-white hover:border-gray-200 bg-transparent placeholder:text-gray-300 transition-colors"
+                            className="w-full text-[12px] text-gray-600 border border-transparent rounded-md pl-2 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo focus:bg-white hover:border-gray-200 bg-transparent placeholder:text-gray-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                           />
                           <button
                             type="button"
