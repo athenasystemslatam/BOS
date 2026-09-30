@@ -46,7 +46,7 @@ export default async function SeguimientoPage() {
       .eq("estado", "activo")
       .in("id", idsSueldos)
       .order("terminacion_cuit");
-    if (!yo?.isAdmin && yo) {
+    if (!yo?.isAdmin && !yo?.esCobranzas && yo) {
       clientesQuery = clientesQuery.eq("liquidador_id", yo.id);
     }
     const { data } = await clientesQuery;
@@ -111,7 +111,7 @@ export default async function SeguimientoPage() {
 
   // Liquidadoras activas con al menos 1 cliente asignado (para el selector de admin)
   const clienteLiqIds = new Set((clientes ?? []).map((c) => c.liquidador_id).filter(Boolean));
-  const { data: liquidadorasRaw } = yo?.isAdmin
+  const { data: liquidadorasRaw } = yo?.isAdmin || yo?.esCobranzas
     ? await admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre")
     : { data: [] };
   const liquidadoras = (liquidadorasRaw ?? []).filter((l) => clienteLiqIds.has(l.id));
