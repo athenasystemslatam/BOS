@@ -63,10 +63,17 @@ export async function GET(req: NextRequest) {
     .eq("estado", true);
   const idsSueldos = (serviciosSueldos ?? []).map((s) => s.cliente_id);
 
+  type ClienteConLiq = { id: string; nombre: string; liquidadora: { nombre: string } | null };
+
   const [{ data: clientes }, { data: tareas }] = await Promise.all([
     idsSueldos.length > 0
-      ? admin.from("clientes").select("id, nombre").eq("estado", "activo").in("id", idsSueldos).order("nombre")
-      : Promise.resolve({ data: [] as { id: string; nombre: string }[] }),
+      ? admin
+          .from("clientes")
+          .select("id, nombre, liquidadora:liquidadoras!liquidador_id(nombre)")
+          .eq("estado", "activo")
+          .in("id", idsSueldos)
+          .order("nombre")
+      : Promise.resolve({ data: [] as unknown as ClienteConLiq[] }),
     idsSueldos.length > 0
       ? admin.from("tareas").select("cliente_id, legajos_cantidad").eq("periodo_id", periodoId)
       : Promise.resolve({ data: [] as { cliente_id: string; legajos_cantidad: number }[] }),
@@ -79,26 +86,27 @@ export async function GET(req: NextRequest) {
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Nómina");
-  ws.columns = [{ width: 40 }, { width: 14 }];
+  ws.columns = [{ width: 40 }, { width: 22 }, { width: 14 }];
 
-  ws.mergeCells("A1:B1");
+  ws.mergeCells("A1:C1");
   ws.getCell("A1").value = `Nómina de Sueldos — ${tituloMes}`;
   ws.getCell("A1").font = { bold: true, size: 13 };
   ws.getCell("A1").alignment = { horizontal: "center" };
 
-  ws.mergeCells("A2:B2");
+  ws.mergeCells("A2:C2");
   ws.getCell("A2").value = `Generado: ${generadoEn(ahora)}`;
   ws.getCell("A2").font = { italic: true, size: 10, color: { argb: "FF888888" } };
   ws.getCell("A2").alignment = { horizontal: "center" };
 
   const headerRow = ws.getRow(3);
-  headerRow.values = ["Empresa", "Nómina"];
+  headerRow.values = ["Empresa", "Liquidador/a", "Nómina"];
   headerRow.font = { bold: true };
   headerRow.alignment = { horizontal: "center" };
 
-  for (const c of clientes ?? []) {
-    const fila = ws.addRow([c.nombre, legajosPorCliente.get(c.id) ?? 0]);
+  for (const c of (clientes ?? []) as unknown as ClienteConLiq[]) {
+    const fila = ws.addRow([c.nombre, c.liquidadora?.nombre ?? "", legajosPorCliente.get(c.id) ?? 0]);
     fila.getCell(2).alignment = { horizontal: "center" };
+    fila.getCell(3).alignment = { horizontal: "center" };
   }
 
   const buffer = await wb.xlsx.writeBuffer();
