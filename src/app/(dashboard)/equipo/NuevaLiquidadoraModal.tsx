@@ -24,6 +24,7 @@ const AREAS = [
 export function NuevaLiquidadoraModal() {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rol, setRol] = useState("liquidadora");
   const [isPending, startTransition] = useTransition();
   const backdrop = useBackdropClose(() => setOpen(false));
 
@@ -38,6 +39,7 @@ export function NuevaLiquidadoraModal() {
       } else {
         setOpen(false);
         (e.target as HTMLFormElement).reset();
+        setRol("liquidadora");
       }
     });
   }
@@ -103,7 +105,8 @@ export function NuevaLiquidadoraModal() {
                 </label>
                 <select
                   name="rol"
-                  defaultValue="liquidadora"
+                  value={rol}
+                  onChange={(e) => setRol(e.target.value)}
                   className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo bg-white transition-colors"
                 >
                   {ROLES.map((r) => (
@@ -112,19 +115,25 @@ export function NuevaLiquidadoraModal() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                  Áreas <span className="text-gray-300 font-normal">(a qué módulos pertenece)</span>
-                </label>
-                <div className="flex flex-wrap gap-3">
-                  {AREAS.map((a) => (
-                    <label key={a.value} className="flex items-center gap-1.5 text-sm text-gray-600">
-                      <input type="checkbox" name="areas" value={a.value} className="rounded border-gray-300 text-bordo focus:ring-bordo/30" />
-                      {a.label}
-                    </label>
-                  ))}
+              {rol === "cobranzas" ? (
+                <p className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
+                  Cobranzas ve todos los módulos automáticamente — no hace falta marcarle áreas.
+                </p>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                    Áreas <span className="text-gray-300 font-normal">(a qué módulos pertenece)</span>
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {AREAS.map((a) => (
+                      <label key={a.value} className="flex items-center gap-1.5 text-sm text-gray-600">
+                        <input type="checkbox" name="areas" value={a.value} className="rounded border-gray-300 text-bordo focus:ring-bordo/30" />
+                        {a.label}
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {error && (
                 <p className="text-xs text-danger bg-red-50 border border-red-100 rounded-lg px-3 py-2">

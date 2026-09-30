@@ -51,6 +51,7 @@ export function EditarLiquidadoraModal({
   onClose: () => void;
 }) {
   const [activa, setActiva] = useState(liquidadora.activa);
+  const [rol, setRol] = useState<string>(liquidadora.rol);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isSending, setIsSending] = useState(false);
@@ -136,32 +137,38 @@ export function EditarLiquidadoraModal({
 
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Rol</label>
-            <select name="rol" defaultValue={liquidadora.rol} className={inputCls}>
+            <select name="rol" value={rol} onChange={(e) => setRol(e.target.value)} className={inputCls}>
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
-              Áreas <span className="text-gray-300 font-normal">(a qué módulos pertenece)</span>
-            </label>
-            <div className="flex flex-wrap gap-3">
-              {AREAS.map((a) => (
-                <label key={a.value} className="flex items-center gap-1.5 text-sm text-gray-600">
-                  <input
-                    type="checkbox"
-                    name="areas"
-                    value={a.value}
-                    defaultChecked={areasActuales.includes(a.value)}
-                    className="rounded border-gray-300 text-bordo focus:ring-bordo/30"
-                  />
-                  {a.label}
-                </label>
-              ))}
+          {rol === "cobranzas" ? (
+            <p className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
+              Cobranzas ve todos los módulos automáticamente — no hace falta marcarle áreas.
+            </p>
+          ) : (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Áreas <span className="text-gray-300 font-normal">(a qué módulos pertenece)</span>
+              </label>
+              <div className="flex flex-wrap gap-3">
+                {AREAS.map((a) => (
+                  <label key={a.value} className="flex items-center gap-1.5 text-sm text-gray-600">
+                    <input
+                      type="checkbox"
+                      name="areas"
+                      value={a.value}
+                      defaultChecked={areasActuales.includes(a.value)}
+                      className="rounded border-gray-300 text-bordo focus:ring-bordo/30"
+                    />
+                    {a.label}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Estado */}
           <div className="border border-gray-100 rounded-lg p-4 space-y-3">
