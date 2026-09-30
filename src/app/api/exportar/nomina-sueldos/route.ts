@@ -84,17 +84,21 @@ export async function GET(req: NextRequest) {
   ws.mergeCells("A1:B1");
   ws.getCell("A1").value = `Nómina de Sueldos — ${tituloMes}`;
   ws.getCell("A1").font = { bold: true, size: 13 };
+  ws.getCell("A1").alignment = { horizontal: "center" };
 
   ws.mergeCells("A2:B2");
   ws.getCell("A2").value = `Generado: ${generadoEn(ahora)}`;
   ws.getCell("A2").font = { italic: true, size: 10, color: { argb: "FF888888" } };
+  ws.getCell("A2").alignment = { horizontal: "center" };
 
   const headerRow = ws.getRow(3);
   headerRow.values = ["Empresa", "Nómina"];
   headerRow.font = { bold: true };
+  headerRow.alignment = { horizontal: "center" };
 
   for (const c of clientes ?? []) {
-    ws.addRow([c.nombre, legajosPorCliente.get(c.id) ?? 0]);
+    const fila = ws.addRow([c.nombre, legajosPorCliente.get(c.id) ?? 0]);
+    fila.getCell(2).alignment = { horizontal: "center" };
   }
 
   const buffer = await wb.xlsx.writeBuffer();
