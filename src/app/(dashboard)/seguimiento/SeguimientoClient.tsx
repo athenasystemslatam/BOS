@@ -24,6 +24,7 @@ import {
   RotateCcw,
   Pencil,
   Maximize2,
+  Download,
 } from "lucide-react";
 import { Cliente, ClaveAcceso, EmailContacto, Liquidadora, Periodo, Tarea } from "@/types";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
@@ -934,6 +935,18 @@ export function SeguimientoClient({
 
         {/* Right side: sync + period nav */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Exportar nómina — para facturación, no necesita permiso de edición */}
+          {currentPeriodo && (
+            <a
+              href={`/api/exportar/nomina-sueldos?periodo_id=${currentPeriodo.id}`}
+              title="Exportar nómina por empresa a Excel"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+            >
+              <Download size={14} />
+              <span className="hidden md:inline">Exportar nómina</span>
+            </a>
+          )}
+
           {/* Sincronizar Drive */}
           {puedeEditar && (
           <button
