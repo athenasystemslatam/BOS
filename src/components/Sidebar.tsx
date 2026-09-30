@@ -135,7 +135,11 @@ export function Sidebar({
       if (next.has(label)) next.delete(label);
       else next.add(label);
       try {
-        document.cookie = `bos-sidebar-cerrados=${Array.from(next).join(",")}; path=/; max-age=31536000; samesite=lax`;
+        // Sin max-age: cookie de sesión — se guarda mientras el navegador
+        // sigue abierto, pero desaparece sola al cerrarlo del todo. Así
+        // "primera vez que entro al navegador" siempre arranca con las
+        // secciones cerradas, sin quedar así para siempre.
+        document.cookie = `bos-sidebar-cerrados=${Array.from(next).join(",")}; path=/; samesite=lax`;
       } catch {
         /* ignorar */
       }
@@ -170,6 +174,13 @@ export function Sidebar({
   const handleLogout = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
+    // Para que el próximo login también arranque con las secciones
+    // cerradas, sin depender de que además haya cerrado el navegador.
+    try {
+      document.cookie = "bos-sidebar-cerrados=; path=/; max-age=0; samesite=lax";
+    } catch {
+      /* ignorar */
+    }
     router.push("/login");
     router.refresh();
   };
