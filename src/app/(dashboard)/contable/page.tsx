@@ -68,7 +68,7 @@ export default async function ContablePage({
       clientesConServicio={clientesConServicio as any[]}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!!yo?.isAdmin || areas.includes("contable")}
+      puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("contable"))}
       equipo={equipo}
       equipoModulos={equipoModulosTodos ?? []}
     />

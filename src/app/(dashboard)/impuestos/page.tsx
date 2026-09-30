@@ -77,7 +77,7 @@ export default async function ImpuestosPage({
       mes={mes}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!!yo?.isAdmin || areas.includes("impuestos")}
+      puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("impuestos"))}
       creadoPor={yo?.id ?? null}
     />
   );

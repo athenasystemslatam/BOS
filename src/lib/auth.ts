@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { Rol } from "@/types";
+import { MODULOS_VALIDOS } from "@/lib/modulos";
 
 export interface CurrentLiquidadora {
   id: string;
@@ -8,6 +9,10 @@ export interface CurrentLiquidadora {
   rol: Rol;
   activa: boolean;
   isAdmin: boolean;
+  // Ve todos los módulos (getAreasDelUsuario le devuelve todos) pero no
+  // puede editar nada — requireLiquidadoraOrAdmin/requireAreaOrAdmin la
+  // rechazan igual que a alguien en modo consulta.
+  esCobranzas: boolean;
 }
 
 /**
@@ -33,7 +38,7 @@ export const getCurrentLiquidadora = cache(async (): Promise<CurrentLiquidadora 
 
   if (!data || !data.activa) return null;
 
-  return { ...data, isAdmin: data.rol === "admin" };
+  return { ...data, isAdmin: data.rol === "admin", esCobranzas: data.rol === "cobranzas" };
 });
 
 /** Tira error si el usuario logueado no es admin. Para usar en Server Actions
@@ -51,7 +56,7 @@ export async function requireAdmin(): Promise<CurrentLiquidadora> {
  * seguimiento — marcar tareas, sync de Drive, etc. */
 export async function requireLiquidadoraOrAdmin(): Promise<CurrentLiquidadora> {
   const liquidadora = await getCurrentLiquidadora();
-  if (!liquidadora) {
+  if (!liquidadora || liquidadora.esCobranzas) {
     throw new Error("No tenés permiso para editar — estás en modo consulta.");
   }
   return liquidadora;
@@ -69,11 +74,16 @@ export const getAreasDelUsuario = cache(async (): Promise<string[]> => {
 
   const { data: liq } = await supabase
     .from("liquidadoras")
-    .select("id")
+    .select("id, rol")
     .eq("user_id", user.id)
     .eq("activa", true)
     .maybeSingle();
   if (!liq) return [];
+
+  // Cobranzas ve todos los módulos sin que haga falta anotarla módulo por
+  // módulo en equipo_modulos — no puede editar nada de todos modos
+  // (requireLiquidadoraOrAdmin/requireAreaOrAdmin la rechazan).
+  if (liq.rol === "cobranzas") return [...MODULOS_VALIDOS];
 
   const { data } = await supabase
     .from("equipo_modulos")
@@ -88,7 +98,7 @@ export const getAreasDelUsuario = cache(async (): Promise<string[]> => {
  * generalizado a Impuestos/Contable/Monotributo. */
 export async function requireAreaOrAdmin(modulo: string): Promise<CurrentLiquidadora> {
   const liquidadora = await getCurrentLiquidadora();
-  if (!liquidadora) {
+  if (!liquidadora || liquidadora.esCobranzas) {
     throw new Error("No tenés permiso para editar — estás en modo consulta.");
   }
   if (liquidadora.isAdmin) return liquidadora;

@@ -94,6 +94,7 @@ const ROL_LABELS: Record<Rol, string> = {
   supervisor: "Supervisor/a",
   liquidadora: "Liquidadora",
   viewer: "Solo lectura",
+  cobranzas: "Cobranzas",
 };
 
 function iniciales(nombre: string) {

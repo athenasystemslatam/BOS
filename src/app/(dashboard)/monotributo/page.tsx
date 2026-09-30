@@ -65,7 +65,7 @@ export default async function MonotributoPage({
       mes={mes}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!!yo?.isAdmin || areas.includes("monotributo")}
+      puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("monotributo"))}
       creadoPor={yo?.id ?? null}
     />
   );

@@ -59,6 +59,7 @@ export default async function EmpresasPage() {
       isAdmin={yo?.isAdmin ?? false}
       creadoPor={yo?.id ?? null}
       lsdHasta={lsdHasta}
+      puedeEditar={!yo?.esCobranzas}
     />
   );
 }

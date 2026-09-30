@@ -87,12 +87,14 @@ export function EmpresasClient({
   isAdmin,
   creadoPor,
   lsdHasta,
+  puedeEditar,
 }: {
   clientes: ClienteConLiq[];
   liquidadoras: Liquidadora[];
   isAdmin: boolean;
   creadoPor: string | null;
   lsdHasta: Record<string, { anio: number; mes: number }>;
+  puedeEditar: boolean;
 }) {
   const [search, setSearch] = useState("");
   // Un no-admin que ya tiene al menos un cliente a cargo arranca viendo su
@@ -279,12 +281,14 @@ export function EmpresasClient({
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-50">
-                    <button
-                      onClick={() => setEditando(c)}
-                      className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-bordo transition-colors"
-                    >
-                      <Pencil size={12} /> Editar
-                    </button>
+                    {puedeEditar && (
+                      <button
+                        onClick={() => setEditando(c)}
+                        className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-bordo transition-colors"
+                      >
+                        <Pencil size={12} /> Editar
+                      </button>
+                    )}
                     {isAdmin && c.liquidadora && (
                       <button
                         onClick={() => setAsignando(c)}
@@ -439,13 +443,15 @@ export function EmpresasClient({
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-center">
-                        <button
-                          onClick={() => setEditando(c)}
-                          className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap"
-                        >
-                          <Pencil size={12} />
-                          Editar
-                        </button>
+                        {puedeEditar && (
+                          <button
+                            onClick={() => setEditando(c)}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-bordo hover:bg-bordo/5 px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap"
+                          >
+                            <Pencil size={12} />
+                            Editar
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

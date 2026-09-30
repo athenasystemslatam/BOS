@@ -124,7 +124,7 @@ export default async function SeguimientoPage() {
       periodo={periodo as Periodo | null}
       liquidadoras={(liquidadoras as Pick<Liquidadora, "id" | "nombre">[]) ?? []}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!!yo}
+      puedeEditar={!!yo && !yo.esCobranzas}
       recordatoriosPrevios={recordatoriosPrevios}
     />
   );

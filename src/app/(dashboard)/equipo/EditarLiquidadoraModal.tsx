@@ -11,6 +11,7 @@ const ROLES = [
   { value: "supervisor",  label: "Supervisora" },
   { value: "admin",       label: "Admin" },
   { value: "viewer",      label: "Solo lectura" },
+  { value: "cobranzas",   label: "Cobranzas (ve todo, no edita)" },
 ];
 
 const AREAS = [
