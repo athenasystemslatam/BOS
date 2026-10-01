@@ -166,6 +166,21 @@ export interface Asignacion {
   liquidadora?: Pick<Liquidadora, "id" | "nombre">;
 }
 
+export type ModuloNota = "seguimiento" | "clientes" | "vencimientos" | "equipo" | "general";
+
+export interface NotaSueldos {
+  id: string;
+  tema: string;
+  modulo: ModuloNota;
+  contacto: string | null;
+  contenido: string;
+  importante: boolean;
+  creado_por: string | null;
+  creado_en: string;
+  actualizado_en: string;
+  autor?: { nombre: string } | null;
+}
+
 export interface DriveLog {
   id: string;
   cliente_id: string;

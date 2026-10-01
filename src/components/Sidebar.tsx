@@ -16,6 +16,7 @@ import {
   BookOpen,
   FileText,
   ChevronDown,
+  StickyNote,
 } from "lucide-react";
 import clsx from "clsx";
 import { ModuloId, MODULO_LABELS } from "@/lib/modulos";
@@ -51,6 +52,7 @@ const SECTIONS: {
       { href: "/dashboard",     label: "Dashboard",     icon: LayoutDashboard, adminOnly: false },
       { href: "/empresas",      label: "Clientes",      icon: Building2,       adminOnly: false },
       { href: "/vencimientos",  label: "Vencimientos",  icon: Calendar,        adminOnly: false },
+      { href: "/informacion",   label: "Información",   icon: StickyNote,      adminOnly: false },
       { href: "/productividad", label: "Productividad", icon: TrendingUp,      adminOnly: true  },
     ],
   },
