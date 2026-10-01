@@ -166,13 +166,16 @@ export interface Asignacion {
   liquidadora?: Pick<Liquidadora, "id" | "nombre">;
 }
 
-export type ModuloNota = "seguimiento" | "clientes" | "vencimientos" | "equipo" | "general";
+export interface ContactoNota {
+  nombre: string;
+  corresponde: string;
+  observaciones: string;
+}
 
 export interface NotaSueldos {
   id: string;
   tema: string;
-  modulo: ModuloNota;
-  contacto: string | null;
+  contactos: ContactoNota[];
   contenido: string;
   importante: boolean;
   creado_por: string | null;

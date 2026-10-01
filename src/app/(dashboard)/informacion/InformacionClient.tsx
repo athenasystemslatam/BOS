@@ -1,22 +1,12 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Plus, X, AlertTriangle, Pencil, Trash2, StickyNote, Bold, Italic, Strikethrough } from "lucide-react";
+import { Plus, X, AlertTriangle, Pencil, Trash2, StickyNote, Bold, Italic, Strikethrough, Users } from "lucide-react";
 import clsx from "clsx";
 import { Toggle } from "@/components/Toggle";
 import { useBackdropClose } from "@/lib/useBackdropClose";
-import { NotaSueldos, ModuloNota } from "@/types";
+import { NotaSueldos, ContactoNota } from "@/types";
 import { crearNota, editarNota, borrarNota } from "./actions";
-
-const MODULOS: { value: ModuloNota; label: string }[] = [
-  { value: "general", label: "General" },
-  { value: "seguimiento", label: "Seguimiento" },
-  { value: "clientes", label: "Clientes" },
-  { value: "vencimientos", label: "Vencimientos" },
-  { value: "equipo", label: "Equipo" },
-];
-
-const MODULO_LABEL: Record<string, string> = Object.fromEntries(MODULOS.map((m) => [m.value, m.label]));
 
 function fechaCorta(iso: string) {
   return new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -77,6 +67,70 @@ function RichTextarea({ value, onChange }: { value: string; onChange: (v: string
   );
 }
 
+// ─── Lista de contactos (nombre + a quién corresponde + observaciones) ────────────
+
+const MAX_CONTACTOS = 10;
+
+function ContactosEditor({ contactos, onChange }: { contactos: ContactoNota[]; onChange: (c: ContactoNota[]) => void }) {
+  function update(i: number, field: keyof ContactoNota, value: string) {
+    onChange(contactos.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)));
+  }
+  function remove(i: number) {
+    onChange(contactos.filter((_, idx) => idx !== i));
+  }
+  function add() {
+    if (contactos.length >= MAX_CONTACTOS) return;
+    onChange([...contactos, { nombre: "", corresponde: "", observaciones: "" }]);
+  }
+
+  return (
+    <div className="space-y-2.5">
+      {contactos.map((c, i) => (
+        <div key={i} className="relative border border-gray-100 rounded-lg p-3 space-y-2">
+          <button
+            type="button"
+            onClick={() => remove(i)}
+            className="absolute top-2.5 right-2.5 text-gray-300 hover:text-danger transition-colors"
+          >
+            <Trash2 size={13} />
+          </button>
+          <div className="grid grid-cols-2 gap-2 pr-6">
+            <input
+              value={c.nombre}
+              onChange={(e) => update(i, "nombre", e.target.value)}
+              placeholder="Nombre / contacto"
+              className="text-[13px] border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
+            />
+            <input
+              value={c.corresponde}
+              onChange={(e) => update(i, "corresponde", e.target.value)}
+              placeholder="A quién corresponde"
+              className="text-[13px] border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
+            />
+          </div>
+          <input
+            value={c.observaciones}
+            onChange={(e) => update(i, "observaciones", e.target.value)}
+            placeholder="Observaciones del contacto"
+            className="w-full text-[13px] border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
+          />
+        </div>
+      ))}
+      {contactos.length < MAX_CONTACTOS ? (
+        <button
+          type="button"
+          onClick={add}
+          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-bordo transition-colors"
+        >
+          <Plus size={13} /> Agregar contacto
+        </button>
+      ) : (
+        <p className="text-[11px] text-gray-300">Máximo {MAX_CONTACTOS} contactos.</p>
+      )}
+    </div>
+  );
+}
+
 // ─── Formulario (crear / editar) ───────────────────────────────────────────────
 
 function NotaFormModal({
@@ -89,8 +143,7 @@ function NotaFormModal({
   onSaved: () => void;
 }) {
   const [tema, setTema] = useState(nota?.tema ?? "");
-  const [modulo, setModulo] = useState<ModuloNota>(nota?.modulo ?? "general");
-  const [contacto, setContacto] = useState(nota?.contacto ?? "");
+  const [contactos, setContactos] = useState<ContactoNota[]>(nota?.contactos ?? []);
   const [contenido, setContenido] = useState(nota?.contenido ?? "");
   const [importante, setImportante] = useState(nota?.importante ?? false);
   const [error, setError] = useState<string | null>(null);
@@ -103,8 +156,7 @@ function NotaFormModal({
     const formData = new FormData();
     if (nota) formData.set("id", nota.id);
     formData.set("tema", tema);
-    formData.set("modulo", modulo);
-    formData.set("contacto", contacto);
+    formData.set("contactos", JSON.stringify(contactos));
     formData.set("contenido", contenido);
     formData.set("importante", String(importante));
 
@@ -138,35 +190,16 @@ function NotaFormModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">Módulo</label>
-              <select
-                value={modulo}
-                onChange={(e) => setModulo(e.target.value as ModuloNota)}
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo bg-white transition-colors"
-              >
-                {MODULOS.map((m) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
-                Contacto <span className="text-gray-300 font-normal">(opcional)</span>
-              </label>
-              <input
-                value={contacto}
-                onChange={(e) => setContacto(e.target.value)}
-                placeholder="Nombre, teléfono..."
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:border-bordo focus:ring-1 focus:ring-bordo/20 transition-colors"
-              />
-            </div>
-          </div>
-
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Contenido</label>
             <RichTextarea value={contenido} onChange={setContenido} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              Contactos <span className="text-gray-300 font-normal">(opcional)</span>
+            </label>
+            <ContactosEditor contactos={contactos} onChange={setContactos} />
           </div>
 
           <div className="flex items-center justify-between border border-gray-100 rounded-lg p-3">
@@ -221,31 +254,46 @@ function NotaDetalleModal({
     });
   }
 
+  const contactos = nota.contactos ?? [];
+
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" {...backdrop}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="px-6 py-4 border-b border-gray-100 flex items-start justify-between shrink-0">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              {nota.importante && <AlertTriangle size={14} className="text-amber-500 shrink-0" />}
-              <h2 className="text-[15px] font-semibold text-gray-900 break-words">{nota.tema}</h2>
-            </div>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <span className="text-[11px] font-medium bg-bordo/10 text-bordo px-2 py-0.5 rounded-full">
-                {MODULO_LABEL[nota.modulo] ?? nota.modulo}
-              </span>
-              {nota.contacto && (
-                <span className="text-[11px] text-gray-500">· {nota.contacto}</span>
-              )}
-            </div>
+          <div className="min-w-0 flex items-center gap-2">
+            {nota.importante && <AlertTriangle size={14} className="text-amber-500 shrink-0" />}
+            <h2 className="text-[15px] font-semibold text-gray-900 break-words">{nota.tema}</h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0 ml-3">
             <X size={18} />
           </button>
         </div>
 
-        <div className="px-6 py-5 overflow-y-auto flex-1 text-[13px] text-gray-700 leading-relaxed">
-          {nota.contenido ? renderRico(nota.contenido) : <span className="text-gray-300">Sin contenido.</span>}
+        <div className="px-6 py-5 overflow-y-auto flex-1 space-y-5">
+          <div className="text-[13px] text-gray-700 leading-relaxed">
+            {nota.contenido ? renderRico(nota.contenido) : <span className="text-gray-300">Sin contenido.</span>}
+          </div>
+
+          {contactos.length > 0 && (
+            <div>
+              <p className="text-[10.5px] font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Users size={12} /> Contactos
+              </p>
+              <div className="space-y-2">
+                {contactos.map((c, i) => (
+                  <div key={i} className="bg-gray-50 rounded-lg px-3 py-2.5 text-[12.5px]">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="font-semibold text-gray-800">{c.nombre || "—"}</p>
+                      {c.corresponde && <p className="text-gray-500 text-[11.5px]">{c.corresponde}</p>}
+                    </div>
+                    {c.observaciones && (
+                      <p className="text-gray-500 mt-1 whitespace-pre-wrap">{c.observaciones}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-3 border-t border-gray-100 flex items-center justify-between shrink-0">
@@ -285,25 +333,18 @@ function NotaDetalleModal({
 // ─── Principal ──────────────────────────────────────────────────────────────────
 
 export function InformacionClient({ notas, puedeEditar }: { notas: NotaSueldos[]; puedeEditar: boolean }) {
-  const [filtroModulo, setFiltroModulo] = useState<string>("todos");
   const [soloImportantes, setSoloImportantes] = useState(false);
   const [creando, setCreando] = useState(false);
   const [editando, setEditando] = useState<NotaSueldos | null>(null);
   const [viendo, setViendo] = useState<NotaSueldos | null>(null);
   const [verAlEditar, setVerAlEditar] = useState(false);
 
-  const filtradas = notas.filter((n) => {
-    if (filtroModulo !== "todos" && n.modulo !== filtroModulo) return false;
-    if (soloImportantes && !n.importante) return false;
-    return true;
-  });
+  const filtradas = notas.filter((n) => !soloImportantes || n.importante);
 
   function cerrarYRefrescar() {
     setCreando(false);
     setEditando(null);
     setVerAlEditar(false);
-    // Next revalida la lista solo (revalidatePath en la action); no hace
-    // falta recargar toda la página.
   }
 
   return (
@@ -328,16 +369,6 @@ export function InformacionClient({ notas, puedeEditar }: { notas: NotaSueldos[]
       </div>
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <select
-          value={filtroModulo}
-          onChange={(e) => setFiltroModulo(e.target.value)}
-          className="text-[12.5px] border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-bordo transition-colors"
-        >
-          <option value="todos">Todos los módulos</option>
-          {MODULOS.map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
         <button
           onClick={() => setSoloImportantes((v) => !v)}
           className={clsx(
@@ -355,26 +386,26 @@ export function InformacionClient({ notas, puedeEditar }: { notas: NotaSueldos[]
           <p className="text-sm text-gray-400">No hay notas para mostrar.</p>
         </div>
       ) : (
-        <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="flex flex-col gap-2.5">
           {filtradas.map((n) => (
             <button
               key={n.id}
               onClick={() => setViendo(n)}
               className={clsx(
-                "text-left bg-white rounded-xl border shadow-sm p-4 hover:shadow-md transition-shadow",
+                "text-left w-full bg-white rounded-xl border shadow-sm px-4 py-3.5 hover:shadow-md transition-shadow flex items-center gap-3",
                 n.importante ? "border-amber-200" : "border-gray-100"
               )}
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[13.5px] font-semibold text-gray-900 leading-snug line-clamp-2">{n.tema}</p>
-                {n.importante && <AlertTriangle size={14} className="text-amber-500 shrink-0 mt-0.5" />}
-              </div>
-              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
-                <span className="text-[10.5px] font-medium bg-bordo/10 text-bordo px-2 py-0.5 rounded-full">
-                  {MODULO_LABEL[n.modulo] ?? n.modulo}
+              {n.importante && <AlertTriangle size={15} className="text-amber-500 shrink-0" />}
+              <p className="text-[13.5px] font-semibold text-gray-900 shrink-0">{n.tema}</p>
+              {n.contenido && (
+                <p className="text-[12.5px] text-gray-400 truncate flex-1 min-w-0">{n.contenido.replace(/[*~]/g, "")}</p>
+              )}
+              {(n.contactos?.length ?? 0) > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 shrink-0">
+                  <Users size={12} /> {n.contactos.length}
                 </span>
-                {n.contacto && <span className="text-[11px] text-gray-400 truncate">{n.contacto}</span>}
-              </div>
+              )}
             </button>
           ))}
         </div>

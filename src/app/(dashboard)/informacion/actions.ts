@@ -3,13 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { requireAreaOrAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ModuloNota } from "@/types";
+import { ContactoNota } from "@/types";
 
-const MODULOS_VALIDOS: ModuloNota[] = ["seguimiento", "clientes", "vencimientos", "equipo", "general"];
-
-function leerModulo(formData: FormData): ModuloNota {
-  const raw = (formData.get("modulo") as string) ?? "general";
-  return (MODULOS_VALIDOS as string[]).includes(raw) ? (raw as ModuloNota) : "general";
+function leerContactos(formData: FormData): ContactoNota[] {
+  try {
+    const raw = JSON.parse((formData.get("contactos") as string) || "[]");
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((c) => ({
+        nombre: String(c?.nombre ?? "").trim(),
+        corresponde: String(c?.corresponde ?? "").trim(),
+        observaciones: String(c?.observaciones ?? "").trim(),
+      }))
+      .filter((c) => c.nombre || c.corresponde || c.observaciones);
+  } catch {
+    return [];
+  }
 }
 
 export async function crearNota(formData: FormData) {
@@ -21,8 +30,7 @@ export async function crearNota(formData: FormData) {
 
   const { error } = await admin.from("sueldos_notas").insert({
     tema,
-    modulo: leerModulo(formData),
-    contacto: (formData.get("contacto") as string)?.trim() || null,
+    contactos: leerContactos(formData),
     contenido: (formData.get("contenido") as string) ?? "",
     importante: formData.get("importante") === "true",
     creado_por: yo.id,
@@ -45,8 +53,7 @@ export async function editarNota(formData: FormData) {
     .from("sueldos_notas")
     .update({
       tema,
-      modulo: leerModulo(formData),
-      contacto: (formData.get("contacto") as string)?.trim() || null,
+      contactos: leerContactos(formData),
       contenido: (formData.get("contenido") as string) ?? "",
       importante: formData.get("importante") === "true",
       actualizado_en: new Date().toISOString(),
