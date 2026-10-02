@@ -3,6 +3,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { sendEmailAsignacionServicio } from "@/lib/email";
+import { SERVICIOS_CONFIG } from "@/lib/modulos";
 
 export type AsignacionServicio = {
   id: string;
@@ -58,6 +60,23 @@ export async function crearAsignacionServicio(
   });
 
   if (error) return { error: error.message };
+
+  // Avisar por mail al nuevo responsable qué cliente, servicio y fecha de
+  // inicio le corresponden — sin esto se enteraba recién viéndolo aparecer
+  // en su módulo. No corta la asignación si el mail falla.
+  const admin2 = createAdminClient();
+  const [{ data: cliente }, { data: responsable }] = await Promise.all([
+    admin2.from("clientes").select("nombre").eq("id", clienteId).maybeSingle(),
+    admin2.from("liquidadoras").select("nombre, email").eq("id", responsableId).maybeSingle(),
+  ]);
+  const servicioLabel =
+    SERVICIOS_CONFIG.find((s) => s.servicio === servicio && s.subtipo === subtipo)?.label
+    ?? servicio;
+  if (cliente?.nombre && responsable?.email) {
+    await sendEmailAsignacionServicio(
+      responsable.nombre, responsable.email, cliente.nombre, servicioLabel, desdeAnio, desdeMes, motivo || null
+    );
+  }
 
   // Sincronizar servicios_cliente.responsable_id con la asignación vigente
   // más reciente, igual que Sueldos sincroniza clientes.liquidador_id.

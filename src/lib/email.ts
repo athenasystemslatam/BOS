@@ -257,6 +257,58 @@ function buildEmailTraspaso(
   return { subject, html };
 }
 
+// ─── Asignación de servicio ─────────────────────────────────────────────────
+
+function buildEmailAsignacionServicio(
+  responsableNombre: string,
+  clienteNombre: string,
+  servicioLabel: string,
+  desdeAnio: number,
+  desdeMes: number,
+  motivo: string | null
+): { subject: string; html: string } {
+  const mesNombre = MESES_NOMBRES[desdeMes] ?? String(desdeMes);
+  const subject = `Se te asignó ${clienteNombre} — ${servicioLabel}`;
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
+      <p style="font-size:15px">Hola ${responsableNombre},</p>
+      <p style="font-size:15px">
+        Se te asignó como responsable de <strong>${servicioLabel}</strong> para
+        <strong>${clienteNombre}</strong>, a partir de <strong>${mesNombre} ${desdeAnio}</strong>.
+      </p>
+      ${motivo ? `<p style="font-size:13px;color:#888;margin-top:12px">Motivo: ${motivo}</p>` : ""}
+      <p style="font-size:12px;color:#aaa;margin-top:24px">BOS · KMA Consultores</p>
+    </div>
+  `;
+
+  return { subject, html };
+}
+
+/** Avisa por mail a quien queda como nuevo responsable de un servicio (ver
+ * crearAsignacionServicio en asignacionesServicio.ts) qué cliente, servicio
+ * y fecha de inicio le corresponden. No corta la asignación si falla — es
+ * un aviso, no parte de la operación. */
+export async function sendEmailAsignacionServicio(
+  responsableNombre: string,
+  responsableEmail: string,
+  clienteNombre: string,
+  servicioLabel: string,
+  desdeAnio: number,
+  desdeMes: number,
+  motivo: string | null
+): Promise<{ error?: string }> {
+  if (!process.env.RESEND_API_KEY) return { error: "RESEND_API_KEY no configurada" };
+  if (!responsableEmail) return {};
+
+  const { subject, html } = buildEmailAsignacionServicio(
+    responsableNombre, clienteNombre, servicioLabel, desdeAnio, desdeMes, motivo
+  );
+  const { error } = await resend.emails.send({ from: FROM, to: responsableEmail, subject, html });
+  if (error) return { error: error.message };
+  return {};
+}
+
 /** Avisa por mail a quien recibe una cartera transferida (ver
  * transferirCartera en empresas/actions.ts) qué empresas se le asignaron.
  * No corta el traspaso si falla — es un aviso, no parte de la operación. */
