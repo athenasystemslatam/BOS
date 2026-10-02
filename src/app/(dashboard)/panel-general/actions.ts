@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
-import { sendEmailBajaServicio } from "@/lib/email";
+import { sendEmailBajaServicio, sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 
 function parseCuit(raw: string) {
@@ -288,34 +288,79 @@ export async function editarClienteConServicios(formData: FormData) {
     return { error: clienteError.message };
   }
 
+  // Estado previo de los servicios de este cliente — para distinguir, al
+  // guardar, entre transferencia (sigue activo, cambió el responsable) y
+  // baja (se destildó): la baja nunca dispara el mail de transferencia y
+  // viceversa, ver crearAsignacionServicio/darDeBajaServicio.
+  const { data: previos } = await supabase
+    .from("servicios_cliente")
+    .select("servicio, subtipo, estado, responsable_id")
+    .eq("cliente_id", id);
+  const previosPorClave = new Map(
+    (previos ?? []).map((p) => [`${p.servicio}:${p.subtipo}`, p])
+  );
+
   // Activar/actualizar responsable de los servicios tildados. Upsert (no
   // insert) porque el servicio puede ya existir dado de baja de antes — en
   // ese caso lo reactiva en vez de chocar con la restricción única
   // (cliente_id, servicio, subtipo).
+  const hoy = new Date();
   for (const s of servicios) {
+    const nuevoResponsable = s.responsable_id || null;
+    const previo = previosPorClave.get(`${s.servicio}:${s.subtipo}`);
+
     const { error: svcError } = await supabase.from("servicios_cliente").upsert(
-      { cliente_id: id, servicio: s.servicio, subtipo: s.subtipo, estado: true, responsable_id: s.responsable_id || null },
+      { cliente_id: id, servicio: s.servicio, subtipo: s.subtipo, estado: true, responsable_id: nuevoResponsable },
       { onConflict: "cliente_id,servicio,subtipo" }
     );
     if (svcError) return { error: svcError.message };
+
+    // Transferencia: el servicio sigue activo (ya existía o recién se activa)
+    // y el responsable cambió respecto al que tenía. Se avisa al nuevo.
+    if (nuevoResponsable && nuevoResponsable !== (previo?.responsable_id ?? null)) {
+      const { data: responsable } = await supabase
+        .from("liquidadoras")
+        .select("nombre, email")
+        .eq("id", nuevoResponsable)
+        .maybeSingle();
+      const servicioLabel =
+        SERVICIOS_CONFIG.find((c) => c.servicio === s.servicio && c.subtipo === s.subtipo)?.label
+        ?? s.servicio;
+      if (responsable?.email) {
+        await sendEmailAsignacionServicio(
+          responsable.nombre, responsable.email, nombre, servicioLabel,
+          hoy.getFullYear(), hoy.getMonth() + 1, null
+        );
+      }
+    }
   }
 
   // Dar de baja (sin borrar, mismo criterio que "Dar de baja" de la tabla)
   // los servicios que tenía activos y se destildaron acá.
   const activos = new Set(servicios.map((s) => `${s.servicio}:${s.subtipo}`));
-  const { data: existentes } = await supabase
-    .from("servicios_cliente")
-    .select("servicio, subtipo")
-    .eq("cliente_id", id)
-    .eq("estado", true);
-  for (const e of existentes ?? []) {
+  const existentes = (previos ?? []).filter((p) => p.estado);
+  for (const e of existentes) {
     if (activos.has(`${e.servicio}:${e.subtipo}`)) continue;
     await supabase
       .from("servicios_cliente")
-      .update({ estado: false })
+      .update({ estado: false, fecha_baja: hoy.toISOString() })
       .eq("cliente_id", id)
       .eq("servicio", e.servicio)
       .eq("subtipo", e.subtipo);
+
+    if (e.responsable_id) {
+      const { data: responsable } = await supabase
+        .from("liquidadoras")
+        .select("nombre, email")
+        .eq("id", e.responsable_id)
+        .maybeSingle();
+      const servicioLabel =
+        SERVICIOS_CONFIG.find((c) => c.servicio === e.servicio && c.subtipo === e.subtipo)?.label
+        ?? e.servicio;
+      if (responsable?.email) {
+        await sendEmailBajaServicio(responsable.nombre, responsable.email, nombre, servicioLabel, hoy);
+      }
+    }
   }
 
   // Mismo bloque que crearClienteConServicios: sincronizar los campos propios
