@@ -3,6 +3,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { sendEmailBajaServicio } from "@/lib/email";
+import { SERVICIOS_CONFIG } from "@/lib/modulos";
 
 function parseCuit(raw: string) {
   const digits = raw.replace(/\D/g, "");
@@ -384,14 +386,45 @@ export async function darDeBajaServicio(clienteId: string, servicio: string, sub
   }
 
   const supabase = createAdminClient();
+
+  // Traer responsable y nombre del cliente antes de la baja, para avisar
+  // por mail después (no afecta el update si después no hay a quién avisar).
+  const [{ data: servicioActual }, { data: cliente }] = await Promise.all([
+    supabase
+      .from("servicios_cliente")
+      .select("responsable_id")
+      .eq("cliente_id", clienteId)
+      .eq("servicio", servicio)
+      .eq("subtipo", subtipo)
+      .maybeSingle(),
+    supabase.from("clientes").select("nombre").eq("id", clienteId).maybeSingle(),
+  ]);
+
+  const fechaBaja = new Date();
   const { error } = await supabase
     .from("servicios_cliente")
-    .update({ estado: false })
+    .update({ estado: false, fecha_baja: fechaBaja.toISOString() })
     .eq("cliente_id", clienteId)
     .eq("servicio", servicio)
     .eq("subtipo", subtipo);
 
   if (error) return { error: error.message };
+
+  // Avisar por mail al responsable que tenía el servicio — sin esto se
+  // enteraba recién al no verlo más en su módulo. No corta la baja si falla.
+  if (servicioActual?.responsable_id && cliente?.nombre) {
+    const { data: responsable } = await supabase
+      .from("liquidadoras")
+      .select("nombre, email")
+      .eq("id", servicioActual.responsable_id)
+      .maybeSingle();
+    const servicioLabel =
+      SERVICIOS_CONFIG.find((s) => s.servicio === servicio && s.subtipo === subtipo)?.label
+      ?? servicio;
+    if (responsable?.email) {
+      await sendEmailBajaServicio(responsable.nombre, responsable.email, cliente.nombre, servicioLabel, fechaBaja);
+    }
+  }
 
   revalidatePath("/", "layout");
   return { success: true };

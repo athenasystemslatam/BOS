@@ -309,6 +309,50 @@ export async function sendEmailAsignacionServicio(
   return {};
 }
 
+// ─── Baja de servicio ────────────────────────────────────────────────────────
+
+function buildEmailBajaServicio(
+  responsableNombre: string,
+  clienteNombre: string,
+  servicioLabel: string,
+  fechaBaja: Date
+): { subject: string; html: string } {
+  const fechaStr = fechaBaja.toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+  const subject = `Se dio de baja ${servicioLabel} — ${clienteNombre}`;
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
+      <p style="font-size:15px">Hola ${responsableNombre},</p>
+      <p style="font-size:15px">
+        Se dio de baja el servicio <strong>${servicioLabel}</strong> de
+        <strong>${clienteNombre}</strong>, con fecha <strong>${fechaStr}</strong>.
+      </p>
+      <p style="font-size:12px;color:#aaa;margin-top:24px">BOS · KMA Consultores</p>
+    </div>
+  `;
+
+  return { subject, html };
+}
+
+/** Avisa por mail al responsable de un servicio que se dio de baja (ver
+ * darDeBajaServicio en panel-general/actions.ts), con la fecha de baja.
+ * No corta la baja si falla — es un aviso, no parte de la operación. */
+export async function sendEmailBajaServicio(
+  responsableNombre: string,
+  responsableEmail: string,
+  clienteNombre: string,
+  servicioLabel: string,
+  fechaBaja: Date
+): Promise<{ error?: string }> {
+  if (!process.env.RESEND_API_KEY) return { error: "RESEND_API_KEY no configurada" };
+  if (!responsableEmail) return {};
+
+  const { subject, html } = buildEmailBajaServicio(responsableNombre, clienteNombre, servicioLabel, fechaBaja);
+  const { error } = await resend.emails.send({ from: FROM, to: responsableEmail, subject, html });
+  if (error) return { error: error.message };
+  return {};
+}
+
 /** Avisa por mail a quien recibe una cartera transferida (ver
  * transferirCartera en empresas/actions.ts) qué empresas se le asignaron.
  * No corta el traspaso si falla — es un aviso, no parte de la operación. */
