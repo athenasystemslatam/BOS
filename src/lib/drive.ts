@@ -151,8 +151,10 @@ function classifyFile(filename: string): CampoManual | "recibos_vac" | "planilla
   // Ignorar documentos administrativos de empleados
   if (/\balta\b|alta.?afip|alta.?adm|alta.?emp|\bbaja\b|contrato|planilla|control|\blegajo\b/.test(n)) return null;
 
-  // F.931 — nombre explícito, cargas sociales, o número AFIP formato CUIL_tipo_secuencia
-  if (/f\.?9\.?3\.?1|formulario.?931|form.?931|cargas?\s*sociales?|\bcargas?\b/.test(n)) return "f931";
+  // F.931 — nombre explícito, cargas sociales, o número AFIP formato CUIL_tipo_secuencia.
+  // norm() ya convirtió cualquier punto en espacio (p. ej. "F.931" → "f 931"), por eso acá
+  // el separador opcional es [\s.] y no \. — con \. nunca matcheaba "F.931", solo "F931".
+  if (/f[\s.]?9[\s.]?3[\s.]?1|formulario.{0,3}931|form.{0,3}931|cargas?\s*sociales?|\bcargas?\b/.test(n)) return "f931";
   // Formato numérico AFIP: 11 dígitos CUIL _ 3 dígitos _ secuencia (ej: 20326761304_011_00001_...)
   if (/\d{11}[_\-]\d{3}[_\-]\d{5}/.test(filename)) return "f931";
 
