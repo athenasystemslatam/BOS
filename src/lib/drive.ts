@@ -562,7 +562,23 @@ export async function scanClientesForMonth(
             const folderCampo = (rawFolderCampo && rawFolderCampo !== "recibos_vac" && rawFolderCampo !== "planilla_interna")
               ? rawFolderCampo as CampoManual : null;
             if (!folderCampo) continue;
-            const innerFiles = await listFilesRecursive(drive, child.id);
+
+            // Si la carpeta de categoría tiene año/mes adentro (ej: "cargas
+            // sociales" → 2026 → 08-2026), hay que acotar al mes pedido —
+            // sin esto, listFilesRecursive traía los archivos de TODOS los
+            // meses mezclados y el primero que clasificaba (p.ej. el F.931
+            // de enero) quedaba marcado como válido para cualquier período.
+            const catAnioId = await findFolder(drive, child.id, (n) => matchesAnioFolder(n, anio));
+            // Si hay carpeta de año pero no la del mes pedido, no hay nada que
+            // mostrar para este período — NO hay que caer al escaneo amplio,
+            // porque eso es lo que volvía a mezclar meses de otros períodos.
+            let innerFiles: DriveFile[] = [];
+            if (catAnioId) {
+              const catMesId = await findFolder(drive, catAnioId, (n) => matchesMesFolder(n, mes, anio));
+              if (catMesId) innerFiles = await listFilesRecursive(drive, catMesId);
+            } else {
+              innerFiles = await listFilesRecursive(drive, child.id);
+            }
             for (const file of innerFiles) {
               const byName = classifyFile(file.name);
               if (byName) { record(file, byName); continue; }
