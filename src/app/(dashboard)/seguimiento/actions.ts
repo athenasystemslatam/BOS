@@ -153,6 +153,10 @@ export async function toggleManual(
         });
       }
     }
+    // Sin esto, Productividad (que lee estos mismos campos de `tareas`)
+    // podía quedar mostrando el estado anterior hasta 30s por el router
+    // cache de Next, aunque el tilde ya hubiera quedado guardado.
+    revalidatePath("/", "layout");
   }
 
   return error ? { error: error.message } : { success: true };
@@ -197,6 +201,7 @@ export async function updateLegajos(
     .update({ legajos_cantidad: cantidad })
     .eq("cliente_id", clienteId);
 
+  if (!errorResto) revalidatePath("/", "layout");
   return errorResto ? { error: errorResto.message } : { success: true };
 }
 
@@ -530,6 +535,11 @@ export async function syncDrive(
       if (logError) console.error("[syncDrive] drive_log insert error:", logError.message);
     }
   }
+
+  // Esta función actualiza el estado de TODOS los clientes de una — sin
+  // revalidar, Productividad y el resto del sitio podían seguir mostrando
+  // el estado previo a la sincronización hasta que algo más lo refrescara.
+  revalidatePath("/", "layout");
 
   return { archivosDetectados, clientesConArchivos, errorCodes };
 }
