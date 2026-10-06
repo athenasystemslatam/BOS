@@ -6,8 +6,9 @@ import clsx from "clsx";
 import { EquipoMiembro, TipoContribuyente, VistEmpresa } from "@/types";
 import { NuevoClienteModal } from "./NuevoClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
-import { darDeBajaServicio, darDeBajaCliente } from "./actions";
+import { darDeBajaServicio, darDeBajaCliente, getFichaCliente } from "./actions";
 import { useBackdropClose } from "@/lib/useBackdropClose";
+import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 
 // Rediseño Panel General (handoff sep-2026): Libros queda fuera de esta
 // pantalla por decisión del usuario — es otro módulo y se gestiona aparte.
@@ -476,7 +477,16 @@ export function PanelGeneralClient({
                 <div key={empresa.id} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
-                      <p className="text-[14px] font-semibold text-gray-800">{empresa.nombre}</p>
+                      <p className="text-[14px] font-semibold text-gray-800 flex items-center gap-1.5">
+                        {empresa.nombre}
+                        <FichaClienteBoton
+                          clienteId={empresa.id}
+                          nombre={empresa.nombre}
+                          fetchAction={getFichaCliente}
+                          puedeEditar={isAdmin}
+                          onEditar={() => setEditando(empresa.id)}
+                        />
+                      </p>
                       <p className="text-[11px] text-gray-400 font-mono mt-0.5">
                         {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                       </p>
@@ -650,6 +660,13 @@ export function PanelGeneralClient({
                                   {empresa.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")}
                                 </p>
                               </div>
+                              <FichaClienteBoton
+                                clienteId={empresa.id}
+                                nombre={empresa.nombre}
+                                fetchAction={getFichaCliente}
+                                puedeEditar={isAdmin}
+                                onEditar={() => setEditando(empresa.id)}
+                              />
                             </div>
                           </td>
                         </tr>

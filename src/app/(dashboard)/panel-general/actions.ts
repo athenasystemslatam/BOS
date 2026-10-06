@@ -2,9 +2,27 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth";
+import { getCurrentLiquidadora, requireAdmin } from "@/lib/auth";
 import { sendEmailBajaServicio, sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
+import type { Cliente } from "@/types";
+
+// Ficha de cliente de solo lectura para la llavecita de Panel General —
+// misma info y mismo componente (FichaClienteBoton) que ya usa Contable.
+// Sin restricción de área porque Panel General no tiene una propia: lo
+// único que se exige es estar logueado (igual que para ver la pantalla).
+export async function getFichaCliente(clienteId: string): Promise<Cliente | null> {
+  const yo = await getCurrentLiquidadora();
+  if (!yo) return null;
+
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("clientes")
+    .select("*")
+    .eq("id", clienteId)
+    .maybeSingle();
+  return (data as Cliente) ?? null;
+}
 
 function parseCuit(raw: string) {
   const digits = raw.replace(/\D/g, "");
