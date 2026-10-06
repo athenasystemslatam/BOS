@@ -104,6 +104,16 @@ Dominio permitido centralizado en `src/lib/dominio.ts` (sin imports, para ser v�
 
 `requireLiquidadoraOrAdmin()` (en `lib/auth.ts`) gatea las Server Actions de escritura de seguimiento (`toggleManual`, `updateLegajos`, `updateRecordatorio`, `syncDrive`). `crearEmpresa` en `empresas/actions.ts` no tenía `requireAdmin()` — se agregó (gap preexistente).
 
+### Rol "cobranzas" (octubre 2026)
+
+Rol nuevo (`add_rol_cobranzas.sql`): ve **todos** los módulos, no puede editar **nada**. A diferencia de `admin`/`liquidadora`/`viewer`, **no depende de `equipo_modulos`** — no hace falta agregar a la persona al equipo de cada módulo para que lo vea.
+
+- `getCurrentLiquidadora()` devuelve `esCobranzas: boolean` (`rol === "cobranzas"`).
+- `getAreasDelUsuario()` devuelve `[...MODULOS_VALIDOS]` de una si `rol === "cobranzas"` (bypassa el chequeo de `equipo_modulos`).
+- `requireLiquidadoraOrAdmin()` y `requireAreaOrAdmin()` rechazan explícitamente a `esCobranzas` — así ningún módulo necesita un chequeo extra para bloquearle la escritura.
+- En Seguimiento, Empresas e Impuestos/Contable/Monotributo, `puedeEditar` chequea `!yo?.esCobranzas` además del área/admin.
+- `getCurrentLiquidadora`/`getAreasDelUsuario` están envueltas en `cache()` de React (memoización por request) — no son costosas de llamar varias veces en el mismo render.
+
 ### Padrón único de personas (20-ago-2026)
 
 `liquidadoras` dejó de ser "solo Sueldos" — es el único padrón de personas del sistema, para los cuatro módulos. Se sigue llamando `liquidadoras` en la base (evitar el rename físico, toca demasiados archivos del sistema de acceso para cero beneficio funcional), pero en la UI es "Equipo" (`/equipo`, antes `/liquidadoras`).
@@ -127,7 +137,7 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
 
 ### Clientes y módulo Sueldos
 - **`clientes`** — empresas; `liquidador_id` = asignación actual en Sueldos; `drive_folder_id` = raíz Drive
-- **`servicios_cliente`** — cliente_id, servicio, subtipo, estado (bool), responsable_id. Qué servicios tiene activos cada cliente. Filtrar siempre por `estado=true`.
+- **`servicios_cliente`** — cliente_id, servicio, subtipo, estado (bool), responsable_id, fecha_baja (desde oct-2026). Qué servicios tiene activos cada cliente. Filtrar siempre por `estado=true`.
 - **`periodos`** — mes/año de liquidación (ej: junio 2026); se crea automáticamente
 - **`tareas`** — estado de cada cliente por período; una fila por (cliente, período)
   - `*_manual` = marcado por la liquidadora; `*_drive` = detectado por sync
@@ -154,6 +164,9 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
 - **`monotributo_tareas`** — cliente_id, anio, mes, cuota_estado ('pendiente'|'pagado'), cuota_fecha, recategorizacion ('no_corresponde'|'pendiente'|'realizada'), categoria, deuda_monto, deuda_aviso, deuda_aviso_fecha, observaciones
   - Meses de recategorización: **febrero (2) y agosto (8)**; vencimiento cuota: día 20 de cada mes
 
+### Información de Sueldos (octubre 2026)
+- **`sueldos_notas`** — cartelera de notas compartida del equipo de Sueldos (`/informacion`). `tema`, `contactos` (jsonb, array de `{nombre, corresponde, observaciones}`), `contenido` (texto con markdown-lite: `**negrita**`, `*cursiva*`, `~~tachado~~`, ver `renderRico()` en `InformacionClient.tsx`), `importante` (bool), `creado_por`. Edición gateada por `requireAreaOrAdmin("sueldos")`; Cobranzas no puede editar. Sin `modulo` (se sacó, era redundante — toda la sección ya es de Sueldos).
+
 ---
 
 ## Rutas del sistema
@@ -172,6 +185,7 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
 | `/empresas` | ABM de clientes de Sueldos |
 | `/vencimientos` | Calendario F.931 2026 |
 | `/productividad` | KPIs (admin only) — ahora con tabs a la productividad de los otros 3 módulos, ver abajo |
+| `/informacion` | Cartelera de notas del equipo de Sueldos (octubre 2026) |
 
 ### Módulo Impuestos (color azul)
 | Ruta | Descripción |
@@ -238,23 +252,34 @@ Patrón de altura para que el scroll funcione dentro del tab:
 
 ## Drive sync
 
-Archivo central: `src/lib/drive.ts`
+Archivo central: `src/lib/drive.ts`. Función pública: `scanClientesForMonth(clientes, mes, anio)`.
 
 **Dos funciones de matching distintas** — NO intercambiarlas:
 - `matchesMesFolder(name, mes, anio)` — **estricto**, para nombres de carpetas. Cada palabra debe ser un token de mes/año válido. Evita falsos positivos como "CARGAS SOCIALES 07-26".
 - `matchesMonth(name, mes, anio)` — **flexible**, para nombres de archivos. El token de mes puede aparecer entre otras palabras.
 
-**Fallback para carpetas con estructura no estándar:**
-- Si `drive_folder_id` está seteado y no se encuentra carpeta de año → scan de categorías (RECIBOS DE SUELDO, CARGAS SOCIALES, etc. como carpetas raíz)
-- Si hay archivos directamente en la carpeta del mes sin nombre reconocido → si `matchesMonth` = true → clasificar como `recibos`
+**`classifyFile(filename)`** clasifica por nombre de archivo (`CampoManual | "recibos_vac" | "planilla_interna" | null`). Normaliza con `norm()` (minúsculas, sin tildes, **cualquier símbolo no alfanumérico — incluido el punto — se convierte en un espacio**) antes de aplicar las regex. Esto es clave para el bug de F.931 de abajo.
 
-**Estructura esperada en Drive:**
+**Dos estructuras de carpeta soportadas, con comportamiento distinto:**
+1. **Año/mes directo bajo SUELDOS** (la recomendada): `SUELDOS → 2026 → 08-2026 → (archivos o subcarpetas de categoría)`. Camino principal, filtra por período correctamente.
+2. **Categoría primero** (común en la práctica, ej. Black Fish, Medeot, Kent Nayla): `SUELDOS → Cargas Sociales → 2026 → 08-2026 → archivo`. Entra por el fallback de categorías (`if (!anioId) { catChildren = ... }`, buscando palabras clave tipo "cargas", "recibo", "liquidacion" en el nombre de cada carpeta de primer nivel bajo SUELDOS).
+
+**Bug corregido (oct-2026): mezcla de meses en la estructura "categoría primero".** Cuando una carpeta de categoría (ej. "cargas sociales") tiene año/mes **adentro**, el fallback antes recorría **todos los archivos de todos los años/meses juntos** con `listFilesRecursive` sin filtrar — el primer F.931 que encontraba (de cualquier mes) quedaba marcado como válido para **cualquier período** que se consultara. Esto hacía que, por ejemplo, septiembre diera "todo verde" sin tener nada subido todavía, con solo que agosto sí lo tuviera. Ahora, si la carpeta de categoría tiene año/mes adentro, se acota al mes pedido (`catAnioId`/`catMesId`) **antes** de listar archivos; si ese mes no existe ahí, no se escanea nada (no cae al escaneo amplio, que es justo lo que mezclaba períodos).
+
+**Bug corregido (oct-2026): "F.931" con punto nunca matcheaba.** La regla de F.931 en `classifyFile` esperaba un punto opcional entre la F y el 931 (`f\.?9\.?3\.?1`), pero como `norm()` ya convirtió ese punto en un espacio antes de evaluar la regex, nunca matcheaba el nombre más común y oficial de AFIP: **"Declaración en línea Formulario F.931.pdf"**. Solo funcionaba si el archivo se llamaba "F931" sin separador, o si estaba dentro de una carpeta "cargas sociales" (ahí hay una regla de respaldo que sí lo encontraba, probando `/931/` contra el nombre crudo del archivo). Regex corregida a `f[\s.]?9[\s.]?3[\s.]?1` (contempla el espacio que deja la normalización).
+
+**`drive_folder_id` cargado a mano — ojo con el nivel.** El código trata `drive_folder_id` como la **raíz del cliente** (busca adentro una subcarpeta de sueldos). Si se carga apuntando **a la propia carpeta SUELDOS** (un nivel de más), `findSueldosFolder` busca *adentro de SUELDOS* algo que matchee `SUELDOS_KEYS` (`sueldos`, `sueldo`, `liquidaciones`, `liquidacion`, `liq`) y puede agarrar por error una subcarpeta tipo "liquidacion" en vez de la real — rompe todo el scan para ese cliente sin que sea obvio por qué (pasó con Medeot y con Gonzalez Paula Carolina, este último directamente apuntando a la carpeta de **otro cliente** por error de carga). Si un cliente da mal en Drive y tiene `drive_folder_id` seteado, lo primero es chequear a qué carpeta apunta exactamente antes de sospechar del código.
+
+**Estructura recomendada para clientes nuevos/reorganizados** (la que ya probamos que el código interpreta bien en ambos casos):
 ```
-[drive_folder_id] SUELDOS/
-  └── 2026/
-      └── 07/  (o JULIO, JULIO 2026, 07-26, etc.)
-          ├── recibos julio.pdf
-          └── F931 julio 2026.pdf
+Cliente/
+  └── SUELDOS/
+      └── 2026/
+          └── 08-2026/
+              ├── Cargas Sociales/   (F.931, etc.)
+              ├── Liquidacion/
+              ├── Recibos/
+              └── Sindicato/         (si corresponde)
 ```
 
 ---
@@ -270,6 +295,12 @@ Archivo central: `src/lib/drive.ts`
 | 5 días después | Solo Admin | Reporte final definitivo |
 
 `FROM`: `bos@kmaconsultores.com.ar` (dominio propio verificado en Resend, agosto 2026).
+
+**Emails de asignación/baja de servicio (octubre 2026)** — mismo mecanismo (Resend, no SMTP propio), uno por acción, nunca en lote:
+- `sendEmailAsignacionServicio` — se dispara desde `crearAsignacionServicio` (modal "Historial de responsables") y desde `editarClienteConServicios` (Panel General) cuando un servicio **sigue activo** y cambia el responsable. Avisa al nuevo responsable: cliente, servicio, fecha.
+- `sendEmailBajaServicio` — se dispara desde `darDeBajaServicio` y desde el mismo `editarClienteConServicios` cuando un servicio se **destilda** (pasa a `estado=false`). Avisa al responsable saliente, con la fecha de baja.
+- Estas dos automatizaciones son mutuamente excluyentes a propósito: una baja nunca dispara el mail de transferencia y viceversa — ver el comentario en `editarClienteConServicios` (`panel-general/actions.ts`) si hay que tocar esto.
+- Ninguna corta la operación si el mail falla (mismo criterio que `sendEmailTraspaso`, que ya existía).
 
 ---
 
@@ -299,7 +330,10 @@ GOOGLE_SERVICE_ACCOUNT_JSON     # JSON completo de la cuenta de servicio
 CRON_SECRET                     # token para autenticar endpoints de cron
 RESEND_API_KEY
 ADMIN_EMAIL                     # giulianatignanelli15@gmail.com
+MIDDLEWARE_CACHE_SECRET         # firma la cookie bos_chk (HMAC-SHA256) que cachea el chequeo de bloqueo de acceso en middleware.ts por 5 min — evita una consulta a Supabase en cada request. Cargarla SOLO en Vercel → el proyecto (no "Shared"), Production.
 ```
+
+Se agregó un `.env.example` (commiteado) con estos mismos nombres, sin valores — referencia rápida de qué variable va en cada lado sin tener que grepear el código.
 
 ---
 
@@ -330,6 +364,14 @@ Aplicadas en producción:
 - `fix_equipo_modulos_sueldos.sql` — corrige backfill anterior: `con_area_sueldos` bajó de 33 a 9 (correcto).
 - `cargar_seh_y_contable_ago2026.sql` — corrida por Giuliana el 24-ago vía Supabase SQL Editor (la sesión de Claude no tenía credenciales de escritura, ver nota en Contexto del cliente). Carga Seg. e Hig. para 22 clientes (desde `ESTATUS IMPUESTOS 2026.xlsx`, cruzado a mano contra `clientes`/`liquidadoras` reales) y completa el responsable de 10 clientes de Contable (desde `ESTATUS BALANCES .xlsx`). Los ~76 clientes de Contable que siguen sin responsable son balances 2026 todavía no cerrados — confirmado por Giuliana, no tocar.
 - `altas_nuevas_ago2026.sql` — corrida por Giuliana el 24-ago. Da de alta 11 clientes que aparecían en los Excel ESTATUS pero no existían en `clientes`. De los otros 24 CUIT que no matcheaban al principio: 14 eran clientes inactivos (bien, no tocar), 10 eran el CUIT del representante en vez del de la empresa (correcto — se usa para entrar a ARCA), salvo `3 AES SA` que tenía un typo real, corregido en el Excel de origen. `FUNDACION PAN Y ARTE` y `PAN Y ARTE SRL` quedaron marcados con ⚠ en `observaciones` por nombre casi idéntico — Giuliana confirmó (24-ago) que son dos clientes reales distintos, no un duplicado. La nota ⚠ sigue en la base (cosmética, no se limpió).
+- `add_rol_cobranzas.sql` — amplía el constraint de `liquidadoras.rol` para aceptar `'cobranzas'`.
+- `add_sueldos_notas.sql` + `rework_sueldos_notas_contactos.sql` — tabla de la sección Información de Sueldos; la segunda reemplaza `modulo`/`contacto` por la lista `contactos` (jsonb), ver "Información de Sueldos" arriba.
+- `add_servicios_cliente_fecha_baja.sql` — columna `fecha_baja`, para el mail y el registro de baja de servicio.
+
+**Correcciones puntuales de datos corridas directo en Supabase SQL Editor (octubre 2026, no quedaron como archivo `.sql` porque son fixes de una fila, no migraciones de esquema):**
+- `liquidadoras.user_id` de Andrea Dilonardo (ficha de Cobranzas sin vincular a su login).
+- `clientes.drive_folder_id` puesto en `NULL` para **MEDEOT MINUJEN ELEONORA** y **GONZALEZ PAULA CAROLINA** — en ambos casos el ID cargado a mano apuntaba mal (ver "Drive sync" arriba); al sacarlo, el matching automático por nombre los resuelve bien solo.
+- `clientes.fecha_inicio_liquidacion` cargada para **GRUPO TOLF SRL** (2026-08-01) y **ELECTRONIC SOLUTIONS SA** (2026-09-01) — clientes nuevos de agosto/septiembre 2026 sin esa fecha cargada. Ojo: hoy este campo es solo informativo, **Seguimiento no lo usa todavía** para dejar de pedir tareas de meses anteriores al inicio (ver "Pendiente de funcionalidad" abajo).
 
 ---
 
@@ -356,11 +398,29 @@ Aplicadas en producción:
 - ✅ **Selector de mes roto en 4 páginas** (24-ago) — `/impuestos/dashboard`, `/impuestos/vencimientos`, `/monotributo/dashboard` y `/monotributo/vencimientos` tenían un `<select>` con `onChange` vacío que no navegaba al cambiar de mes (bug de Matías, quedó así al construir esas páginas). Se reemplazó por `src/components/MesSelector.tsx`, un client component nuevo que copia el patrón que ya funcionaba en `dashboard/MonthSelector.tsx` (Sueldos) — `router.push` con `mes`/`anio` en la URL. Contable no tiene este selector porque `balances` es anual, no mensual.
 - ✅ **Monotributo agregado a Panel General** (24-ago) — `vista_empresas` no tenía columna de Monotributo (causó la falsa alarma del "197 sin módulo" el 24-ago). Se agregó `responsable_monotributo` a la vista (`add_monotributo_a_vista_empresas.sql`) y a `PanelGeneralClient.tsx`/`NuevoClienteModal.tsx` (columna nueva + opción de servicio al dar de alta un cliente, con su color ámbar como el resto del módulo).
 
+### Completado (octubre 2026)
+- ✅ **Rol Cobranzas** — ve todos los módulos, no edita nada, sin necesitar `equipo_modulos` por módulo. Ver "Rol cobranzas" arriba.
+- ✅ **Exportar nómina de Sueldos a Excel** (`/api/exportar/nomina-sueldos`) — botón "Exportar nómina" en Seguimiento, visible para cualquiera con acceso a Sueldos (incluido Cobranzas). Columnas: Empresa, Liquidador/a, Nómina (cantidad de legajos), alineación/formato prolijo con ExcelJS.
+- ✅ **Sidebar: secciones colapsables se resetean a cerradas en cada login/sesión nueva del navegador** (antes era un cookie permanente de un año; ahora es cookie de sesión, y `handleLogout` la limpia explícitamente al desloguear).
+- ✅ **Sección "Información" de Sueldos** (`/informacion`) — cartelera de notas del equipo, con lista de contactos por nota y texto enriquecido liviano (sin librería nueva). Ver tabla `sueldos_notas` arriba.
+- ✅ **Ficha de cliente (llavecita) en Panel General** — reutiliza `FichaClienteBoton` (ya usado en Contable): ver emails, domicilios, datos de Sueldos, claves de acceso, carpeta de Drive y observaciones sin descargar el Excel. El Excel sigue existiendo igual que antes.
+- ✅ **`ClaveAcceso` acepta URL de acceso** (`ClavesAccesoEditor.tsx`) — campo opcional, mismo componente compartido por las 6 pantallas que editan claves.
+- ✅ **Distinción transferencia vs. baja de servicio**, con mail a cada quien corresponde — ver "Alertas F.931 por email" arriba.
+- ✅ **Memoización de `getCurrentLiquidadora`/`getAreasDelUsuario`** con `cache()` de React, y **cookie de chequeo de bloqueo en `middleware.ts`** (firmada HMAC-SHA256, 5 min) para no pegarle a Supabase en cada request — mejora de performance general, no cambia comportamiento.
+- ✅ **Tres bugs de Drive sync corregidos** — ver la sección "Drive sync" arriba para el detalle técnico de cada uno:
+  1. `drive_folder_id` apuntando un nivel de más (a SUELDOS en vez de a la raíz del cliente) confundía la búsqueda de la carpeta real.
+  2. F.931 con punto en el nombre (`"Formulario F.931.pdf"`) nunca se detectaba por un desajuste entre la normalización y la regex.
+  3. La estructura "categoría primero" (`SUELDOS → Cargas Sociales → 2026 → mes`) mezclaba archivos de todos los meses sin filtrar por período — podía marcar un mes como completo usando el archivo de otro mes.
+- ✅ **`revalidatePath` agregado a `toggleManual`, `syncDrive` y `updateLegajos`** (`seguimiento/actions.ts`) — antes no revalidaban nada, así que Productividad (que lee los mismos campos de `tareas`) podía tardar hasta 30s en reflejar un tilde o una sincronización de Drive recién hecha.
+- ✅ **Auditoría manual de carpetas de Drive de varios clientes** (Anabella y Claudia A., octubre 2026) — varios casos de "amarillo" resultaron ser archivos genuinamente no subidos (no bugs); los que sí eran bugs quedaron en los tres puntos de arriba. Varios clientes de Anabella reestructurados a mano a `SUELDOS → Año → Mes → Categoría` (Medeot, Aristizabal Natalia, Grupo Tolf SRL, Electronic Solutions SA).
+
 ### Pendiente de funcionalidad
 - ⬜ Panel General: edición inline de datos de empresa, gestión de activaciones de servicios (hoy toda edición de cliente sigue siendo solo desde `/empresas`, que filtra a clientes de Sueldos — un cliente que es solo de Impuestos/Contable/Monotributo no tiene ninguna forma de editar sus datos ni sus claves)
 - ⬜ Sync bidireccional Panel General ↔ módulos
 - ⬜ Alertas para módulos nuevos (hoy solo F.931 de Sueldos) — Giuliana quiere revisar el flujo completo del sistema (general + cada módulo) antes de definir esto
 - ⬜ Ajustes de diseño/interfaz (al final, después de cerrar el modelo de datos) — Giuliana lo sigue trabajando por su cuenta
+- ⬜ **`clientes.fecha_inicio_liquidacion` no se usa en Seguimiento** (octubre 2026) — hoy es solo informativo (se muestra en fichas). Un cliente dado de alta este mes igual aparece como "pendiente" en períodos anteriores a su alta real. Falta decidir si Seguimiento debe filtrar por esta fecha antes de pedir tareas de un período.
+- ⬜ **Webhook de auto-deploy de GitHub→Vercel se trabó una vez** (ver incidente en memoria de sesión, no documentado acá en detalle) — se resolvió con un deploy manual (`vercel --prod`), pero la conexión en sí (Vercel → Project Settings → Git, o GitHub → repo → Settings → Webhooks) no se revisó a fondo. Si vuelve a pasar (push sin deploy nuevo en `vercel ls` después de unos minutos), ese es el lugar para mirar.
 
 ### Pendiente operativo
 - ⬜ ~~Configurar SMTP propio en Supabase Auth~~ — hecho por Giuliana (24-ago).
@@ -381,4 +441,4 @@ Aplicadas en producción:
 - **Giuliana Tignanelli** — administradora técnica (Athena Systems, athenasystems.latam@gmail.com), contacto principal y dueña de los accesos
 - **Matías Serapio** — operador técnico designado por KMA Consultores (matiasserapio@kmaconsultores.com.ar); mantiene el sistema en el día a día, hace cambios y resuelve problemas
 - **Liquidadoras** — empleadas de KMA que usan el sistema diariamente
-- **María de Los Ángeles** — liquidadora cuyas empresas tienen Drive en SharePoint con estructura de categorías (diferente al resto)
+- **María de Los Ángeles** — liquidadora cuyas empresas (ej. Black Fish SRL) suelen tener Drive con estructura "categoría primero" (`SUELDOS → Cargas Sociales → 2026 → 08-2026`, ver sección "Drive sync"), no SharePoint — es Google Drive igual que el resto, solo que con otro orden de carpetas.
