@@ -212,6 +212,16 @@ export function FichaClienteBoton({
                                 Usuario: <span className="text-gray-700">{c.usuario || "—"}</span>
                               </p>
                             )}
+                            {c.url && (
+                              <a
+                                href={c.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                              >
+                                <ExternalLink size={11} /> Abrir
+                              </a>
+                            )}
                             <div className="flex items-center gap-1 text-gray-500">
                               Clave:
                               <span className="text-gray-700 select-all break-all">

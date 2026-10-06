@@ -15,6 +15,9 @@ export interface ClaveAcceso {
   // Solo para sistemas que se acceden con un número identificador en vez de
   // usuario (hoy: "La Estrella", estrella sindical) — ver ClavesAccesoEditor.
   identificador?: string;
+  // URL de acceso al sistema (ej. el link de login de ARCA/TAD) — opcional,
+  // no todos los sistemas la necesitan.
+  url?: string;
 }
 
 export interface AccesoBloqueado {

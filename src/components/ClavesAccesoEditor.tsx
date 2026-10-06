@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, Copy, Check, ExternalLink } from "lucide-react";
 import type { ClaveAcceso } from "@/types";
 
 const SISTEMA_ESTRELLA = "La Estrella";
@@ -45,7 +45,7 @@ export function ClavesAccesoEditor({
   }
 
   function quickAdd(sistema: string) {
-    onChange([...claves, { sistema, usuario: "", contrasena: "", modulo: "" }]);
+    onChange([...claves, { sistema, usuario: "", contrasena: "", modulo: "", url: "" }]);
   }
 
   // "La Estrella" (estrella sindical) se accede con Identificador en vez de
@@ -137,6 +137,28 @@ export function ClavesAccesoEditor({
                 {showPass[i] ? <EyeOff size={13} /> : <Eye size={13} />}
               </button>
             </div>
+          </div>
+          {/* URL de acceso al sistema (ej. link de login de ARCA/TAD) — en su
+              propia fila, igual que la contraseña, para que entre completa. */}
+          <div className="relative col-span-2 sm:col-span-4">
+            <input
+              type="text"
+              placeholder="URL de acceso (opcional)"
+              value={c.url ?? ""}
+              onChange={(e) => update(i, "url", e.target.value)}
+              className="text-xs border border-gray-200 rounded-md px-2.5 py-2 pr-9 focus:outline-none focus:border-bordo bg-white w-full"
+            />
+            {c.url && (
+              <a
+                href={c.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir URL"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-bordo transition-colors"
+              >
+                <ExternalLink size={13} />
+              </a>
+            )}
           </div>
         </div>
       ))}
