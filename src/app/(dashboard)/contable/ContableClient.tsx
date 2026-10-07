@@ -181,11 +181,6 @@ export function ContableClient({
     sinAsignar: balances.filter((b) => b.estado === "sin_asignar").length,
   }), [balances]);
 
-  const FORM_OPTIONS_F657 = [
-    { value: "pendiente", label: "Pendiente" },
-    { value: "presentado", label: "Presentado" },
-    { value: "no_corresponde", label: "N/A" },
-  ];
   const FORM_OPTIONS_IGJ = [
     { value: "pendiente", label: "Pendiente" },
     { value: "presentado", label: "Presentado" },
@@ -540,9 +535,9 @@ export function ContableClient({
                   <FormCheckCell estado={b.f713_estado} field="f713_estado" balanceId={b.id}
                     puedeEditar={puedeEditar} onUpdate={update} />
 
-                  {/* F657 */}
-                  <FormCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
-                    options={FORM_OPTIONS_F657} puedeEditar={puedeEditar} onUpdate={update} />
+                  {/* F657 — binario (ningún balance tenía N/A cargado) */}
+                  <FormCheckCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
+                    puedeEditar={puedeEditar} onUpdate={update} />
 
                   {/* IGJ Presentación */}
                   <FormCell estado={b.igj_presentacion} field="igj_presentacion" balanceId={b.id}
