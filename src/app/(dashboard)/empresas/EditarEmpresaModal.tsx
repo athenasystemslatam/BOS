@@ -321,7 +321,9 @@ export function EditarEmpresaModal({
             {/* Quincenal */}
             <div className="border border-gray-100 rounded-lg p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-700">Es quincenal</span>
+                <span className="text-xs font-medium text-gray-700">
+                  Es quincenal <span className="text-gray-400 font-normal">(agrega Recibo Q1)</span>
+                </span>
                 <Toggle value={esQuincenal} onChange={setEsQuincenal} />
               </div>
             </div>
@@ -395,7 +397,9 @@ export function EditarEmpresaModal({
             {/* Sindicato */}
             <div className="border border-gray-100 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-700">Sindicato</span>
+                <span className="text-xs font-medium text-gray-700">
+                  Sindicato <span className="text-gray-400 font-normal">(agrega Bol. Sind.)</span>
+                </span>
                 <Toggle value={tieneSindicato} onChange={setTieneSindicato} />
               </div>
               {tieneSindicato && (
@@ -413,7 +417,9 @@ export function EditarEmpresaModal({
             {/* Rúbrica LSD */}
             <div className="border border-gray-100 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-700">Rúbrica LSD</span>
+                <span className="text-xs font-medium text-gray-700">
+                  Rúbrica LSD <span className="text-gray-400 font-normal">(agrega tarea LSD)</span>
+                </span>
                 <Toggle value={tieneRubrica} onChange={setTieneRubrica} />
               </div>
               {tieneRubrica && (jurisdiccion === "PBA" || jurisdiccion === "CABA") && (
