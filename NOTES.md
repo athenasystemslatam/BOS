@@ -18,6 +18,15 @@ Reemplaza el Google Sheet "GESTION DE LIBROS". Se trabaja en la rama `libros/mod
 
 Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se activa desde Panel General → Editar).
 
+### En qué quedó (16-oct, cierre de sesión)
+
+- Etapa 2 **completa, commiteada y pusheada** en `libros/modulo` (`82c3ec4`), deploy de prueba en verde: https://bos-git-libros-modulo-athena-systems.vercel.app/libros. `tsc` y `lint` limpios. No queda nada a medias sin commitear.
+- **Falta:** que Giuliana la pruebe en el deploy de prueba y la apruebe (cola, puesta al día, registrar copiado, historial en la ficha). Ojo: el deploy de prueba usa la base de producción y "Registrar copiado" no tiene deshacer.
+- **Después:** etapa 3 (pantalla de Pedidos y trámites sobre `libros_pedidos`, que ya existe, + Entrada y salida con `libros_movimientos` y `copiadora_facturas`, que todavía no existen: van en `add_libros_etapa3.sql`). Al registrar una salida a copiadora, la tarea pasa al estado `codigo='copiandose'`.
+- Nada de esto está en `main`: se integra por PR al final.
+- **Solo en la PC de origen (no viajan con el repo):** los CSV del sheet (en Descargas) y los SQL de importación/corrección (`supabase/importar_libros_sheet*.sql`, `supabase/corregir_importacion_libros*.sql`), ya corridos los dos. Desde otra PC no hacen falta para seguir.
+- En otra PC: `git fetch && git checkout libros/modulo`, `npm ci`, y verificar que la identidad de Git sea la de la cuenta que corresponde.
+
 ## Pendientes / decisiones abiertas (21-sep-2026)
 
 - **F657 como casilla**: hecho localmente en `ContableClient.tsx` pero **sin pushear** (esperando OK de Matías). No había ningún balance con F657 en N/A, así que no se pierde nada.
