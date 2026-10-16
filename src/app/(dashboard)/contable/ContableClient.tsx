@@ -8,7 +8,7 @@ import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
-import { ESTADO_BALANCE, ESTADO_EECC, avanceCls } from "./semaforo";
+import { ESTADO_BALANCE, ESTADO_EECC, avanceCls, calcularAvance } from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
 import type { ClaveAcceso, EquipoMiembro } from "@/types";
 
@@ -41,8 +41,6 @@ type Balance = {
 };
 
 const ANIOS = [2026, 2025];
-
-const AVANCE_OPTIONS = [0, 25, 50, 75, 100];
 
 // Returns ISO date string or null
 function addDays(dateStr: string, days: number): string {
@@ -401,35 +399,14 @@ export function ContableClient({
                     )}
                   </td>
 
-                  {/* Avance */}
+                  {/* Avance — calculado por etapa, ya no se elige a mano */}
                   <td className="px-3 py-2.5 text-center">
-                    {puedeEditar ? (
-                      <div className="relative inline-block">
-                        <span className={clsx(
-                          "flex items-center gap-0.5 text-[11px] font-medium rounded-full pl-2.5 pr-1.5 py-1",
-                          avanceCls(b.avance)
-                        )}>
-                          {b.avance}%
-                          <ChevronDown size={10} className="opacity-50 shrink-0" />
-                        </span>
-                        <select
-                          value={b.avance}
-                          onChange={(e) => update(b.id, { avance: Number(e.target.value) })}
-                          className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                        >
-                          {!AVANCE_OPTIONS.includes(b.avance) && (
-                            <option value={b.avance}>{b.avance}%</option>
-                          )}
-                          {AVANCE_OPTIONS.map((v) => (
-                            <option key={v} value={v}>{v}%</option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : (
-                      <span className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", avanceCls(b.avance))}>
-                        {b.avance}%
-                      </span>
-                    )}
+                    <span
+                      className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", avanceCls(calcularAvance(b)))}
+                      title="Se calcula solo según pedido/recepción de información y estado de EECC"
+                    >
+                      {calcularAvance(b)}%
+                    </span>
                   </td>
 
                   {/* Responsables */}

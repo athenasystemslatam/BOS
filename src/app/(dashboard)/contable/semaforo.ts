@@ -35,3 +35,28 @@ export function avanceCls(v: number): string {
   if (v > 0) return AMARILLO.cls;
   return ROJO.cls;
 }
+
+// Avance por etapas: el contador no elige un número, marca la etapa (pedido
+// de información, recepción, estado de EECC) y acá se deriva el % fijo. El
+// único punto realmente "manual" de esta escalera es marcar estado_eecc en
+// 'en_proceso' (contabilidad cerrada / borrador de EECC armado) — el resto
+// son checkboxes/estados que ya existían, solo que antes el % se elegía
+// aparte, a mano, sin relación real con estos campos.
+// 0% Asignado · 10% Información pedida (envio1) · 25% Información recibida
+// (info_recibida) · 50% Contabilidad cerrada / borrador EECC (estado_eecc
+// = en_proceso) · 75% EECC en legalización / pendiente de pago
+// (pendiente_pago) · 90% Legalizado · 100% En ARCA.
+// Los formularios derivados (855, F899, F713, F657, IGJ) NO suman acá.
+export function calcularAvance(b: {
+  envio1?: boolean;
+  info_recibida?: boolean;
+  estado_eecc?: string;
+}): number {
+  if (b.estado_eecc === "presentado_arca") return 100;
+  if (b.estado_eecc === "legalizado") return 90;
+  if (b.estado_eecc === "pendiente_pago") return 75;
+  if (b.estado_eecc === "en_proceso") return 50;
+  if (b.info_recibida) return 25;
+  if (b.envio1) return 10;
+  return 0;
+}

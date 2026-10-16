@@ -3,7 +3,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAreaOrAdmin } from "@/lib/auth";
+import { calcularAvance } from "./semaforo";
 import type { Cliente } from "@/types";
+
+const CAMPOS_AVANCE = ["envio1", "info_recibida", "estado_eecc"] as const;
 
 // Ficha de cliente de solo lectura para el módulo Contable — misma info que
 // la ficha maestra de Panel General (edición sigue siendo solo desde ahí),
@@ -35,9 +38,24 @@ export async function updateBalance(
   }
 
   const admin = createAdminClient();
+
+  // El avance ya no se elige a mano — se deriva de envio1/info_recibida/
+  // estado_eecc (ver calcularAvance en semaforo.ts). Si el patch toca
+  // alguno de esos tres campos, se recalcula contra el estado ya guardado
+  // + lo que viene en este update, y se persiste junto con el resto.
+  let avanceUpdate: Record<string, unknown> = {};
+  if (CAMPOS_AVANCE.some((campo) => campo in updates)) {
+    const { data: actual } = await admin
+      .from("balances")
+      .select("envio1, info_recibida, estado_eecc")
+      .eq("id", id)
+      .maybeSingle();
+    avanceUpdate = { avance: calcularAvance({ ...actual, ...updates }) };
+  }
+
   const { error } = await admin
     .from("balances")
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update({ ...updates, ...avanceUpdate, updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
   // Igual que en Equipo: revalidar todo el sitio de una, no solo /contable
