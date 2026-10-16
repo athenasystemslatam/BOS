@@ -201,7 +201,7 @@ export async function crearClienteConServicios(formData: FormData) {
       observaciones,
       drive_folder_id,
     };
-    if (sueldos.responsable_id) update.liquidador_id = sueldos.responsable_id;
+    update.liquidador_id = sueldos.responsable_id || null;
 
     await supabase.from("clientes").update(update).eq("id", cliente.id);
   }
@@ -418,7 +418,13 @@ export async function editarClienteConServicios(formData: FormData) {
       observaciones,
       drive_folder_id,
     };
-    if (sueldos.responsable_id) update.liquidador_id = sueldos.responsable_id;
+    // Ojo: antes esto era "if (sueldos.responsable_id) update.liquidador_id = ..."
+    // — un guard que solo propagaba cuando SE ELEGÍA alguien, y nunca cuando
+    // se pasaba a "Sin asignar" (responsable_id vacío/null). El resultado era
+    // que sacarle el responsable a un cliente no se guardaba nunca: quedaba
+    // el liquidador_id viejo en la base sin que nadie se enterara. Ahora se
+    // guarda siempre, elijan a alguien o lo dejen sin asignar.
+    update.liquidador_id = sueldos.responsable_id || null;
 
     const { error: sueldosError } = await supabase.from("clientes").update(update).eq("id", id);
     if (sueldosError && !sueldosError.message.includes("claves_acceso")) {
@@ -426,15 +432,14 @@ export async function editarClienteConServicios(formData: FormData) {
     }
 
     // Igual que editarEmpresa: sincronizar servicios_cliente.responsable_id
-    // (sueldos/general), de donde lee Panel General (vista_empresas).
-    if (sueldos.responsable_id) {
-      await supabase
-        .from("servicios_cliente")
-        .update({ responsable_id: sueldos.responsable_id })
-        .eq("cliente_id", id)
-        .eq("servicio", "sueldos")
-        .eq("subtipo", "general");
-    }
+    // (sueldos/general), de donde lee Panel General (vista_empresas). Mismo
+    // fix: antes solo se sincronizaba si había alguien elegido.
+    await supabase
+      .from("servicios_cliente")
+      .update({ responsable_id: sueldos.responsable_id || null })
+      .eq("cliente_id", id)
+      .eq("servicio", "sueldos")
+      .eq("subtipo", "general");
   }
 
   // Fecha de cierre de ejercicio fija (Contable) — ver add_cierre_ejercicio_fijo.sql.
