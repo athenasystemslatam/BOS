@@ -21,6 +21,7 @@ import {
   FileCheck,
   ArrowLeftRight,
   Printer,
+  Settings,
 } from "lucide-react";
 import clsx from "clsx";
 import { ModuloId, MODULO_LABELS } from "@/lib/modulos";
@@ -99,9 +100,10 @@ const SECTIONS: {
     items: [
       { href: "/libros",              label: "Seguimiento",    icon: ClipboardList, adminOnly: false },
       { href: "/libros/clientes",    label: "Clientes",       icon: Library,       adminOnly: false },
-      { href: "/libros/pedidos",     label: "Pedidos",        icon: FileCheck,     adminOnly: false },
-      { href: "/libros/movimientos", label: "Entrada y salida", icon: ArrowLeftRight, adminOnly: false },
-      { href: "/libros/facturas",    label: "Copiadora",      icon: Printer,       adminOnly: false },
+      { href: "/libros/pedidos",        label: "Pedidos",          icon: FileCheck,      adminOnly: false },
+      { href: "/libros/movimientos",   label: "Entrada y salida", icon: ArrowLeftRight, adminOnly: false },
+      { href: "/libros/facturas",      label: "Copiadora",        icon: Printer,        adminOnly: false },
+      { href: "/libros/configuracion", label: "Configuración",    icon: Settings,       adminOnly: true  },
     ],
   },
 ];

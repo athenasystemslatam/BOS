@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAreaOrAdmin } from "@/lib/auth";
+import { requireAdmin, requireAreaOrAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { UMBRAL_FOLIOS, foliosLibres } from "@/lib/libros";
 import type {
@@ -345,6 +345,7 @@ export async function registrarCopiado(
   if (!fechaFin) return { error: "Indicá la fecha del copiado." };
 
   const admin = createAdminClient();
+  const umbral = await getUmbralFolios();
   const { data: copiado } = await admin.from("libros_estados").select("id").eq("codigo", "copiado").maybeSingle();
   if (!copiado) return { error: "Falta el estado Copiado en libros_estados." };
 
@@ -395,7 +396,7 @@ export async function registrarCopiado(
     if (errTarea) return { error: errTarea.message };
 
     const libres = foliosLibres(libro.folios_totales, usados);
-    if (libres != null && libres <= UMBRAL_FOLIOS) {
+    if (libres != null && libres <= umbral) {
       const nombre = `${libro.libros_catalogo?.nombre ?? "Libro"} tomo ${libro.tomo}`;
       const { error: errPedido } = await admin.from("libros_pedidos").insert({
         cliente_id: libro.cliente_id,
@@ -779,6 +780,43 @@ export async function eliminarFactura(id: string): Promise<Resultado> {
   if ("error" in yo) return yo;
   const admin = createAdminClient();
   const { error } = await admin.from("copiadora_facturas").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+// ── Configuración (admin) ────────────────────────────────────────────────────
+
+/** Lee el umbral de folios desde libros_config; cae en la constante si no existe la tabla. */
+export async function getUmbralFolios(): Promise<number> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("libros_config").select("umbral_folios").maybeSingle();
+    return (data as { umbral_folios: number } | null)?.umbral_folios ?? UMBRAL_FOLIOS;
+  } catch {
+    return UMBRAL_FOLIOS;
+  }
+}
+
+export async function actualizarUmbralFolios(umbral: number): Promise<Resultado> {
+  try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }
+  if (!Number.isInteger(umbral) || umbral < 1) return { error: "El umbral tiene que ser un número entero mayor que 0." };
+  const admin = createAdminClient();
+  const { data: cfg } = await admin.from("libros_config").select("id").maybeSingle();
+  if (!cfg) return { error: "Tabla libros_config no encontrada. ¿Corriste la migración de etapa 4?" };
+  const { error } = await admin.from("libros_config").update({ umbral_folios: umbral }).eq("id", (cfg as { id: string }).id);
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export async function actualizarEstado(
+  id: string,
+  cambios: { nombre?: string; orden?: number; activo?: boolean }
+): Promise<Resultado> {
+  try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }
+  const admin = createAdminClient();
+  const { error } = await admin.from("libros_estados").update(cambios).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/libros", "layout");
   return {};

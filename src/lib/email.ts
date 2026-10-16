@@ -492,3 +492,182 @@ export async function sendAlertaF931(): Promise<AlertaF931Result> {
     detalle: [...enviados, ...omitidos.map((o) => `[omitido] ${o}`)],
   };
 }
+
+// ─── Alertas Libros ───────────────────────────────────────────────────────────
+
+type AlertaLibrosData = {
+  seguimientosVencidos: { clienteNombre: string; tipo: string; descripcion: string | null; proximo: string; responsable: string | null }[];
+  mandatosVencidos: { clienteNombre: string; vence: string; diasRestantes: number }[];
+  foliosCriticos: { clienteNombre: string; libroNombre: string; libres: number }[];
+};
+
+function buildEmailAlertasLibros(data: AlertaLibrosData): { subject: string; html: string } | null {
+  const { seguimientosVencidos, mandatosVencidos, foliosCriticos } = data;
+  const total = seguimientosVencidos.length + mandatosVencidos.length + foliosCriticos.length;
+  if (total === 0) return null;
+
+  const hoy = new Date().toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+  const subject = `Alertas Libros — ${total} ítem${total !== 1 ? "s" : ""} al ${hoy}`;
+
+  function seccion(titulo: string, filas: string): string {
+    return `
+      <h3 style="font-size:14px;font-weight:600;color:#444;margin:20px 0 6px">${titulo}</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tbody>${filas}</tbody>
+      </table>`;
+  }
+
+  function fila(cols: string[]): string {
+    return `<tr>${cols.map((c) => `<td style="padding:5px 10px;border-bottom:1px solid #f0f0f0">${c}</td>`).join("")}</tr>`;
+  }
+
+  let body = "";
+
+  if (seguimientosVencidos.length > 0) {
+    const filas = seguimientosVencidos.map((s) =>
+      fila([
+        s.clienteNombre,
+        s.tipo,
+        s.descripcion ?? "—",
+        `<span style="color:#dc2626">Debía: ${s.proximo}</span>`,
+        s.responsable ?? "Sin asignar",
+      ])
+    ).join("");
+    body += seccion(`📋 Seguimientos vencidos (${seguimientosVencidos.length})`, filas);
+  }
+
+  if (mandatosVencidos.length > 0) {
+    const filas = mandatosVencidos.map((m) =>
+      fila([
+        m.clienteNombre,
+        m.diasRestantes <= 0
+          ? `<span style="color:#dc2626">Venció: ${m.vence}</span>`
+          : `<span style="color:#d97706">Vence: ${m.vence} (${m.diasRestantes} días)</span>`,
+      ])
+    ).join("");
+    body += seccion(`⚠️ Mandatos por vencer o vencidos (${mandatosVencidos.length})`, filas);
+  }
+
+  if (foliosCriticos.length > 0) {
+    const filas = foliosCriticos.map((f) =>
+      fila([f.clienteNombre, f.libroNombre, `${f.libres} folios libres`])
+    ).join("");
+    body += seccion(`📚 Libros con folios críticos sin presupuesto (${foliosCriticos.length})`, filas);
+  }
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:680px;margin:0 auto;color:#222">
+      <h2 style="font-size:16px;margin-bottom:4px">Alertas Libros — ${hoy}</h2>
+      <p style="font-size:13px;color:#888;margin-top:0">Resumen automático generado por BOS.</p>
+      ${body}
+      <p style="font-size:12px;color:#aaa;margin-top:28px">BOS · KMA Consultores</p>
+    </div>`;
+
+  return { subject, html };
+}
+
+export type AlertaLibrosResult = { enviados: number; omitidos: number; detalle: string[]; error?: string };
+
+export async function sendAlertasLibros(): Promise<AlertaLibrosResult> {
+  if (!process.env.RESEND_API_KEY) {
+    return { enviados: 0, omitidos: 0, detalle: [], error: "RESEND_API_KEY no configurada" };
+  }
+
+  const admin = createAdminClient();
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  // 1. Umbral de folios
+  const { data: cfgRaw } = await admin.from("libros_config").select("umbral_folios").maybeSingle();
+  const umbral = (cfgRaw as { umbral_folios: number } | null)?.umbral_folios ?? 10;
+
+  // 2. Pedidos con seguimiento vencido
+  const { data: pedidosRaw } = await admin
+    .from("libros_pedidos")
+    .select("tipo, descripcion, proximo_seguimiento, clientes!inner(nombre), responsable:liquidadoras!libros_pedidos_responsable_id_fkey(nombre)")
+    .lt("proximo_seguimiento", hoy)
+    .in("estado", ["abierto", "esperando_cliente", "esperando_tercero"]);
+
+  const seguimientosVencidos = ((pedidosRaw ?? []) as unknown as {
+    tipo: string; descripcion: string | null; proximo_seguimiento: string;
+    clientes: { nombre: string }; responsable: { nombre: string } | null;
+  }[]).map((p) => ({
+    clienteNombre: p.clientes.nombre,
+    tipo: p.tipo.replace(/_/g, " "),
+    descripcion: p.descripcion,
+    proximo: new Date(p.proximo_seguimiento + "T00:00:00").toLocaleDateString("es-AR"),
+    responsable: p.responsable?.nombre ?? null,
+  }));
+
+  // 3. Mandatos por vencer o vencidos (dentro de los próximos 30 días o ya vencidos)
+  const { data: societariosRaw } = await admin
+    .from("clientes_societario")
+    .select("mandato_designacion, mandato_anios, cliente_id");
+  const { data: clientesRaw } = await admin
+    .from("servicios_cliente")
+    .select("cliente_id, clientes(nombre)")
+    .eq("servicio", "libros")
+    .eq("estado", true);
+
+  const clienteNombrePorId = new Map(
+    ((clientesRaw ?? []) as unknown as { cliente_id: string; clientes: { nombre: string } | null }[])
+      .filter((s) => s.clientes)
+      .map((s) => [s.cliente_id, s.clientes!.nombre])
+  );
+
+  const mandatosVencidos: AlertaLibrosData["mandatosVencidos"] = [];
+  const MARGEN_DIAS = 30;
+
+  for (const s of (societariosRaw ?? []) as { mandato_designacion: string | null; mandato_anios: number | null; cliente_id: string }[]) {
+    if (!s.mandato_designacion || !s.mandato_anios) continue;
+    const [y, m, d] = s.mandato_designacion.split("-").map(Number);
+    const venceStr = `${y + s.mandato_anios}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const diasRestantes = Math.round((new Date(venceStr + "T00:00:00").getTime() - new Date(hoy + "T00:00:00").getTime()) / 86_400_000);
+    if (diasRestantes <= MARGEN_DIAS) {
+      const clienteNombre = clienteNombrePorId.get(s.cliente_id);
+      if (!clienteNombre) continue;
+      mandatosVencidos.push({
+        clienteNombre,
+        vence: new Date(venceStr + "T00:00:00").toLocaleDateString("es-AR"),
+        diasRestantes,
+      });
+    }
+  }
+  mandatosVencidos.sort((a, b) => a.diasRestantes - b.diasRestantes);
+
+  // 4. Libros con folios críticos sin presupuesto abierto
+  const { data: librosRaw } = await admin
+    .from("libros")
+    .select("id, cliente_id, catalogo_id, tomo, folios_totales, folios_usados, estado")
+    .neq("estado", "sin_libro");
+
+  const { data: catalogoRaw } = await admin.from("libros_catalogo").select("id, nombre");
+  const catalogoPorId = new Map(((catalogoRaw ?? []) as { id: string; nombre: string }[]).map((k) => [k.id, k]));
+
+  // Pedidos de presupuesto tomo nuevo abiertos
+  const { data: presupuestosRaw } = await admin
+    .from("libros_pedidos")
+    .select("libro_id")
+    .eq("tipo", "presupuesto_tomo_nuevo")
+    .in("estado", ["abierto", "esperando_cliente", "esperando_tercero"]);
+  const librosConPresupuesto = new Set(((presupuestosRaw ?? []) as { libro_id: string | null }[]).map((p) => p.libro_id).filter(Boolean));
+
+  const foliosCriticos: AlertaLibrosData["foliosCriticos"] = [];
+  for (const l of (librosRaw ?? []) as { id: string; cliente_id: string; catalogo_id: string; tomo: number; folios_totales: number | null; folios_usados: number }[]) {
+    if (l.folios_totales == null) continue;
+    const libres = l.folios_totales - l.folios_usados;
+    if (libres > umbral) continue;
+    if (librosConPresupuesto.has(l.id)) continue;
+    const clienteNombre = clienteNombrePorId.get(l.cliente_id);
+    if (!clienteNombre) continue;
+    const catNombre = catalogoPorId.get(l.catalogo_id)?.nombre ?? "Libro";
+    foliosCriticos.push({ clienteNombre, libroNombre: `${catNombre} T.${l.tomo}`, libres });
+  }
+  foliosCriticos.sort((a, b) => a.libres - b.libres);
+
+  const emailData = buildEmailAlertasLibros({ seguimientosVencidos, mandatosVencidos, foliosCriticos });
+  if (!emailData) return { enviados: 0, omitidos: 0, detalle: ["Sin alertas hoy"] };
+
+  const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject: emailData.subject, html: emailData.html });
+  if (error) return { enviados: 0, omitidos: 1, detalle: [`[omitido] ${error.message}`], error: error.message };
+  return { enviados: 1, omitidos: 0, detalle: [`Alertas Libros → ${ADMIN_EMAIL}`] };
+}
