@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentLiquidadora, requireAdmin } from "@/lib/auth";
 import { sendEmailBajaServicio, sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
-import type { Cliente } from "@/types";
+import type { Cliente, ClienteSocietario } from "@/types";
 
 // Ficha de cliente de solo lectura para la llavecita de Panel General —
 // misma info y mismo componente (FichaClienteBoton) que ya usa Contable.
@@ -16,12 +16,69 @@ export async function getFichaCliente(clienteId: string): Promise<Cliente | null
   if (!yo) return null;
 
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("clientes")
-    .select("*")
-    .eq("id", clienteId)
-    .maybeSingle();
-  return (data as Cliente) ?? null;
+
+  const [{ data }, { data: servicioLibros }] = await Promise.all([
+    admin.from("clientes").select("*").eq("id", clienteId).maybeSingle(),
+    admin.from("servicios_cliente")
+      .select("cliente_id")
+      .eq("cliente_id", clienteId)
+      .eq("servicio", "libros")
+      .eq("estado", true)
+      .maybeSingle(),
+  ]);
+
+  const cliente = (data as Cliente) ?? null;
+  if (!cliente) return null;
+
+  if (!servicioLibros) return cliente;
+
+  // El cliente tiene libros activo — enriquecer con datos societarios y de libros
+  const [
+    { data: socRaw },
+    { data: librosRaw },
+    { data: pedidosRaw },
+    { data: cfgRaw },
+    { data: balanceRaw },
+  ] = await Promise.all([
+    admin.from("clientes_societario").select("*").eq("cliente_id", clienteId).maybeSingle(),
+    admin.from("libros").select("estado, ubicacion, extraviado, folios_totales, folios_usados").eq("cliente_id", clienteId),
+    admin.from("libros_pedidos").select("estado").eq("cliente_id", clienteId).in("estado", ["abierto", "esperando_cliente", "esperando_tercero"]),
+    admin.from("libros_config").select("umbral_folios").maybeSingle(),
+    admin.from("balances").select("anio_fiscal, estado").eq("cliente_id", clienteId).order("anio_fiscal", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+
+  const umbral = (cfgRaw as { umbral_folios: number } | null)?.umbral_folios ?? 10;
+
+  type LibroRow = { estado: string; ubicacion: string; extraviado: boolean; folios_totales: number | null; folios_usados: number };
+  const libros = (librosRaw ?? []) as LibroRow[];
+
+  const ubicacionCounts = { estudio: 0, cliente: 0, copiadora: 0, otro: 0, extraviados: 0 };
+  let foliosCriticos = 0;
+  for (const l of libros) {
+    if (l.extraviado) ubicacionCounts.extraviados++;
+    else if (l.ubicacion === "estudio") ubicacionCounts.estudio++;
+    else if (l.ubicacion === "cliente") ubicacionCounts.cliente++;
+    else if (l.ubicacion === "copiadora") ubicacionCounts.copiadora++;
+    else ubicacionCounts.otro++;
+
+    if (l.folios_totales != null && (l.folios_totales - l.folios_usados) <= umbral) {
+      foliosCriticos++;
+    }
+  }
+
+  const bal = balanceRaw as { anio_fiscal: number; estado: string } | null;
+
+  cliente.fichaLibros = {
+    societario: (socRaw as ClienteSocietario) ?? null,
+    libros_total: libros.length,
+    ubicacion: ubicacionCounts,
+    folios_criticos: foliosCriticos,
+    pedidos_abiertos: (pedidosRaw ?? []).length,
+    balance_estado: bal?.estado ?? null,
+    balance_anio: bal?.anio_fiscal ?? null,
+  };
+
+  return cliente;
 }
 
 function parseCuit(raw: string) {

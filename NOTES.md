@@ -44,6 +44,17 @@ Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se a
 - **Solo en la PC de origen (no viajan con el repo):** los CSV del sheet (en Descargas) y los SQL de importación/corrección (`supabase/importar_libros_sheet*.sql`, `supabase/corregir_importacion_libros*.sql`), ya corridos los dos. Desde otra PC no hacen falta para seguir.
 - En otra PC: `git fetch && git checkout libros/modulo`, `npm ci`, y verificar que la identidad de Git sea la de la cuenta que corresponde.
 
+## Etapa 5 — Ficha + indicador Contable (oct-2026)
+
+Decisiones:
+- Libros NO va como columna en Panel General (decisión sep-2026, se mantiene).
+- La sección "Societario y libros" se agregó a `FichaClienteBoton` (modal "Ver ficha" de Panel General y Contable).
+  Cuando `rediseno-panel-general` se integre a `main`, esta sección deberá portarse
+  a lo que ese rediseño use en lugar de `FichaClienteBoton.tsx` (que ese branch elimina).
+- Indicador de balance Contable en `/libros/clientes`: badge "Acta pendiente" (ámbar) si
+  `balances.estado = 'legalizado'`; badge "Finalizado" (gris) si `'finalizado'`. Solo lectura de
+  la tabla balances, sin tocar el módulo Contable.
+
 ## Pendientes / decisiones abiertas (21-sep-2026)
 
 - **F657 como casilla**: hecho localmente en `ContableClient.tsx` pero **sin pushear** (esperando OK de Matías). No había ningún balance con F657 en N/A, así que no se pierde nada.

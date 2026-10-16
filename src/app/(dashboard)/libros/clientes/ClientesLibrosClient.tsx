@@ -19,6 +19,8 @@ export type FilaClienteLibros = {
   sinLibro: number;
   pocosFolios: number;
   mandatoVence: string | null;
+  balanceEstado: string | null;
+  balanceAnio: number | null;
 };
 
 const TH = "text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3";
@@ -102,13 +104,14 @@ export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) 
               <th className={clsx(TH, "text-left")}>Organismo</th>
               <th className={clsx(TH, "text-center")}>Libros cargados</th>
               <th className={clsx(TH, "text-center")}>Alertas</th>
+              <th className={clsx(TH, "text-center")}>Balance (Contable)</th>
               <th className={clsx(TH, "text-center")}>Mandato vence</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {visibles.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center text-gray-400 text-sm py-16">
+                <td colSpan={8} className="text-center text-gray-400 text-sm py-16">
                   {filas.length === 0
                     ? "Ningún cliente tiene el servicio Libros activo. Se activa desde Panel General → Editar cliente."
                     : "Sin resultados para el filtro aplicado"}
@@ -147,6 +150,21 @@ export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) 
                       )}
                       {f.sinLibro === 0 && f.pocosFolios === 0 && <span className="text-gray-300">—</span>}
                     </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    {f.balanceEstado === "legalizado" && (
+                      <span className="inline-block text-[11px] font-medium rounded-full px-2 py-0.5 bg-amber-50 text-amber-700">
+                        Acta pendiente {f.balanceAnio}
+                      </span>
+                    )}
+                    {f.balanceEstado === "finalizado" && (
+                      <span className="inline-block text-[11px] font-medium rounded-full px-2 py-0.5 bg-gray-100 text-gray-500">
+                        Finalizado {f.balanceAnio}
+                      </span>
+                    )}
+                    {f.balanceEstado !== "legalizado" && f.balanceEstado !== "finalizado" && (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     {f.mandatoVence ? (

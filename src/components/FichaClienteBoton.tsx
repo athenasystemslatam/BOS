@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { IdCard, X, Eye, EyeOff, ExternalLink, Pencil } from "lucide-react";
-import type { Cliente, ModuloClave } from "@/types";
+import type { Cliente, FichaLibrosSocietario, ModuloClave } from "@/types";
 
 const MODULO_LABEL: Record<ModuloClave, string> = {
   "": "General",
@@ -39,6 +40,88 @@ function Seccion({ titulo, children }: { titulo: string; children: React.ReactNo
       </p>
       {children}
     </div>
+  );
+}
+
+function SeccionLibros({ data }: { data: FichaLibrosSocietario }) {
+  const { societario: soc, libros_total, ubicacion, folios_criticos, pedidos_abiertos, balance_estado, balance_anio } = data;
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  let mandatoTexto: string | null = null;
+  let mandatoColor = "text-gray-800";
+  if (soc?.mandato_designacion && soc?.mandato_anios) {
+    const [y, m, d] = soc.mandato_designacion.split("-").map(Number);
+    const venceStr = `${y + soc.mandato_anios}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const dias = Math.round((new Date(venceStr + "T00:00:00").getTime() - new Date(hoy + "T00:00:00").getTime()) / 86_400_000);
+    const venceFmt = fmtFecha(venceStr);
+    if (dias < 0) { mandatoTexto = `Vencido el ${venceFmt}`; mandatoColor = "text-red-600"; }
+    else if (dias <= 30) { mandatoTexto = `Vence ${venceFmt} (${dias}d)`; mandatoColor = "text-amber-600"; }
+    else { mandatoTexto = venceFmt; }
+  }
+
+  return (
+    <Seccion titulo="Societario y libros">
+      <div className="grid grid-cols-2 gap-3">
+        <Campo label="Tipo societario" value={soc?.tipo_societario?.replace(/_/g, " ") ?? null} />
+        <Campo label="Organismo" value={soc?.organismo ?? null} />
+        {soc?.nro_inscripcion && <Campo label="Nº inscripción" value={soc.nro_inscripcion} />}
+      </div>
+
+      {soc?.mandato_designacion && (
+        <div>
+          <p className="text-[10px] font-semibold tracking-[.08em] uppercase text-gray-400">Mandato</p>
+          <p className={`text-[13px] mt-0.5 ${mandatoColor}`}>{mandatoTexto ?? "—"}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Designación: {fmtFecha(soc.mandato_designacion)} · {soc.mandato_anios} año{soc.mandato_anios !== 1 ? "s" : ""}
+          </p>
+        </div>
+      )}
+
+      {balance_estado === "legalizado" && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <span className="text-[11px] font-semibold text-amber-700">
+            Balance {balance_anio} legalizado — se puede labrar el acta
+          </span>
+        </div>
+      )}
+      {balance_estado === "finalizado" && balance_anio && (
+        <p className="text-[12px] text-gray-500">Balance {balance_anio}: finalizado en ARCA</p>
+      )}
+
+      <div>
+        <p className="text-[10px] font-semibold tracking-[.08em] uppercase text-gray-400 mb-1.5">
+          Libros ({libros_total})
+        </p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-gray-600">
+          {ubicacion.estudio > 0 && <span>{ubicacion.estudio} en estudio</span>}
+          {ubicacion.cliente > 0 && <span>{ubicacion.cliente} en cliente</span>}
+          {ubicacion.copiadora > 0 && <span>{ubicacion.copiadora} en copiadora</span>}
+          {ubicacion.otro > 0 && <span>{ubicacion.otro} en otro</span>}
+          {ubicacion.extraviados > 0 && (
+            <span className="text-red-600 font-medium">{ubicacion.extraviados} extraviado{ubicacion.extraviados !== 1 ? "s" : ""}</span>
+          )}
+        </div>
+        {folios_criticos > 0 && (
+          <p className="text-[12px] text-amber-600 mt-1">
+            {folios_criticos} libro{folios_criticos !== 1 ? "s" : ""} con folios críticos
+          </p>
+        )}
+        {libros_total === 0 && <p className="text-[12px] text-gray-400">Sin libros cargados</p>}
+      </div>
+
+      {pedidos_abiertos > 0 && (
+        <p className="text-[12px] text-violet-700">
+          {pedidos_abiertos} pedido{pedidos_abiertos !== 1 ? "s" : ""} abierto{pedidos_abiertos !== 1 ? "s" : ""}
+        </p>
+      )}
+
+      <Link
+        href="/libros/clientes"
+        className="inline-flex items-center gap-1 text-[12px] text-violet-600 hover:text-violet-700 underline underline-offset-2"
+      >
+        Ver ficha completa en Libros →
+      </Link>
+    </Seccion>
   );
 }
 
@@ -259,6 +342,10 @@ export function FichaClienteBoton({
                         <Campo label="Observaciones" value={cliente.observaciones} />
                       )}
                     </Seccion>
+                  )}
+
+                  {cliente.fichaLibros && (
+                    <SeccionLibros data={cliente.fichaLibros} />
                   )}
                 </>
               )}

@@ -112,6 +112,7 @@ export interface Cliente {
   fecha_modificacion: string;
   creado_por?: string;
   liquidadora?: Liquidadora;
+  fichaLibros?: FichaLibrosSocietario;
 }
 
 export interface AlertaPostcierre {
@@ -256,6 +257,16 @@ export type PeriodicidadLibro = "balance" | "trimestral" | "evento";
 export type EstadoLibro = "activo" | "cerrado" | "sin_libro";
 export type SoporteLibro = "fisico" | "digital";
 export type UbicacionLibro = "estudio" | "cliente" | "copiadora" | "otro";
+
+export interface FichaLibrosSocietario {
+  societario: ClienteSocietario | null;
+  libros_total: number;
+  ubicacion: { estudio: number; cliente: number; copiadora: number; otro: number; extraviados: number };
+  folios_criticos: number;
+  pedidos_abiertos: number;
+  balance_estado: string | null;
+  balance_anio: number | null;
+}
 
 export interface ClienteSocietario {
   cliente_id: string;
