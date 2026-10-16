@@ -10,10 +10,12 @@ import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { LocalesEditor } from "@/components/LocalesEditor";
 import { editarClienteConServicios, getEmpresaCompleta } from "./actions";
+import { MESES_NOMBRES } from "@/lib/vencimientos";
 
 type ServicioKey = `${string}:${string}`;
 
 const JURISDICCIONES = ["CABA", "PBA", "Otra"];
+const MESES = MESES_NOMBRES.slice(1).map((nombre, i) => ({ valor: i + 1, nombre }));
 
 export function EditarClienteModal({
   clienteId,
@@ -52,6 +54,9 @@ export function EditarClienteModal({
   const [tieneRubricaLsd, setTieneRubricaLsd] = useState(false);
   const [jurisdiccion, setJurisdiccion] = useState("CABA");
   const [jurisdiccionOtra, setJurisdiccionOtra] = useState("");
+
+  const [cierreEjercicioMes, setCierreEjercicioMes] = useState("");
+  const [cierreEjercicioDia, setCierreEjercicioDia] = useState("");
 
   const [cuilArca, setCuilArca] = useState("");
   const [art, setArt] = useState("");
@@ -109,6 +114,9 @@ export function EditarClienteModal({
       setJurisdiccionOtra(
         cliente.jurisdiccion && !JURISDICCIONES.includes(cliente.jurisdiccion) ? cliente.jurisdiccion : ""
       );
+
+      setCierreEjercicioMes(cliente.cierre_ejercicio_mes ? String(cliente.cierre_ejercicio_mes) : "");
+      setCierreEjercicioDia(cliente.cierre_ejercicio_dia ? String(cliente.cierre_ejercicio_dia) : "");
 
       setCuilArca(cliente.cuil_arca ?? "");
       setArt(cliente.art ?? "");
@@ -190,6 +198,11 @@ export function EditarClienteModal({
       formData.set("sueldos_claves_acceso", JSON.stringify(claves));
       formData.set("sueldos_observaciones", observaciones);
       formData.set("sueldos_drive_folder_id", driveFolder);
+    }
+
+    if ("contable:general" in serviciosActivos) {
+      formData.set("contable_cierre_ejercicio_mes", cierreEjercicioMes);
+      formData.set("contable_cierre_ejercicio_dia", cierreEjercicioDia);
     }
 
     startTransition(async () => {
@@ -546,6 +559,38 @@ export function EditarClienteModal({
                                   />
                                 </div>
                               </div>
+                            </div>
+                          )}
+
+                          {servicio === "contable" && (
+                            <div className="mt-3 pt-3 border-t border-line-soft space-y-2">
+                              <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                                Fecha de cierre de ejercicio (fija, se repite cada año)
+                              </label>
+                              <div className="flex gap-2">
+                                <select
+                                  value={cierreEjercicioMes}
+                                  onChange={(e) => setCierreEjercicioMes(e.target.value)}
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
+                                >
+                                  <option value="">Mes…</option>
+                                  {MESES.map((m) => (
+                                    <option key={m.valor} value={m.valor}>{m.nombre}</option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={31}
+                                  placeholder="Día"
+                                  value={cierreEjercicioDia}
+                                  onChange={(e) => setCierreEjercicioDia(e.target.value)}
+                                  className="w-24 text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
+                                />
+                              </div>
+                              <p className="text-[11px] text-ink-faint">
+                                Se usa para autocompletar la fecha de cierre al crear el balance de cada año nuevo.
+                              </p>
                             </div>
                           )}
                         </div>

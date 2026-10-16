@@ -100,6 +100,11 @@ export interface Cliente {
   lsd_hasta_anio?: number | null;
   lsd_hasta_mes?: number | null;
   drive_folder_id?: string;
+  // Fecha de cierre de ejercicio fija (Contable) — mes/día que se repite
+  // todos los años; se usa para autocompletar fecha_cierre al crear el
+  // balance del año siguiente (ver NuevoBalanceModal.tsx).
+  cierre_ejercicio_mes?: number | null;
+  cierre_ejercicio_dia?: number | null;
   fecha_alta: string;
   fecha_alta_empleador?: string;
   fecha_inicio_liquidacion?: string;

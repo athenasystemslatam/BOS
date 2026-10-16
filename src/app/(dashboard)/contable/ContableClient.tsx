@@ -78,7 +78,13 @@ export function ContableClient({
 }: {
   balances: Balance[];
   equipoContable: { id: string; nombre: string }[];
-  clientesConServicio: { id: string; nombre: string; cuit: string }[];
+  clientesConServicio: {
+    id: string;
+    nombre: string;
+    cuit: string;
+    cierre_ejercicio_mes: number | null;
+    cierre_ejercicio_dia: number | null;
+  }[];
   anio: number;
   isAdmin: boolean;
   puedeEditar: boolean;

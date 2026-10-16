@@ -33,7 +33,7 @@ export default async function ContablePage({
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
     admin
       .from("servicios_cliente")
-      .select("cliente_id, clientes(id, nombre, cuit)")
+      .select("cliente_id, clientes(id, nombre, cuit, cierre_ejercicio_mes, cierre_ejercicio_dia)")
       .eq("servicio", "contable")
       .eq("estado", true),
     // Para el modal de edición de ficha (reutiliza EditarClienteModal de

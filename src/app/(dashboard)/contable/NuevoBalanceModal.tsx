@@ -4,8 +4,21 @@ import { useState, useTransition } from "react";
 import { X } from "lucide-react";
 import { crearBalance } from "./actions";
 
-type Cliente = { id: string; nombre: string; cuit: string };
+type Cliente = {
+  id: string;
+  nombre: string;
+  cuit: string;
+  cierre_ejercicio_mes: number | null;
+  cierre_ejercicio_dia: number | null;
+};
 type EquipoMiembro = { id: string; nombre: string };
+
+function fechaCierreSugerida(cliente: Cliente | null, anio: number): string {
+  if (!cliente?.cierre_ejercicio_mes || !cliente?.cierre_ejercicio_dia) return "";
+  const mm = String(cliente.cierre_ejercicio_mes).padStart(2, "0");
+  const dd = String(cliente.cierre_ejercicio_dia).padStart(2, "0");
+  return `${anio}-${mm}-${dd}`;
+}
 
 export function NuevoBalanceModal({
   anio,
@@ -138,13 +151,18 @@ export function NuevoBalanceModal({
               Fecha de cierre <span className="text-red-400">*</span>
             </label>
             <input
+              key={clienteSeleccionado?.id ?? "sin-cliente"}
               type="date"
               name="fecha_cierre"
               required
+              defaultValue={fechaCierreSugerida(clienteSeleccionado, anio)}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
             />
             <p className="text-[11px] text-gray-400 mt-1">
-              VTO Balance = cierre + 135 días · 855/F899 = VTO + 25 días
+              {clienteSeleccionado?.cierre_ejercicio_mes
+                ? "Autocompletada con el cierre fijo de este cliente — se puede cambiar si corresponde."
+                : "Primera vez para este cliente: lo que cargues acá queda como su fecha fija para los próximos años."}
+              {" "}VTO Balance y Ganancias = cierre + 135 días · F.855/F899 = VTO + 25 días
             </p>
           </div>
 

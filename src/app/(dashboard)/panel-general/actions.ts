@@ -437,6 +437,19 @@ export async function editarClienteConServicios(formData: FormData) {
     }
   }
 
+  // Fecha de cierre de ejercicio fija (Contable) — ver add_cierre_ejercicio_fijo.sql.
+  const contable = servicios.find((s) => s.servicio === "contable");
+  if (contable) {
+    const mesRaw = (formData.get("contable_cierre_ejercicio_mes") as string)?.trim();
+    const diaRaw = (formData.get("contable_cierre_ejercicio_dia") as string)?.trim();
+    const cierre_ejercicio_mes = mesRaw ? parseInt(mesRaw) : null;
+    const cierre_ejercicio_dia = diaRaw ? parseInt(diaRaw) : null;
+    await supabase
+      .from("clientes")
+      .update({ cierre_ejercicio_mes, cierre_ejercicio_dia })
+      .eq("id", id);
+  }
+
   revalidatePath("/", "layout");
   return { success: true };
 }

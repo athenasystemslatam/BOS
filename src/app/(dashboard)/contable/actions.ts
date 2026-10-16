@@ -83,6 +83,24 @@ export async function crearBalance(data: {
     estado: data.responsable_id ? "asignado" : "sin_asignar",
   });
   if (error) return { error: error.message };
+
+  // Fecha de cierre fija (ver add_cierre_ejercicio_fijo.sql): si el cliente
+  // todavía no la tiene, la "aprende" de esta primera carga para autocompletar
+  // sola el balance de los próximos años. Si ya la tiene, no se pisa acá —
+  // un cambio real de fecha de cierre se edita a propósito desde la ficha.
+  const [, mesStr, diaStr] = data.fecha_cierre.split("-");
+  const { data: cliente } = await admin
+    .from("clientes")
+    .select("cierre_ejercicio_mes")
+    .eq("id", data.cliente_id)
+    .maybeSingle();
+  if (cliente && !cliente.cierre_ejercicio_mes) {
+    await admin
+      .from("clientes")
+      .update({ cierre_ejercicio_mes: parseInt(mesStr), cierre_ejercicio_dia: parseInt(diaStr) })
+      .eq("id", data.cliente_id);
+  }
+
   revalidatePath("/", "layout");
   return { ok: true };
 }

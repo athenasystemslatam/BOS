@@ -56,7 +56,7 @@ export default async function ContableVencimientosPage({
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable</p>
           <h1 className="text-[20px] font-semibold text-gray-900">Vencimientos {anio}</h1>
           <p className="text-[13px] text-gray-400 mt-1">
-            VTO Balance = cierre + 135 días · VTO F.855 = cierre + 160 días
+            VTO Balance y Ganancias = cierre + 135 días · VTO F.855/F899 = cierre + 160 días
           </p>
         </div>
         <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
