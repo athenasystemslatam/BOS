@@ -3,14 +3,14 @@ import { NavWrapper } from "@/components/NavWrapper";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { MODULO_LABELS } from "@/lib/modulos";
 
-// Secciones colapsables del menú (ver Sidebar.tsx) — las mismas 4 que usan
-// MODULO_LABELS.x como section.label. "Libros" no tiene sección propia
-// todavía, no entra acá.
+// Secciones colapsables del menú (ver Sidebar.tsx) — las mismas que usan
+// MODULO_LABELS.x como section.label.
 const SECCIONES_COLAPSABLES = [
   MODULO_LABELS.sueldos,
   MODULO_LABELS.impuestos,
   MODULO_LABELS.contable,
   MODULO_LABELS.monotributo,
+  MODULO_LABELS.libros,
 ];
 
 export default async function DashboardLayout({

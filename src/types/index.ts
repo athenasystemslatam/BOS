@@ -239,3 +239,62 @@ export interface VistEmpresa {
   responsable_libros: string | null;
   responsable_monotributo: string | null;
 }
+
+// ── Módulo Libros Societarios ────────────────────────────────────────────────
+
+export type TipoSocietario =
+  | "SA"
+  | "SRL"
+  | "SAS"
+  | "FUNDACION"
+  | "ASOCIACION"
+  | "SOCIEDAD_SIMPLE"
+  | "SOCIEDAD_DE_HECHO";
+
+export type OrganismoSocietario = "IGJ" | "DPPJ" | "OTRO";
+export type PeriodicidadLibro = "balance" | "trimestral" | "evento";
+export type EstadoLibro = "activo" | "cerrado" | "sin_libro";
+export type SoporteLibro = "fisico" | "digital";
+export type UbicacionLibro = "estudio" | "cliente" | "copiadora" | "otro";
+
+export interface ClienteSocietario {
+  cliente_id: string;
+  tipo_societario: TipoSocietario | null;
+  organismo: OrganismoSocietario | null;
+  nro_inscripcion: string | null;
+  libros_digitales: boolean;
+  contacto_libros: string | null;
+  mandato_designacion: string | null;
+  mandato_anios: number | null;
+  observaciones: string | null;
+  actualizado_en: string;
+}
+
+export interface LibroCatalogo {
+  id: string;
+  tipo_societario: TipoSocietario;
+  codigo: string;
+  nombre: string;
+  orden: number;
+  dispara_con_balance: boolean;
+  periodicidad: PeriodicidadLibro;
+  activo: boolean;
+}
+
+export interface Libro {
+  id: string;
+  cliente_id: string;
+  catalogo_id: string;
+  tomo: number;
+  soporte: SoporteLibro;
+  estado: EstadoLibro;
+  rubrica_nro: string | null;
+  rubrica_fecha: string | null;
+  folios_totales: number | null;
+  folios_usados: number;
+  ultimo_periodo_copiado: string | null;
+  periodicidad: PeriodicidadLibro | null;
+  ubicacion: UbicacionLibro;
+  ubicacion_detalle: string | null;
+  observaciones: string | null;
+}

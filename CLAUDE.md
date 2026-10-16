@@ -213,20 +213,12 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
 
 ---
 
-## Arquitectura de tabs por módulo
+## Navegación por módulo
 
-Cada módulo (contable, impuestos, monotributo) tiene un `layout.tsx` que renderiza `<ModuleTabBar>` encima del contenido. El componente está en `src/components/ModuleTabBar.tsx` (client component, usa `usePathname()`).
+Las páginas de cada módulo (Seguimiento, Dashboard, Vencimientos, Equipo, Productividad…) son ítems de una **sección colapsable del menú lateral** (`SECTIONS` en `src/components/Sidebar.tsx`), filtrada por `equipo_modulos`. Una sección nueva también va en `SECCIONES_COLAPSABLES` de `src/app/(dashboard)/layout.tsx`. Los módulos ya no usan `layout.tsx` + `ModuleTabBar` (se pasó al sidebar en `644cbef`); `src/components/ModuleTabBar.tsx` sigue en el repo pero sin uso.
 
-Patrón de altura para que el scroll funcione dentro del tab:
+Patrón de altura para que el scroll funcione:
 ```tsx
-// layout.tsx del módulo
-<div className="flex flex-col h-full">
-  <ModuleTabBar tabs={TABS} accentColor="text-emerald-600" />
-  <div className="flex-1 min-h-0 overflow-hidden">
-    {children}
-  </div>
-</div>
-
 // página con tabla scrolleable
 <div className="flex flex-col h-full bg-gray-50">
   <div className="flex-1 min-h-0 overflow-y-auto">
@@ -387,7 +379,7 @@ Aplicadas en producción:
 - ✅ **Módulo Monotributo** — cuota mensual, recategorización feb/ago, deuda con alertas visuales
 - ✅ Importación de balances 2025 y 2026 desde Excel
 - ✅ Scrollbar horizontal en tablas de módulos
-- ✅ Dashboard, Vencimientos y Equipo para los 3 módulos (tabs por módulo con `ModuleTabBar`)
+- ✅ Dashboard, Vencimientos y Equipo para los 3 módulos (hoy como ítems del menú lateral por módulo)
 - ✅ Reasignación de responsable en Impuestos y Monotributo (historial por período, `asignaciones_servicio`)
 - ✅ Panel de equipo por módulo con filtrado (componente `EquipoModuloPanel.tsx`)
 - ✅ Padrón único de personas: `equipo` unificado con `liquidadoras`; `/liquidadoras` → `/equipo`

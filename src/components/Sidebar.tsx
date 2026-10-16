@@ -17,6 +17,7 @@ import {
   FileText,
   ChevronDown,
   StickyNote,
+  Library,
 } from "lucide-react";
 import clsx from "clsx";
 import { ModuloId, MODULO_LABELS } from "@/lib/modulos";
@@ -87,6 +88,13 @@ const SECTIONS: {
       { href: "/monotributo/vencimientos",   label: "Vencimientos",  icon: Calendar,        adminOnly: false },
       { href: "/monotributo/equipo",         label: "Equipo",        icon: Users,           adminOnly: false },
       { href: "/productividad/monotributo",  label: "Productividad", icon: TrendingUp,      adminOnly: true  },
+    ],
+  },
+  {
+    label: MODULO_LABELS.libros,
+    modulo: "libros",
+    items: [
+      { href: "/libros/clientes", label: "Clientes", icon: Library, adminOnly: false },
     ],
   },
 ];

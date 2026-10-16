@@ -6,6 +6,18 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 _(nada pendiente — todo lo anterior ya fue corrido)_
 
+## Módulo Libros Societarios (rama `libros/modulo`, oct-2026)
+
+Reemplaza el Google Sheet "GESTION DE LIBROS". Se trabaja en la rama `libros/modulo` y se integra a `main` por PR, por etapas (cada una se muestra en el deploy de prueba de la rama antes de seguir):
+1. ✅ SQL `add_libros_etapa1.sql` (**corrido** en Supabase el 16-oct): `clientes_societario`, `libros_catalogo` (43 libros cargados), `libros`. Ficha "Societario y libros" en `/libros/clientes/[id]`.
+2. ⬜ Seguimiento: cola P1/P2/P3 con orden manual, registrar copiado, historial, folios.
+3. ⬜ Pedidos y trámites + Entrada y salida.
+4. ⬜ Alertas, Configuración (estados, motivos, umbral de folios — hoy fijo en 10, `UMBRAL_FOLIOS` en `src/lib/libros.ts`), mails.
+5. ⬜ Panel General (columna LIBROS — hay una rama abierta `rediseno-panel-general`, no tocar antes) + conexión con Contable (`balances.estado` → 'legalizado'/'finalizado', NO `estado_eecc`). Coordinar con Matías el pendiente "Legalizado pasa solo a Finalizado".
+6. ⬜ Migración desde el sheet (cruce por CUIT).
+
+Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se activa desde Panel General → Editar).
+
 ## Pendientes / decisiones abiertas (21-sep-2026)
 
 - **F657 como casilla**: hecho localmente en `ContableClient.tsx` pero **sin pushear** (esperando OK de Matías). No había ningún balance con F657 en N/A, así que no se pierde nada.
