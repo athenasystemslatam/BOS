@@ -4,7 +4,20 @@ import { revalidatePath } from "next/cache";
 import { requireAreaOrAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { UMBRAL_FOLIOS, foliosLibres } from "@/lib/libros";
-import type { ClienteSocietario, Libro, LibroTarea, OrigenTareaLibro, PrioridadLibro } from "@/types";
+import type {
+  ClienteSocietario,
+  CopiadoFactura,
+  DestinoMovimiento,
+  EstadoPedido,
+  Libro,
+  LibroIncidencia,
+  LibroTarea,
+  OrigenTareaLibro,
+  PrioridadLibro,
+  TipoIncidencia,
+  TipoMovimiento,
+  TipoPedido,
+} from "@/types";
 
 type Resultado = { error?: string };
 
@@ -453,4 +466,320 @@ export async function historialLibro(libroId: string): Promise<FilaHistorial[]> 
     responsable: t.responsable?.nombre ?? null,
     observaciones: t.observaciones,
   }));
+}
+
+// ── Pedidos ──────────────────────────────────────────────────────────────────
+
+export type DatosPedido = {
+  cliente_id: string;
+  libro_id: string | null;
+  tipo: TipoPedido;
+  descripcion: string | null;
+  solicitante: string | null;
+  responsable_id: string | null;
+  fecha_pedido: string;
+  fecha_limite: string | null;
+  monto: string | null;
+};
+
+export async function crearPedido(datos: DatosPedido): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const { error } = await admin.from("libros_pedidos").insert({
+    ...datos,
+    monto: datos.monto ? parseFloat(datos.monto) : null,
+    creado_por: yo.id,
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export type CambiosPedido = Partial<Omit<DatosPedido, "cliente_id">> & { estado?: EstadoPedido; respuesta?: string };
+
+export async function actualizarPedido(id: string, cambios: CambiosPedido): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const patch: Record<string, unknown> = { ...cambios, actualizado_en: new Date().toISOString() };
+  if (typeof patch.monto === "string") patch.monto = patch.monto ? parseFloat(patch.monto as string) : null;
+  const { error } = await admin.from("libros_pedidos").update(patch).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export async function agregarSeguimiento(
+  pedidoId: string,
+  nota: string,
+  proximoSeguimiento: string | null
+): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  if (!nota.trim()) return { error: "La nota no puede estar vacía." };
+  const admin = createAdminClient();
+  const ahora = new Date().toISOString();
+  const hoy = ahora.slice(0, 10);
+  const { error: errSeg } = await admin.from("libros_pedidos_seguimientos").insert({
+    pedido_id: pedidoId,
+    fecha: hoy,
+    nota: nota.trim(),
+    proximo_seguimiento: proximoSeguimiento || null,
+    registrado_por: yo.id,
+  });
+  if (errSeg) return { error: errSeg.message };
+  await admin.from("libros_pedidos").update({
+    ultimo_seguimiento: hoy,
+    proximo_seguimiento: proximoSeguimiento || null,
+    actualizado_en: ahora,
+  }).eq("id", pedidoId);
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+// Aprueba el pedido. Para tipos que no son presupuesto, crea también tareas
+// de copiado en la cola por cada libro seleccionado.
+// Presupuestos se aprueban solo (el nuevo tomo se abre desde la ficha).
+export async function aprobarPedido(
+  pedidoId: string,
+  libroIds: string[]
+): Promise<Resultado & { creadas?: number }> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const ahora = new Date().toISOString();
+
+  const { data: pedido, error: errPedido } = await admin
+    .from("libros_pedidos")
+    .select("tipo, cliente_id, estado")
+    .eq("id", pedidoId)
+    .maybeSingle();
+  if (errPedido || !pedido) return { error: errPedido?.message ?? "No se encontró el pedido." };
+  if (pedido.estado === "aprobado") return { error: "El pedido ya está aprobado." };
+
+  const { error: errUpd } = await admin
+    .from("libros_pedidos")
+    .update({ estado: "aprobado", actualizado_en: ahora })
+    .eq("id", pedidoId);
+  if (errUpd) return { error: errUpd.message };
+
+  const esPresupuesto = pedido.tipo === "presupuesto_libro_nuevo" || pedido.tipo === "presupuesto_tomo_nuevo";
+  if (esPresupuesto || libroIds.length === 0) {
+    revalidatePath("/libros", "layout");
+    return { creadas: 0 };
+  }
+
+  const origen: OrigenTareaLibro = pedido.tipo === "asamblea" ? "asamblea" : "pedido";
+  const res = await crearTareas({
+    cliente_id: pedido.cliente_id as string,
+    libro_ids: libroIds,
+    origen,
+    material_listo: false,
+    fecha_limite: null,
+    periodo_desde: null,
+    periodo_hasta: null,
+    responsable_id: null,
+    observaciones: null,
+  });
+  revalidatePath("/libros", "layout");
+  if (res.error) return { error: res.error };
+  // Vincular tareas creadas al pedido (best-effort: si falla no bloquea).
+  // pedido_id no está seteado todavía — lo seteamos en las tareas del cliente
+  // que tienen origen=asamblea|pedido y pedido_id IS NULL, creadas hace <5s
+  const limite = new Date(Date.now() - 5000).toISOString();
+  await admin
+    .from("libros_tareas")
+    .update({ pedido_id: pedidoId })
+    .eq("cliente_id", pedido.cliente_id as string)
+    .eq("origen", origen)
+    .is("pedido_id", null)
+    .gte("creado_en", limite);
+
+  return { creadas: res.creadas ?? 0 };
+}
+
+// ── Movimientos ──────────────────────────────────────────────────────────────
+
+export type DatosMovimiento = {
+  fecha: string;
+  tipo: TipoMovimiento;
+  destino: DestinoMovimiento;
+  persona: string | null;
+  es_mensajeria: boolean;
+  comentario: string | null;
+};
+
+export async function registrarMovimiento(
+  libroIds: string[],
+  datos: DatosMovimiento
+): Promise<Resultado & { alertas?: string[] }> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  if (libroIds.length === 0) return { error: "Elegí al menos un libro." };
+
+  const admin = createAdminClient();
+  const ahora = new Date().toISOString();
+
+  // Insertar un movimiento por libro
+  const { error: errMov } = await admin.from("libros_movimientos").insert(
+    libroIds.map((libro_id) => ({
+      libro_id,
+      fecha: datos.fecha,
+      tipo: datos.tipo,
+      destino: datos.destino,
+      persona: datos.persona || null,
+      es_mensajeria: datos.es_mensajeria,
+      comentario: datos.comentario || null,
+      registrado_por: yo.id,
+    }))
+  );
+  if (errMov) return { error: errMov.message };
+
+  // Salida: actualizar ubicacion del libro al destino
+  // Entrada: el libro vuelve al estudio
+  const nuevaUbicacion = datos.tipo === "salida" ? datos.destino : "estudio";
+  const { error: errUbic } = await admin
+    .from("libros")
+    .update({ ubicacion: nuevaUbicacion, actualizado_en: ahora })
+    .in("id", libroIds);
+  if (errUbic) return { error: errUbic.message };
+
+  const alertas: string[] = [];
+
+  if (datos.tipo === "salida" && datos.destino === "copiadora") {
+    // Cambiar tareas abiertas de estos libros a estado 'copiandose'
+    const [finales, { data: copiandose }] = await Promise.all([
+      estadosFinales(admin),
+      admin.from("libros_estados").select("id").eq("codigo", "copiandose").maybeSingle(),
+    ]);
+    if (copiandose) {
+      for (const libroId of libroIds) {
+        let q = admin
+          .from("libros_tareas")
+          .update({ estado_id: copiandose.id, fecha_envio_copiar: datos.fecha, actualizado_en: ahora })
+          .eq("libro_id", libroId)
+          .neq("estado_id", copiandose.id);
+        if (finales.length) q = q.not("estado_id", "in", listaIn(finales));
+        await q;
+      }
+    }
+  }
+
+  if (datos.tipo === "entrada" && datos.destino === "copiadora") {
+    // Volvió de la copiadora: avisar que se puede registrar el copiado
+    alertas.push("Acordate de registrar el copiado para actualizar los folios.");
+  }
+
+  revalidatePath("/libros", "layout");
+  return { alertas: alertas.length ? alertas : undefined };
+}
+
+// ── Incidencias ──────────────────────────────────────────────────────────────
+
+export type DatosIncidencia = {
+  libro_id: string;
+  tipo: TipoIncidencia;
+  situacion: string;
+};
+
+export async function registrarIncidencia(datos: DatosIncidencia): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  if (!datos.situacion.trim()) return { error: "Describí la situación." };
+  const admin = createAdminClient();
+  const { error } = await admin.from("libros_incidencias").insert({
+    ...datos,
+    situacion: datos.situacion.trim(),
+    registrado_por: yo.id,
+  });
+  if (error) return { error: error.message };
+  if (datos.tipo === "extravio") {
+    await admin.from("libros").update({ extraviado: true, actualizado_en: new Date().toISOString() }).eq("id", datos.libro_id);
+  }
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export async function resolverIncidencia(id: string, resolucion: string): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const ahora = new Date().toISOString();
+  const { data: inc, error: errLeer } = await admin
+    .from("libros_incidencias")
+    .select("libro_id, tipo")
+    .eq("id", id)
+    .maybeSingle();
+  if (errLeer || !inc) return { error: errLeer?.message ?? "No se encontró la incidencia." };
+
+  const { error } = await admin
+    .from("libros_incidencias")
+    .update({ resuelto: true, resolucion: resolucion.trim() || null, actualizado_en: ahora })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  if ((inc as unknown as LibroIncidencia).tipo === "extravio") {
+    // Limpiar extraviado solo si no quedan otros extravíos abiertos
+    const { count } = await admin
+      .from("libros_incidencias")
+      .select("id", { count: "exact", head: true })
+      .eq("libro_id", (inc as unknown as LibroIncidencia).libro_id)
+      .eq("tipo", "extravio")
+      .eq("resuelto", false)
+      .neq("id", id);
+    if ((count ?? 0) === 0) {
+      await admin
+        .from("libros")
+        .update({ extraviado: false, actualizado_en: ahora })
+        .eq("id", (inc as unknown as LibroIncidencia).libro_id);
+    }
+  }
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+// ── Copiadora ────────────────────────────────────────────────────────────────
+
+export type DatosFactura = Omit<CopiadoFactura, "id" | "creado_por" | "creado_en" | "actualizado_en">;
+
+export async function crearFactura(datos: DatosFactura): Promise<Resultado & { id?: string }> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("copiadora_facturas")
+    .insert({ ...datos, creado_por: yo.id })
+    .select("id")
+    .maybeSingle();
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return { id: (data as { id: string } | null)?.id };
+}
+
+export type PatchFactura = Partial<
+  Pick<CopiadoFactura, "proveedor" | "nro_factura" | "fecha_factura" | "mes" | "monto" | "factura_recibida" | "reenviada_cliente" | "pagado" | "comprobante_enviado" | "observaciones">
+>;
+
+export async function actualizarFactura(id: string, patch: PatchFactura): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("copiadora_facturas")
+    .update({ ...patch, actualizado_en: new Date().toISOString() })
+    .eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export async function eliminarFactura(id: string): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const { error } = await admin.from("copiadora_facturas").delete().eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
 }

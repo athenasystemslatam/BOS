@@ -338,3 +338,108 @@ export interface LibroTarea {
   observaciones: string | null;
   creado_en: string;
 }
+
+// ── Pedidos y trámites ───────────────────────────────────────────────────────
+
+export type TipoPedido =
+  | "presupuesto_libro_nuevo"
+  | "presupuesto_tomo_nuevo"
+  | "tramite"
+  | "pedido_cliente"
+  | "asamblea"
+  | "cambio_societario";
+
+export type EstadoPedido =
+  | "abierto"
+  | "esperando_cliente"
+  | "esperando_tercero"
+  | "aprobado"
+  | "rechazado"
+  | "cerrado";
+
+export interface LibroPedidoSeguimiento {
+  id: string;
+  pedido_id: string;
+  fecha: string;
+  nota: string;
+  proximo_seguimiento: string | null;
+  registrado_por: string | null;
+  creado_en: string;
+}
+
+export interface LibroPedido {
+  id: string;
+  cliente_id: string;
+  libro_id: string | null;
+  tipo: TipoPedido;
+  descripcion: string | null;
+  fecha_pedido: string;
+  fecha_limite: string | null;
+  estado: EstadoPedido;
+  ultimo_seguimiento: string | null;
+  proximo_seguimiento: string | null;
+  monto: number | null;
+  respuesta: string | null;
+  solicitante: string | null;
+  automatico: boolean;
+  creado_por: string | null;
+  responsable_id: string | null;
+  creado_en: string;
+  actualizado_en: string;
+}
+
+// ── Movimientos ──────────────────────────────────────────────────────────────
+
+export type TipoMovimiento = "entrada" | "salida";
+export type DestinoMovimiento = "copiadora" | "cliente" | "estudio" | "otro";
+
+export interface LibroMovimiento {
+  id: string;
+  libro_id: string;
+  tarea_id: string | null;
+  fecha: string;
+  tipo: TipoMovimiento;
+  destino: DestinoMovimiento;
+  persona: string | null;
+  es_mensajeria: boolean;
+  comentario: string | null;
+  registrado_por: string | null;
+  creado_en: string;
+}
+
+// ── Incidencias ──────────────────────────────────────────────────────────────
+
+export type TipoIncidencia = "extravio" | "daño" | "otro";
+
+export interface LibroIncidencia {
+  id: string;
+  libro_id: string;
+  fecha: string;
+  tipo: TipoIncidencia;
+  situacion: string;
+  resolucion: string | null;
+  resuelto: boolean;
+  registrado_por: string | null;
+  creado_en: string;
+  actualizado_en: string;
+}
+
+// ── Copiadora ────────────────────────────────────────────────────────────────
+
+export interface CopiadoFactura {
+  id: string;
+  proveedor: string;
+  cliente_id: string;
+  nro_factura: string | null;
+  fecha_factura: string | null;
+  mes: string | null;
+  monto: number | null;
+  factura_recibida: boolean;
+  reenviada_cliente: boolean;
+  pagado: boolean;
+  comprobante_enviado: boolean;
+  observaciones: string | null;
+  creado_por: string | null;
+  creado_en: string;
+  actualizado_en: string;
+}

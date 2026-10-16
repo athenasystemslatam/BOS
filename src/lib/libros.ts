@@ -1,4 +1,6 @@
 import type {
+  DestinoMovimiento,
+  EstadoPedido,
   Libro,
   LibroTarea,
   OrigenTareaLibro,
@@ -7,6 +9,7 @@ import type {
   OrganismoSocietario,
   PeriodicidadLibro,
   SoporteLibro,
+  TipoPedido,
   TipoSocietario,
   UbicacionLibro,
 } from "@/types";
@@ -205,3 +208,52 @@ export function mandatoVencido(designacion: string | null, anios: number | null,
   const vence = vencimientoMandato(designacion, anios);
   return !!vence && vence < hoy;
 }
+
+// ── Pedidos ──────────────────────────────────────────────────────────────────
+
+export const TIPOS_PEDIDO: { value: TipoPedido; label: string }[] = [
+  { value: "presupuesto_libro_nuevo", label: "Presupuesto — Libro nuevo" },
+  { value: "presupuesto_tomo_nuevo",  label: "Presupuesto — Tomo nuevo"  },
+  { value: "tramite",                 label: "Trámite"                   },
+  { value: "pedido_cliente",          label: "Pedido del cliente"        },
+  { value: "asamblea",                label: "Asamblea"                  },
+  { value: "cambio_societario",       label: "Cambio societario"         },
+];
+
+export const TIPO_PEDIDO_LABEL = Object.fromEntries(
+  TIPOS_PEDIDO.map((t) => [t.value, t.label])
+) as Record<TipoPedido, string>;
+
+export const ESTADO_PEDIDO_INFO: Record<EstadoPedido, { label: string; cls: string }> = {
+  abierto:           { label: "Abierto",              cls: "bg-gray-100 text-gray-700"   },
+  esperando_cliente: { label: "Esperando al cliente", cls: "bg-amber-50 text-amber-700"  },
+  esperando_tercero: { label: "Esperando tercero",    cls: "bg-blue-50 text-blue-700"    },
+  aprobado:          { label: "Aprobado",             cls: "bg-green-50 text-green-700"  },
+  rechazado:         { label: "Rechazado",            cls: "bg-red-50 text-red-700"      },
+  cerrado:           { label: "Cerrado",              cls: "bg-gray-200 text-gray-500"   },
+};
+
+export type SemaforoPedido = "vencido" | "hoy" | "al_dia" | "sin_fecha";
+
+export function semaforoSeguimiento(proximo: string | null, hoy: string = hoyISO()): SemaforoPedido {
+  if (!proximo) return "sin_fecha";
+  if (proximo < hoy) return "vencido";
+  if (proximo === hoy) return "hoy";
+  return "al_dia";
+}
+
+export const SEMAFORO_SEGUIMIENTO_INFO: Record<SemaforoPedido, { label: string; cls: string; dot: string }> = {
+  vencido:   { label: "Vencido",   cls: "bg-red-50 text-red-600",     dot: "bg-red-500"    },
+  hoy:       { label: "Vence hoy", cls: "bg-amber-50 text-amber-600", dot: "bg-amber-500"  },
+  al_dia:    { label: "Al día",    cls: "bg-green-50 text-green-700", dot: "bg-green-500"  },
+  sin_fecha: { label: "—",         cls: "bg-gray-50 text-gray-400",   dot: "bg-gray-300"   },
+};
+
+// ── Movimientos ──────────────────────────────────────────────────────────────
+
+export const DESTINO_LABEL: Record<DestinoMovimiento, string> = {
+  copiadora: "Copiadora",
+  cliente:   "Cliente",
+  estudio:   "Estudio",
+  otro:      "Otro",
+};
