@@ -8,7 +8,7 @@ import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
-import { ESTADO_BALANCE, ESTADO_EECC, avanceCls, calcularAvance } from "./semaforo";
+import { ESTADO_BALANCE, ESTADO_EECC, avanceCls, calcularAvance, diasDemoraPedido, colorAlertaDemora } from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
 import type { ClaveAcceso, EquipoMiembro } from "@/types";
 
@@ -466,12 +466,14 @@ export function ContableClient({
                     )}
                   </td>
 
-                  {/* Pedido de información (envio1) */}
+                  {/* Pedido de información (envio1) — degradé hacia rojo si
+                      hay demora en la respuesta del cliente */}
                   <FechaCheckCell
                     marcado={b.envio1}
                     fecha={b.envio1_fecha}
                     puedeEditar={puedeEditar}
                     onChange={(marcado, fecha) => update(b.id, { envio1: marcado, envio1_fecha: fecha })}
+                    diasDemora={diasDemoraPedido(b)}
                   />
 
                   {/* Recepción de información (info_recibida) */}
@@ -604,14 +606,23 @@ function FechaCheckCell({
   fecha,
   puedeEditar,
   onChange,
+  diasDemora,
 }: {
   marcado: boolean;
   fecha: string | null;
   puedeEditar: boolean;
   onChange: (marcado: boolean, fecha: string | null) => void;
+  /** Días desde el pedido sin recepción — solo la celda de "Pedido de
+   * información" la pasa. 5+ días dispara el degradé hacia rojo. */
+  diasDemora?: number | null;
 }) {
+  const alerta = diasDemora != null && diasDemora >= 5;
   return (
-    <td className="px-3 py-2.5 text-center">
+    <td
+      className="px-3 py-2.5 text-center"
+      style={alerta ? { backgroundColor: colorAlertaDemora(diasDemora!) } : undefined}
+      title={alerta ? `Se pidió información hace más de ${diasDemora} días y no se recibió respuesta` : undefined}
+    >
       <div className="inline-flex items-center gap-2">
         <input
           type="checkbox"

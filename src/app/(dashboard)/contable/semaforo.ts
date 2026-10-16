@@ -47,6 +47,32 @@ export function avanceCls(v: number): string {
 // = en_proceso) · 75% EECC en legalización / pendiente de pago
 // (pendiente_pago) · 90% Legalizado · 100% En ARCA.
 // Los formularios derivados (855, F899, F713, F657, IGJ) NO suman acá.
+// Alerta por demora en la respuesta del cliente: si se pidió información
+// (envio1) y todavía no llegó (info_recibida sigue en false), cuántos días
+// pasaron desde el pedido. Devuelve null si no corresponde alertar todavía
+// (recién pedido, o ya se recibió). El umbral de alerta (5 días) lo aplica
+// quien llama esto — acá solo se calculan los días.
+export function diasDemoraPedido(b: {
+  envio1?: boolean;
+  envio1_fecha?: string | null;
+  info_recibida?: boolean;
+}): number | null {
+  if (!b.envio1 || !b.envio1_fecha || b.info_recibida) return null;
+  const pedido = new Date(b.envio1_fecha + "T00:00:00");
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  return Math.floor((hoy.getTime() - pedido.getTime()) / 86400000);
+}
+
+// Color del degradé hacia rojo para la celda de "Pedido de información"
+// cuando hay demora — más días sin respuesta, más rojo. Arranca tenue a los
+// 5 días (el umbral de alerta) y llega a rojo sólido a los 20.
+export function colorAlertaDemora(dias: number): string {
+  const progreso = Math.min(Math.max(dias - 5, 0), 15) / 15; // 0 a 1
+  const intensidad = 0.12 + progreso * 0.6; // 0.12 a 0.72
+  return `rgba(239, 68, 68, ${intensidad.toFixed(2)})`;
+}
+
 export function calcularAvance(b: {
   envio1?: boolean;
   info_recibida?: boolean;
