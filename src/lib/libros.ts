@@ -1,4 +1,8 @@
 import type {
+  Libro,
+  LibroTarea,
+  OrigenTareaLibro,
+  PrioridadLibro,
   EstadoLibro,
   OrganismoSocietario,
   PeriodicidadLibro,
@@ -88,4 +92,116 @@ export function fmtFecha(v: string | null | undefined): string {
   if (!v) return "—";
   const [y, m, d] = v.split("-");
   return `${d}/${m}/${y}`;
+}
+
+export const ORIGEN_TAREA_LABEL: Record<OrigenTareaLibro, string> = {
+  puesta_al_dia: "Puesta al día",
+  balance: "Envío anual",
+  pedido: "Pedido",
+  asamblea: "Asamblea",
+  manual: "Manual",
+};
+
+export const PRIORIDADES: PrioridadLibro[] = ["P1", "P2", "P3"];
+
+export const PRIORIDAD_INFO: Record<PrioridadLibro, { label: string; cls: string; borde: string }> = {
+  P1: { label: "P1 · Urgente", cls: "bg-red-50 text-red-700", borde: "border-red-200" },
+  P2: { label: "P2 · En curso", cls: "bg-amber-50 text-amber-700", borde: "border-amber-200" },
+  P3: { label: "P3 · Sin material", cls: "bg-gray-100 text-gray-600", borde: "border-gray-200" },
+};
+
+// P1: lo pide un tercero con fecha, mandato vencido o libro casi sin folios.
+// P2: envío anual en curso o puesta al día con material listo. P3: el resto.
+// El caso "balance legalizado con acta por hacer" se suma con la conexión a
+// Contable (etapa 5).
+export function prioridadSugerida(
+  tarea: Pick<LibroTarea, "origen" | "fecha_limite" | "material_listo">,
+  libro: Pick<Libro, "folios_totales" | "folios_usados"> | null,
+  mandatoVencido: boolean
+): { prioridad: PrioridadLibro; motivo: string } {
+  if (tarea.fecha_limite) return { prioridad: "P1", motivo: "Tiene fecha límite" };
+  if (mandatoVencido) return { prioridad: "P1", motivo: "Mandato vencido" };
+  const libres = libro ? foliosLibres(libro.folios_totales, libro.folios_usados) : null;
+  if (libres != null && libres <= UMBRAL_FOLIOS) return { prioridad: "P1", motivo: `Quedan ${libres} folios` };
+  if (tarea.origen === "balance") return { prioridad: "P2", motivo: "Envío anual en curso" };
+  if (tarea.material_listo) return { prioridad: "P2", motivo: "Material listo" };
+  if (tarea.origen === "pedido" || tarea.origen === "asamblea") return { prioridad: "P2", motivo: "Pedido sin fecha" };
+  return { prioridad: "P3", motivo: "Falta material o información" };
+}
+
+function iso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function hoyISO(): string {
+  return iso(new Date());
+}
+
+function sumarDias(fecha: string, dias: number): string {
+  const d = new Date(fecha + "T00:00:00");
+  d.setDate(d.getDate() + dias);
+  return iso(d);
+}
+
+function cierreDelAnio(anio: number, mes: number, dia: number): string {
+  const ultimo = new Date(anio, mes, 0).getDate();
+  return iso(new Date(anio, mes - 1, Math.min(dia, ultimo)));
+}
+
+// Mismo plazo que usa Contable para el vencimiento del balance.
+export const DIAS_VTO_BALANCE = 135;
+// Margen para copiar las actas de un trimestre ya cerrado.
+export const DIAS_MARGEN_TRIMESTRE = 30;
+
+/** Hasta qué fecha tiene que estar copiado el libro hoy. null = no se calcula (por evento). */
+export function periodoExigible(
+  periodicidad: PeriodicidadLibro,
+  cierre: { mes: number | null; dia: number | null },
+  hoy: string = hoyISO()
+): string | null {
+  if (periodicidad === "evento") return null;
+  const anioHoy = Number(hoy.slice(0, 4));
+  if (periodicidad === "balance") {
+    const mes = cierre.mes ?? 12;
+    const dia = cierre.dia ?? 31;
+    for (let anio = anioHoy; anio >= anioHoy - 2; anio--) {
+      const c = cierreDelAnio(anio, mes, dia);
+      if (sumarDias(c, DIAS_VTO_BALANCE) <= hoy) return c;
+    }
+    return null;
+  }
+  for (let anio = anioHoy; anio >= anioHoy - 1; anio--) {
+    for (const mes of [12, 9, 6, 3]) {
+      const fin = cierreDelAnio(anio, mes, 31);
+      if (sumarDias(fin, DIAS_MARGEN_TRIMESTRE) <= hoy) return fin;
+    }
+  }
+  return null;
+}
+
+// Se compara por mes: la importación guardó los períodos mensuales como el
+// día 1 (ej. 2025-06-01 = "copiado hasta junio 2025").
+function mesIndice(fecha: string): number {
+  return Number(fecha.slice(0, 4)) * 12 + Number(fecha.slice(5, 7));
+}
+
+/** true/false si el libro está al día; null si no se calcula (por evento). */
+export function libroAlDia(
+  libro: Pick<Libro, "estado" | "ultimo_periodo_copiado">,
+  ultimoCopiado: string | null,
+  periodicidad: PeriodicidadLibro,
+  cierre: { mes: number | null; dia: number | null },
+  hoy: string = hoyISO()
+): { alDia: boolean | null; exigible: string | null } {
+  const exigible = periodoExigible(periodicidad, cierre, hoy);
+  if (periodicidad === "evento") return { alDia: null, exigible: null };
+  if (libro.estado === "sin_libro") return { alDia: false, exigible };
+  if (!exigible) return { alDia: true, exigible };
+  const ultimo = ultimoCopiado ?? libro.ultimo_periodo_copiado;
+  return { alDia: !!ultimo && mesIndice(ultimo) >= mesIndice(exigible), exigible };
+}
+
+export function mandatoVencido(designacion: string | null, anios: number | null, hoy: string = hoyISO()): boolean {
+  const vence = vencimientoMandato(designacion, anios);
+  return !!vence && vence < hoy;
 }

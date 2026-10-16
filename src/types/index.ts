@@ -298,3 +298,43 @@ export interface Libro {
   ubicacion_detalle: string | null;
   observaciones: string | null;
 }
+
+export type PrioridadLibro = "P1" | "P2" | "P3";
+export type OrigenTareaLibro = "puesta_al_dia" | "balance" | "pedido" | "asamblea" | "manual";
+
+export interface LibroEstado {
+  id: string;
+  nombre: string;
+  orden: number;
+  es_final: boolean;
+  codigo: string | null;
+  activo: boolean;
+}
+
+export interface LibroTarea {
+  id: string;
+  cliente_id: string;
+  libro_id: string;
+  origen: OrigenTareaLibro;
+  balance_id: string | null;
+  pedido_id: string | null;
+  periodo_desde: string | null;
+  periodo_hasta: string | null;
+  estado_id: string;
+  fecha_limite: string | null;
+  material_listo: boolean;
+  prioridad_manual: PrioridadLibro | null;
+  prioridad_motivo: string | null;
+  prioridad_cambiada_por: string | null;
+  prioridad_cambiada_en: string | null;
+  orden_manual: number;
+  insistencias: number;
+  responsable_id: string | null;
+  fecha_envio_copiar: string | null;
+  fecha_retiro: string | null;
+  fecha_fin: string | null;
+  folios_usados: number | null;
+  requiere_reformateo: boolean;
+  observaciones: string | null;
+  creado_en: string;
+}

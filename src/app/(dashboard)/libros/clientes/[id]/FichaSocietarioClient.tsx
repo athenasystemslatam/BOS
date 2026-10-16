@@ -28,6 +28,8 @@ import type {
 } from "@/types";
 import { guardarSocietario } from "../../actions";
 import { LibroModal, NuevoTomoModal } from "./LibroModales";
+import { HistorialLibroModal } from "./HistorialLibroModal";
+import { NuevaTareaModal, type Persona } from "../../NuevaTareaModal";
 
 type ClienteBasico = { id: string; nombre: string; cuit: string; jurisdiccion_legal: string | null };
 
@@ -297,6 +299,9 @@ function FilaLibro({
   onCargar,
   onEditar,
   onNuevoTomo,
+  enCola,
+  onHistorial,
+  onNuevaTarea,
 }: {
   libro: Libro | null;
   item: LibroCatalogo;
@@ -309,6 +314,9 @@ function FilaLibro({
   onCargar: () => void;
   onEditar: (l: Libro) => void;
   onNuevoTomo: (l: Libro) => void;
+  enCola?: boolean;
+  onHistorial?: (l: Libro) => void;
+  onNuevaTarea?: (l: Libro) => void;
 }) {
   const libres = libro ? foliosLibres(libro.folios_totales, libro.folios_usados) : null;
   const periodicidad = libro?.periodicidad ?? item.periodicidad;
@@ -410,11 +418,25 @@ function FilaLibro({
                   Nuevo tomo
                 </button>
               )}
-              {!esAnterior && (
+              {!esAnterior && libro.estado !== "cerrado" && enCola && (
+                <Link href="/libros" className="text-[11px] font-medium text-violet-600 bg-violet-50 rounded-full px-2 py-0.5">
+                  En cola
+                </Link>
+              )}
+              {puedeEditar && !esAnterior && libro.estado !== "cerrado" && !enCola && onNuevaTarea && (
                 <button
-                  disabled
-                  title="El historial de copiados se habilita con el Seguimiento del módulo"
-                  className="text-gray-300 cursor-not-allowed"
+                  onClick={() => onNuevaTarea(libro)}
+                  title="Agregar a la cola de trabajo"
+                  className="inline-flex items-center gap-0.5 text-[12px] font-medium text-violet-700 hover:text-violet-900"
+                >
+                  <Plus size={12} /> Tarea
+                </button>
+              )}
+              {!esAnterior && onHistorial && (
+                <button
+                  onClick={() => onHistorial(libro)}
+                  title="Historial de copiados"
+                  className="text-gray-400 hover:text-violet-700"
                 >
                   <History size={13} />
                 </button>
@@ -435,6 +457,9 @@ export function FichaSocietarioClient({
   catalogo,
   libros,
   puedeEditar,
+  responsableId,
+  enCola,
+  equipo,
 }: {
   cliente: ClienteBasico;
   responsable: string | null;
@@ -443,10 +468,16 @@ export function FichaSocietarioClient({
   catalogo: LibroCatalogo[];
   libros: Libro[];
   puedeEditar: boolean;
+  responsableId: string | null;
+  enCola: string[];
+  equipo: Persona[];
 }) {
   const [cargando, setCargando] = useState<LibroCatalogo | null>(null);
   const [editando, setEditando] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
   const [nuevoTomo, setNuevoTomo] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
+  const [historialDe, setHistorialDe] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
+  const [tareaPara, setTareaPara] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
+  const librosEnCola = new Set(enCola);
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
 
   const tipo = societario?.tipo_societario ?? null;
@@ -494,6 +525,9 @@ export function FichaSocietarioClient({
           onCargar={() => setCargando(g.item)}
           onEditar={(libro) => setEditando({ item: g.item, libro })}
           onNuevoTomo={(libro) => setNuevoTomo({ item: g.item, libro })}
+          enCola={!!g.vigente && librosEnCola.has(g.vigente.id)}
+          onHistorial={(libro) => setHistorialDe({ item: g.item, libro })}
+          onNuevaTarea={(libro) => setTareaPara({ item: g.item, libro })}
         />
         {abierto &&
           g.anteriores.map((l) => (
@@ -642,6 +676,25 @@ export function FichaSocietarioClient({
       )}
       {nuevoTomo && (
         <NuevoTomoModal item={nuevoTomo.item} libro={nuevoTomo.libro} onClose={() => setNuevoTomo(null)} />
+      )}
+      {historialDe && (
+        <HistorialLibroModal
+          libroId={historialDe.libro.id}
+          titulo={`${historialDe.item.nombre} · ${cliente.nombre}`}
+          onClose={() => setHistorialDe(null)}
+        />
+      )}
+      {tareaPara && (
+        <NuevaTareaModal
+          clienteId={cliente.id}
+          clienteNombre={cliente.nombre}
+          opciones={[{ id: tareaPara.libro.id, nombre: `${tareaPara.item.nombre} (T${tareaPara.libro.tomo})` }]}
+          preseleccionados={[tareaPara.libro.id]}
+          origenDefault="manual"
+          responsableDefault={responsableId}
+          equipo={equipo}
+          onClose={() => setTareaPara(null)}
+        />
       )}
     </div>
   );

@@ -94,7 +94,8 @@ const SECTIONS: {
     label: MODULO_LABELS.libros,
     modulo: "libros",
     items: [
-      { href: "/libros/clientes", label: "Clientes", icon: Library, adminOnly: false },
+      { href: "/libros",          label: "Seguimiento", icon: ClipboardList, adminOnly: false },
+      { href: "/libros/clientes", label: "Clientes",    icon: Library,       adminOnly: false },
     ],
   },
 ];
