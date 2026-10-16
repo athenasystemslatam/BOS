@@ -14,7 +14,7 @@ Reemplaza el Google Sheet "GESTION DE LIBROS". Se trabaja en la rama `libros/mod
 3. ⬜ Pedidos y trámites + Entrada y salida.
 4. ⬜ Alertas, Configuración (estados, motivos, umbral de folios — hoy fijo en 10, `UMBRAL_FOLIOS` en `src/lib/libros.ts`), mails.
 5. ⬜ Panel General (columna LIBROS — hay una rama abierta `rediseno-panel-general`, no tocar antes) + conexión con Contable (`balances.estado` → 'legalizado'/'finalizado', NO `estado_eecc`). Coordinar con Matías el pendiente "Legalizado pasa solo a Finalizado".
-6. ⬜ Migración desde el sheet (cruce por CUIT).
+6. ✅ Migración desde el sheet (cruce por CUIT) — **adelantada y corrida el 16-oct**: 93 clientes con Libros activo + tipo societario, 342 libros (tomo 1), 27 mandatos. El SQL (`supabase/importar_libros_sheet.sql` + `_control.sql`) y los CSV de origen quedaron **fuera del repo** a pedido (tienen datos de clientes); en la PC de origen están en `.git/info/exclude`. Para revisar a mano en la ficha: último copiado con fecha futura en CUSTOMCOFFEE (Libro de Actas, 31/12/2026) y METALURGICA PINTARELLI (Inv. y Balance, 01/11/2026); CISEC y RODBALL tenían "B2025-2026" / "2026 renovación cargos" y se cargaron como 2026; 3 mandatos solo traían el año (se cargó 01/01, con nota en observaciones).
 
 Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se activa desde Panel General → Editar).
 
