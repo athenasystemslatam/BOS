@@ -4,7 +4,10 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-_(nada pendiente — todo lo anterior ya fue corrido)_
+- **`add_libros_etapa3.sql`** — etapa 3 del módulo Libros. Modifica `libros_pedidos` (estados,
+  columnas responsable_id/solicitante), agrega `libros.extraviado`, crea `libros_pedidos_seguimientos`,
+  `libros_movimientos`, `libros_incidencias`, `copiadora_facturas`, `copiadora_facturas_tareas`.
+  Ya commiteado; falta pegarlo en Supabase Dashboard → SQL Editor.
 
 ## Módulo Libros Societarios (rama `libros/modulo`, oct-2026)
 
@@ -17,6 +20,20 @@ Reemplaza el Google Sheet "GESTION DE LIBROS". Se trabaja en la rama `libros/mod
 6. ✅ Migración desde el sheet (cruce por CUIT) — **adelantada y corrida el 16-oct**: 93 clientes con Libros activo + tipo societario, 342 libros (tomo 1), 27 mandatos. El SQL (`supabase/importar_libros_sheet.sql` + `_control.sql`) y los CSV de origen quedaron **fuera del repo** a pedido (tienen datos de clientes); en la PC de origen están en `.git/info/exclude`. Para revisar a mano en la ficha: último copiado con fecha futura en CUSTOMCOFFEE (Libro de Actas, 31/12/2026) y METALURGICA PINTARELLI (Inv. y Balance, 01/11/2026); CISEC y RODBALL tenían "B2025-2026" / "2026 renovación cargos" y se cargaron como 2026; 3 mandatos solo traían el año (se cargó 01/01, con nota en observaciones).
 
 Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se activa desde Panel General → Editar).
+
+### En qué quedó (16-oct, segunda sesión)
+
+- Etapa 3 **completa, commiteada y pusheada** en `libros/modulo` (`154310f`).
+  - SQL `add_libros_etapa3.sql` **pendiente de correr** en Supabase (ver "SQL pendiente" arriba).
+  - Deploy de prueba: https://bos-git-libros-modulo-athena-systems.vercel.app
+  - Sidebar: 3 links nuevos bajo Libros (Pedidos / Entrada y salida / Copiadora).
+  - Decisión de diseño: para presupuestos (`presupuesto_libro_nuevo`/`presupuesto_tomo_nuevo`),
+    aprobar el pedido NO crea tareas automáticas — el nuevo tomo se abre desde la ficha del libro.
+    Para todos los demás tipos, al aprobar se seleccionan los libros y se crean las tareas.
+  - `equipo` en MovimientosClient se recibe pero no se usa todavía (reservado por si se agrega
+    filtro de responsable; se puede quitar si queda sin uso al cerrar el módulo).
+- **Falta:** correr el SQL de etapa 3 en Supabase, probar las 3 pantallas nuevas.
+- **Próximo:** etapa 4 (Alertas, Configuración, mails).
 
 ### En qué quedó (16-oct, cierre de sesión)
 
