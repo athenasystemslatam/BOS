@@ -102,6 +102,7 @@ export default async function ContableVencimientosPage({
                   <th className="px-4 py-3 text-left">Cierre</th>
                   <th className="px-4 py-3 text-left">VTO Balance</th>
                   <th className="px-4 py-3 text-left">VTO F.855</th>
+                  <th className="px-4 py-3 text-left">VTO F.899</th>
                   <th className="px-4 py-3 text-left">Estado</th>
                   <th className="px-4 py-3 text-center">Avance</th>
                 </tr>
@@ -135,6 +136,7 @@ export default async function ContableVencimientosPage({
                           </span>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
                       <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
                       <td className="px-4 py-3">
                         <span className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", cls)}>{label}</span>
@@ -172,6 +174,7 @@ export default async function ContableVencimientosPage({
                   <th className="px-4 py-3 text-left">Cierre</th>
                   <th className="px-4 py-3 text-left">VTO Balance</th>
                   <th className="px-4 py-3 text-left">VTO F.855</th>
+                  <th className="px-4 py-3 text-left">VTO F.899</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -183,6 +186,7 @@ export default async function ContableVencimientosPage({
                       {new Date(b.fecha_cierre + "T00:00:00").toLocaleDateString("es-AR")}
                     </td>
                     <td className="px-4 py-3 text-gray-400">{fmt(b.vtoBalance)}</td>
+                    <td className="px-4 py-3 text-gray-400">{fmt(b.vto855)}</td>
                     <td className="px-4 py-3 text-gray-400">{fmt(b.vto855)}</td>
                   </tr>
                 ))}
