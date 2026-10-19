@@ -4,15 +4,18 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-- **`add_libros_etapa6.sql`** (19-oct) — tipo de pedido `renovacion_autoridades`, columnas `prioridad`,
-  `checklist`, `mandato_vence` en `libros_pedidos`, `libros_config.mandato_avisos` y tabla
-  `libros_avisos_mandato`. Sin correrlo, el código no se rompe pero no se crean las renovaciones ni se
-  pueden configurar los avisos.
-- **Importación del trabajo en curso del sheet** (19-oct) — `supabase/importar_libros_trabajo_control.sql`
-  (solo lectura, correr primero) y `supabase/importar_libros_trabajo.sql`. **Fuera del repo** (datos de
-  clientes, en `.git/info/exclude` de la PC Windows). Se generan desde los 4 CSV de Descargas.
+Ninguno. Corridos el 19-oct: `add_libros_etapa6.sql` y la importación del trabajo en curso del sheet
+(`supabase/importar_libros_trabajo_control.sql` + `importar_libros_trabajo.sql`, **fuera del repo** por datos
+de clientes, en `.git/info/exclude` de la PC Windows; se generan desde los 4 CSV de Descargas). Antes,
+`add_libros_etapa3.sql` y `add_libros_etapa4.sql` verificados como aplicados.
 
-(`add_libros_etapa3.sql` y `add_libros_etapa4.sql` verificados como aplicados el 19-oct.)
+Resultado de la importación (control previo): 33 libros dados de alta como tomo 1 con nota "completar rúbrica,
+folios, último copiado y ubicación", 102 tareas abiertas (prioridad a mano "Orden del sheet"), 64 copiados de
+historial, presupuestos de tomo/libro nuevo (7 omitidos por tener uno abierto) y 36 facturas de la copiadora
+(RODAL y GEN cruzados por CUIT; HYGGE y VVG por nombre, inactivos). Hay dos "Candela" activas: el responsable
+de los presupuestos se asignó solo si había una sola en el equipo de Libros.
+**Quedaron afuera** FLASHOVER y FUNDACION PAN Y ARTE (sin servicio Libros) y TALLER BILLY (inactivo): cuando
+se les active Libros y se cargue el tipo societario, se vuelve a correr la importación (no duplica).
 
 ## Módulo Libros Societarios (rama `libros/modulo`, oct-2026)
 
