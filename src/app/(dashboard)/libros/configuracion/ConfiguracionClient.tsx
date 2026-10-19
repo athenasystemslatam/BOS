@@ -151,7 +151,7 @@ function FechaMetaCard({ fechaInicial }: { fechaInicial: string | null }) {
       <div className="flex items-start gap-2 mb-4">
         <h2 className="font-archivo text-[15px] font-bold text-ink">Fecha meta de la puesta al día</h2>
         <Ayuda>
-          Fecha para la que el atraso del estudio tiene que llegar a 0. El Tablero calcula con ella cuántos períodos hay
+          Fecha para la que el atraso del estudio tiene que llegar a 0. El Dashboard calcula con ella cuántos períodos hay
           que copiar por semana. Vacía = sin meta.
         </Ayuda>
       </div>

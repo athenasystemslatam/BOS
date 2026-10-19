@@ -686,8 +686,8 @@ function PuestaAlDia({
           )}
         </Ayuda>
         <div className="flex-1" />
-        <Link href="/libros/tablero" className="text-[12.5px] font-semibold text-ink-muted hover:text-ink">
-          Ver el avance en el Tablero
+        <Link href="/libros/dashboard" className="text-[12.5px] font-semibold text-ink-muted hover:text-ink">
+          Ver el avance en el Dashboard
         </Link>
       </div>
 

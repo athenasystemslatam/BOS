@@ -223,7 +223,7 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
     <div className={PAGINA}>
       <div className={ENCABEZADO}>
         <span className={RAYA_MODULO} />
-        <h1 className={TITULO}>Tablero</h1>
+        <h1 className={TITULO}>Dashboard</h1>
         <span className={clsx(MONO, "text-[12px] text-ink-subtle")}>al {fmtFecha(datos.hoy)}</span>
       </div>
 

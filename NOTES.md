@@ -8,8 +8,8 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
   vencimiento calculado (designación + años). Sin correrlo, guardar un mandato desde la ficha o la lista da error
   ("Falta correr add_libros_etapa8.sql").
 
-- **`add_libros_etapa7.sql`** (19-oct) — Tablero de Libros: `libros_config.fecha_meta_puesta` y tabla
-  `libros_snapshot` (foto diaria del atraso). Sin correrlo el Tablero funciona, pero sin evolución semanal ni
+- **`add_libros_etapa7.sql`** (19-oct) — Dashboard de Libros: `libros_config.fecha_meta_puesta` y tabla
+  `libros_snapshot` (foto diaria del atraso). Sin correrlo el Dashboard funciona, pero sin evolución semanal ni
   fecha meta.
 
 Corridos el 19-oct: `add_libros_etapa6.sql` y la importación del trabajo en curso del sheet
@@ -60,23 +60,23 @@ Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se a
 
 - Seguimiento: aviso de renovaciones solo con el número y link a Pedidos filtrado (`?tipo=renovacion_autoridades&en_curso=1`);
   pestañas "Cola · N clientes" y "Atrasos sin asignar · N libros en M clientes" (ex Puesta al día, sin el avance: va
-  al Tablero); un buscador por cliente o CUIT para las tres pestañas; orden por arrastrar y soltar (agarrando el ícono
+  al Dashboard); un buscador por cliente o CUIT para las tres pestañas; orden por arrastrar y soltar (agarrando el ícono
   de la izquierda del bloque), guardado en `orden_manual` para todo el equipo; se sacaron las flechas.
 - Registrar copiado propone "copiado hasta" = último cierre exigible del libro (en el envío anual, el cierre del
   balance si es posterior); al confirmar actualiza `libros.ultimo_periodo_copiado` (se queda con el mayor).
 - Mandato: `vencimientoFinal` (`src/lib/libros.ts`) = vencimiento preciso o designación + años; lo usan avisos,
-  mail, renovaciones, Tablero, fichas y la llavecita de Panel General. Editable desde la lista de Clientes
+  mail, renovaciones, Dashboard, fichas y la llavecita de Panel General. Editable desde la lista de Clientes
   (`MandatoModal`) y la ficha (`MandatoCampos`, 3 años por defecto en SA). Si al guardar queda vigente por más que el
   primer aviso (o indeterminado), la renovación abierta se cierra sola con una nota en su historial.
 
-### Etapa 7 — Tablero (`/libros/tablero`, 19-oct)
+### Etapa 7 — Dashboard (`/libros/dashboard`, 19-oct; se llamó Tablero hasta el 19-oct)
 
 - Visible para todo el equipo; "Avance por responsable" solo para admin (la parte de cada persona = libros de los
   clientes que tiene asignados en Libros).
 - Atraso por libro en `atrasoLibro` (`src/lib/libros.ts`): ejercicios (anual) o trimestres hasta lo exigible hoy;
   "sin dato" y "sin libro" aparte; por evento no cuenta. La ficha muestra "Atrasado · faltan N ejercicios".
 - `src/lib/librosTablero.ts`: `calcularAtraso` + `guardarSnapshots`. La foto del día la guarda el cron del mail
-  (`/api/alertas/libros`) y también el Tablero al abrirse. **Línea base** = fila `es_base` con fecha 16-oct,
+  (`/api/alertas/libros`) y también el Dashboard al abrirse. **Línea base** = fila `es_base` con fecha 16-oct,
   calculada una sola vez (la primera vez que corre) con los datos actuales a esa fecha. Es el estado del sheet
   importado mientras no se registren copiados desde la app antes de esa primera corrida; si ya se habían
   registrado, la base queda un poco más baja que la real.
