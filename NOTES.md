@@ -8,15 +8,17 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
   columnas responsable_id/solicitante), agrega `libros.extraviado`, crea `libros_pedidos_seguimientos`,
   `libros_movimientos`, `libros_incidencias`, `copiadora_facturas`, `copiadora_facturas_tareas`.
   Ya commiteado; falta pegarlo en Supabase Dashboard → SQL Editor.
+- **`add_libros_etapa4.sql`** — tabla `libros_config` (umbral de folios configurable, una fila). Correr
+  **después** del de etapa 3. Sin esta tabla `/libros/configuracion` no guarda y el umbral cae al fijo (10).
 
 ## Módulo Libros Societarios (rama `libros/modulo`, oct-2026)
 
 Reemplaza el Google Sheet "GESTION DE LIBROS". Se trabaja en la rama `libros/modulo` y se integra a `main` por PR, por etapas (cada una se muestra en el deploy de prueba de la rama antes de seguir):
 1. ✅ SQL `add_libros_etapa1.sql` (**corrido** en Supabase el 16-oct): `clientes_societario`, `libros_catalogo` (43 libros cargados), `libros`. Ficha "Societario y libros" en `/libros/clientes/[id]`.
 2. ✅ Seguimiento (`/libros`): SQL `add_libros_etapa2.sql` (**corrido** 16-oct: `libros_estados`, `libros_tareas`, `libros_pedidos` — esta última sin pantalla hasta la etapa 3). Cola por cliente (un bloque por cliente y nivel; el nivel es el de su tarea más urgente; subir/bajar renumera `orden_manual` de las tareas abiertas del cliente). Prioridad propuesta por `prioridadSugerida` en `src/lib/libros.ts`; `prioridad_manual` solo si se cambió a mano (con motivo). "Al día" en `libroAlDia`: anual = último cierre con balance vencido (cierre + 135 días), trimestral = último trimestre cerrado hace +30 días, por evento no cuenta; compara por mes. Registrar copiado valida folios antes de escribir y con ≤ 10 folios libres crea `libros_pedidos(tipo='presupuesto_tomo_nuevo', automatico)` (índice único: uno abierto por libro). Antes se corrió también una corrección de la importación (organismo por jurisdicción legal, 50 libros a ubicación cliente, Candela P. como responsable de Libros), fuera del repo por datos de clientes.
-3. ⬜ Pedidos y trámites + Entrada y salida.
-4. ⬜ Alertas, Configuración (estados, motivos, umbral de folios — hoy fijo en 10, `UMBRAL_FOLIOS` en `src/lib/libros.ts`), mails.
-5. ⬜ Panel General (columna LIBROS — hay una rama abierta `rediseno-panel-general`, no tocar antes) + conexión con Contable (`balances.estado` → 'legalizado'/'finalizado', NO `estado_eecc`). Coordinar con Matías el pendiente "Legalizado pasa solo a Finalizado".
+3. ✅ Pedidos y trámites + Entrada y salida + Copiadora (`154310f`). SQL de etapa 3 pendiente.
+4. ✅ Configuración (`/libros/configuracion`, admin: umbral de folios + renombrar/reordenar estados; los motivos siguen siendo texto libre) + digest diario de alertas al admin (`/api/alertas/libros`, `.github/workflows/alertas-libros.yml`) (`df0ae6d`). SQL de etapa 4 pendiente. El cron de GitHub solo corre desde `main` y le pega a producción: no se dispara hasta integrar el PR.
+5. ✅ Ficha + indicador Contable (`03a2a61`, ver "Etapa 5" abajo). Sin columna en Panel General (decisión sep-2026). Conexión con Contable (`balances.estado` → 'legalizado'/'finalizado', NO `estado_eecc`). Coordinar con Matías el pendiente "Legalizado pasa solo a Finalizado".
 6. ✅ Migración desde el sheet (cruce por CUIT) — **adelantada y corrida el 16-oct**: 93 clientes con Libros activo + tipo societario, 342 libros (tomo 1), 27 mandatos. El SQL (`supabase/importar_libros_sheet.sql` + `_control.sql`) y los CSV de origen quedaron **fuera del repo** a pedido (tienen datos de clientes); en la PC de origen están en `.git/info/exclude`. Para revisar a mano en la ficha: último copiado con fecha futura en CUSTOMCOFFEE (Libro de Actas, 31/12/2026) y METALURGICA PINTARELLI (Inv. y Balance, 01/11/2026); CISEC y RODBALL tenían "B2025-2026" / "2026 renovación cargos" y se cargaron como 2026; 3 mandatos solo traían el año (se cargó 01/01, con nota en observaciones).
 
 Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se activa desde Panel General → Editar).
@@ -49,8 +51,7 @@ Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se a
 Decisiones:
 - Libros NO va como columna en Panel General (decisión sep-2026, se mantiene).
 - La sección "Societario y libros" se agregó a `FichaClienteBoton` (modal "Ver ficha" de Panel General y Contable).
-  Cuando `rediseno-panel-general` se integre a `main`, esta sección deberá portarse
-  a lo que ese rediseño use en lugar de `FichaClienteBoton.tsx` (que ese branch elimina).
+  (`rediseno-panel-general` ya está integrada a `main` y `FichaClienteBoton.tsx` sigue en uso ahí: no hay nada que portar.)
 - Indicador de balance Contable en `/libros/clientes`: badge "Acta pendiente" (ámbar) si
   `balances.estado = 'legalizado'`; badge "Finalizado" (gris) si `'finalizado'`. Solo lectura de
   la tabla balances, sin tocar el módulo Contable.
