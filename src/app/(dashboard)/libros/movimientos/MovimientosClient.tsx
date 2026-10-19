@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo } from "react";
 import clsx from "clsx";
-import { Plus, AlertTriangle, Building, Printer, Home, HelpCircle } from "lucide-react";
+import { Plus, AlertTriangle, Building, Printer, Home, HelpCircle, Info } from "lucide-react";
 import { DESTINO_LABEL, fmtFecha, hoyISO, UBICACION_LABEL } from "@/lib/libros";
 import type {
   DestinoMovimiento,
@@ -14,6 +14,24 @@ import type {
 } from "@/types";
 import { registrarMovimiento, registrarIncidencia, resolverIncidencia } from "../actions";
 import { Modal, Pie, LABEL, INPUT } from "../ModalBase";
+import {
+  AVISO,
+  BOTON_PRIMARIO,
+  BOTON_SECUNDARIO,
+  CHIP,
+  CONTROL,
+  ENCABEZADO,
+  ERROR,
+  FILA,
+  NUM,
+  PAGINA,
+  PANEL,
+  RAYA_MODULO,
+  SEMAFORO,
+  TITULO,
+  VACIO,
+  VACIO_TEXTO,
+} from "../ui";
 
 export type LibroParaMovimiento = {
   id: string;
@@ -48,8 +66,9 @@ type ClienteConLibros = {
   libros: LibroParaMovimiento[];
 };
 
-const TH = "text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-2 text-left";
-const TD = "px-3 py-2 text-sm text-gray-700 align-top";
+const TH = "text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em] px-3 py-2.5 text-left";
+const TD = "px-3 py-2.5 text-[13px] text-ink-cell align-top";
+const TD_FECHA = clsx(NUM, "px-3 py-2.5 pl-4 align-top");
 
 const DESTINOS: DestinoMovimiento[] = ["copiadora", "cliente", "estudio", "otro"];
 const TIPOS_INCIDENCIA: { value: TipoIncidencia; label: string }[] = [
@@ -59,24 +78,32 @@ const TIPOS_INCIDENCIA: { value: TipoIncidencia; label: string }[] = [
 ];
 
 function UbicacionIcon({ ubicacion }: { ubicacion: UbicacionLibro }) {
-  if (ubicacion === "copiadora") return <Printer size={12} className="inline mr-0.5 text-violet-400" />;
-  if (ubicacion === "cliente") return <Building size={12} className="inline mr-0.5 text-blue-400" />;
-  if (ubicacion === "estudio") return <Home size={12} className="inline mr-0.5 text-green-400" />;
-  return <HelpCircle size={12} className="inline mr-0.5 text-gray-400" />;
+  const Icono = ubicacion === "copiadora" ? Printer : ubicacion === "cliente" ? Building : ubicacion === "estudio" ? Home : HelpCircle;
+  return <Icono size={12} aria-hidden="true" className="inline mr-0.5 text-ink-subtle" />;
 }
 
-// ── Tarjeta de resumen ───────────────────────────────────────────────────────
+// ── Resumen en línea ─────────────────────────────────────────────────────────
 
-function CardResumen({ icon: Icon, label, count, cls }: { icon: typeof Home; label: string; count: number; cls: string }) {
+function ResumenLinea({ resumen }: { resumen: ResumenUbicacion }) {
+  const items: { n: number; label: string; rojo?: boolean }[] = [
+    { n: resumen.estudio, label: "en el estudio" },
+    { n: resumen.copiadora, label: "en la copiadora" },
+    { n: resumen.cliente, label: "en el cliente" },
+    ...(resumen.otro > 0 ? [{ n: resumen.otro, label: "en otro lugar" }] : []),
+    { n: resumen.extraviados, label: resumen.extraviados === 1 ? "extraviado" : "extraviados", rojo: resumen.extraviados > 0 },
+  ];
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-5 py-4 flex items-center gap-4">
-      <div className={clsx("p-2.5 rounded-lg", cls)}>
-        <Icon size={18} className="text-current" />
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-gray-900">{count}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{label}</p>
-      </div>
+    <div className={clsx(PANEL, "flex flex-wrap items-baseline gap-x-6 gap-y-2 px-4 py-3 text-[13px] text-ink-muted")}>
+      {items.map((i) => (
+        <span key={i.label}>
+          <b className={clsx("font-archivo text-[20px] font-bold tabular-nums", i.rojo ? "text-red-700" : "text-ink")}>{i.n}</b>{" "}
+          {i.label}
+        </span>
+      ))}
+      <span className="sm:ml-auto inline-flex items-center gap-1 text-[12px] text-ink-subtle">
+        <Info size={12} aria-hidden="true" />
+        Los envíos y retiros de Seguimiento se registran acá solos.
+      </span>
     </div>
   );
 }
@@ -185,34 +212,34 @@ function MovimientoModal({
                 <button
                   type="button"
                   onClick={selAll}
-                  className="text-[11px] text-violet-600 hover:underline"
+                  className="text-[11px] font-semibold text-bordo hover:underline"
                 >
                   Todos
                 </button>
               </div>
-              <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+              <div className="border border-line-input rounded-[9px] divide-y divide-line-row max-h-48 overflow-y-auto">
                 {librosCliente.length === 0 ? (
-                  <p className="px-3 py-3 text-xs text-gray-400">No hay libros cargados.</p>
+                  <p className="px-3 py-3 text-xs text-ink-subtle">No hay libros cargados.</p>
                 ) : (
                   librosCliente.map((l) => (
                     <label
                       key={l.id}
-                      className="flex items-center justify-between gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
+                      className="flex items-center justify-between gap-3 px-3 py-2.5 cursor-pointer hover:bg-paper-hover"
                     >
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
                           checked={elegidos.has(l.id)}
                           onChange={() => toggle(l.id)}
-                          className="accent-violet-600"
+                          className="accent-[#7D1C2E]"
                         />
-                        <span className="text-sm text-gray-800">{l.nombre}</span>
+                        <span className="text-sm text-ink">{l.nombre}</span>
                       </div>
-                      <span className="text-[11px] text-gray-400 shrink-0">
+                      <span className="text-[11px] text-ink-subtle shrink-0">
                         <UbicacionIcon ubicacion={l.ubicacion} />
                         {UBICACION_LABEL[l.ubicacion]}
                         {l.extraviado && (
-                          <span className="ml-1 text-red-500">· Extraviado</span>
+                          <span className="ml-1 text-red-700">· Extraviado</span>
                         )}
                       </span>
                     </label>
@@ -239,9 +266,9 @@ function MovimientoModal({
                   type="checkbox"
                   checked={esMensajeria}
                   onChange={(e) => setEsMensajeria(e.target.checked)}
-                  className="accent-violet-600"
+                  className="accent-[#7D1C2E]"
                 />
-                <span className="text-sm text-gray-600">Es mensajería</span>
+                <span className="text-sm text-ink-muted">Es mensajería</span>
               </label>
             </div>
           </div>
@@ -367,8 +394,8 @@ function ResolverModal({ incidencia, onClose }: { incidencia: IncidenciaVista; o
     <Modal titulo="Resolver incidencia" subtitulo={`${incidencia.clienteNombre} · ${incidencia.libroNombre}`} onClose={onClose}>
       <div className="flex flex-col min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
-          <div className="bg-gray-50 rounded-lg px-4 py-3 text-sm text-gray-700">
-            <p className="font-medium text-xs text-gray-400 mb-1">Situación</p>
+          <div className="bg-paper-alt border border-line-row rounded-lg px-4 py-3 text-sm text-ink-cell">
+            <p className="font-medium text-xs text-ink-subtle mb-1">Situación</p>
             <p>{incidencia.situacion}</p>
           </div>
           <div>
@@ -383,17 +410,17 @@ function ResolverModal({ incidencia, onClose }: { incidencia: IncidenciaVista; o
             />
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-gray-100 shrink-0 space-y-3">
-          {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+        <div className="px-6 py-4 border-t border-line-row shrink-0 space-y-3">
+          {error && <p className={ERROR}>{error}</p>}
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-ink-muted hover:text-ink rounded-lg">
               Cancelar
             </button>
             <button
               type="button"
               disabled={pendiente}
               onClick={resolver}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50"
+              className={BOTON_PRIMARIO}
             >
               {pendiente ? "Guardando…" : "Marcar como resuelto"}
             </button>
@@ -448,211 +475,190 @@ export function MovimientosClient({
 
   const incAbiertas = incidencias.filter((i) => !i.resuelto).length;
 
-  const SELECT = "text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-violet-400";
+  const thead = "sticky top-0 bg-paper-group z-10 border-b border-line-group";
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Alertas post-movimiento */}
-      {alertas.length > 0 && (
-        <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            {alertas.map((a, i) => (
-              <p key={i} className="text-sm text-amber-800">{a}</p>
-            ))}
+    <div className={PAGINA}>
+      <div className={ENCABEZADO}>
+        <span className={RAYA_MODULO} />
+        <h1 className={TITULO}>Entrada y salida</h1>
+        <div className="flex-1" />
+        {puedeEditar && (
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setModalIncidencia(true)} className={BOTON_SECUNDARIO}>
+              <AlertTriangle size={14} aria-hidden="true" />
+              Reportar incidencia
+            </button>
+            <button onClick={() => setModalMovimiento(true)} className={BOTON_PRIMARIO}>
+              <Plus size={15} aria-hidden="true" />
+              Registrar movimiento
+            </button>
           </div>
-          <button onClick={() => setAlertas([])} className="ml-auto text-amber-400 hover:text-amber-600 text-xs">
-            ✕
-          </button>
-        </div>
-      )}
-
-      <p className="shrink-0 px-6 pt-4 text-[12px] text-gray-500">
-        Pantalla de consulta: la salida a la copiadora y el retiro se registran solos desde Seguimiento (&ldquo;Enviar a
-        copiar&rdquo; y &ldquo;Retirado / Registrar copiado&rdquo;). Acá se cargan los demás movimientos y los extravíos.
-      </p>
-
-      {/* Resumen */}
-      <div className="shrink-0 px-6 py-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-3">
-        <CardResumen icon={Home}      label="En el estudio"   count={resumen.estudio}    cls="bg-green-50 text-green-600" />
-        <CardResumen icon={Printer}   label="En la copiadora" count={resumen.copiadora}  cls="bg-violet-50 text-violet-600" />
-        <CardResumen icon={Building}  label="En el cliente"   count={resumen.cliente}    cls="bg-blue-50 text-blue-600" />
-        <CardResumen icon={HelpCircle} label="Otro"           count={resumen.otro}       cls="bg-gray-100 text-gray-500" />
-        <CardResumen icon={AlertTriangle} label="Extraviados" count={resumen.extraviados} cls="bg-red-50 text-red-500" />
+        )}
       </div>
 
-      {/* Header con tabs y filtros */}
-      <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-3 flex items-center gap-4 flex-wrap">
-        <div className="flex gap-1">
-          {(["movimientos", "incidencias"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={clsx(
-                "px-4 py-1.5 text-sm font-medium rounded-lg",
-                tab === t
-                  ? "bg-violet-100 text-violet-700"
-                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-              )}
-            >
-              {t === "movimientos" ? "Movimientos" : (
-                <span className="flex items-center gap-1.5">
-                  Incidencias
-                  {incAbiertas > 0 && (
-                    <span className="text-[10px] font-semibold bg-red-500 text-white rounded-full px-1.5 py-0.5 leading-none">
-                      {incAbiertas}
-                    </span>
-                  )}
-                </span>
-              )}
+      <div className="shrink-0 px-4 sm:px-6 space-y-3 pb-3">
+        {alertas.length > 0 && (
+          <div className={AVISO}>
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="space-y-1 flex-1">
+              {alertas.map((a, i) => (
+                <p key={i}>{a}</p>
+              ))}
+            </div>
+            <button onClick={() => setAlertas([])} aria-label="Cerrar aviso" className="text-alerta-label hover:text-alerta-fg text-xs">
+              ✕
             </button>
-          ))}
-        </div>
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <select className={SELECT} value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
-            <option value="">Todos los clientes</option>
+          </div>
+        )}
+        <ResumenLinea resumen={resumen} />
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="filtro-cliente-mov" className="text-[13px] text-ink-muted">Cliente</label>
+          <select
+            id="filtro-cliente-mov"
+            className={clsx(CONTROL, "min-w-0 w-full sm:w-auto sm:min-w-[240px]")}
+            value={filtroCliente}
+            onChange={(e) => setFiltroCliente(e.target.value)}
+          >
+            <option value="">Todos</option>
             {clientes.map((c) => (
               <option key={c.id} value={c.id}>{c.nombre}</option>
             ))}
           </select>
-          {puedeEditar && (
-            <>
-              <button
-                onClick={() => setModalMovimiento(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg"
-              >
-                <Plus size={15} />
-                Registrar
-              </button>
-              <button
-                onClick={() => setModalIncidencia(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg"
-              >
-                <AlertTriangle size={15} />
-                Incidencia
-              </button>
-            </>
-          )}
+          {(["movimientos", "incidencias"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              aria-pressed={tab === t}
+              className={clsx(
+                "px-3 py-1.5 text-[12.5px] font-semibold rounded-full border",
+                tab === t ? "bg-ink text-white border-ink" : "bg-paper text-ink-muted border-line-input hover:text-ink"
+              )}
+            >
+              {t === "movimientos"
+                ? "Movimientos"
+                : `Incidencias${incAbiertas > 0 ? ` · ${incAbiertas} ${incAbiertas === 1 ? "abierta" : "abiertas"}` : ""}`}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {tab === "movimientos" ? (
-          <div className="overflow-x-auto pb-2" style={{ minWidth: 700 }}>
-            <table className="w-full text-sm whitespace-nowrap">
-              <thead className="sticky top-0 bg-white z-10 border-b border-gray-100">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-6">
+        <div className={clsx(PANEL, "overflow-x-auto")}>
+          {tab === "movimientos" ? (
+            <table className="w-full text-sm">
+              <thead className={thead}>
                 <tr>
-                  <th className={TH}>Fecha</th>
-                  <th className={TH}>Tipo</th>
+                  <th className={clsx(TH, "text-right pl-4")}>Fecha</th>
                   <th className={TH}>Cliente</th>
                   <th className={TH}>Libro</th>
-                  <th className={TH}>Destino / Origen</th>
-                  <th className={TH}>Persona / Mensajería</th>
-                  <th className={TH}>Comentario</th>
-                  <th className={TH}>Registró</th>
+                  <th className={TH}>Movimiento</th>
+                  <th className={clsx(TH, "hidden md:table-cell")}>Quién</th>
+                  <th className={clsx(TH, "hidden lg:table-cell")}>Comentario</th>
+                  <th className={clsx(TH, "hidden lg:table-cell")}>Registró</th>
                 </tr>
               </thead>
-              <tbody className="bg-white">
+              <tbody>
                 {movsFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-400">
-                      No hay movimientos registrados.
+                    <td colSpan={7}>
+                      <div className={VACIO}>
+                        <p className={VACIO_TEXTO}>
+                          {filtroCliente
+                            ? "Este cliente no tiene movimientos."
+                            : "Todavía no hay movimientos. Los envíos a la copiadora y los retiros se cargan solos desde Seguimiento; acá se registran los demás (al cliente, entre oficinas)."}
+                        </p>
+                        {puedeEditar && !filtroCliente && (
+                          <button onClick={() => setModalMovimiento(true)} className={BOTON_PRIMARIO}>
+                            <Plus size={15} aria-hidden="true" /> Registrar movimiento
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   movsFiltrados.map((m) => (
-                    <tr key={m.id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className={TD}>{fmtFecha(m.fecha)}</td>
+                    <tr key={m.id} className={FILA}>
+                      <td className={TD_FECHA}>{fmtFecha(m.fecha)}</td>
+                      <td className={clsx(TD, "font-archivo font-bold text-ink")}>{m.clienteNombre}</td>
+                      <td className={TD}>{m.libroNombre}</td>
                       <td className={TD}>
-                        <span
-                          className={clsx(
-                            "text-[11px] font-medium px-2 py-0.5 rounded-full",
-                            m.tipo === "salida"
-                              ? "bg-orange-50 text-orange-700"
-                              : "bg-green-50 text-green-700"
-                          )}
-                        >
-                          {m.tipo === "salida" ? "↑ Salida" : "↓ Entrada"}
+                        <span className={clsx(CHIP, m.tipo === "salida" ? SEMAFORO.amarillo : SEMAFORO.verdeClaro)}>
+                          {m.tipo === "salida"
+                            ? `Salida → ${DESTINO_LABEL[m.destino].toLowerCase()}`
+                            : `Entrada desde ${DESTINO_LABEL[m.destino].toLowerCase()}`}
                         </span>
                       </td>
-                      <td className={TD}>{m.clienteNombre}</td>
-                      <td className={TD}>{m.libroNombre}</td>
-                      <td className={TD}>{DESTINO_LABEL[m.destino]}</td>
-                      <td className={TD}>
+                      <td className={clsx(TD, "hidden md:table-cell text-ink-muted")}>
                         {m.persona ? (
                           <span>
                             {m.persona}
-                            {m.es_mensajeria && (
-                              <span className="ml-1 text-[10px] text-gray-400">(mensajería)</span>
-                            )}
+                            {m.es_mensajeria && <span className="ml-1 text-[11px] text-ink-subtle">(mensajería)</span>}
                           </span>
                         ) : (
-                          <span className="text-gray-300">—</span>
+                          <span className="text-ink-ghost">—</span>
                         )}
                       </td>
-                      <td className={clsx(TD, "max-w-[180px]")}>
-                        <p className="truncate text-xs text-gray-500">{m.comentario ?? "—"}</p>
+                      <td className={clsx(TD, "hidden lg:table-cell max-w-[220px]")}>
+                        <p className="truncate text-xs text-ink-muted" title={m.comentario ?? ""}>{m.comentario ?? "—"}</p>
                       </td>
-                      <td className={TD}>{m.registradorNombre ?? "—"}</td>
+                      <td className={clsx(TD, "hidden lg:table-cell text-ink-muted")}>{m.registradorNombre ?? "—"}</td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto pb-2" style={{ minWidth: 700 }}>
-            <table className="w-full text-sm whitespace-nowrap">
-              <thead className="sticky top-0 bg-white z-10 border-b border-gray-100">
+          ) : (
+            <table className="w-full text-sm">
+              <thead className={thead}>
                 <tr>
-                  <th className={TH}>Fecha</th>
-                  <th className={TH}>Tipo</th>
+                  <th className={clsx(TH, "text-right pl-4")}>Fecha</th>
                   <th className={TH}>Cliente</th>
                   <th className={TH}>Libro</th>
-                  <th className={TH}>Situación</th>
-                  <th className={TH}>Resolución</th>
                   <th className={TH}>Estado</th>
-                  <th className={TH} />
+                  <th className={clsx(TH, "hidden md:table-cell")}>Situación</th>
+                  <th className={clsx(TH, "hidden lg:table-cell")}>Tipo</th>
+                  <th className={clsx(TH, "hidden lg:table-cell")}>Resolución</th>
+                  <th className={TH}><span className="sr-only">Acciones</span></th>
                 </tr>
               </thead>
-              <tbody className="bg-white">
+              <tbody>
                 {incFiltradas.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-10 text-center text-sm text-gray-400">
-                      No hay incidencias registradas.
+                    <td colSpan={8}>
+                      <div className={VACIO}>
+                        <p className={VACIO_TEXTO}>No hay incidencias registradas.</p>
+                        {puedeEditar && (
+                          <button onClick={() => setModalIncidencia(true)} className={BOTON_SECUNDARIO}>
+                            <AlertTriangle size={14} aria-hidden="true" /> Reportar incidencia
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   incFiltradas.map((inc) => (
-                    <tr key={inc.id} className="border-t border-gray-100 hover:bg-gray-50">
-                      <td className={TD}>{fmtFecha(inc.fecha)}</td>
-                      <td className={TD}>
-                        <span className="text-xs font-medium text-gray-700 capitalize">{inc.tipo}</span>
-                      </td>
-                      <td className={TD}>{inc.clienteNombre}</td>
+                    <tr key={inc.id} className={FILA}>
+                      <td className={TD_FECHA}>{fmtFecha(inc.fecha)}</td>
+                      <td className={clsx(TD, "font-archivo font-bold text-ink")}>{inc.clienteNombre}</td>
                       <td className={TD}>{inc.libroNombre}</td>
-                      <td className={clsx(TD, "max-w-[200px]")}>
-                        <p className="truncate text-xs">{inc.situacion}</p>
-                      </td>
-                      <td className={clsx(TD, "max-w-[160px]")}>
-                        <p className="truncate text-xs text-gray-500">{inc.resolucion ?? "—"}</p>
-                      </td>
                       <td className={TD}>
-                        <span
-                          className={clsx(
-                            "text-[11px] font-medium px-2 py-0.5 rounded-full",
-                            inc.resuelto ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
-                          )}
-                        >
+                        <span className={clsx(CHIP, inc.resuelto ? SEMAFORO.verdeClaro : SEMAFORO.rojo)}>
                           {inc.resuelto ? "Resuelto" : "Abierto"}
                         </span>
                       </td>
-                      <td className="px-3 py-2 align-top">
+                      <td className={clsx(TD, "hidden md:table-cell max-w-[240px]")}>
+                        <p className="truncate text-xs" title={inc.situacion}>{inc.situacion}</p>
+                      </td>
+                      <td className={clsx(TD, "hidden lg:table-cell capitalize text-ink-muted")}>{inc.tipo}</td>
+                      <td className={clsx(TD, "hidden lg:table-cell max-w-[180px]")}>
+                        <p className="truncate text-xs text-ink-muted">{inc.resolucion ?? "—"}</p>
+                      </td>
+                      <td className="px-3 py-2 align-top text-right">
                         {puedeEditar && !inc.resuelto && (
                           <button
                             onClick={() => setIncidenciaActiva(inc)}
-                            className="px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded"
+                            className={clsx(BOTON_SECUNDARIO, "min-h-[30px] px-2.5 text-[12px]")}
                           >
                             Resolver
                           </button>
@@ -663,8 +669,8 @@ export function MovimientosClient({
                 )}
               </tbody>
             </table>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {modalMovimiento && (

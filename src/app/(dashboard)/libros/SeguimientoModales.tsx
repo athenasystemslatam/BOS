@@ -9,6 +9,7 @@ import type { PrioridadLibro } from "@/types";
 import { cambiarPrioridad, enviarACopiar, registrarCopiado, type ItemCopiado } from "./actions";
 import { INPUT, LABEL, Modal, Pie, aEntero } from "./ModalBase";
 import type { TareaVista } from "./SeguimientoLibrosClient";
+import { NUM } from "./ui";
 
 export function PrioridadModal({ tarea, onClose }: { tarea: TareaVista; onClose: () => void }) {
   const [pendiente, startTransition] = useTransition();
@@ -36,11 +37,11 @@ export function PrioridadModal({ tarea, onClose }: { tarea: TareaVista; onClose:
               type="radio"
               checked={eleccion === "auto"}
               onChange={() => setEleccion("auto")}
-              className="accent-violet-600 mt-0.5"
+              className="accent-bordo mt-0.5"
             />
             <span>
-              <span className="font-medium text-gray-800">La que propone el sistema: {tarea.sugerida}</span>
-              <span className="block text-[11px] text-gray-400">{tarea.motivoSugerido}</span>
+              <span className="font-medium text-ink">La que propone el sistema: {tarea.sugerida}</span>
+              <span className="block text-[11px] text-ink-subtle">{tarea.motivoSugerido}</span>
             </span>
           </label>
           {PRIORIDADES.map((p) => (
@@ -49,12 +50,12 @@ export function PrioridadModal({ tarea, onClose }: { tarea: TareaVista; onClose:
                 type="radio"
                 checked={eleccion === p}
                 onChange={() => setEleccion(p)}
-                className="accent-violet-600"
+                className="accent-bordo"
               />
               <span className={clsx("text-[11px] font-medium rounded-full px-2 py-0.5", PRIORIDAD_INFO[p].cls)}>
                 {PRIORIDAD_INFO[p].label}
               </span>
-              <span className="text-gray-400 text-[11px]">a mano</span>
+              <span className="text-ink-subtle text-[11px]">a mano</span>
             </label>
           ))}
           {eleccion !== "auto" && (
@@ -121,18 +122,18 @@ export function EnviarACopiarModal({
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
           <div className="space-y-1.5">
             {disponibles.map((t) => (
-              <label key={t.id} className="flex items-center gap-2.5 text-[13px] text-gray-800 cursor-pointer">
+              <label key={t.id} className="flex items-center gap-2.5 text-[13px] text-ink cursor-pointer">
                 <input
                   type="checkbox"
                   checked={elegidas.has(t.id)}
                   onChange={() => toggle(t.id)}
-                  className="accent-violet-600"
+                  className="accent-bordo"
                 />
-                {t.libroNombre} <span className="text-[11px] text-gray-400">T{t.tomo}</span>
+                {t.libroNombre} {t.tomo > 1 && <span className="text-[11px] text-ink-subtle">Tomo {t.tomo}</span>}
               </label>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={LABEL}>Fecha de envío</label>
               <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={INPUT} />
@@ -142,16 +143,16 @@ export function EnviarACopiarModal({
               <input value={persona} onChange={(e) => setPersona(e.target.value)} className={INPUT} />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-[12px] text-gray-600 cursor-pointer">
+          <label className="flex items-center gap-2 text-[12px] text-ink-muted cursor-pointer">
             <input
               type="checkbox"
               checked={mensajeria}
               onChange={(e) => setMensajeria(e.target.checked)}
-              className="accent-violet-600"
+              className="accent-bordo"
             />
             Por mensajería
           </label>
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-ink-subtle">
             Registra la salida a la copiadora y pasa las tareas a Copiándose. Cuando vuelvan, usá &ldquo;Retirado /
             Registrar copiado&rdquo;.
           </p>
@@ -229,9 +230,9 @@ export function RegistrarCopiadoModal({
     return (
       <Modal titulo={clienteNombre} subtitulo="Copiado registrado" onClose={onClose}>
         <div className="px-6 py-5 space-y-3">
-          <p className="text-[13px] text-gray-700">Listo, las tareas pasaron al historial.</p>
+          <p className="text-[13px] text-ink-cell">Listo, las tareas pasaron al historial.</p>
           {resultado.facturaPendiente && (
-            <p className="flex gap-2 text-[12px] text-violet-800 bg-violet-50 rounded-lg px-3 py-2">
+            <p className="flex gap-2 text-[12px] text-ink-cell bg-paper-alt border border-line-panel rounded-lg px-3 py-2">
               <Receipt size={14} className="shrink-0 mt-0.5" />
               <span>
                 Quedó pendiente la factura de la copiadora para este cliente. Cuando llegue, cargala en{" "}
@@ -251,10 +252,10 @@ export function RegistrarCopiadoModal({
             ))}
           </ul>
         </div>
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+        <div className="px-6 py-4 border-t border-line-row flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg"
+            className="px-4 py-2 text-sm font-semibold text-white bg-bordo hover:bg-bordo-dark rounded-[9px]"
           >
             Entendido
           </button>
@@ -271,18 +272,19 @@ export function RegistrarCopiadoModal({
             <label className={LABEL}>Fecha de retiro / copiado</label>
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={INPUT} />
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
-              <tr className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">
-                <th className="py-2 w-8" />
+              <tr className="text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em] border-b border-line-row">
+                <th className="py-2 w-8"><span className="sr-only">Incluir</span></th>
                 <th className="py-2 text-left">Libro</th>
-                <th className="py-2 text-center">Libres</th>
-                <th className="py-2 text-center">Último copiado</th>
+                <th className="py-2 text-right px-2">Libres</th>
+                <th className="py-2 text-right px-2">Último copiado</th>
                 <th className="py-2 text-left px-2">Folios usados</th>
                 <th className="py-2 text-left px-2">Copiado hasta</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-line-row">
               {tareas.map((t) => {
                 const f = filas[t.id];
                 return (
@@ -292,16 +294,16 @@ export function RegistrarCopiadoModal({
                         type="checkbox"
                         checked={f.incluir}
                         onChange={(e) => cambiar(t.id, { incluir: e.target.checked })}
-                        className="accent-violet-600"
+                        className="accent-bordo"
                       />
                     </td>
-                    <td className="py-2 text-[13px] text-gray-800">
-                      {t.libroNombre} <span className="text-gray-400 text-[11px]">T{t.tomo}</span>
+                    <td className="py-2 text-[13px] text-ink">
+                      {t.libroNombre} {t.tomo > 1 && <span className="text-ink-subtle text-[11px]">Tomo {t.tomo}</span>}
                     </td>
-                    <td className={clsx("py-2 text-center text-[12px]", t.libres != null && t.libres <= UMBRAL_FOLIOS ? "text-red-600 font-medium" : "text-gray-600")}>
+                    <td className={clsx("py-2 px-2", NUM, t.libres != null && t.libres <= UMBRAL_FOLIOS && "!text-orange-700 font-semibold")}>
                       {t.libres ?? "—"}
                     </td>
-                    <td className="py-2 text-center text-[12px] text-gray-500">{fmtFecha(t.ultimoCopiado)}</td>
+                    <td className={clsx("py-2 px-2", NUM)}>{fmtFecha(t.ultimoCopiado)}</td>
                     <td className="py-2 px-2">
                       <input
                         type="number"
@@ -326,7 +328,8 @@ export function RegistrarCopiadoModal({
               })}
             </tbody>
           </table>
-          <p className="text-[11px] text-gray-400">
+          </div>
+          <p className="text-[11px] text-ink-subtle">
             Suma los folios al libro, actualiza su último período copiado y pasa la tarea al historial. Lo que estaba
             en la copiadora registra la entrada y deja pendiente la factura de la copiadora. Si un libro queda con{" "}
             {UMBRAL_FOLIOS} folios libres o menos, se crea el pedido de presupuesto de tomo nuevo.

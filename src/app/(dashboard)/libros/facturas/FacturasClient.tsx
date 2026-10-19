@@ -7,33 +7,52 @@ import { fmtFecha, hoyISO } from "@/lib/libros";
 import type { CopiadoFactura } from "@/types";
 import { actualizarFactura, crearFactura, eliminarFactura } from "../actions";
 import { Modal, Pie, LABEL, INPUT } from "../ModalBase";
+import {
+  BOTON_PRIMARIO,
+  CONTROL,
+  ENCABEZADO,
+  FILA,
+  NUM,
+  PAGINA,
+  PANEL,
+  RAYA_MODULO,
+  SUBTITULO,
+  TITULO,
+  VACIO,
+  VACIO_TEXTO,
+} from "../ui";
 
 export type FacturaVista = CopiadoFactura & { clienteNombre: string };
 
 type Cliente = { id: string; nombre: string };
 
-const TH = "text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-2 text-left";
-const TD = "px-3 py-2 text-sm text-gray-700 align-middle";
+const TH = "text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em] px-3 py-2.5 text-left";
+const TD = "px-3 py-2.5 text-[13px] text-ink-cell align-middle";
 
 type BoolField = "factura_recibida" | "reenviada_cliente" | "pagado" | "comprobante_enviado";
 
-const BOOL_COLS: { key: BoolField; label: string }[] = [
-  { key: "factura_recibida",   label: "Factura recibida"    },
-  { key: "reenviada_cliente",  label: "Reenvío al cliente"  },
-  { key: "pagado",             label: "Pagado"              },
-  { key: "comprobante_enviado", label: "Comprobante enviado" },
+// El circuito de cada factura, en orden: llega, se reenvía, se paga, se manda el comprobante.
+const BOOL_COLS: { key: BoolField; label: string; corto: string }[] = [
+  { key: "factura_recibida",    label: "Factura recibida",    corto: "Recibida"    },
+  { key: "reenviada_cliente",   label: "Reenvío al cliente",  corto: "Reenviada"   },
+  { key: "pagado",              label: "Pagado",              corto: "Pagada"      },
+  { key: "comprobante_enviado", label: "Comprobante enviado", corto: "Comprobante" },
 ];
 
 // ── Checkbox inline con optimistic update ───────────────────────────────────
 
-function ToggleCell({
+function ToggleCircuito({
   facturaId,
   campo,
+  label,
+  corto,
   valor,
   puedeEditar,
 }: {
   facturaId: string;
   campo: BoolField;
+  label: string;
+  corto: string;
   valor: boolean;
   puedeEditar: boolean;
 }) {
@@ -51,15 +70,23 @@ function ToggleCell({
   }
 
   return (
-    <td className={clsx(TD, "text-center")}>
+    <label
+      title={label}
+      className={clsx(
+        "inline-flex items-center gap-1 text-[11.5px] whitespace-nowrap",
+        puedeEditar ? "cursor-pointer" : "cursor-default",
+        optimistic ? "text-green-700 font-semibold" : "text-ink-subtle"
+      )}
+    >
       <input
         type="checkbox"
         checked={optimistic}
         onChange={toggle}
         disabled={!puedeEditar}
-        className="w-4 h-4 accent-violet-600 cursor-pointer disabled:cursor-default"
+        className="w-3.5 h-3.5 accent-[#7D1C2E] cursor-pointer disabled:cursor-default"
       />
-    </td>
+      {corto}
+    </label>
   );
 }
 
@@ -109,7 +136,7 @@ function NuevaFacturaModal({
     <Modal titulo="Nueva factura" subtitulo="Libros · Copiadora" onClose={onClose} ancho="max-w-xl">
       <form onSubmit={guardar} className="flex flex-col min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>Proveedor</label>
               <input className={INPUT} value={proveedor} onChange={(e) => setProveedor(e.target.value)} />
@@ -125,7 +152,7 @@ function NuevaFacturaModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className={LABEL}>Nro. factura</label>
               <input className={INPUT} value={nroFactura} onChange={(e) => setNroFactura(e.target.value)} placeholder="A-0001-00000001" />
@@ -172,6 +199,15 @@ function NuevaFacturaModal({
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
+function fmtMonto(v: number): string {
+  return `$ ${v.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+}
+
+function fmtMes(v: string): string {
+  const [y, m] = v.split("-");
+  return `${m}/${y}`;
+}
+
 export function FacturasClient({
   facturas,
   clientes,
@@ -193,114 +229,143 @@ export function FacturasClient({
   });
 
   const pendientes = facturas.filter((f) => !f.pagado).length;
+  const sinRecibir = facturas.filter((f) => !f.factura_recibida).length;
 
   function borrar(id: string) {
     if (!confirm("¿Borrar esta factura?")) return;
     startTransition(async () => { await eliminarFactura(id); });
   }
 
-  const SELECT = "text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-violet-400";
-
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Header */}
-      <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4 flex items-center gap-4 flex-wrap">
+    <div className={PAGINA}>
+      <div className={ENCABEZADO}>
+        <span className={RAYA_MODULO} />
         <div>
-          <h1 className="text-[15px] font-semibold text-gray-900">Copiadora</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {pendientes} sin pagar · {facturas.length} total · al registrar un copiado desde Seguimiento queda
-            pendiente la factura del cliente
+          <h1 className={TITULO}>Copiadora</h1>
+          <p className={SUBTITULO}>
+            <span className="font-plex tabular-nums">{pendientes}</span> sin pagar ·{" "}
+            <span className="font-plex tabular-nums">{sinRecibir}</span> sin recibir ·{" "}
+            <span className="font-plex tabular-nums">{facturas.length}</span> en total
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <select className={SELECT} value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
-            <option value="">Todos los clientes</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={filtroPendiente}
-              onChange={(e) => setFiltroPendiente(e.target.checked)}
-              className="accent-violet-600"
-            />
-            Solo pendientes
-          </label>
-          {puedeEditar && (
-            <button
-              onClick={() => setModalNueva(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg"
-            >
-              <Plus size={15} />
-              Nueva factura
-            </button>
-          )}
-        </div>
+        <div className="flex-1" />
+        {puedeEditar && (
+          <button onClick={() => setModalNueva(true)} className={BOTON_PRIMARIO}>
+            <Plus size={15} aria-hidden="true" />
+            Nueva factura
+          </button>
+        )}
       </div>
 
-      {/* Tabla */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="overflow-x-auto pb-2" style={{ minWidth: 900 }}>
-          <table className="w-full text-sm whitespace-nowrap">
-            <thead className="sticky top-0 bg-white z-10 border-b border-gray-100">
+      <div className="shrink-0 px-4 sm:px-6 pb-3 flex flex-wrap items-center gap-3">
+        <label htmlFor="filtro-cliente-fc" className="sr-only">Cliente</label>
+        <select
+          id="filtro-cliente-fc"
+          className={clsx(CONTROL, "w-full sm:w-auto sm:min-w-[240px]")}
+          value={filtroCliente}
+          onChange={(e) => setFiltroCliente(e.target.value)}
+        >
+          <option value="">Todos los clientes</option>
+          {clientes.map((c) => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </select>
+        <label className="flex items-center gap-2 text-[13px] text-ink-muted cursor-pointer">
+          <input
+            type="checkbox"
+            checked={filtroPendiente}
+            onChange={(e) => setFiltroPendiente(e.target.checked)}
+            className="accent-[#7D1C2E]"
+          />
+          Solo sin pagar
+        </label>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-6">
+        <div className={clsx(PANEL, "overflow-x-auto")}>
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-paper-group z-10 border-b border-line-group">
               <tr>
-                <th className={TH}>Cliente</th>
-                <th className={TH}>Nro. factura</th>
-                <th className={TH}>Fecha</th>
-                <th className={TH}>Período</th>
-                <th className={TH}>Monto</th>
-                <th className={TH}>Detalle</th>
-                {BOOL_COLS.map((c) => (
-                  <th key={c.key} className={clsx(TH, "text-center")}>{c.label}</th>
-                ))}
-                {puedeEditar && <th className={TH} />}
+                <th className={clsx(TH, "pl-4")}>Cliente</th>
+                <th className={clsx(TH, "text-right hidden md:table-cell")}>Factura</th>
+                <th className={clsx(TH, "text-right hidden md:table-cell")}>Fecha</th>
+                <th className={clsx(TH, "text-right hidden lg:table-cell")}>Período</th>
+                <th className={clsx(TH, "text-right")}>Monto</th>
+                <th className={TH}>Circuito</th>
+                <th className={clsx(TH, "hidden xl:table-cell")}>Detalle</th>
+                {puedeEditar && <th className={TH}><span className="sr-only">Acciones</span></th>}
               </tr>
             </thead>
-            <tbody className="bg-white">
+            <tbody>
               {filtradas.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-10 text-center text-sm text-gray-400">
-                    No hay facturas registradas.
+                  <td colSpan={8}>
+                    <div className={VACIO}>
+                      <p className={VACIO_TEXTO}>
+                        {facturas.length === 0
+                          ? "Todavía no hay facturas. Se crean solas, pendientes, al registrar un copiado que pasó por la copiadora desde Seguimiento."
+                          : "No hay facturas con ese filtro."}
+                      </p>
+                      {puedeEditar && facturas.length === 0 && (
+                        <button onClick={() => setModalNueva(true)} className={BOTON_PRIMARIO}>
+                          <Plus size={15} aria-hidden="true" /> Cargar una a mano
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
                 filtradas.map((f) => (
-                  <tr key={f.id} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className={TD}>{f.clienteNombre}</td>
-                    <td className={TD}>{f.nro_factura ?? <span className="text-gray-300">—</span>}</td>
-                    <td className={TD}>{f.fecha_factura ? fmtFecha(f.fecha_factura) : <span className="text-gray-300">—</span>}</td>
-                    <td className={TD}>
-                      {f.mes
-                        ? new Date(f.mes + "T00:00:00").toLocaleDateString("es-AR", { month: "long", year: "numeric" })
-                        : <span className="text-gray-300">—</span>}
+                  <tr key={f.id} className={clsx(FILA, "align-middle")}>
+                    <td className={clsx(TD, "pl-4")}>
+                      <p className="font-archivo font-bold text-ink">{f.clienteNombre}</p>
+                      <p className="md:hidden font-plex tabular-nums text-[11px] text-ink-subtle">
+                        {f.nro_factura ? `Fc ${f.nro_factura}` : "Sin número"}
+                        {f.fecha_factura && ` · ${fmtFecha(f.fecha_factura)}`}
+                      </p>
+                      <p className="xl:hidden text-[11px] text-ink-subtle truncate max-w-[260px]" title={f.observaciones ?? ""}>
+                        {f.observaciones ?? ""}
+                      </p>
+                    </td>
+                    <td className={clsx(TD, NUM, "hidden md:table-cell")}>
+                      {f.nro_factura ?? <span className="text-ink-ghost">—</span>}
+                    </td>
+                    <td className={clsx(TD, NUM, "hidden md:table-cell")}>
+                      {f.fecha_factura ? fmtFecha(f.fecha_factura) : <span className="text-ink-ghost">—</span>}
+                    </td>
+                    <td className={clsx(TD, NUM, "hidden lg:table-cell")}>
+                      {f.mes ? fmtMes(f.mes) : <span className="text-ink-ghost">—</span>}
+                    </td>
+                    <td className={clsx(TD, NUM, "whitespace-nowrap")}>
+                      {f.monto != null ? fmtMonto(f.monto) : <span className="text-ink-ghost">—</span>}
                     </td>
                     <td className={TD}>
-                      {f.monto != null
-                        ? `$ ${f.monto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
-                        : <span className="text-gray-300">—</span>}
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        {BOOL_COLS.map((c) => (
+                          <ToggleCircuito
+                            key={c.key}
+                            facturaId={f.id}
+                            campo={c.key}
+                            label={c.label}
+                            corto={c.corto}
+                            valor={f[c.key]}
+                            puedeEditar={puedeEditar}
+                          />
+                        ))}
+                      </div>
                     </td>
-                    <td className={clsx(TD, "max-w-[160px]")}>
-                      <p className="truncate text-xs text-gray-500" title={f.observaciones ?? ""}>
+                    <td className={clsx(TD, "hidden xl:table-cell max-w-[220px]")}>
+                      <p className="truncate text-xs text-ink-muted" title={f.observaciones ?? ""}>
                         {f.observaciones ?? "—"}
                       </p>
                     </td>
-                    {BOOL_COLS.map((c) => (
-                      <ToggleCell
-                        key={c.key}
-                        facturaId={f.id}
-                        campo={c.key}
-                        valor={f[c.key]}
-                        puedeEditar={puedeEditar}
-                      />
-                    ))}
                     {puedeEditar && (
-                      <td className="px-3 py-2 align-middle">
+                      <td className="px-3 py-2 align-middle text-right">
                         <button
                           onClick={() => borrar(f.id)}
-                          className="p-1 text-gray-300 hover:text-red-500 rounded"
+                          className="p-1 text-ink-ghost hover:text-red-700 rounded"
                           title="Eliminar factura"
+                          aria-label="Eliminar factura"
                         >
                           <Trash2 size={14} />
                         </button>

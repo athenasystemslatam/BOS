@@ -41,9 +41,9 @@ export const PERIODICIDAD_LABEL: Record<PeriodicidadLibro, string> = {
 };
 
 export const ESTADO_LIBRO: Record<EstadoLibro, { label: string; cls: string }> = {
-  activo: { label: "Activo", cls: "bg-violet-50 text-violet-700" },
-  cerrado: { label: "Cerrado", cls: "bg-gray-100 text-gray-500" },
-  sin_libro: { label: "Sin libro", cls: "bg-red-50 text-red-600" },
+  activo: { label: "Activo", cls: "bg-green-100 text-green-700" },
+  cerrado: { label: "Cerrado", cls: "bg-paper-hover text-ink-muted" },
+  sin_libro: { label: "Sin libro", cls: "bg-red-100 text-red-700" },
 };
 
 export const SOPORTE_LABEL: Record<SoporteLibro, string> = {
@@ -108,9 +108,9 @@ export const ORIGEN_TAREA_LABEL: Record<OrigenTareaLibro, string> = {
 export const PRIORIDADES: PrioridadLibro[] = ["P1", "P2", "P3"];
 
 export const PRIORIDAD_INFO: Record<PrioridadLibro, { label: string; cls: string; borde: string }> = {
-  P1: { label: "P1 · Urgente", cls: "bg-red-50 text-red-700", borde: "border-red-200" },
-  P2: { label: "P2 · En curso", cls: "bg-amber-50 text-amber-700", borde: "border-amber-200" },
-  P3: { label: "P3 · Sin material", cls: "bg-gray-100 text-gray-600", borde: "border-gray-200" },
+  P1: { label: "P1 · Urgente", cls: "bg-bordo-tint2 text-bordo", borde: "border-bordo-border" },
+  P2: { label: "P2 · En curso", cls: "bg-yellow-100 text-yellow-800", borde: "border-line-panel" },
+  P3: { label: "P3 · Sin material", cls: "bg-paper-hover text-ink-muted border border-line-rule", borde: "border-line-panel" },
 };
 
 // P1: fecha límite de un tercero, pedido con fecha o balance legalizado con
@@ -238,12 +238,12 @@ export const TIPO_PEDIDO_LABEL = Object.fromEntries(
 ) as Record<TipoPedido, string>;
 
 export const ESTADO_PEDIDO_INFO: Record<EstadoPedido, { label: string; cls: string }> = {
-  abierto:           { label: "Abierto",              cls: "bg-gray-100 text-gray-700"   },
-  esperando_cliente: { label: "Esperando al cliente", cls: "bg-amber-50 text-amber-700"  },
-  esperando_tercero: { label: "Esperando tercero",    cls: "bg-blue-50 text-blue-700"    },
-  aprobado:          { label: "Aprobado",             cls: "bg-green-50 text-green-700"  },
-  rechazado:         { label: "Rechazado",            cls: "bg-red-50 text-red-700"      },
-  cerrado:           { label: "Cerrado",              cls: "bg-gray-200 text-gray-500"   },
+  abierto:           { label: "Abierto",              cls: "bg-paper-hover text-ink-muted border border-line-rule" },
+  esperando_cliente: { label: "Esperando al cliente", cls: "bg-orange-100 text-orange-700" },
+  esperando_tercero: { label: "Esperando tercero",    cls: "bg-orange-100 text-orange-700" },
+  aprobado:          { label: "Aprobado",             cls: "bg-green-100 text-green-700"   },
+  rechazado:         { label: "Rechazado",            cls: "bg-paper-hover text-ink-muted border border-line-rule" },
+  cerrado:           { label: "Cerrado",              cls: "bg-green-600 text-white"       },
 };
 
 export type SemaforoPedido = "vencido" | "hoy" | "al_dia" | "sin_fecha";
@@ -256,10 +256,10 @@ export function semaforoSeguimiento(proximo: string | null, hoy: string = hoyISO
 }
 
 export const SEMAFORO_SEGUIMIENTO_INFO: Record<SemaforoPedido, { label: string; cls: string; dot: string }> = {
-  vencido:   { label: "Vencido",   cls: "bg-red-50 text-red-600",     dot: "bg-red-500"    },
-  hoy:       { label: "Vence hoy", cls: "bg-amber-50 text-amber-600", dot: "bg-amber-500"  },
-  al_dia:    { label: "Al día",    cls: "bg-green-50 text-green-700", dot: "bg-green-500"  },
-  sin_fecha: { label: "—",         cls: "bg-gray-50 text-gray-400",   dot: "bg-gray-300"   },
+  vencido:   { label: "Vencido",   cls: "bg-red-100 text-red-700",       dot: "bg-red-500"    },
+  hoy:       { label: "Vence hoy", cls: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-500" },
+  al_dia:    { label: "Al día",    cls: "bg-green-100 text-green-700",   dot: "bg-green-500"  },
+  sin_fecha: { label: "—",         cls: "text-ink-ghost",                dot: "bg-dot"        },
 };
 
 // ── Movimientos ──────────────────────────────────────────────────────────────

@@ -111,7 +111,7 @@ export function LibroModal({
           </div>
 
           {sinLibro ? (
-            <p className="text-[12px] text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+            <p className="text-[12px] text-ink-muted bg-paper-alt rounded-lg px-3 py-2">
               &ldquo;Sin libro&rdquo; = al cliente le corresponde este libro pero no lo tiene. Rúbrica y folios
               se cargan cuando exista el tomo.
             </p>
@@ -156,7 +156,7 @@ export function LibroModal({
                 <option key={v} value={v}>{label} (propia de este cliente)</option>
               ))}
             </select>
-            <p className="text-[11px] text-gray-400 mt-1">
+            <p className="text-[11px] text-ink-subtle mt-1">
               Cambiala solo si el estatuto del cliente pide otra frecuencia.
             </p>
           </div>
@@ -231,7 +231,7 @@ export function NuevoTomoModal({
     <Modal titulo={item.nombre} subtitulo="Nuevo tomo" onClose={onClose}>
       <form onSubmit={guardar} className="flex flex-col min-h-0">
         <div className="px-6 py-5 space-y-4">
-          <p className="text-[12px] text-gray-600 bg-violet-50 rounded-lg px-3 py-2">
+          <p className="text-[12px] text-ink-cell bg-paper-alt border border-line-row rounded-lg px-3 py-2">
             El tomo {libro.tomo} queda <strong>cerrado</strong> y se abre el siguiente con 0 folios usados.
             El tomo cerrado se sigue viendo en &ldquo;Tomos anteriores&rdquo;.
           </p>

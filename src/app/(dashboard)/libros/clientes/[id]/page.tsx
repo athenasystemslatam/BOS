@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
+import { configLibros } from "@/lib/librosAutomaticos";
 import type { ClienteSocietario, Libro, LibroCatalogo } from "@/types";
 import { FichaSocietarioClient } from "./FichaSocietarioClient";
 
@@ -19,8 +20,14 @@ export default async function FichaLibrosPage({ params }: { params: { id: string
     { data: finales },
     { data: equipoRaw },
     { data: modulosRaw },
+    { data: balance },
+    config,
   ] = await Promise.all([
-    admin.from("clientes").select("id, nombre, cuit, jurisdiccion_legal").eq("id", params.id).maybeSingle(),
+    admin
+      .from("clientes")
+      .select("id, nombre, cuit, jurisdiccion_legal, cierre_ejercicio_mes, cierre_ejercicio_dia")
+      .eq("id", params.id)
+      .maybeSingle(),
     admin
       .from("servicios_cliente")
       .select("estado, responsable_id, responsable:liquidadoras(nombre)")
@@ -35,6 +42,14 @@ export default async function FichaLibrosPage({ params }: { params: { id: string
     admin.from("libros_estados").select("id").eq("es_final", true),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "libros"),
+    admin
+      .from("balances")
+      .select("anio_fiscal, estado")
+      .eq("cliente_id", params.id)
+      .order("fecha_cierre", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    configLibros(admin),
   ]);
 
   if (!cliente) notFound();
@@ -57,6 +72,9 @@ export default async function FichaLibrosPage({ params }: { params: { id: string
       libros={(libros ?? []) as Libro[]}
       enCola={enCola}
       equipo={equipo}
+      balance={(balance as { anio_fiscal: number; estado: string } | null) ?? null}
+      umbralFolios={config.umbralFolios}
+      primerAvisoMandato={config.avisosMandato[0] ?? 90}
       puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}
     />
   );

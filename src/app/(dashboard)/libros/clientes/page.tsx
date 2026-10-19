@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { UMBRAL_FOLIOS, foliosLibres, vencimientoMandato } from "@/lib/libros";
+import { foliosLibres, vencimientoMandato } from "@/lib/libros";
+import { configLibros } from "@/lib/librosAutomaticos";
 import type { ClienteSocietario, Libro, LibroCatalogo } from "@/types";
 import { ClientesLibrosClient, type FilaClienteLibros } from "./ClientesLibrosClient";
 
@@ -12,6 +13,7 @@ export default async function LibrosClientesPage() {
     { data: catalogoRaw },
     { data: librosRaw },
     { data: balancesRaw },
+    config,
   ] = await Promise.all([
     admin
       .from("servicios_cliente")
@@ -22,6 +24,7 @@ export default async function LibrosClientesPage() {
     admin.from("libros_catalogo").select("*").eq("activo", true),
     admin.from("libros").select("cliente_id, catalogo_id, estado, folios_totales, folios_usados"),
     admin.from("balances").select("cliente_id, anio_fiscal, estado").order("anio_fiscal", { ascending: false }),
+    configLibros(admin),
   ]);
 
   const societarios = new Map(
@@ -68,7 +71,7 @@ export default async function LibrosClientesPage() {
         sinLibro: delCliente.filter((l) => l.estado === "sin_libro").length,
         pocosFolios: activos.filter((l) => {
           const libres = foliosLibres(l.folios_totales, l.folios_usados);
-          return libres != null && libres <= UMBRAL_FOLIOS;
+          return libres != null && libres <= config.umbralFolios;
         }).length,
         mandatoVence: vencimientoMandato(soc?.mandato_designacion ?? null, soc?.mandato_anios ?? null),
         // SA y SAS tienen directorio/administración con mandato: sin la designación no hay aviso.

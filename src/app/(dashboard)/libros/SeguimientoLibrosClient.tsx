@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { AlertTriangle, ArrowDown, ArrowUp, Plus, Search, Send } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Search, Send } from "lucide-react";
 import {
   ORIGEN_TAREA_LABEL,
   PRIORIDADES,
@@ -15,6 +15,28 @@ import type { LibroEstado, LibroTarea, PrioridadLibro } from "@/types";
 import { actualizarTarea, reordenarBloques } from "./actions";
 import { NuevaTareaModal, type Persona } from "./NuevaTareaModal";
 import { EnviarACopiarModal, PrioridadModal, RegistrarCopiadoModal } from "./SeguimientoModales";
+import {
+  AVISO,
+  AVISO_URGENTE,
+  BOTON_PRIMARIO,
+  BOTON_SECUNDARIO,
+  CHIP,
+  CONTROL,
+  CONTROL_CELDA,
+  ERROR,
+  MONO,
+  NUM,
+  PAGINA,
+  PANEL,
+  PANEL_CABECERA,
+  RAYA_MODULO,
+  SEMAFORO,
+  TH,
+  TITULO,
+  VACIO,
+  VACIO_TEXTO,
+  claseEstadoTarea,
+} from "./ui";
 
 export type TareaVista = LibroTarea & {
   clienteNombre: string;
@@ -80,9 +102,9 @@ export type AvisoRenovacion = {
 
 type Bloque = { cliente: ClienteCola; nivel: PrioridadLibro; orden: number; tareas: TareaVista[] };
 
-const TH = "text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-2";
-const SELECT_CHICO =
-  "text-[12px] text-gray-700 bg-transparent border border-transparent hover:border-gray-200 rounded-md px-1.5 py-1 focus:outline-none focus:border-violet-400 cursor-pointer disabled:cursor-default disabled:hover:border-transparent";
+const BUSCADOR =
+  "text-[13px] text-ink bg-paper border border-line-input rounded-[9px] pl-7 pr-2.5 min-h-[36px] w-full sm:w-52 focus:outline-none focus:border-bordo";
+const FOLIOS_BAJOS = "!text-orange-700 font-semibold";
 
 function armarBloques(tareas: TareaVista[], clientes: Map<string, ClienteCola>): Record<PrioridadLibro, Bloque[]> {
   const porCliente = new Map<string, TareaVista[]>();
@@ -116,13 +138,32 @@ function armarBloques(tareas: TareaVista[], clientes: Map<string, ClienteCola>):
   return niveles;
 }
 
+/** La ayuda va en un "?" y no en el título. */
+function Ayuda({ children }: { children: React.ReactNode }) {
+  return (
+    <details className="relative">
+      <summary
+        aria-label="Ayuda"
+        className="list-none [&::-webkit-details-marker]:hidden w-6 h-6 rounded-full border border-line-input bg-paper text-[12px] font-semibold text-ink-muted hover:text-ink flex items-center justify-center cursor-pointer"
+      >
+        ?
+      </summary>
+      <div className="absolute z-20 left-0 mt-2 w-[min(340px,80vw)] rounded-[10px] border border-line-panel bg-paper shadow-lg p-3 text-[12px] text-ink-cell leading-relaxed">
+        {children}
+      </div>
+    </details>
+  );
+}
+
 function Pestaña({ activa, onClick, children }: { activa: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      role="tab"
+      aria-selected={activa}
       onClick={onClick}
       className={clsx(
-        "px-4 py-3 text-[13px] font-medium border-b-2 transition-all whitespace-nowrap",
-        activa ? "border-violet-600 text-violet-700" : "border-transparent text-gray-500 hover:text-gray-700"
+        "py-2.5 -mb-px text-[13.5px] border-b-2 whitespace-nowrap",
+        activa ? "border-bordo text-ink font-bold" : "border-transparent text-ink-muted font-medium hover:text-ink"
       )}
     >
       {children}
@@ -159,7 +200,7 @@ function DetalleEditable({
             setEditando(false);
           }
         }}
-        className="w-80 text-[12px] text-gray-700 border border-violet-300 rounded-md px-2 py-1 focus:outline-none"
+        className="w-full min-w-[220px] max-w-[340px] text-[12px] text-ink-cell bg-paper border border-bordo rounded-md px-2 py-1 focus:outline-none"
       />
     );
   }
@@ -171,9 +212,9 @@ function DetalleEditable({
         setEditando(true);
       }}
       title={valor ?? ""}
-      className="w-80 text-left text-[12px] text-gray-600 whitespace-pre-line line-clamp-2 rounded-md px-1.5 py-1 hover:bg-violet-50 disabled:hover:bg-transparent disabled:cursor-default"
+      className="w-full min-w-[220px] max-w-[340px] text-left text-[12px] text-ink-muted whitespace-pre-line line-clamp-2 rounded-md px-1.5 py-1 hover:bg-paper-hover disabled:hover:bg-transparent disabled:cursor-default"
     >
-      {valor || (puedeEditar ? <span className="text-gray-300">Agregar detalle…</span> : "—")}
+      {valor || (puedeEditar ? <span className="text-ink-ghost">Agregar detalle…</span> : "—")}
     </button>
   );
 }
@@ -193,6 +234,8 @@ function FilaTarea({
 }) {
   const [pendiente, startTransition] = useTransition();
   const abiertos = estados.filter((e) => !e.es_final);
+  const codigo = estados.find((e) => e.id === t.estado_id)?.codigo ?? null;
+  const bajos = t.libres != null && t.libres <= UMBRAL_FOLIOS;
 
   function guardar(cambios: Parameters<typeof actualizarTarea>[1]) {
     startTransition(async () => {
@@ -202,85 +245,107 @@ function FilaTarea({
   }
 
   return (
-    <tr className={clsx("hover:bg-violet-50/30 align-top", pendiente && "opacity-60")}>
-      <td className="px-3 py-2 pl-5">
-        <p className="text-[13px] text-gray-800">
-          {t.libroNombre} <span className="text-[11px] text-gray-400">T{t.tomo}</span>
-        </p>
-        <p className="text-[11px] text-gray-400">
-          {ORIGEN_TAREA_LABEL[t.origen]}
-          {t.fecha_limite && <span className="text-red-600 font-medium"> · Límite {fmtFecha(t.fecha_limite)}</span>}
-        </p>
+    <tr className={clsx("border-t border-line-row hover:bg-paper-hover align-top", pendiente && "opacity-60")}>
+      <td className="px-3 py-2.5 pl-4">
+        <div className="flex items-start gap-2">
+          <button
+            onClick={onPrioridad}
+            disabled={!puedeEditar}
+            title={t.prioridad_manual ? `A mano: ${t.prioridad_motivo}` : `Sistema: ${t.motivoSugerido}`}
+            aria-label={`Prioridad ${t.prioridad}`}
+            className={clsx(CHIP, "!px-2 shrink-0", PRIORIDAD_INFO[t.prioridad].cls)}
+          >
+            {t.prioridad}
+            {t.prioridad_manual && " ✎"}
+          </button>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-ink">
+              {t.libroNombre}
+              {t.tomo > 1 && (
+                <span className="ml-1.5 align-middle text-[11px] font-semibold rounded-md px-1.5 py-px bg-bordo-tint2 text-bordo">
+                  Tomo {t.tomo}
+                </span>
+              )}
+            </p>
+            <p className="text-[11px] text-ink-subtle">
+              {ORIGEN_TAREA_LABEL[t.origen]}
+              {t.fecha_limite && (
+                <span className="text-red-700 font-semibold">
+                  {" "}· Límite <span className={MONO}>{fmtFecha(t.fecha_limite)}</span>
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
       </td>
-      <td className="px-3 py-2">
-        <button
-          onClick={onPrioridad}
-          disabled={!puedeEditar}
-          title={t.prioridad_manual ? `A mano: ${t.prioridad_motivo}` : `Sistema: ${t.motivoSugerido}`}
-          className={clsx("text-[11px] font-medium rounded-full px-2 py-0.5", PRIORIDAD_INFO[t.prioridad].cls)}
-        >
-          {t.prioridad}
-          {t.prioridad_manual && " ✎"}
-        </button>
-      </td>
-      <td className="px-3 py-2">
+      <td className="px-3 py-2.5">
         <select
           value={t.estado_id}
           disabled={!puedeEditar}
           onChange={(e) => guardar({ estado_id: e.target.value })}
-          className={SELECT_CHICO}
+          aria-label="Estado"
+          className={clsx(CHIP, "cursor-pointer disabled:cursor-default focus:outline-none", claseEstadoTarea(codigo))}
         >
           {abiertos.map((e) => (
             <option key={e.id} value={e.id}>{e.nombre}</option>
           ))}
         </select>
-      </td>
-      <td className="px-3 py-2 text-[12px] text-gray-600">
-        {t.periodo_desde || t.periodo_hasta ? `${fmtFecha(t.periodo_desde)} → ${fmtFecha(t.periodo_hasta)}` : "—"}
-        <p className="text-[11px] text-gray-400">Último: {fmtFecha(t.ultimoCopiado)}</p>
-      </td>
-      <td className="px-2 py-1.5">
-        <input
-          type="date"
-          value={t.fecha_envio_copiar ?? ""}
-          disabled={!puedeEditar}
-          onChange={(e) => guardar({ fecha_envio_copiar: e.target.value || null })}
-          className={clsx(SELECT_CHICO, "w-[120px]", !t.fecha_envio_copiar && "text-gray-300")}
-        />
-      </td>
-      <td className="px-2 py-1.5">
-        <input
-          type="date"
-          value={t.fecha_retiro ?? ""}
-          disabled={!puedeEditar}
-          onChange={(e) => guardar({ fecha_retiro: e.target.value || null })}
-          className={clsx(SELECT_CHICO, "w-[120px]", !t.fecha_retiro && "text-gray-300")}
-        />
-      </td>
-      <td
-        className={clsx(
-          "px-3 py-2 text-center text-[12px]",
-          t.libres != null && t.libres <= UMBRAL_FOLIOS ? "text-red-600 font-medium" : "text-gray-600"
+        {(t.fecha_envio_copiar || bajos) && (
+          <p className="md:hidden mt-1 text-[11px] text-ink-subtle">
+            {t.fecha_envio_copiar && (
+              <>
+                Envío <span className={MONO}>{fmtFecha(t.fecha_envio_copiar)}</span>
+              </>
+            )}
+            {bajos && <span className="text-orange-700 font-semibold"> · {t.libres} folios libres</span>}
+          </p>
         )}
-      >
-        {t.libres ?? "—"}
       </td>
-      <td className="px-3 py-2 text-center">
-        <input
-          type="checkbox"
-          checked={t.material_listo}
-          disabled={!puedeEditar}
-          onChange={(e) => guardar({ material_listo: e.target.checked })}
-          className="accent-violet-600"
-          title="Material listo"
-        />
+      <td className="px-3 py-2.5 text-right">
+        <p className={NUM}>
+          {t.periodo_desde || t.periodo_hasta ? `${fmtFecha(t.periodo_desde)} → ${fmtFecha(t.periodo_hasta)}` : "—"}
+        </p>
+        <p className="text-[11px] text-ink-subtle">
+          Último <span className={MONO}>{fmtFecha(t.ultimoCopiado)}</span>
+        </p>
       </td>
-      <td className="px-2 py-1 whitespace-normal">
+      <td className="px-2 py-1.5 whitespace-normal">
         <DetalleEditable
           key={t.observaciones ?? ""}
           valor={t.observaciones}
           puedeEditar={puedeEditar}
           onGuardar={(v) => guardar({ observaciones: v })}
+        />
+      </td>
+      <td className="hidden md:table-cell px-2 py-1.5">
+        <input
+          type="date"
+          aria-label="Fecha de envío"
+          value={t.fecha_envio_copiar ?? ""}
+          disabled={!puedeEditar}
+          onChange={(e) => guardar({ fecha_envio_copiar: e.target.value || null })}
+          className={clsx(CONTROL_CELDA, MONO, "w-[124px]", !t.fecha_envio_copiar && "text-ink-ghost")}
+        />
+      </td>
+      <td className="hidden md:table-cell px-2 py-1.5">
+        <input
+          type="date"
+          aria-label="Fecha de retiro"
+          value={t.fecha_retiro ?? ""}
+          disabled={!puedeEditar}
+          onChange={(e) => guardar({ fecha_retiro: e.target.value || null })}
+          className={clsx(CONTROL_CELDA, MONO, "w-[124px]", !t.fecha_retiro && "text-ink-ghost")}
+        />
+      </td>
+      <td className={clsx("hidden md:table-cell px-3 py-2.5", NUM, bajos && FOLIOS_BAJOS)}>{t.libres ?? "—"}</td>
+      <td className="hidden lg:table-cell px-3 py-2.5 text-center">
+        <input
+          type="checkbox"
+          checked={t.material_listo}
+          disabled={!puedeEditar}
+          onChange={(e) => guardar({ material_listo: e.target.checked })}
+          className="accent-bordo"
+          aria-label="Material listo"
         />
       </td>
     </tr>
@@ -293,12 +358,14 @@ function Cola({
   estados,
   equipo,
   puedeEditar,
+  onIrPuesta,
 }: {
   tareas: TareaVista[];
   clientes: ClienteCola[];
   estados: LibroEstado[];
   equipo: Persona[];
   puedeEditar: boolean;
+  onIrPuesta: () => void;
 }) {
   const [moviendo, startMover] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -324,46 +391,58 @@ function Cola({
 
   const total = PRIORIDADES.reduce((n, p) => n + niveles[p].length, 0);
 
+  if (total === 0) {
+    return (
+      <div className="p-4 sm:p-6">
+        <div className={clsx(PANEL, VACIO)}>
+          <p className="font-archivo text-[15px] font-bold text-ink">La cola está vacía</p>
+          <p className={VACIO_TEXTO}>
+            Las tareas se crean desde Puesta al día (libros atrasados), desde la ficha de cada cliente o solas, cuando
+            un balance queda legalizado.
+          </p>
+          {puedeEditar && (
+            <button onClick={onIrPuesta} className={BOTON_PRIMARIO}>
+              <Plus size={14} /> Crear tareas desde Puesta al día
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <p className="text-[12px] text-gray-500">
-          {PRIORIDADES.map((p, i) => (
+    <div className="p-4 sm:p-6 space-y-5">
+      <div className="flex items-center gap-x-5 gap-y-2 flex-wrap">
+        <p className="flex flex-wrap items-baseline gap-x-4 text-[13px] text-ink-muted">
+          {PRIORIDADES.map((p) => (
             <span key={p}>
-              {i > 0 && <span className="text-gray-300"> · </span>}
-              <span className="font-semibold text-gray-800">{niveles[p].length}</span> en {p}
+              <b className="font-archivo text-[17px] text-ink tabular-nums">{niveles[p].length}</b> en {p}
             </span>
           ))}
         </p>
         <div className="flex-1" />
-        <select
-          value={filtroResp}
-          onChange={(e) => setFiltroResp(e.target.value)}
-          className="text-xs text-gray-600 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-violet-400"
-        >
-          <option value="">Todos los responsables</option>
-          {equipo.map((p) => (
-            <option key={p.id} value={p.id}>{p.nombre}</option>
-          ))}
-        </select>
+        <label className="flex items-center gap-2 text-[13px] text-ink-muted">
+          Responsable
+          <select value={filtroResp} onChange={(e) => setFiltroResp(e.target.value)} className={CONTROL}>
+            <option value="">Todos</option>
+            {equipo.map((p) => (
+              <option key={p.id} value={p.id}>{p.nombre}</option>
+            ))}
+          </select>
+        </label>
       </div>
       {filtroResp && (
-        <p className="text-[11px] text-gray-400 -mt-4">
+        <p className="text-[11.5px] text-ink-subtle -mt-3">
           Con un filtro aplicado no se puede reordenar: quitalo para subir o bajar clientes.
         </p>
       )}
 
       {error && (
-        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 flex justify-between">
+        <p className={clsx(ERROR, "flex justify-between gap-3")}>
           {error}
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-700">Cerrar</button>
-        </p>
-      )}
-
-      {total === 0 && (
-        <p className="text-sm text-gray-400 text-center py-16">
-          La cola está vacía. Las tareas se crean desde la pestaña &ldquo;Puesta al día&rdquo; o desde la ficha de
-          cada cliente.
+          <button onClick={() => setError(null)} className="font-semibold text-red-700 hover:text-red-900">
+            Cerrar
+          </button>
         </p>
       )}
 
@@ -375,91 +454,83 @@ function Cola({
         return (
           <section key={nivel} className="space-y-3">
             <h2 className="flex items-center gap-2">
-              <span className={clsx("text-[11px] font-semibold rounded-full px-2.5 py-1", PRIORIDAD_INFO[nivel].cls)}>
-                {PRIORIDAD_INFO[nivel].label}
+              <span className={clsx(CHIP, PRIORIDAD_INFO[nivel].cls)}>{PRIORIDAD_INFO[nivel].label}</span>
+              <span className="text-[12px] text-ink-subtle">
+                <span className={MONO}>{bloques.length}</span> clientes
               </span>
-              <span className="text-[12px] text-gray-400">{bloques.length} clientes</span>
             </h2>
             {bloques.map((b) => {
               const indice = niveles[nivel].indexOf(b);
               const porEnviar = b.tareas.filter((t) => t.estado_id !== copiandose).length;
               return (
-                <div key={b.cliente.id} className={clsx("bg-white border rounded-xl overflow-hidden", PRIORIDAD_INFO[nivel].borde)}>
-                  <div className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-100">
+                <div key={b.cliente.id} className={clsx(PANEL, "overflow-hidden", PRIORIDAD_INFO[nivel].borde)}>
+                  <div className={clsx(PANEL_CABECERA, "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 sm:px-4 py-2.5")}>
                     {puedeEditar && !filtroResp && (
-                      <div className="flex flex-col">
+                      <div className="flex gap-0.5">
                         <button
                           disabled={moviendo || indice === 0}
                           onClick={() => mover(nivel, indice, -1)}
-                          title="Subir"
-                          className="text-gray-400 hover:text-violet-700 disabled:opacity-20"
+                          aria-label={`Subir ${b.cliente.nombre}`}
+                          className="w-6 h-7 rounded-md border border-line-input bg-paper text-ink-muted hover:text-ink disabled:opacity-30 flex items-center justify-center"
                         >
                           <ArrowUp size={13} />
                         </button>
                         <button
                           disabled={moviendo || indice === niveles[nivel].length - 1}
                           onClick={() => mover(nivel, indice, 1)}
-                          title="Bajar"
-                          className="text-gray-400 hover:text-violet-700 disabled:opacity-20"
+                          aria-label={`Bajar ${b.cliente.nombre}`}
+                          className="w-6 h-7 rounded-md border border-line-input bg-paper text-ink-muted hover:text-ink disabled:opacity-30 flex items-center justify-center"
                         >
                           <ArrowDown size={13} />
                         </button>
                       </div>
                     )}
-                    <span className="text-[12px] text-gray-400 w-5 text-right">{indice + 1}</span>
-                    <div className="min-w-0">
+                    <span className={clsx(MONO, "text-[12px] text-ink-subtle w-5 text-right")}>{indice + 1}</span>
+                    <div className="min-w-0 flex-1 basis-56">
                       <Link
                         href={`/libros/clientes/${b.cliente.id}`}
-                        className="text-[13px] font-semibold text-gray-900 hover:text-violet-700"
+                        className="font-archivo text-[14px] font-bold text-ink hover:text-bordo"
                       >
                         {b.cliente.nombre}
                       </Link>
-                      <p className="text-[11px] text-gray-400">
-                        {b.tareas.length} {b.tareas.length === 1 ? "libro" : "libros"} · Responsable:{" "}
-                        {b.cliente.responsableNombre ?? "sin asignar"}
+                      <p className="text-[11.5px] text-ink-subtle">
+                        <span className={MONO}>{b.tareas.length}</span> {b.tareas.length === 1 ? "libro" : "libros"} ·{" "}
+                        {b.cliente.responsableNombre ?? "sin responsable"}
                         {b.cliente.mandatoVencido && (
-                          <Link href="/libros/pedidos" className="text-red-600 font-medium hover:underline">
+                          <Link href="/libros/pedidos" className="text-red-700 font-semibold hover:underline">
                             {" "}· Mandato vencido (ver renovación en Pedidos)
                           </Link>
                         )}
                       </p>
                     </div>
-                    <div className="flex-1" />
                     {puedeEditar && (
-                      <>
+                      <div className="flex flex-wrap gap-2">
                         {porEnviar > 0 && (
-                          <button
-                            onClick={() => setEnvioDe(b)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-lg"
-                          >
-                            <Send size={12} /> Enviar a copiar
+                          <button onClick={() => setEnvioDe(b)} className={BOTON_SECUNDARIO}>
+                            <Send size={13} /> Enviar a copiar
                           </button>
                         )}
-                        <button
-                          onClick={() => setCopiadoDe(b)}
-                          className="px-3 py-1.5 text-[12px] font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg"
-                        >
+                        <button onClick={() => setCopiadoDe(b)} className={BOTON_PRIMARIO}>
                           Retirado / Registrar copiado
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm whitespace-nowrap">
                       <thead>
-                        <tr className="bg-gray-50/70">
-                          <th className={clsx(TH, "text-left pl-5")}>Libro</th>
-                          <th className={clsx(TH, "text-left")}>Prioridad</th>
+                        <tr>
+                          <th className={clsx(TH, "text-left pl-4")}>Libro</th>
                           <th className={clsx(TH, "text-left")}>Estado</th>
-                          <th className={clsx(TH, "text-left")}>Período</th>
-                          <th className={clsx(TH, "text-left")}>Envío</th>
-                          <th className={clsx(TH, "text-left")}>Retiro</th>
-                          <th className={clsx(TH, "text-center")}>Libres</th>
-                          <th className={clsx(TH, "text-center")}>Material</th>
+                          <th className={clsx(TH, "text-right")}>Período</th>
                           <th className={clsx(TH, "text-left")}>Detalle</th>
+                          <th className={clsx(TH, "hidden md:table-cell text-left")}>Envío</th>
+                          <th className={clsx(TH, "hidden md:table-cell text-left")}>Retiro</th>
+                          <th className={clsx(TH, "hidden md:table-cell text-right")}>Libres</th>
+                          <th className={clsx(TH, "hidden lg:table-cell text-center")}>Material</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {b.tareas.map((t) => (
                           <FilaTarea
                             key={t.id}
@@ -523,91 +594,132 @@ function PuestaAlDia({
   const nSinDato = filas.reduce((n, f) => n + f.sinDato.length, 0);
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center gap-4 flex-wrap">
-        <p className="text-[12px] text-gray-500">
-          <span className="font-semibold text-gray-800">{totalAlDia}</span> de {total} libros al día en{" "}
-          {filas.length} clientes
+    <div className="p-4 sm:p-6 space-y-4">
+      <div className="flex items-center gap-x-4 gap-y-3 flex-wrap">
+        <p className="text-[13px] text-ink-muted">
+          <b className="font-archivo text-[17px] text-ink tabular-nums">{totalAlDia}</b> de{" "}
+          <span className={MONO}>{total}</span> libros al día en <span className={MONO}>{filas.length}</span> clientes
         </p>
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5">
+        <div className="inline-flex rounded-full border border-line-input bg-paper p-0.5" role="tablist">
           {(
             [
-              ["atrasados", `Atrasados (${nAtrasados})`],
-              ["sinDato", `Sin dato (${nSinDato})`],
+              ["atrasados", "Atrasados", nAtrasados],
+              ["sinDato", "Sin dato", nSinDato],
             ] as const
-          ).map(([v, label]) => (
+          ).map(([v, label, n]) => (
             <button
               key={v}
+              role="tab"
+              aria-selected={vista === v}
               onClick={() => setVista(v)}
               className={clsx(
-                "px-3 py-1 text-[12px] font-medium rounded-md",
-                vista === v ? "bg-violet-600 text-white" : "text-gray-600 hover:text-gray-900"
+                "px-3 py-1 text-[12.5px] font-semibold rounded-full",
+                vista === v ? "bg-ink text-white" : "text-ink-muted hover:text-ink"
               )}
             >
-              {label}
+              {label} <span className="font-plex tabular-nums">{n}</span>
             </button>
           ))}
         </div>
+        <Ayuda>
+          {vista === "atrasados" ? (
+            <>
+              <b>Atrasados:</b> tienen último copiado cargado y no llegan a lo exigible. Anuales: último cierre con el
+              balance ya vencido (cierre + 135 días). Trimestrales: último trimestre cerrado hace más de 30 días. Los
+              libros por evento no cuentan.
+            </>
+          ) : (
+            <>
+              <b>Sin dato:</b> no tienen último copiado cargado, así que no se sabe si están atrasados. Hay que relevar
+              el libro y cargar el dato en la ficha, no mandarlo a copiar.
+            </>
+          )}
+        </Ayuda>
         <div className="flex-1" />
-        <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="relative w-full sm:w-auto">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar cliente…"
-            className="text-xs text-gray-700 bg-white border border-gray-200 rounded-lg pl-7 pr-2.5 py-1.5 w-48 focus:outline-none focus:border-violet-400"
+            aria-label="Buscar cliente"
+            className={BUSCADOR}
           />
         </div>
       </div>
-      <p className="text-[11px] text-gray-400 -mt-2">
-        {vista === "atrasados"
-          ? "Tienen último copiado cargado y no llegan a lo exigible. Anuales: último cierre con el balance ya vencido (cierre + 135 días). Trimestrales: último trimestre cerrado hace más de 30 días. Los libros por evento no cuentan."
-          : "No tienen último copiado cargado: no se sabe si están atrasados. Hay que relevar el libro y cargar el dato en la ficha, no mandarlo a copiar."}
-      </p>
 
-      <div className="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
+      <div className={clsx(PANEL, "divide-y divide-line-row")}>
         {visibles.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-12">Sin clientes para mostrar.</p>
+          <div className={VACIO}>
+            <p className="font-archivo text-[15px] font-bold text-ink">
+              {busqueda.trim()
+                ? "Ningún cliente coincide con la búsqueda"
+                : vista === "atrasados"
+                  ? "No hay libros atrasados"
+                  : "No hay libros sin dato"}
+            </p>
+            <p className={VACIO_TEXTO}>
+              {busqueda.trim()
+                ? "Probá con otra parte del nombre."
+                : vista === "atrasados"
+                  ? "Todos los libros con último copiado cargado llegan a lo exigible."
+                  : "Todos los libros tienen el último copiado cargado en la ficha."}
+            </p>
+            {busqueda.trim() ? (
+              <button onClick={() => setBusqueda("")} className={BOTON_SECUNDARIO}>
+                Limpiar búsqueda
+              </button>
+            ) : (
+              vista === "atrasados" &&
+              nSinDato > 0 && (
+                <button onClick={() => setVista("sinDato")} className={BOTON_SECUNDARIO}>
+                  Ver los <span className="font-plex tabular-nums">{nSinDato}</span> sin dato
+                </button>
+              )
+            )}
+          </div>
         )}
         {visibles.map((f) => {
           const pct = f.total ? Math.round((f.alDia / f.total) * 100) : 100;
           const creables = f.atrasados.filter((a) => !a.enCola);
           return (
-            <div key={f.clienteId} className="px-5 py-3">
-              <div className="flex items-center gap-4">
+            <div key={f.clienteId} className="px-4 sm:px-5 py-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <Link
                   href={`/libros/clientes/${f.clienteId}`}
-                  className="text-[13px] font-semibold text-gray-900 hover:text-violet-700 w-72 truncate"
+                  className="font-archivo text-[13.5px] font-bold text-ink hover:text-bordo w-full sm:w-72 truncate"
                 >
                   {f.nombre}
                 </Link>
-                <div className="flex items-center gap-2 w-56">
-                  <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div className="flex items-center gap-2 w-48">
+                  <div className="flex-1 h-1.5 bg-paper-hover rounded-full overflow-hidden">
                     <div
-                      className={clsx("h-full rounded-full", pct === 100 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-400" : "bg-red-400")}
+                      className={clsx("h-full rounded-full", pct === 100 ? "bg-green-600" : pct >= 50 ? "bg-yellow-400" : "bg-red-300")}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-[12px] text-gray-600 w-12 text-right">
+                  <span className={clsx(NUM, "w-12")}>
                     {f.alDia}/{f.total}
                   </span>
                 </div>
                 {f.sinCargar > 0 && (
-                  <span className="text-[11px] text-gray-400">{f.sinCargar} libros sin cargar en la ficha</span>
+                  <span className="text-[11.5px] text-ink-subtle">
+                    <span className={MONO}>{f.sinCargar}</span> sin cargar en la ficha
+                  </span>
                 )}
                 <div className="flex-1" />
                 {vista === "atrasados" && puedeEditar && creables.length > 0 && (
                   <button
                     onClick={() => setCreandoPara({ fila: f, libroIds: creables.map((a) => a.libroId) })}
-                    className="inline-flex items-center gap-1 text-[12px] font-medium text-violet-700 hover:text-violet-900"
+                    className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-bordo hover:text-bordo-dark"
                   >
-                    <Plus size={13} /> Crear tareas ({creables.length})
+                    <Plus size={13} /> Crear tareas (<span className="font-plex tabular-nums">{creables.length}</span>)
                   </button>
                 )}
                 {vista === "sinDato" && (
                   <Link
                     href={`/libros/clientes/${f.clienteId}`}
-                    className="text-[12px] font-medium text-violet-700 hover:text-violet-900"
+                    className="text-[12.5px] font-semibold text-bordo hover:text-bordo-dark"
                   >
                     Relevar en la ficha
                   </Link>
@@ -626,16 +738,14 @@ function PuestaAlDia({
                             : `Exigible: ${fmtFecha(a.exigible)} · Último copiado: ${fmtFecha(a.ultimo)}`
                         }
                         className={clsx(
-                          "text-[11px] rounded-full px-2 py-0.5 border",
-                          a.enCola
-                            ? "border-violet-200 bg-violet-50 text-violet-700"
-                            : a.sinLibro
-                              ? "border-red-200 bg-red-50 text-red-700"
-                              : "border-gray-200 bg-white text-gray-600 hover:border-violet-300"
+                          CHIP,
+                          "!font-medium disabled:cursor-default",
+                          a.enCola ? SEMAFORO.verdeClaro : SEMAFORO.rojo,
+                          !a.enCola && puedeEditar && "hover:brightness-95"
                         )}
                       >
                         {a.nombre}
-                        {a.sinLibro ? " · sin libro" : ` · ${fmtFecha(a.ultimo)}`}
+                        {a.sinLibro ? " · sin libro" : <span className={MONO}> · {fmtFecha(a.ultimo)}</span>}
                         {a.enCola && " · en cola"}
                       </button>
                     ))
@@ -643,9 +753,10 @@ function PuestaAlDia({
                       <span
                         key={a.libroId}
                         title={`Exigible: ${fmtFecha(a.exigible)} · sin último copiado cargado`}
-                        className="text-[11px] rounded-full px-2 py-0.5 border border-dashed border-gray-300 bg-white text-gray-500"
+                        className={clsx(CHIP, "!font-medium", SEMAFORO.sinDato)}
                       >
-                        {a.nombre} T{a.tomo}
+                        {a.nombre}
+                        {a.tomo > 1 && ` · tomo ${a.tomo}`}
                         {a.enCola && " · en cola"}
                       </span>
                     ))}
@@ -661,7 +772,7 @@ function PuestaAlDia({
           clienteNombre={creandoPara.fila.nombre}
           opciones={creandoPara.fila.atrasados.map((a) => ({
             id: a.libroId,
-            nombre: `${a.nombre} (T${a.tomo})`,
+            nombre: a.tomo > 1 ? `${a.nombre} (tomo ${a.tomo})` : a.nombre,
             detalle: a.sinLibro ? "Sin libro" : `Último: ${fmtFecha(a.ultimo)}`,
             enCola: a.enCola,
           }))}
@@ -676,78 +787,110 @@ function PuestaAlDia({
   );
 }
 
-function Historial({ tareas }: { tareas: TareaVista[] }) {
+function Historial({ tareas, onIrCola }: { tareas: TareaVista[]; onIrCola: () => void }) {
   const [busqueda, setBusqueda] = useState("");
-  const terminadas = tareas
-    .filter((t) => t.esFinal)
+  const todas = tareas.filter((t) => t.esFinal);
+  const terminadas = todas
     .filter((t) => !busqueda.trim() || t.clienteNombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
     .sort((a, b) => (b.fecha_fin ?? "").localeCompare(a.fecha_fin ?? ""));
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center gap-4">
-        <p className="text-[12px] text-gray-500">
-          <span className="font-semibold text-gray-800">{terminadas.length}</span> copiados registrados
+    <div className="p-4 sm:p-6 space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-[13px] text-ink-muted">
+          <b className="font-archivo text-[17px] text-ink tabular-nums">{terminadas.length}</b> copiados registrados
         </p>
         <div className="flex-1" />
-        <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="relative w-full sm:w-auto">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
           <input
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar cliente…"
-            className="text-xs text-gray-700 bg-white border border-gray-200 rounded-lg pl-7 pr-2.5 py-1.5 w-48 focus:outline-none focus:border-violet-400"
+            aria-label="Buscar cliente"
+            className={BUSCADOR}
           />
         </div>
       </div>
-      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
-        <table className="w-full text-sm whitespace-nowrap">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className={clsx(TH, "text-left pl-5")}>Fecha</th>
-              <th className={clsx(TH, "text-left")}>Cliente</th>
-              <th className={clsx(TH, "text-left")}>Libro</th>
-              <th className={clsx(TH, "text-left")}>Origen</th>
-              <th className={clsx(TH, "text-left")}>Copiado hasta</th>
-              <th className={clsx(TH, "text-left")}>Envío</th>
-              <th className={clsx(TH, "text-left")}>Retiro</th>
-              <th className={clsx(TH, "text-center")}>Folios</th>
-              <th className={clsx(TH, "text-left")}>Detalle</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {terminadas.length === 0 && (
-              <tr>
-                <td colSpan={9} className="text-center text-gray-400 text-sm py-12">
-                  Todavía no hay copiados registrados.
-                </td>
-              </tr>
+      <div className={clsx(PANEL, "overflow-x-auto")}>
+        {terminadas.length === 0 ? (
+          <div className={VACIO}>
+            <p className="font-archivo text-[15px] font-bold text-ink">
+              {todas.length === 0 ? "Todavía no hay copiados registrados" : "Ningún cliente coincide con la búsqueda"}
+            </p>
+            <p className={VACIO_TEXTO}>
+              {todas.length === 0
+                ? "Cada vez que se registra un retiro o un copiado desde la Cola, queda acá."
+                : "Probá con otra parte del nombre."}
+            </p>
+            {todas.length === 0 ? (
+              <button onClick={onIrCola} className={BOTON_SECUNDARIO}>
+                Ir a la Cola
+              </button>
+            ) : (
+              <button onClick={() => setBusqueda("")} className={BOTON_SECUNDARIO}>
+                Limpiar búsqueda
+              </button>
             )}
-            {terminadas.map((t) => (
-              <tr key={t.id}>
-                <td className="px-3 py-2 pl-5 text-[12px] text-gray-600">{fmtFecha(t.fecha_fin)}</td>
-                <td className="px-3 py-2">
-                  <Link href={`/libros/clientes/${t.cliente_id}`} className="text-[13px] text-gray-800 hover:text-violet-700">
-                    {t.clienteNombre}
-                  </Link>
-                </td>
-                <td className="px-3 py-2 text-[12px] text-gray-700">
-                  {t.libroNombre} <span className="text-gray-400">T{t.tomo}</span>
-                </td>
-                <td className="px-3 py-2 text-[12px] text-gray-500">{ORIGEN_TAREA_LABEL[t.origen]}</td>
-                <td className="px-3 py-2 text-[12px] text-gray-600">{fmtFecha(t.periodo_hasta)}</td>
-                <td className="px-3 py-2 text-[12px] text-gray-500">{fmtFecha(t.fecha_envio_copiar)}</td>
-                <td className="px-3 py-2 text-[12px] text-gray-500">{fmtFecha(t.fecha_retiro)}</td>
-                <td className="px-3 py-2 text-center text-[12px] text-gray-600">{t.folios_usados ?? "—"}</td>
-                <td className="px-3 py-2 text-[12px] text-gray-500 max-w-[320px] truncate" title={t.observaciones ?? ""}>
-                  {t.observaciones ?? ""}
-                </td>
+          </div>
+        ) : (
+          <table className="w-full text-sm whitespace-nowrap">
+            <thead>
+              <tr className={PANEL_CABECERA}>
+                <th className={clsx(TH, "text-right pl-4")}>Fecha</th>
+                <th className={clsx(TH, "text-left")}>Cliente</th>
+                <th className={clsx(TH, "text-left")}>Libro</th>
+                <th className={clsx(TH, "text-right")}>Copiado hasta</th>
+                <th className={clsx(TH, "hidden md:table-cell text-left")}>Origen</th>
+                <th className={clsx(TH, "hidden md:table-cell text-right")}>Envío</th>
+                <th className={clsx(TH, "hidden md:table-cell text-right")}>Retiro</th>
+                <th className={clsx(TH, "hidden md:table-cell text-right")}>Folios</th>
+                <th className={clsx(TH, "hidden lg:table-cell text-left")}>Detalle</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {terminadas.map((t) => (
+                <tr key={t.id} className="border-t border-line-row hover:bg-paper-hover">
+                  <td className={clsx("px-3 py-2 pl-4", NUM)}>{fmtFecha(t.fecha_fin)}</td>
+                  <td className="px-3 py-2">
+                    <Link
+                      href={`/libros/clientes/${t.cliente_id}`}
+                      className="font-archivo text-[13px] font-bold text-ink hover:text-bordo"
+                    >
+                      {t.clienteNombre}
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2 text-[12.5px] text-ink-cell">
+                    {t.libroNombre}
+                    {t.tomo > 1 && <span className="text-ink-subtle"> · tomo {t.tomo}</span>}
+                  </td>
+                  <td className={clsx("px-3 py-2", NUM)}>{fmtFecha(t.periodo_hasta)}</td>
+                  <td className="hidden md:table-cell px-3 py-2 text-[12px] text-ink-muted">{ORIGEN_TAREA_LABEL[t.origen]}</td>
+                  <td className={clsx("hidden md:table-cell px-3 py-2", NUM)}>{fmtFecha(t.fecha_envio_copiar)}</td>
+                  <td className={clsx("hidden md:table-cell px-3 py-2", NUM)}>{fmtFecha(t.fecha_retiro)}</td>
+                  <td className={clsx("hidden md:table-cell px-3 py-2", NUM)}>{t.folios_usados ?? "—"}</td>
+                  <td
+                    className="hidden lg:table-cell px-3 py-2 text-[12px] text-ink-muted max-w-[320px] truncate"
+                    title={t.observaciones ?? ""}
+                  >
+                    {t.observaciones ?? ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
+  );
+}
+
+function Punto({ urgente }: { urgente?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={clsx("w-2 h-2 rounded-full shrink-0 mt-[5px]", urgente ? "bg-red-600" : "bg-alerta-dot")}
+    />
   );
 }
 
@@ -759,32 +902,33 @@ function AvisosBalance({ avisos }: { avisos: AvisoBalance[] }) {
     xs.map((a, i) => (
       <span key={a.clienteId}>
         {i > 0 && ", "}
-        <Link href={`/libros/clientes/${a.clienteId}`} className="font-medium hover:underline">
+        <Link href={`/libros/clientes/${a.clienteId}`} className="font-semibold underline-offset-2 hover:underline">
           {a.nombre}
         </Link>{" "}
-        (B{a.anio} · {a.libros} {a.libros === 1 ? "libro" : "libros"})
+        (B<span className={MONO}>{a.anio}</span> · <span className={MONO}>{a.libros}</span>{" "}
+        {a.libros === 1 ? "libro" : "libros"})
       </span>
     ));
   return (
-    <div className="mt-3 space-y-1.5">
+    <>
       {legalizados.length > 0 && (
-        <p className="flex gap-2 text-[12px] text-red-800 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+        <p className={AVISO}>
+          <Punto />
           <span>
-            <strong>Balance legalizado, acta por hacer:</strong> {lista(legalizados)}. Se crearon solas las tareas del
-            envío anual (P1).
+            <b>Balance legalizado, acta por hacer:</b> {lista(legalizados)}. Se sumaron solas las tareas del envío
+            anual (P1).
           </span>
         </p>
       )}
       {finalizados.length > 0 && (
-        <p className="flex gap-2 text-[12px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+        <p className={AVISO}>
+          <Punto />
           <span>
-            <strong>Balance finalizado, envío anual pendiente:</strong> {lista(finalizados)}.
+            <b>Balance finalizado, envío anual pendiente:</b> {lista(finalizados)}.
           </span>
         </p>
       )}
-    </div>
+    </>
   );
 }
 
@@ -792,30 +936,42 @@ function AvisosRenovacion({ avisos }: { avisos: AvisoRenovacion[] }) {
   if (avisos.length === 0) return null;
   const vencidos = avisos.filter((a) => a.dias != null && a.dias < 0).length;
   return (
-    <p
-      className={clsx(
-        "mt-1.5 flex gap-2 text-[12px] rounded-lg px-3 py-2 border",
-        vencidos ? "text-red-800 bg-red-50 border-red-100" : "text-amber-800 bg-amber-50 border-amber-100"
-      )}
-    >
-      <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+    <p className={vencidos ? AVISO_URGENTE : AVISO}>
+      <Punto urgente={vencidos > 0} />
       <span>
-        <strong>Renovación de autoridades{vencidos ? ` (${vencidos} con el mandato vencido, P1)` : ""}:</strong>{" "}
+        <b>
+          Renovación de autoridades
+          {vencidos ? (
+            <>
+              {" "}
+              (<span className={MONO}>{vencidos}</span> con el mandato vencido, P1)
+            </>
+          ) : (
+            ""
+          )}
+          :
+        </b>{" "}
         {avisos.slice(0, 8).map((a, i) => (
           <span key={a.clienteId}>
             {i > 0 && ", "}
-            <span className="font-medium">{a.nombre}</span>
+            <span className="font-semibold">{a.nombre}</span>
             {a.vence && (
               <>
                 {" "}
-                ({a.dias! < 0 ? "venció" : "vence"} {fmtFecha(a.vence)}
-                {a.pasos > 0 && ` · ${a.hechos}/${a.pasos}`})
+                ({a.dias! < 0 ? "venció" : "vence"} <span className={MONO}>{fmtFecha(a.vence)}</span>
+                {a.pasos > 0 && (
+                  <>
+                    {" "}
+                    · <span className={MONO}>{a.hechos}/{a.pasos}</span>
+                  </>
+                )}
+                )
               </>
             )}
           </span>
         ))}
         {avisos.length > 8 && ` y ${avisos.length - 8} más`}.{" "}
-        <Link href="/libros/pedidos" className="font-medium underline">
+        <Link href="/libros/pedidos" className="font-semibold underline">
           Ver en Pedidos
         </Link>
       </span>
@@ -845,27 +1001,36 @@ export function SeguimientoLibrosClient({
   const [pestaña, setPestaña] = useState<"cola" | "puesta" | "historial">("cola");
   const abiertas = tareas.filter((t) => !t.esFinal).length;
   const atrasados = puestaAlDia.reduce((n, f) => n + f.atrasados.filter((a) => !a.enCola).length, 0);
+  const sinDato = puestaAlDia.reduce((n, f) => n + f.sinDato.length, 0);
+  const hayAvisos = avisosBalance.length > 0 || avisosRenovacion.length > 0;
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 pt-4 shrink-0">
+    <div className={PAGINA}>
+      <div className="shrink-0 px-4 sm:px-6 pt-5 space-y-3">
         <div className="flex items-center gap-3">
-          <div className="w-2 h-6 rounded-full bg-violet-500" />
-          <div>
-            <h1 className="text-[17px] font-semibold text-gray-900">Libros — Seguimiento</h1>
-            <p className="text-[12px] text-gray-400 mt-0.5">
-              Un bloque por cliente: enviá a copiar, registrá el retiro y el copiado sin salir de acá
-            </p>
-          </div>
+          <span className={RAYA_MODULO} aria-hidden="true" />
+          <h1 className={TITULO}>Seguimiento</h1>
+          <Ayuda>
+            Un bloque por cliente con sus libros en curso. &ldquo;Enviar a copiar&rdquo; registra la salida a la
+            copiadora; &ldquo;Retirado / Registrar copiado&rdquo; registra la vuelta, pide los folios y pasa los libros
+            al historial. Subí o bajá cada cliente dentro de su prioridad.
+          </Ayuda>
         </div>
-        <AvisosBalance avisos={avisosBalance} />
-        <AvisosRenovacion avisos={avisosRenovacion} />
-        <div className="flex gap-0 mt-3 -mb-px">
+        {hayAvisos && (
+          <div className="space-y-1.5">
+            <AvisosBalance avisos={avisosBalance} />
+            <AvisosRenovacion avisos={avisosRenovacion} />
+          </div>
+        )}
+        <div role="tablist" aria-label="Vistas" className="flex flex-wrap gap-x-6 border-b border-line-rule">
           <Pestaña activa={pestaña === "cola"} onClick={() => setPestaña("cola")}>
-            Cola ({abiertas})
+            Cola <span className="font-plex tabular-nums text-ink-subtle font-normal">{abiertas}</span>
           </Pestaña>
           <Pestaña activa={pestaña === "puesta"} onClick={() => setPestaña("puesta")}>
-            Puesta al día ({atrasados})
+            Puesta al día{" "}
+            <span className="font-plex tabular-nums text-ink-subtle font-normal">
+              {atrasados} atrasados · {sinDato} sin dato
+            </span>
           </Pestaña>
           <Pestaña activa={pestaña === "historial"} onClick={() => setPestaña("historial")}>
             Historial
@@ -874,10 +1039,17 @@ export function SeguimientoLibrosClient({
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {pestaña === "cola" && (
-          <Cola tareas={tareas} clientes={clientes} estados={estados} equipo={equipo} puedeEditar={puedeEditar} />
+          <Cola
+            tareas={tareas}
+            clientes={clientes}
+            estados={estados}
+            equipo={equipo}
+            puedeEditar={puedeEditar}
+            onIrPuesta={() => setPestaña("puesta")}
+          />
         )}
         {pestaña === "puesta" && <PuestaAlDia filas={puestaAlDia} equipo={equipo} puedeEditar={puedeEditar} />}
-        {pestaña === "historial" && <Historial tareas={tareas} />}
+        {pestaña === "historial" && <Historial tareas={tareas} onIrCola={() => setPestaña("cola")} />}
       </div>
     </div>
   );

@@ -24,6 +24,25 @@ import {
   crearPedido,
 } from "../actions";
 import { Modal, Pie, LABEL, INPUT } from "../ModalBase";
+import {
+  BOTON_PRIMARIO,
+  BOTON_SECUNDARIO,
+  BOTON_TEXTO,
+  CHIP,
+  CONTROL,
+  ENCABEZADO,
+  ERROR,
+  FILA,
+  MONO,
+  NUM,
+  PAGINA,
+  PANEL,
+  RAYA_MODULO,
+  SUBTITULO,
+  TITULO,
+  VACIO,
+  VACIO_TEXTO,
+} from "../ui";
 
 export type ClienteConLibros = {
   id: string;
@@ -47,13 +66,14 @@ const ESTADOS_PEDIDO: EstadoPedido[] = [
   "cerrado",
 ];
 
-const TH = "text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-2 text-left";
-const TD = "px-3 py-2 text-sm text-gray-700 align-top";
+const TH = "text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em] px-3 py-2.5 text-left";
+const TD = "px-3 py-2.5 text-[13px] text-ink-cell align-top";
+const BOTON_CHICO = clsx(BOTON_SECUNDARIO, "min-h-[30px] px-2.5 text-[12px]");
 
 function BadgeEstado({ estado }: { estado: EstadoPedido }) {
   const info = ESTADO_PEDIDO_INFO[estado];
   return (
-    <span className={clsx("text-[11px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap", info.cls)}>
+    <span className={clsx(CHIP, info.cls)}>
       {info.label}
     </span>
   );
@@ -62,9 +82,9 @@ function BadgeEstado({ estado }: { estado: EstadoPedido }) {
 function DotSemaforo({ proximo }: { proximo: string | null }) {
   const s = semaforoSeguimiento(proximo, hoyISO());
   const info = SEMAFORO_SEGUIMIENTO_INFO[s];
-  if (s === "sin_fecha") return <span className="text-gray-300 text-xs">—</span>;
+  if (s === "sin_fecha") return <span className="text-ink-ghost text-xs">—</span>;
   return (
-    <span className={clsx("inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full", info.cls)}>
+    <span className={clsx("inline-flex items-center gap-1.5 text-[11.5px] font-semibold px-2 py-0.5 rounded-full font-plex tabular-nums whitespace-nowrap", info.cls)}>
       <span className={clsx("w-1.5 h-1.5 rounded-full inline-block", info.dot)} />
       {proximo ? fmtFecha(proximo) : "—"}
     </span>
@@ -321,45 +341,45 @@ function AprobarModal({
       <div className="flex flex-col min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
           {esPresupuesto ? (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-muted">
               Se marcará como <strong>Aprobado</strong>. Para presupuestos el nuevo tomo se abre
               desde la ficha del libro.
             </p>
           ) : libros.length === 0 ? (
-            <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+            <p className="text-sm text-alerta-fg bg-alerta-bg rounded-lg px-3 py-2">
               Este cliente no tiene libros activos cargados. Se aprobará sin crear tareas.
             </p>
           ) : (
             <>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-ink-muted">
                 Elegí los libros para los que se creará una tarea de copiado en la cola:
               </p>
-              <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-56 overflow-y-auto">
+              <div className="border border-line-input rounded-[9px] divide-y divide-line-row max-h-56 overflow-y-auto">
                 {libros.map((l) => (
                   <label
                     key={l.id}
-                    className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50"
+                    className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-paper-hover"
                   >
                     <input
                       type="checkbox"
                       checked={elegidos.has(l.id)}
                       onChange={() => toggle(l.id)}
-                      className="accent-violet-600"
+                      className="accent-[#7D1C2E]"
                     />
-                    <span className="text-sm text-gray-800">{l.nombre}</span>
+                    <span className="text-sm text-ink">{l.nombre}</span>
                   </label>
                 ))}
               </div>
             </>
           )}
         </div>
-        <div className="px-6 py-4 border-t border-gray-100 space-y-3 shrink-0">
-          {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+        <div className="px-6 py-4 border-t border-line-row space-y-3 shrink-0">
+          {error && <p className={ERROR}>{error}</p>}
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg"
+              className="px-4 py-2 text-sm text-ink-muted hover:text-ink rounded-lg"
             >
               Cancelar
             </button>
@@ -367,7 +387,7 @@ function AprobarModal({
               type="button"
               disabled={pendiente}
               onClick={aprobar}
-              className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50"
+              className={BOTON_PRIMARIO}
             >
               {pendiente ? "Aprobando…" : "Aprobar"}
             </button>
@@ -405,11 +425,11 @@ function CerrarRenovacionModal({ pedido, onClose }: { pedido: PedidoVista; onClo
       <form onSubmit={guardar} className="flex flex-col min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
           {faltan > 0 && (
-            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+            <p className="text-xs text-alerta-fg bg-alerta-bg rounded-lg px-3 py-2">
               Quedan {faltan} {faltan === 1 ? "paso" : "pasos"} del checklist sin marcar.
             </p>
           )}
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-muted">
             Cargá el mandato nuevo: se actualiza en los datos societarios del cliente y el anterior queda en el
             historial de este pedido.
           </p>
@@ -451,7 +471,7 @@ function ChecklistEditor({ pedido, puedeEditar }: { pedido: PedidoVista; puedeEd
 
   return (
     <div className={clsx("space-y-1.5", pendiente && "opacity-60")}>
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Checklist</p>
+      <p className="text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em]">Checklist</p>
       {items.map((item, i) => (
         <div key={i} className="flex items-center gap-2 group">
           <input
@@ -459,7 +479,7 @@ function ChecklistEditor({ pedido, puedeEditar }: { pedido: PedidoVista; puedeEd
             checked={item.hecho}
             disabled={!puedeEditar}
             onChange={(e) => guardar(items.map((x, j) => (j === i ? { ...x, hecho: e.target.checked } : x)))}
-            className="accent-violet-600"
+            className="accent-[#7D1C2E]"
           />
           <input
             defaultValue={item.texto}
@@ -469,15 +489,16 @@ function ChecklistEditor({ pedido, puedeEditar }: { pedido: PedidoVista; puedeEd
               if (texto && texto !== item.texto) guardar(items.map((x, j) => (j === i ? { ...x, texto } : x)));
             }}
             className={clsx(
-              "flex-1 text-xs bg-transparent border border-transparent hover:border-gray-200 focus:border-violet-400 rounded px-1.5 py-0.5 focus:outline-none",
-              item.hecho ? "text-gray-400 line-through" : "text-gray-700"
+              "flex-1 text-xs bg-transparent border border-transparent hover:border-line-input focus:border-bordo rounded px-1.5 py-0.5 focus:outline-none",
+              item.hecho ? "text-ink-subtle line-through" : "text-ink-cell"
             )}
           />
           {puedeEditar && (
             <button
               onClick={() => guardar(items.filter((_, j) => j !== i))}
               title="Quitar paso"
-              className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100"
+              aria-label="Quitar paso"
+              className="text-ink-ghost hover:text-red-700 opacity-0 group-hover:opacity-100 focus:opacity-100"
             >
               <X size={12} />
             </button>
@@ -498,11 +519,12 @@ function ChecklistEditor({ pedido, puedeEditar }: { pedido: PedidoVista; puedeEd
             value={nuevo}
             onChange={(e) => setNuevo(e.target.value)}
             placeholder="Agregar paso…"
-            className="flex-1 text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-violet-400"
+            aria-label="Agregar paso"
+            className="flex-1 text-xs border border-line-input rounded px-1.5 py-0.5 bg-paper focus:outline-none focus:border-bordo"
           />
         </form>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-700">{error}</p>}
     </div>
   );
 }
@@ -537,51 +559,60 @@ function FilaPedido({
 
   return (
     <>
-      <tr className="border-t border-gray-100 hover:bg-gray-50">
-        <td className={TD}>
-          <button
-            onClick={() => setExpandido((v) => !v)}
-            className="flex items-center gap-1 text-gray-700 font-medium hover:text-violet-700"
-          >
-            {expandido ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            {cliente?.nombre ?? "—"}
-          </button>
-          {pedido.solicitante && (
-            <p className="text-[11px] text-gray-400 mt-0.5 ml-4">Pedido por: {pedido.solicitante}</p>
-          )}
-        </td>
-        <td className={TD}>
-          {pedido.prioridad && (
-            <span className={clsx("mr-1.5 text-[10px] font-semibold rounded-full px-1.5 py-0.5", PRIORIDAD_INFO[pedido.prioridad].cls)}>
-              {pedido.prioridad}
-            </span>
-          )}
-          <span className="text-xs font-medium text-gray-600">
-            {TIPO_PEDIDO_LABEL[pedido.tipo]}
-          </span>
-          {pedido.automatico && (
-            <span className="ml-1.5 text-[10px] text-violet-500 font-medium">(auto)</span>
-          )}
-          {pedido.mandato_vence && diasMandato != null && pedido.estado !== "cerrado" && (
-            <p className={clsx("text-[11px] mt-0.5", diasMandato < 0 ? "text-red-600 font-medium" : "text-amber-700")}>
-              {diasMandato < 0 ? "Venció" : "Vence"} el {fmtFecha(pedido.mandato_vence)}
-              {diasMandato >= 0 && ` (en ${diasMandato} días)`}
-            </p>
-          )}
-        </td>
-        <td className={clsx(TD, "max-w-[200px]")}>
-          <p className="truncate text-xs text-gray-600">{pedido.descripcion ?? "—"}</p>
-          {pedido.checklist.length > 0 && (
-            <button onClick={() => setExpandido(true)} className="text-[11px] text-violet-600 hover:underline">
-              Checklist {hechos}/{pedido.checklist.length}
+      <tr className={FILA}>
+        <td className={clsx(TD, "pl-4")}>
+          <div className="flex items-start gap-1.5">
+            <button
+              onClick={() => setExpandido((v) => !v)}
+              aria-expanded={expandido}
+              aria-label={expandido ? "Ocultar detalle" : "Ver detalle"}
+              className="mt-0.5 text-ink-subtle hover:text-ink shrink-0"
+            >
+              {expandido ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
-          )}
+            <div className="min-w-0">
+              <button
+                onClick={() => setExpandido((v) => !v)}
+                className="text-left font-archivo font-bold text-ink hover:text-bordo"
+              >
+                {cliente?.nombre ?? "—"}
+              </button>
+              <p className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                {pedido.prioridad && (
+                  <span className={clsx(CHIP, "px-1.5 text-[10.5px]", PRIORIDAD_INFO[pedido.prioridad].cls)}>
+                    {pedido.prioridad}
+                  </span>
+                )}
+                <span className="text-[12px] font-medium text-ink-muted">{TIPO_PEDIDO_LABEL[pedido.tipo]}</span>
+                {pedido.automatico && <span className="text-[11px] text-ink-subtle">· automático</span>}
+              </p>
+              {pedido.mandato_vence && diasMandato != null && pedido.estado !== "cerrado" && (
+                <p className={clsx("text-[11px] mt-0.5", diasMandato < 0 ? "text-red-700 font-semibold" : "text-alerta-fg")}>
+                  {diasMandato < 0 ? "Venció" : "Vence"} el <span className={MONO}>{fmtFecha(pedido.mandato_vence)}</span>
+                  {diasMandato >= 0 && ` (en ${diasMandato} días)`}
+                </p>
+              )}
+              {pedido.descripcion && (
+                <p className="text-xs text-ink-muted truncate max-w-[340px]" title={pedido.descripcion}>
+                  {pedido.descripcion}
+                </p>
+              )}
+              {pedido.checklist.length > 0 && (
+                <button onClick={() => setExpandido(true)} className="text-[11px] font-semibold text-bordo hover:underline">
+                  Checklist <span className={MONO}>{hechos}/{pedido.checklist.length}</span>
+                </button>
+              )}
+              {pedido.solicitante && (
+                <p className="text-[11px] text-ink-subtle">Pedido por: {pedido.solicitante}</p>
+              )}
+            </div>
+          </div>
         </td>
-        <td className={TD}>{pedido.responsableNombre ?? <span className="text-gray-300">—</span>}</td>
         <td className={TD}>
           {puedeEditar && esActivo ? (
             <select
-              className="text-[11px] border border-gray-200 rounded-md px-1.5 py-1 bg-white focus:outline-none focus:border-violet-400 cursor-pointer"
+              aria-label="Estado del pedido"
+              className={clsx(CHIP, ESTADO_PEDIDO_INFO[pedido.estado].cls, "cursor-pointer focus:outline-none focus:ring-1 focus:ring-bordo")}
               value={pedido.estado}
               onChange={async (e) => {
                 setErrorEstado(null);
@@ -596,51 +627,47 @@ function FilaPedido({
           ) : (
             <BadgeEstado estado={pedido.estado} />
           )}
-          {errorEstado && <p className="text-[11px] text-red-600 mt-1 whitespace-normal max-w-[180px]">{errorEstado}</p>}
+          {errorEstado && <p className="text-[11px] text-red-700 mt-1 whitespace-normal max-w-[180px]">{errorEstado}</p>}
+          <div className="md:hidden mt-1">
+            <DotSemaforo proximo={pedido.proximo_seguimiento} />
+          </div>
         </td>
-        <td className={TD}>
+        <td className={clsx(TD, "hidden md:table-cell text-right")}>
           <DotSemaforo proximo={pedido.proximo_seguimiento} />
         </td>
-        <td className={TD}>{fmtFecha(pedido.fecha_pedido)}</td>
-        <td className={TD}>
+        <td className={clsx(TD, "hidden lg:table-cell text-ink-muted")}>
+          {pedido.responsableNombre ?? <span className="text-ink-ghost">—</span>}
+        </td>
+        <td className={clsx(TD, NUM, "hidden lg:table-cell whitespace-nowrap")}>{fmtFecha(pedido.fecha_pedido)}</td>
+        <td className={clsx(TD, NUM, "hidden xl:table-cell whitespace-nowrap")}>
           {pedido.monto != null
             ? `$ ${pedido.monto.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`
-            : <span className="text-gray-300">—</span>}
+            : <span className="text-ink-ghost">—</span>}
         </td>
         <td className="px-3 py-2 align-top">
           {puedeEditar && (
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
               {esActivo && (
-                <>
-                  <button
-                    onClick={() => setModalSeguimiento(true)}
-                    className="p-1 text-gray-400 hover:text-violet-600 rounded"
-                    title="Registrar seguimiento"
-                  >
-                    <MessageSquare size={14} />
-                  </button>
-                  {pedido.estado !== "aprobado" && !esRenovacion && (
-                    <button
-                      onClick={() => setModalAprobar(true)}
-                      className="px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded"
-                    >
-                      Aprobar
-                    </button>
-                  )}
-                </>
+                <button
+                  onClick={() => setModalSeguimiento(true)}
+                  className="p-1.5 text-ink-subtle hover:text-ink rounded"
+                  title="Registrar seguimiento"
+                  aria-label="Registrar seguimiento"
+                >
+                  <MessageSquare size={14} />
+                </button>
+              )}
+              {esActivo && pedido.estado !== "aprobado" && !esRenovacion && (
+                <button onClick={() => setModalAprobar(true)} className={BOTON_CHICO}>
+                  Aprobar
+                </button>
               )}
               {esRenovacion && pedido.estado !== "cerrado" && (
-                <button
-                  onClick={() => setModalCerrar(true)}
-                  className="px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded"
-                >
+                <button onClick={() => setModalCerrar(true)} className={BOTON_CHICO}>
                   Cerrar renovación
                 </button>
               )}
-              <button
-                onClick={() => setModalEditar(true)}
-                className="px-2 py-0.5 text-[11px] text-gray-500 hover:text-gray-900 rounded hover:bg-gray-100"
-              >
+              <button onClick={() => setModalEditar(true)} className={BOTON_TEXTO}>
                 Editar
               </button>
             </div>
@@ -649,24 +676,25 @@ function FilaPedido({
       </tr>
 
       {expandido && (
-        <tr className="bg-violet-50/40">
-          <td colSpan={9} className="px-6 py-3 space-y-3">
+        <tr className="bg-paper-alt border-t border-line-row">
+          <td colSpan={7} className="px-6 py-3 space-y-3">
             {(esRenovacion || pedido.checklist.length > 0) && (
               <div className="max-w-xl">
                 <ChecklistEditor pedido={pedido} puedeEditar={puedeEditar && pedido.estado !== "cerrado"} />
               </div>
             )}
+            {pedido.descripcion && <p className="text-xs text-ink-cell whitespace-pre-line">{pedido.descripcion}</p>}
             {seguimientos.length === 0 ? (
-              <p className="text-xs text-gray-400">Sin seguimientos registrados.</p>
+              <p className="text-xs text-ink-subtle">Sin seguimientos registrados.</p>
             ) : (
               <div className="space-y-2">
                 {seguimientos.map((s) => (
                   <div key={s.id} className="flex gap-3 text-xs">
-                    <span className="text-gray-400 whitespace-nowrap shrink-0">{fmtFecha(s.fecha)}</span>
-                    <p className="text-gray-700">{s.nota}</p>
+                    <span className={clsx(MONO, "text-ink-subtle whitespace-nowrap shrink-0")}>{fmtFecha(s.fecha)}</span>
+                    <p className="text-ink-cell">{s.nota}</p>
                     {s.proximo_seguimiento && (
-                      <span className="ml-auto text-violet-600 whitespace-nowrap shrink-0">
-                        Próx. {fmtFecha(s.proximo_seguimiento)}
+                      <span className="ml-auto text-ink-muted whitespace-nowrap shrink-0">
+                        Próx. <span className={MONO}>{fmtFecha(s.proximo_seguimiento)}</span>
                       </span>
                     )}
                   </div>
@@ -755,72 +783,89 @@ export function PedidosClient({
 
   const abiertos = pedidos.filter((p) => !["aprobado", "rechazado", "cerrado"].includes(p.estado)).length;
 
-  const SELECT = "text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-violet-400";
+  const hayFiltros = !!(filtroCliente || filtroEstado || filtroTipo);
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Header */}
-      <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-4 flex items-center gap-4 flex-wrap">
+    <div className={PAGINA}>
+      <div className={ENCABEZADO}>
+        <span className={RAYA_MODULO} />
         <div>
-          <h1 className="text-[15px] font-semibold text-gray-900">Pedidos y trámites</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {abiertos} abierto{abiertos !== 1 ? "s" : ""} · {pedidos.length} total
+          <h1 className={TITULO}>Pedidos y trámites</h1>
+          <p className={SUBTITULO}>
+            <span className={MONO}>{abiertos}</span> abierto{abiertos !== 1 ? "s" : ""} ·{" "}
+            <span className={MONO}>{pedidos.length}</span> en total
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <select className={SELECT} value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
-            <option value="">Todos los clientes</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
-            ))}
-          </select>
-          <select className={SELECT} value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as typeof filtroTipo)}>
-            <option value="">Todos los tipos</option>
-            <option value="presupuesto">Presupuestos</option>
-            {TIPOS_PEDIDO.filter((t) => !t.value.startsWith("presupuesto")).map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-          <select className={SELECT} value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)}>
-            <option value="">Todos los estados</option>
-            {ESTADOS_PEDIDO.map((s) => (
-              <option key={s} value={s}>{ESTADO_PEDIDO_INFO[s].label}</option>
-            ))}
-          </select>
-          {puedeEditar && (
-            <button
-              onClick={() => setModalNuevo(true)}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg"
-            >
-              <Plus size={15} />
-              Nuevo pedido
-            </button>
-          )}
-        </div>
+        <div className="flex-1" />
+        {puedeEditar && (
+          <button onClick={() => setModalNuevo(true)} className={BOTON_PRIMARIO}>
+            <Plus size={15} aria-hidden="true" />
+            Nuevo pedido
+          </button>
+        )}
       </div>
 
-      {/* Tabla */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="overflow-x-auto pb-2" style={{ minWidth: 900 }}>
-          <table className="w-full text-sm whitespace-nowrap">
-            <thead className="sticky top-0 bg-white z-10 border-b border-gray-100">
+      <div className="shrink-0 px-4 sm:px-6 pb-3 flex flex-wrap items-center gap-2">
+        <select aria-label="Cliente" className={clsx(CONTROL, "w-full sm:w-auto sm:min-w-[220px]")} value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
+          <option value="">Todos los clientes</option>
+          {clientes.map((c) => (
+            <option key={c.id} value={c.id}>{c.nombre}</option>
+          ))}
+        </select>
+        <select aria-label="Tipo" className={CONTROL} value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value as typeof filtroTipo)}>
+          <option value="">Todos los tipos</option>
+          <option value="presupuesto">Presupuestos</option>
+          {TIPOS_PEDIDO.filter((t) => !t.value.startsWith("presupuesto")).map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+        <select aria-label="Estado" className={CONTROL} value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)}>
+          <option value="">Todos los estados</option>
+          {ESTADOS_PEDIDO.map((s) => (
+            <option key={s} value={s}>{ESTADO_PEDIDO_INFO[s].label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-6">
+        <div className={clsx(PANEL, "overflow-x-auto")}>
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-paper-group z-10 border-b border-line-group">
               <tr>
-                <th className={TH}>Cliente / Solicitante</th>
-                <th className={TH}>Tipo</th>
-                <th className={TH}>Descripción</th>
-                <th className={TH}>Responsable</th>
+                <th className={clsx(TH, "pl-4")}>Pedido</th>
                 <th className={TH}>Estado</th>
-                <th className={TH}>Próx. seguimiento</th>
-                <th className={TH}>Fecha</th>
-                <th className={TH}>Monto</th>
-                <th className={TH} />
+                <th className={clsx(TH, "hidden md:table-cell text-right")}>Próx. seguimiento</th>
+                <th className={clsx(TH, "hidden lg:table-cell")}>Responsable</th>
+                <th className={clsx(TH, "hidden lg:table-cell text-right")}>Fecha</th>
+                <th className={clsx(TH, "hidden xl:table-cell text-right")}>Monto</th>
+                <th className={TH}><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
-            <tbody className="bg-white">
+            <tbody>
               {filtrados.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-10 text-center text-sm text-gray-400">
-                    No hay pedidos con esos filtros.
+                  <td colSpan={7}>
+                    <div className={VACIO}>
+                      <p className={VACIO_TEXTO}>
+                        {hayFiltros
+                          ? "No hay pedidos con esos filtros."
+                          : "Todavía no hay pedidos. Los de tomo nuevo y renovación de autoridades se crean solos; los demás se cargan acá."}
+                      </p>
+                      {hayFiltros ? (
+                        <button
+                          onClick={() => { setFiltroCliente(""); setFiltroEstado(""); setFiltroTipo(""); }}
+                          className={BOTON_SECUNDARIO}
+                        >
+                          Quitar filtros
+                        </button>
+                      ) : (
+                        puedeEditar && (
+                          <button onClick={() => setModalNuevo(true)} className={BOTON_PRIMARIO}>
+                            <Plus size={15} aria-hidden="true" /> Nuevo pedido
+                          </button>
+                        )
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

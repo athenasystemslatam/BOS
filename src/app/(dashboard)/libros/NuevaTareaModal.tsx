@@ -76,31 +76,31 @@ export function NuevaTareaModal({
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
           <div>
             <label className={LABEL}>Libros</label>
-            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-56 overflow-y-auto">
+            <div className="border border-line-panel rounded-lg divide-y divide-line-row max-h-56 overflow-y-auto">
               {opciones.map((o) => (
                 <label
                   key={o.id}
-                  className="flex items-center gap-2.5 px-3 py-2 text-[13px] cursor-pointer hover:bg-violet-50/40"
+                  className="flex items-center gap-2.5 px-3 py-2 text-[13px] cursor-pointer hover:bg-paper-hover"
                 >
                   <input
                     type="checkbox"
                     disabled={o.enCola}
                     checked={!o.enCola && elegidos.has(o.id)}
                     onChange={() => toggle(o.id)}
-                    className="accent-violet-600"
+                    className="accent-bordo"
                   />
-                  <span className={o.enCola ? "text-gray-400" : "text-gray-800"}>{o.nombre}</span>
+                  <span className={o.enCola ? "text-ink-subtle" : "text-ink"}>{o.nombre}</span>
                   {o.enCola ? (
-                    <span className="ml-auto text-[11px] text-gray-400">Ya está en la cola</span>
+                    <span className="ml-auto text-[11px] text-ink-subtle">Ya está en la cola</span>
                   ) : (
-                    o.detalle && <span className="ml-auto text-[11px] text-gray-400">{o.detalle}</span>
+                    o.detalle && <span className="ml-auto font-plex tabular-nums text-[11px] text-ink-subtle">{o.detalle}</span>
                   )}
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={LABEL}>Origen</label>
               <select value={origen} onChange={(e) => setOrigen(e.target.value as OrigenTareaLibro)} className={INPUT}>
@@ -120,17 +120,17 @@ export function NuevaTareaModal({
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-[13px] text-gray-700 cursor-pointer">
+          <label className="flex items-center gap-2 text-[13px] text-ink-cell cursor-pointer">
             <input
               type="checkbox"
               checked={materialListo}
               onChange={(e) => setMaterialListo(e.target.checked)}
-              className="accent-violet-600"
+              className="accent-bordo"
             />
             Material listo (el cliente ya mandó lo necesario)
           </label>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className={LABEL}>Período desde</label>
               <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className={INPUT} />
@@ -144,7 +144,7 @@ export function NuevaTareaModal({
               <input type="date" value={fechaLimite} onChange={(e) => setFechaLimite(e.target.value)} className={INPUT} />
             </div>
           </div>
-          <p className="text-[11px] text-gray-400 -mt-2">
+          <p className="text-[11px] text-ink-subtle -mt-2">
             Fecha límite solo si la pide el cliente o un tercero (banco, IGJ, trámite): pasa la tarea a P1.
           </p>
 

@@ -5,9 +5,26 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import type { LibroEstado } from "@/types";
 import { actualizarAvisosMandato, actualizarEstado, actualizarUmbralFolios } from "../actions";
+import { BOTON_PRIMARIO, ENCABEZADO, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO, SUBTITULO, TITULO } from "../ui";
 
 const CODIGOS_PROTEGIDOS = new Set(["pendiente", "en_proceso", "en_espera", "para_copiar", "copiandose", "copiado"]);
-const INPUT = "text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-violet-500 bg-white w-full";
+const INPUT = "text-sm text-ink border border-line-input rounded-[9px] px-3 py-2 focus:outline-none focus:border-bordo bg-paper w-full font-plex tabular-nums";
+const TH = "px-3 py-2 text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em]";
+
+// La explicación de cada ajuste va detrás de un "?" (los títulos no llevan instrucciones).
+function Ayuda({ children }: { children: React.ReactNode }) {
+  return (
+    <details className="group inline-block align-middle">
+      <summary
+        aria-label="Ayuda"
+        className="list-none cursor-pointer select-none w-5 h-5 rounded-full border border-line-rule text-[11px] font-semibold text-ink-muted flex items-center justify-center hover:text-ink [&::-webkit-details-marker]:hidden"
+      >
+        ?
+      </summary>
+      <p className="mt-2 text-xs text-ink-muted max-w-md">{children}</p>
+    </details>
+  );
+}
 
 // ── Umbral de folios ─────────────────────────────────────────────────────────
 
@@ -29,12 +46,14 @@ function UmbralCard({ umbralInicial }: { umbralInicial: number }) {
   }
 
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="text-[13px] font-semibold text-gray-800 mb-1">Umbral de folios</h2>
-      <p className="text-xs text-gray-500 mb-4">
-        Cuando a un libro le quedan ≤ este número de folios libres, se genera automáticamente
-        un pedido de presupuesto de tomo nuevo.
-      </p>
+    <section className={clsx(PANEL, "p-6")}>
+      <div className="flex items-start gap-2 mb-4">
+        <h2 className="font-archivo text-[15px] font-bold text-ink">Umbral de folios</h2>
+        <Ayuda>
+          Cuando a un libro le quedan este número de folios libres o menos, se crea solo un pedido de presupuesto de
+          tomo nuevo.
+        </Ayuda>
+      </div>
       <form onSubmit={guardar} className="flex items-center gap-3 max-w-xs">
         <input
           type="number"
@@ -47,13 +66,13 @@ function UmbralCard({ umbralInicial }: { umbralInicial: number }) {
         <button
           type="submit"
           disabled={pendiente}
-          className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg disabled:opacity-50 whitespace-nowrap"
+          className={clsx(BOTON_PRIMARIO, "whitespace-nowrap")}
         >
           {pendiente ? "Guardando…" : "Guardar"}
         </button>
       </form>
       {msg && (
-        <p className={clsx("text-xs mt-2", msg.ok ? "text-green-600" : "text-red-600")}>
+        <p className={clsx("text-xs mt-2", msg.ok ? "text-green-700" : "text-red-700")}>
           {msg.texto}
         </p>
       )}
@@ -83,24 +102,26 @@ function AvisosMandatoCard({ avisosIniciales }: { avisosIniciales: number[] }) {
   }
 
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="text-[13px] font-semibold text-gray-800 mb-1">Avisos de vencimiento de mandato</h2>
-      <p className="text-xs text-gray-500 mb-4">
-        Días antes del vencimiento en que se avisa por mail (cada aviso una sola vez). El primero (el mayor) crea el
-        pedido de renovación de autoridades.
-      </p>
+    <section className={clsx(PANEL, "p-6")}>
+      <div className="flex items-start gap-2 mb-4">
+        <h2 className="font-archivo text-[15px] font-bold text-ink">Avisos de vencimiento de mandato</h2>
+        <Ayuda>
+          Días antes del vencimiento en que se avisa por mail (cada aviso una sola vez). El primero (el mayor) crea el
+          pedido de renovación de autoridades.
+        </Ayuda>
+      </div>
       <form onSubmit={guardar} className="flex items-center gap-3 max-w-xs">
         <input className={INPUT} value={valor} onChange={(e) => setValor(e.target.value)} placeholder="90, 60, 30" />
         <button
           type="submit"
           disabled={pendiente}
-          className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg disabled:opacity-50 whitespace-nowrap"
+          className={clsx(BOTON_PRIMARIO, "whitespace-nowrap")}
         >
           {pendiente ? "Guardando…" : "Guardar"}
         </button>
       </form>
       {msg && (
-        <p className={clsx("text-xs mt-2", msg.ok ? "text-green-600" : "text-red-600")}>
+        <p className={clsx("text-xs mt-2", msg.ok ? "text-green-700" : "text-red-700")}>
           {msg.texto}
         </p>
       )}
@@ -147,20 +168,22 @@ function FilaEstado({
   }
 
   return (
-    <tr className="border-t border-gray-100">
+    <tr className="border-t border-line-row">
       <td className="px-3 py-2 w-8">
         <div className="flex flex-col gap-0.5">
           <button
             onClick={() => onMover("up")}
             disabled={esPrimero || pendiente}
-            className="p-0.5 text-gray-300 hover:text-gray-600 disabled:invisible"
+            aria-label="Subir"
+            className="p-0.5 text-ink-ghost hover:text-ink disabled:invisible"
           >
             <ChevronUp size={14} />
           </button>
           <button
             onClick={() => onMover("down")}
             disabled={esUltimo || pendiente}
-            className="p-0.5 text-gray-300 hover:text-gray-600 disabled:invisible"
+            aria-label="Bajar"
+            className="p-0.5 text-ink-ghost hover:text-ink disabled:invisible"
           >
             <ChevronDown size={14} />
           </button>
@@ -168,22 +191,23 @@ function FilaEstado({
       </td>
       <td className="px-3 py-2">
         <input
-          className="text-sm border border-transparent rounded-lg px-2 py-1 w-full hover:border-gray-200 focus:border-violet-400 focus:outline-none bg-transparent"
+          aria-label="Nombre del estado"
+          className="text-sm text-ink border border-transparent rounded-lg px-2 py-1 w-full hover:border-line-input focus:border-bordo focus:outline-none bg-transparent"
           value={nombre}
           onChange={(e) => setNombre(e.target.value)}
           onBlur={renombrar}
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
         />
-        {error && <p className="text-[11px] text-red-500 mt-0.5">{error}</p>}
+        {error && <p className="text-[11px] text-red-700 mt-0.5">{error}</p>}
       </td>
-      <td className="px-3 py-2 text-xs text-gray-400">
+      <td className="px-3 py-2 text-xs text-ink-subtle hidden sm:table-cell">
         {estado.codigo ? (
-          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-[11px]">{estado.codigo}</code>
+          <code className="font-plex bg-paper-hover px-1.5 py-0.5 rounded text-[11px] text-ink-muted">{estado.codigo}</code>
         ) : "—"}
       </td>
       <td className="px-3 py-2 text-center">
         {estado.es_final && (
-          <span className="text-[10px] font-medium bg-violet-50 text-violet-600 px-1.5 py-0.5 rounded">final</span>
+          <span className="text-[10.5px] font-semibold bg-green-600 text-white px-1.5 py-0.5 rounded-full">final</span>
         )}
       </td>
       <td className="px-3 py-2 text-center">
@@ -191,9 +215,11 @@ function FilaEstado({
           onClick={toggleActivo}
           disabled={protegido || pendiente}
           title={protegido ? "Este estado no se puede desactivar (lo usa el sistema)" : undefined}
+          aria-label={activo ? "Desactivar estado" : "Activar estado"}
+          aria-pressed={activo}
           className={clsx(
             "w-8 h-4 rounded-full transition-colors relative",
-            activo ? "bg-violet-500" : "bg-gray-300",
+            activo ? "bg-bordo" : "bg-line-rule",
             protegido && "opacity-50 cursor-not-allowed"
           )}
         >
@@ -235,21 +261,19 @@ function EstadosCard({ estadosIniciales }: { estadosIniciales: LibroEstado[] }) 
   }
 
   return (
-    <section className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100">
-        <h2 className="text-[13px] font-semibold text-gray-800">Estados de tareas</h2>
-        <p className="text-xs text-gray-500 mt-0.5">
-          Editá el nombre y el orden. Los estados con código interno no se pueden desactivar.
-        </p>
+    <section className={clsx(PANEL, "overflow-hidden")}>
+      <div className={clsx(PANEL_CABECERA, "px-6 py-3 flex items-start gap-2")}>
+        <h2 className="font-archivo text-[15px] font-bold text-ink">Estados de tareas</h2>
+        <Ayuda>Editá el nombre y el orden. Los estados con código interno los usa el sistema y no se pueden desactivar.</Ayuda>
       </div>
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-50">
-            <th className="px-3 py-2 w-8" />
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-left">Nombre</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-left">Código</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-center">¿Final?</th>
-            <th className="px-3 py-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-center">Activo</th>
+          <tr>
+            <th className="px-3 py-2 w-8"><span className="sr-only">Orden</span></th>
+            <th className={clsx(TH, "text-left")}>Nombre</th>
+            <th className={clsx(TH, "text-left hidden sm:table-cell")}>Código</th>
+            <th className={clsx(TH, "text-center")}>¿Final?</th>
+            <th className={clsx(TH, "text-center")}>Activo</th>
           </tr>
         </thead>
         <tbody>
@@ -280,12 +304,15 @@ export function ConfiguracionClient({
   avisosMandato: number[];
 }) {
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-y-auto">
-      <div className="shrink-0 px-6 py-5 border-b border-gray-200 bg-white">
-        <h1 className="text-[15px] font-semibold text-gray-900">Configuración · Libros</h1>
-        <p className="text-xs text-gray-400 mt-0.5">Solo visible para administradores.</p>
+    <div className={clsx(PAGINA, "overflow-y-auto")}>
+      <div className={ENCABEZADO}>
+        <span className={RAYA_MODULO} />
+        <div>
+          <h1 className={TITULO}>Configuración</h1>
+          <p className={SUBTITULO}>Solo administradores</p>
+        </div>
       </div>
-      <div className="flex-1 px-6 py-6 space-y-6 max-w-2xl">
+      <div className="flex-1 px-4 sm:px-6 pb-8 space-y-5 max-w-2xl">
         <UmbralCard umbralInicial={umbralInicial} />
         <AvisosMandatoCard avisosIniciales={avisosMandato} />
         <EstadosCard estadosIniciales={estados} />
