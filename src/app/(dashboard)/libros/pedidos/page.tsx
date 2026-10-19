@@ -46,7 +46,7 @@ export default async function PedidosPage({
       .select("cliente_id, clientes(id, nombre)")
       .eq("servicio", "libros")
       .eq("estado", true),
-    admin.from("libros").select("id, cliente_id, catalogo_id, tomo, estado").neq("estado", "sin_libro"),
+    admin.from("libros").select("id, cliente_id, catalogo_id, tomo, estado").neq("estado", "cerrado"),
     admin.from("libros_catalogo").select("id, nombre").order("orden"),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "libros"),
@@ -67,7 +67,7 @@ export default async function PedidosPage({
   const catalogoPorId = new Map(
     ((catalogoRaw ?? []) as { id: string; nombre: string }[]).map((k) => [k.id, k])
   );
-  const librosPorCliente = new Map<string, { id: string; nombre: string; tomo: number }[]>();
+  const librosPorCliente = new Map<string, ClienteConLibros["libros"]>();
   for (const l of (librosRaw ?? []) as {
     id: string;
     cliente_id: string;
@@ -77,7 +77,7 @@ export default async function PedidosPage({
   }[]) {
     const nombre = catalogoPorId.get(l.catalogo_id)?.nombre ?? "Libro";
     const arr = librosPorCliente.get(l.cliente_id) ?? [];
-    arr.push({ id: l.id, nombre: `${nombre} T.${l.tomo}`, tomo: l.tomo });
+    arr.push({ id: l.id, nombre: l.tomo > 1 ? `${nombre} (tomo ${l.tomo})` : nombre, tomo: l.tomo, sinLibro: l.estado === "sin_libro" });
     librosPorCliente.set(l.cliente_id, arr);
   }
 
@@ -100,6 +100,8 @@ export default async function PedidosPage({
     checklist: p.checklist ?? [],
     prioridad: p.prioridad ?? null,
     mandato_vence: p.mandato_vence ?? null,
+    fecha_envio_cliente: p.fecha_envio_cliente ?? null,
+    fecha_respuesta: p.fecha_respuesta ?? null,
     responsableNombre: p.responsable?.nombre ?? null,
     creadorNombre: p.creador?.nombre ?? null,
   }));

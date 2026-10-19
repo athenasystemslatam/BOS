@@ -1,50 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { HelpCircle } from "lucide-react";
-import { PRIORIDAD_INFO, diasHasta, fmtFecha, textoPeriodos } from "@/lib/libros";
+import { GripVertical, HelpCircle } from "lucide-react";
+import { DEFINICION_PRIORIDAD, PRIORIDAD_INFO, diasHasta, fmtFecha, textoPeriodos } from "@/lib/libros";
 import type { EnvioAnual, LibroAtraso } from "@/lib/librosTablero";
 import type { PrioridadLibro } from "@/types";
-import {
-  BOTON_SECUNDARIO,
-  CHIP,
-  ENCABEZADO,
-  MONO,
-  NUM,
-  PAGINA,
-  PANEL,
-  PANEL_CABECERA,
-  RAYA_MODULO,
-  SEMAFORO,
-  TH,
-  TITULO,
-} from "../ui";
+import { guardarOrdenDashboard } from "../actions";
+import { CHIP, ENCABEZADO, MONO, NUM, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO, SEMAFORO, TH, TITULO } from "../ui";
 
 type MandatoFila = { clienteId: string; nombre: string; vence: string; dias: number };
+
+export type FilaCategoria = { id: string; label: string; empresas: number; libros: number; de: number };
+
+type FilaLogrado = {
+  id: string;
+  label: string;
+  empresas: number;
+  libros: number;
+  delSheet: number;
+  enBos: number;
+  empresas30: number;
+  libros30: number;
+};
 
 export type DatosTablero = {
   hoy: string;
   fechaMeta: string | null;
   tablaSnapshots: boolean;
   esAdmin: boolean;
-  base: { fecha: string; periodos: number; alDia: number; atrasados: number };
+  ordenGuardado: string[];
+  base: { fecha: string; libros: number; empresas: number; alDia: number };
   actual: {
-    periodos: number;
+    libros: number;
+    empresas: number;
     alDia: number;
-    atrasados: number;
-    sinDato: number;
-    sinLibro: number;
-    sinCargar: number;
     total: number;
+    empresasTotal: number;
+    sinDatoLibros: number;
+    sinDatoEmpresas: number;
+    sinLibroLibros: number;
+    sinLibroEmpresas: number;
   };
+  pendienteLibro: FilaCategoria[];
+  pendienteSocietario: FilaCategoria[];
   masAtrasados: LibroAtraso[];
-  logrado: {
-    puestos: { semana: number; mes: number; total: number };
-    envios: { semana: number; mes: number; total: number };
-  };
-  evolucion: { semana: string; fecha: string; periodos: number; atrasados: number }[];
+  logrado: { porLibro: FilaLogrado[]; porSocietario: FilaLogrado[]; puestosAlDia: number; enviosCopiados: number };
+  evolucion: { semana: string; fecha: string; libros: number; empresas: number }[];
   envios: { completos: number; total: number; pendientes: EnvioAnual[] };
   prioridad: { prioridad: PrioridadLibro; abiertas: number; antiguedad: number | null }[];
   mandatos: {
@@ -57,11 +60,11 @@ export type DatosTablero = {
     | {
         id: string;
         nombre: string;
-        libros: number;
-        periodosBase: number;
-        periodosHoy: number;
-        alDia: number;
-        sinDato: number;
+        empresas: number;
+        empresasBase: number;
+        empresasHoy: number;
+        librosBase: number;
+        librosHoy: number;
         puestosAlDia: number;
       }[]
     | null;
@@ -69,45 +72,34 @@ export type DatosTablero = {
 
 const CIFRA = "font-archivo font-extrabold tracking-tight text-ink tabular-nums";
 const ETIQUETA = "text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em]";
+const DETALLE = "mt-3 text-[12.5px] text-ink-muted [&>summary]:cursor-pointer [&>summary]:select-none [&>summary]:font-semibold";
 
 function pct(parte: number, total: number): string {
   return total ? `${Math.round((parte / total) * 100)}%` : "—";
 }
 
-function Seccion({ titulo, ayuda, children }: { titulo: string; ayuda?: string; children: React.ReactNode }) {
-  return (
-    <section className={clsx(PANEL, "overflow-hidden")}>
-      <div className={clsx(PANEL_CABECERA, "px-4 py-2.5 flex items-center gap-2")}>
-        <h2 className="font-archivo text-[14px] font-bold text-ink">{titulo}</h2>
-        {ayuda && (
-          <span title={ayuda} aria-label={ayuda} className="text-ink-subtle">
-            <HelpCircle size={13} />
-          </span>
-        )}
-      </div>
-      <div className="p-4">{children}</div>
-    </section>
-  );
-}
-
-function Dato({ etiqueta, valor, detalle, cls }: { etiqueta: string; valor: string | number; detalle?: string; cls?: string }) {
+function Cifra({ valor, detalle, cls }: { valor: string | number; detalle?: React.ReactNode; cls?: string }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-0">
-      <span className={ETIQUETA}>{etiqueta}</span>
-      <span className={clsx(CIFRA, "text-[22px]", cls)}>{valor}</span>
-      {detalle && <span className="text-[12px] text-ink-muted">{detalle}</span>}
+      <span className={clsx(CIFRA, "text-[26px] leading-tight", cls)}>{valor}</span>
+      {detalle && <span className="text-[12.5px] text-ink-muted">{detalle}</span>}
     </div>
   );
 }
 
-// Una serie (períodos pendientes por semana): línea de 2px en bordo, marcadores
-// de 8px, grilla recesiva, etiqueta directa en el último punto y tooltip.
+// Dos series (libros y empresas atrasados), misma escala de conteo: un solo eje,
+// leyenda + etiqueta directa al final de cada línea, tooltip y tabla.
+const SERIES = [
+  { clave: "libros" as const, label: "Libros atrasados", color: "#7D1C2E", trazo: undefined },
+  { clave: "empresas" as const, label: "Empresas atrasadas", color: "#605954", trazo: "5 4" },
+];
+
 function Evolucion({ puntos }: { puntos: DatosTablero["evolucion"] }) {
   const [activo, setActivo] = useState<number | null>(null);
   const W = 640;
   const H = 200;
-  const M = { izq: 44, der: 56, arr: 16, aba: 28 };
-  const max = Math.max(1, ...puntos.map((p) => p.periodos));
+  const M = { izq: 40, der: 40, arr: 16, aba: 28 };
+  const max = Math.max(1, ...puntos.flatMap((p) => [p.libros, p.empresas]));
   const tope = Math.ceil(max / 10) * 10 || 10;
   const x = (i: number) => M.izq + (puntos.length === 1 ? 0 : (i * (W - M.izq - M.der)) / (puntos.length - 1));
   const y = (v: number) => M.arr + (1 - v / tope) * (H - M.arr - M.aba);
@@ -115,8 +107,18 @@ function Evolucion({ puntos }: { puntos: DatosTablero["evolucion"] }) {
 
   return (
     <div className="space-y-2">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-muted" aria-hidden="true">
+        {SERIES.map((s) => (
+          <span key={s.clave} className="inline-flex items-center gap-1.5">
+            <svg width="18" height="8">
+              <line x1="0" x2="18" y1="4" y2="4" stroke={s.color} strokeWidth={2} strokeDasharray={s.trazo} />
+            </svg>
+            {s.label}
+          </span>
+        ))}
+      </div>
       <div className="relative">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Evolución semanal de los períodos pendientes">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Evolución semanal de libros y empresas atrasados">
           {[0, 0.5, 1].map((f) => (
             <g key={f}>
               <line x1={M.izq} x2={W - M.der} y1={y(tope * f)} y2={y(tope * f)} stroke="#EFEBE4" strokeWidth={1} />
@@ -125,17 +127,31 @@ function Evolucion({ puntos }: { puntos: DatosTablero["evolucion"] }) {
               </text>
             </g>
           ))}
-          <polyline
-            points={puntos.map((p, i) => `${x(i)},${y(p.periodos)}`).join(" ")}
-            fill="none"
-            stroke="#7D1C2E"
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
+          {SERIES.map((s) => (
+            <polyline
+              key={s.clave}
+              points={puntos.map((p, i) => `${x(i)},${y(p[s.clave])}`).join(" ")}
+              fill="none"
+              stroke={s.color}
+              strokeWidth={2}
+              strokeDasharray={s.trazo}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ))}
           {puntos.map((p, i) => (
             <g key={p.semana}>
-              <circle cx={x(i)} cy={y(p.periodos)} r={activo === i ? 5 : 4} fill="#7D1C2E" stroke="#FCFBF9" strokeWidth={2} />
+              {SERIES.map((s) => (
+                <circle
+                  key={s.clave}
+                  cx={x(i)}
+                  cy={y(p[s.clave])}
+                  r={activo === i ? 5 : 4}
+                  fill={s.color}
+                  stroke="#FCFBF9"
+                  strokeWidth={2}
+                />
+              ))}
               <text x={x(i)} y={H - 8} textAnchor="middle" fontSize={11} fill="#7C756E" className="font-plex">
                 {fmtFecha(p.fecha).slice(0, 5)}
               </text>
@@ -150,21 +166,30 @@ function Evolucion({ puntos }: { puntos: DatosTablero["evolucion"] }) {
               />
             </g>
           ))}
-          {puntos.length > 0 && (
-            <text x={x(ultimo) + 10} y={y(puntos[ultimo].periodos) + 4} fontSize={12} fontWeight={600} fill="#17141A" className="font-plex">
-              {puntos[ultimo].periodos}
-            </text>
-          )}
+          {puntos.length > 0 &&
+            SERIES.map((s) => (
+              <text
+                key={s.clave}
+                x={x(ultimo) + 10}
+                y={y(puntos[ultimo][s.clave]) + 4}
+                fontSize={12}
+                fontWeight={600}
+                fill="#17141A"
+                className="font-plex"
+              >
+                {puntos[ultimo][s.clave]}
+              </text>
+            ))}
         </svg>
         {activo != null && (
           <div
             className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-lg bg-ink px-2.5 py-1.5 text-[11.5px] text-white shadow"
-            style={{ left: `${(x(activo) / W) * 100}%`, top: `${(y(puntos[activo].periodos) / H) * 100}%` }}
+            style={{ left: `${(x(activo) / W) * 100}%`, top: `${(y(Math.max(puntos[activo].libros, puntos[activo].empresas)) / H) * 100}%` }}
           >
             <p className={MONO}>{fmtFecha(puntos[activo].fecha)}</p>
             <p>
-              <span className={MONO}>{puntos[activo].periodos}</span> períodos ·{" "}
-              <span className={MONO}>{puntos[activo].atrasados}</span> libros atrasados
+              <span className={MONO}>{puntos[activo].libros}</span> libros ·{" "}
+              <span className={MONO}>{puntos[activo].empresas}</span> empresas atrasadas
             </p>
           </div>
         )}
@@ -175,16 +200,16 @@ function Evolucion({ puntos }: { puntos: DatosTablero["evolucion"] }) {
           <thead>
             <tr>
               <th className={clsx(TH, "text-left px-0")}>Semana</th>
-              <th className={clsx(TH, "text-right")}>Períodos</th>
-              <th className={clsx(TH, "text-right")}>Libros atrasados</th>
+              <th className={clsx(TH, "text-right")}>Libros</th>
+              <th className={clsx(TH, "text-right")}>Empresas</th>
             </tr>
           </thead>
           <tbody>
             {puntos.map((p) => (
               <tr key={p.semana} className="border-t border-line-row">
                 <td className={clsx(NUM, "text-left py-1")}>{fmtFecha(p.fecha)}</td>
-                <td className={clsx(NUM, "px-3")}>{p.periodos}</td>
-                <td className={clsx(NUM, "px-3")}>{p.atrasados}</td>
+                <td className={clsx(NUM, "px-3")}>{p.libros}</td>
+                <td className={clsx(NUM, "px-3")}>{p.empresas}</td>
               </tr>
             ))}
           </tbody>
@@ -194,11 +219,40 @@ function Evolucion({ puntos }: { puntos: DatosTablero["evolucion"] }) {
   );
 }
 
+function TablaCategorias({ filas, columnas }: { filas: { label: string; valores: (string | number)[] }[]; columnas: string[] }) {
+  return (
+    <table className="w-full text-[12.5px]">
+      <thead>
+        <tr>
+          <th className={clsx(TH, "text-left px-0")} />
+          {columnas.map((c) => (
+            <th key={c} className={clsx(TH, "text-right")}>
+              {c}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {filas.map((f) => (
+          <tr key={f.label} className="border-t border-line-row">
+            <td className="py-1.5 text-ink-cell">{f.label}</td>
+            {f.valores.map((v, i) => (
+              <td key={i} className={clsx(NUM, "px-3")}>
+                {v}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function ListaClientes({ filas, vacio }: { filas: { clienteId: string; nombre: string; extra?: React.ReactNode }[]; vacio: string }) {
   if (filas.length === 0) return <p className="text-[12.5px] text-ink-subtle">{vacio}</p>;
   return (
     <ul className="divide-y divide-line-row">
-      {filas.slice(0, 8).map((f) => (
+      {filas.slice(0, 10).map((f) => (
         <li key={f.clienteId} className="flex items-baseline justify-between gap-3 py-1.5">
           <Link href={`/libros/clientes/${f.clienteId}`} className="text-[12.5px] text-ink hover:text-bordo truncate">
             {f.nombre}
@@ -206,199 +260,265 @@ function ListaClientes({ filas, vacio }: { filas: { clienteId: string; nombre: s
           {f.extra}
         </li>
       ))}
-      {filas.length > 8 && <li className="pt-1.5 text-[12px] text-ink-subtle">y {filas.length - 8} más</li>}
+      {filas.length > 10 && <li className="pt-1.5 text-[12px] text-ink-subtle">y {filas.length - 10} más</li>}
     </ul>
   );
 }
 
+type Tarjeta = { id: string; titulo: string; ayuda?: string; ancho?: boolean; contenido: React.ReactNode };
+
 export function TableroClient({ datos }: { datos: DatosTablero }) {
   const { base, actual, logrado, envios, mandatos } = datos;
-  const reduccion = base.periodos - actual.periodos;
   const diasMeta = datos.fechaMeta ? diasHasta(datos.fechaMeta) : null;
   const semanasMeta = diasMeta != null && diasMeta > 0 ? Math.ceil(diasMeta / 7) : null;
   const semanasDesdeBase = Math.max(1, Math.round(-diasHasta(base.fecha) / 7));
-  const ritmoActual = reduccion > 0 ? Math.round((reduccion / semanasDesdeBase) * 10) / 10 : 0;
+  const ritmoActual = Math.round((logrado.puestosAlDia / semanasDesdeBase) * 10) / 10;
+  const menosLibros = base.libros - actual.libros;
+  const menosEmpresas = base.empresas - actual.empresas;
 
-  return (
-    <div className={PAGINA}>
-      <div className={ENCABEZADO}>
-        <span className={RAYA_MODULO} />
-        <h1 className={TITULO}>Dashboard</h1>
-        <span className={clsx(MONO, "text-[12px] text-ink-subtle")}>al {fmtFecha(datos.hoy)}</span>
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-8 space-y-4">
-        {!datos.tablaSnapshots && (
-          <p className="text-[12px] text-ink-muted">
-            La evolución semanal se empieza a guardar cuando se corre <span className={MONO}>add_libros_etapa7.sql</span>.
-          </p>
-        )}
-
-        {/* 1. Objetivos */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <Seccion titulo="Puesta al día: atraso a 0" ayuda="Períodos que faltan copiar para que todos los libros lleguen a lo exigible hoy.">
-            <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-              <Dato etiqueta="Períodos pendientes" valor={actual.periodos} detalle={`${actual.atrasados} libros atrasados`} />
-              {datos.fechaMeta ? (
-                <Dato
-                  etiqueta="Meta"
-                  valor={fmtFecha(datos.fechaMeta)}
-                  cls={clsx("font-plex text-[18px]", diasMeta != null && diasMeta < 0 && "text-red-700")}
-                  detalle={
-                    diasMeta == null || diasMeta < 0
-                      ? "Fecha meta vencida"
-                      : `Faltan ${semanasMeta} semanas · hace falta ${Math.ceil(actual.periodos / Math.max(1, semanasMeta ?? 1))} por semana`
-                  }
-                />
+  const tarjetas: Tarjeta[] = [
+    {
+      id: "objetivo",
+      titulo: "Puesta al día",
+      ayuda: "Objetivo: atraso a 0 para la fecha meta. Atrasado = tiene último copiado y no llega a lo exigible hoy.",
+      contenido: (
+        <>
+          <Cifra
+            valor={actual.empresas}
+            detalle={
+              <>
+                empresas con atraso · <span className={MONO}>{actual.libros}</span> libros
+              </>
+            }
+          />
+          <p className="mt-2 text-[12.5px] text-ink-muted">
+            {datos.fechaMeta ? (
+              diasMeta != null && diasMeta >= 0 ? (
+                <>
+                  Meta <span className={MONO}>{fmtFecha(datos.fechaMeta)}</span>: hacen falta{" "}
+                  <span className={MONO}>{Math.ceil(actual.libros / Math.max(1, semanasMeta ?? 1))}</span> libros por semana (ritmo
+                  actual <span className={MONO}>{ritmoActual}</span>).
+                </>
               ) : (
-                <div className="flex flex-col gap-1">
-                  <span className={ETIQUETA}>Meta</span>
-                  {datos.esAdmin ? (
-                    <Link href="/libros/configuracion" className="text-[12.5px] font-semibold text-bordo hover:underline">
-                      Definir fecha meta
-                    </Link>
-                  ) : (
-                    <span className="text-[12.5px] text-ink-muted">Sin definir</span>
-                  )}
-                </div>
-              )}
-              <Dato etiqueta="Ritmo actual" valor={ritmoActual} detalle="períodos por semana desde la base" />
-            </div>
-          </Seccion>
-          <Seccion
-            titulo="Mantenimiento: envío anual"
-            ayuda="Clientes con el último balance legalizado o finalizado: completo = todos los libros del envío anual copiados hasta ese cierre."
-          >
-            <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-              <Dato etiqueta="Envíos completos" valor={`${envios.completos} de ${envios.total}`} detalle={pct(envios.completos, envios.total)} />
-              <Dato etiqueta="Pendientes" valor={envios.pendientes.length} detalle={`${envios.pendientes.filter((e) => e.legalizado).length} con el acta por hacer`} />
-            </div>
-          </Seccion>
-        </div>
-
-        {/* 2. Cuánto falta */}
-        <Seccion titulo="Cuánto falta">
-          <div className="flex flex-wrap gap-x-8 gap-y-3 pb-4 border-b border-line-row">
-            <Dato etiqueta="Períodos pendientes" valor={actual.periodos} detalle={`en ${actual.atrasados} libros`} />
-            <Dato etiqueta="Sin dato" valor={actual.sinDato} detalle="relevar, no copiar" />
-            <Dato etiqueta="Sin libro" valor={actual.sinLibro} detalle="pedir presupuesto" />
-            <Dato etiqueta="Al día" valor={`${actual.alDia} de ${actual.total}`} detalle={pct(actual.alDia, actual.total)} />
-            {actual.sinCargar > 0 && <Dato etiqueta="Sin cargar en la ficha" valor={actual.sinCargar} />}
-          </div>
-          {datos.masAtrasados.length === 0 ? (
-            <p className="pt-4 text-[12.5px] text-ink-subtle">No hay libros atrasados con último copiado cargado.</p>
-          ) : (
-            <table className="mt-3 w-full text-[13px]">
-              <thead>
-                <tr>
-                  <th className={clsx(TH, "text-left px-0")}>Cliente</th>
-                  <th className={clsx(TH, "text-left")}>Libro</th>
-                  <th className={clsx(TH, "text-right px-0")}>Faltan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datos.masAtrasados.map((l) => (
-                  <tr key={l.libroId} className="border-t border-line-row">
-                    <td className="py-1.5 pr-3">
-                      <Link href={`/libros/clientes/${l.clienteId}`} className="text-ink hover:text-bordo">
-                        {l.clienteNombre}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-1.5 text-ink-cell">{l.libroNombre}</td>
-                    <td className={clsx(NUM, "py-1.5 whitespace-nowrap")}>{textoPeriodos(l.periodos, l.periodicidad)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Seccion>
-
-        {/* 3. Cuánto se logró */}
-        <Seccion titulo="Cuánto se logró" ayuda={`Línea base: el estado del sheet importado al ${fmtFecha(base.fecha)}.`}>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-x-8 gap-y-3">
-                <Dato
-                  etiqueta="Períodos pendientes"
-                  valor={`${base.periodos} → ${actual.periodos}`}
-                  detalle={reduccion > 0 ? `${reduccion} menos (${pct(reduccion, base.periodos)})` : "Sin cambios desde la base"}
-                />
-                <Dato
-                  etiqueta="Libros al día"
-                  valor={`${base.alDia} → ${actual.alDia}`}
-                  detalle={actual.alDia > base.alDia ? `${actual.alDia - base.alDia} más` : undefined}
+                <span className="text-red-700">
+                  La meta (<span className={MONO}>{fmtFecha(datos.fechaMeta)}</span>) ya venció.
+                </span>
+              )
+            ) : datos.esAdmin ? (
+              <Link href="/libros/configuracion" className="font-semibold text-bordo hover:underline">
+                Definir fecha meta
+              </Link>
+            ) : (
+              "Sin fecha meta."
+            )}
+          </p>
+        </>
+      ),
+    },
+    {
+      id: "mantenimiento",
+      titulo: "Mantenimiento",
+      ayuda: "Clientes con el último balance legalizado o finalizado. Completo = todos los libros del envío anual copiados hasta ese cierre.",
+      contenido: (
+        <>
+          <Cifra
+            valor={`${envios.completos} de ${envios.total}`}
+            detalle="clientes con el envío del último balance completo"
+          />
+          {envios.pendientes.length > 0 && (
+            <details className={DETALLE}>
+              <summary>Ver los {envios.pendientes.length} pendientes</summary>
+              <div className="mt-2">
+                <ListaClientes
+                  vacio=""
+                  filas={envios.pendientes.map((e) => ({
+                    clienteId: e.clienteId,
+                    nombre: e.nombre,
+                    extra: (
+                      <span className={clsx(NUM, "whitespace-nowrap")}>
+                        B{e.anio} · faltan {e.faltan}
+                      </span>
+                    ),
+                  }))}
                 />
               </div>
-              <table className="w-full text-[13px]">
-                <thead>
-                  <tr>
-                    <th className={clsx(TH, "text-left px-0")} />
-                    <th className={clsx(TH, "text-right")}>7 días</th>
-                    <th className={clsx(TH, "text-right")}>30 días</th>
-                    <th className={clsx(TH, "text-right px-0")}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-t border-line-row">
-                    <td className="py-1.5 text-ink-cell">Libros puestos al día</td>
-                    <td className={clsx(NUM, "px-3")}>{logrado.puestos.semana}</td>
-                    <td className={clsx(NUM, "px-3")}>{logrado.puestos.mes}</td>
-                    <td className={NUM}>{logrado.puestos.total}</td>
-                  </tr>
-                  <tr className="border-t border-line-row">
-                    <td className="py-1.5 text-ink-cell">Envíos anuales copiados</td>
-                    <td className={clsx(NUM, "px-3")}>{logrado.envios.semana}</td>
-                    <td className={clsx(NUM, "px-3")}>{logrado.envios.mes}</td>
-                    <td className={NUM}>{logrado.envios.total}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div>
-              <p className={clsx(ETIQUETA, "mb-1")}>Períodos pendientes por semana</p>
-              <Evolucion puntos={datos.evolucion} />
-            </div>
+            </details>
+          )}
+        </>
+      ),
+    },
+    {
+      id: "pendiente-libro",
+      titulo: "Pendiente por tipo de libro",
+      contenido: (
+        <>
+          <Cifra valor={actual.empresas} detalle="empresas con algún libro atrasado" />
+          <div className="mt-3">
+            <TablaCategorias
+              columnas={["Empresas", "Libros"]}
+              filas={datos.pendienteLibro.map((f) => ({ label: f.label, valores: [`${f.empresas} / ${f.de}`, f.libros] }))}
+            />
           </div>
-        </Seccion>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* 4. Por prioridad */}
-          <Seccion titulo="Tareas abiertas por prioridad">
-            <table className="w-full text-[13px]">
-              <thead>
-                <tr>
-                  <th className={clsx(TH, "text-left px-0")}>Prioridad</th>
-                  <th className={clsx(TH, "text-right")}>Abiertas</th>
-                  <th className={clsx(TH, "text-right px-0")}>Antigüedad promedio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {datos.prioridad.map((p) => (
-                  <tr key={p.prioridad} className="border-t border-line-row">
-                    <td className="py-2">
-                      <span className={clsx(CHIP, PRIORIDAD_INFO[p.prioridad].cls)}>{PRIORIDAD_INFO[p.prioridad].label}</span>
-                    </td>
-                    <td className={clsx(NUM, "px-3")}>{p.abiertas}</td>
-                    <td className={NUM}>{p.antiguedad == null ? "—" : `${p.antiguedad} días`}</td>
-                  </tr>
+          {datos.masAtrasados.length > 0 && (
+            <details className={DETALLE}>
+              <summary>Ver los más atrasados</summary>
+              <ul className="mt-2 divide-y divide-line-row">
+                {datos.masAtrasados.map((l) => (
+                  <li key={l.libroId} className="flex items-baseline justify-between gap-3 py-1.5">
+                    <Link href={`/libros/clientes/${l.clienteId}`} className="text-ink hover:text-bordo truncate">
+                      {l.clienteNombre} · {l.libroNombre}
+                    </Link>
+                    <span className={clsx(NUM, "whitespace-nowrap")}>{textoPeriodos(l.periodos, l.periodicidad)}</span>
+                  </li>
                 ))}
-              </tbody>
-            </table>
-          </Seccion>
-
-          {/* 6. Mandatos y balances */}
-          <Seccion titulo="Mandatos y balances">
-            <div className="flex flex-wrap gap-2 pb-3">
-              <span className={clsx(CHIP, SEMAFORO.verdeClaro)}>{mandatos.vigentes} vigentes</span>
-              <span className={clsx(CHIP, SEMAFORO.amarillo)}>{mandatos.porVencer.length} por vencer</span>
-              <span className={clsx(CHIP, mandatos.vencidos.length ? SEMAFORO.rojo : SEMAFORO.sinDato)}>
-                {mandatos.vencidos.length} vencidos
-              </span>
-              <Link href="/libros/clientes" className={clsx(CHIP, SEMAFORO.sinDato, "hover:text-ink")}>
-                {mandatos.sinCargar.length} sin cargar
-              </Link>
+              </ul>
+            </details>
+          )}
+        </>
+      ),
+    },
+    {
+      id: "pendiente-societario",
+      titulo: "Pendiente por tipo societario",
+      contenido: (
+        <>
+          <Cifra valor={`${actual.empresas} de ${actual.empresasTotal}`} detalle="empresas con atraso" />
+          <div className="mt-3">
+            <TablaCategorias
+              columnas={["Empresas", "Libros"]}
+              filas={datos.pendienteSocietario.map((f) => ({ label: f.label, valores: [`${f.empresas} / ${f.de}`, f.libros] }))}
+            />
+          </div>
+        </>
+      ),
+    },
+    {
+      id: "sin-dato",
+      titulo: "Sin dato y sin libro",
+      ayuda: "Sin dato: no tiene último copiado cargado, hay que relevarlo. Sin libro: falta el libro, hay que pedir presupuesto.",
+      contenido: (
+        <div className="flex flex-wrap gap-x-8 gap-y-3">
+          <Cifra
+            valor={actual.sinDatoLibros}
+            detalle={
+              <>
+                libros sin dato en <span className={MONO}>{actual.sinDatoEmpresas}</span> empresas
+              </>
+            }
+          />
+          <Cifra
+            valor={actual.sinLibroLibros}
+            detalle={
+              <>
+                sin libro en <span className={MONO}>{actual.sinLibroEmpresas}</span> empresas
+              </>
+            }
+          />
+        </div>
+      ),
+    },
+    {
+      id: "logrado",
+      titulo: "Logrado",
+      ayuda: `Copiados registrados: el historial importado del sheet más lo registrado en BOS. "Puestos al día" se compara con la línea base del ${fmtFecha(base.fecha)}.`,
+      contenido: (
+        <>
+          <div className="flex flex-wrap gap-x-8 gap-y-3">
+            <Cifra
+              valor={logrado.puestosAlDia}
+              detalle={<>libros puestos al día desde el {fmtFecha(base.fecha)}</>}
+            />
+            <Cifra valor={logrado.enviosCopiados} detalle="libros del envío anual copiados" />
+          </div>
+          <p className="mt-2 text-[12.5px] text-ink-muted">
+            Atrasados: <span className={MONO}>{base.empresas}</span> → <span className={MONO}>{actual.empresas}</span> empresas
+            {menosEmpresas > 0 && ` (${pct(menosEmpresas, base.empresas)} menos)`}, <span className={MONO}>{base.libros}</span> →{" "}
+            <span className={MONO}>{actual.libros}</span> libros{menosLibros > 0 && ` (${pct(menosLibros, base.libros)} menos)`}.
+          </p>
+          <details className={DETALLE}>
+            <summary>Ver por tipo de libro y societario</summary>
+            <div className="mt-2 space-y-3">
+              {[logrado.porLibro, logrado.porSocietario].map((filas, i) => (
+                <TablaCategorias
+                  key={i}
+                  columnas={["Empresas", "Libros", "Últ. 30 días", "Sheet", "BOS"]}
+                  filas={filas.map((f) => ({
+                    label: f.label,
+                    valores: [f.empresas, f.libros, `${f.empresas30} / ${f.libros30}`, f.delSheet, f.enBos],
+                  }))}
+                />
+              ))}
+              <p className="text-[11.5px] text-ink-subtle">
+                &ldquo;Últ. 30 días&rdquo; = empresas / libros. &ldquo;Sheet&rdquo; y &ldquo;BOS&rdquo; = copiados registrados en cada uno.
+              </p>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+          </details>
+        </>
+      ),
+    },
+    {
+      id: "evolucion",
+      titulo: "Evolución semanal",
+      ancho: true,
+      contenido: datos.tablaSnapshots || datos.evolucion.length > 1 ? (
+        <Evolucion puntos={datos.evolucion} />
+      ) : (
+        <p className="text-[12.5px] text-ink-muted">
+          La evolución se empieza a guardar cuando se corre <span className={MONO}>add_libros_etapa7.sql</span>.
+        </p>
+      ),
+    },
+    {
+      id: "prioridad",
+      titulo: "Tareas abiertas por prioridad",
+      ayuda: Object.values(DEFINICION_PRIORIDAD).join(" "),
+      contenido: (
+        <>
+          <Cifra valor={datos.prioridad.reduce((n, p) => n + p.abiertas, 0)} detalle="tareas abiertas" />
+          <table className="mt-3 w-full text-[12.5px]">
+            <tbody>
+              {datos.prioridad.map((p) => (
+                <tr key={p.prioridad} className="border-t border-line-row">
+                  <td className="py-1.5">
+                    <span className={clsx(CHIP, PRIORIDAD_INFO[p.prioridad].cls)} title={DEFINICION_PRIORIDAD[p.prioridad]}>
+                      {PRIORIDAD_INFO[p.prioridad].label}
+                    </span>
+                  </td>
+                  <td className={clsx(NUM, "px-3")}>{p.abiertas}</td>
+                  <td className={NUM}>{p.antiguedad == null ? "—" : `${p.antiguedad} días`}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ),
+    },
+    {
+      id: "mandatos",
+      titulo: "Mandatos y balances",
+      contenido: (
+        <>
+          <Cifra
+            valor={mandatos.vencidos.length}
+            cls={mandatos.vencidos.length ? "text-red-700" : undefined}
+            detalle={
+              <>
+                mandatos vencidos · <span className={MONO}>{mandatos.porVencer.length}</span> por vencer
+              </>
+            }
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className={clsx(CHIP, SEMAFORO.verdeClaro)}>{mandatos.vigentes} vigentes</span>
+            <Link href="/libros/clientes" className={clsx(CHIP, SEMAFORO.sinDato, "hover:text-ink")}>
+              {mandatos.sinCargar.length} sin cargar
+            </Link>
+            <span className={clsx(CHIP, SEMAFORO.verdeClaro)}>
+              {envios.pendientes.filter((e) => e.legalizado).length} actas pendientes
+            </span>
+          </div>
+          <details className={DETALLE}>
+            <summary>Ver clientes</summary>
+            <div className="mt-2 grid gap-4 sm:grid-cols-2">
               <div>
                 <p className={clsx(ETIQUETA, "mb-1")}>Vencidos y por vencer</p>
                 <ListaClientes
@@ -406,9 +526,7 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
                   filas={[...mandatos.vencidos, ...mandatos.porVencer].map((m) => ({
                     clienteId: m.clienteId,
                     nombre: m.nombre,
-                    extra: (
-                      <span className={clsx(NUM, "whitespace-nowrap", m.dias < 0 && "text-red-700")}>{fmtFecha(m.vence)}</span>
-                    ),
+                    extra: <span className={clsx(NUM, "whitespace-nowrap", m.dias < 0 && "text-red-700")}>{fmtFecha(m.vence)}</span>,
                   }))}
                 />
               </div>
@@ -426,69 +544,139 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
                 />
               </div>
             </div>
-          </Seccion>
-        </div>
+          </details>
+        </>
+      ),
+    },
+  ];
 
-        {/* 5. Por responsable (solo admin) */}
-        {datos.porResponsable && (
-          <Seccion titulo="Avance por responsable" ayuda="Solo administradores. La parte de cada persona son los libros de los clientes que tiene asignados en Libros.">
-            {datos.porResponsable.length === 0 ? (
-              <p className="text-[12.5px] text-ink-subtle">Todavía no hay libros con atraso calculable.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
-                  <thead>
-                    <tr>
-                      <th className={clsx(TH, "text-left px-0")}>Responsable</th>
-                      <th className={clsx(TH, "text-right")}>Períodos (base → hoy)</th>
-                      <th className={clsx(TH, "text-right")}>Avance</th>
-                      <th className={clsx(TH, "text-right hidden sm:table-cell")}>Puestos al día</th>
-                      <th className={clsx(TH, "text-right hidden md:table-cell")}>Al día</th>
-                      <th className={clsx(TH, "text-right hidden md:table-cell px-0")}>Sin dato</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {datos.porResponsable.map((r) => {
-                      const avance = r.periodosBase - r.periodosHoy;
-                      return (
-                        <tr key={r.id || "sin"} className="border-t border-line-row">
-                          <td className="py-2 pr-3 text-ink">{r.nombre}</td>
-                          <td className={clsx(NUM, "px-3 whitespace-nowrap")}>
-                            {r.periodosBase} → {r.periodosHoy}
-                          </td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center justify-end gap-2">
-                              <div className="w-20 h-1.5 rounded-full bg-paper-hover overflow-hidden hidden sm:block">
-                                <div
-                                  className="h-full rounded-full bg-bordo"
-                                  style={{ width: r.periodosBase ? `${Math.max(0, Math.min(100, (avance / r.periodosBase) * 100))}%` : "0%" }}
-                                />
-                              </div>
-                              <span className={NUM}>{r.periodosBase ? pct(Math.max(0, avance), r.periodosBase) : "—"}</span>
-                            </div>
-                          </td>
-                          <td className={clsx(NUM, "px-3 hidden sm:table-cell")}>{r.puestosAlDia}</td>
-                          <td className={clsx(NUM, "px-3 hidden md:table-cell")}>
-                            {r.alDia}/{r.libros}
-                          </td>
-                          <td className={clsx(NUM, "hidden md:table-cell")}>{r.sinDato}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Seccion>
-        )}
-
-        {envios.pendientes.length > 0 && (
-          <div className="flex justify-end">
-            <Link href="/libros" className={BOTON_SECUNDARIO}>
-              Ir a Seguimiento
-            </Link>
+  if (datos.porResponsable) {
+    tarjetas.push({
+      id: "responsables",
+      titulo: "Avance por responsable",
+      ancho: true,
+      ayuda: "Solo administradores. La parte de cada persona son los clientes que tiene asignados en Libros.",
+      contenido:
+        datos.porResponsable.length === 0 ? (
+          <p className="text-[12.5px] text-ink-subtle">Todavía no hay libros con atraso calculable.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr>
+                  <th className={clsx(TH, "text-left px-0")}>Responsable</th>
+                  <th className={clsx(TH, "text-right")}>Empresas atrasadas</th>
+                  <th className={clsx(TH, "text-right")}>Libros atrasados</th>
+                  <th className={clsx(TH, "text-right hidden sm:table-cell")}>Puestos al día</th>
+                  <th className={clsx(TH, "text-right hidden md:table-cell px-0")}>Empresas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {datos.porResponsable.map((r) => (
+                  <tr key={r.id || "sin"} className="border-t border-line-row">
+                    <td className="py-2 pr-3 text-ink">{r.nombre}</td>
+                    <td className={clsx(NUM, "px-3 whitespace-nowrap")}>
+                      {r.empresasBase} → {r.empresasHoy}
+                    </td>
+                    <td className={clsx(NUM, "px-3 whitespace-nowrap")}>
+                      {r.librosBase} → {r.librosHoy}
+                      <span className="text-ink-subtle">
+                        {" "}
+                        ({r.librosBase ? pct(Math.max(0, r.librosBase - r.librosHoy), r.librosBase) : "—"})
+                      </span>
+                    </td>
+                    <td className={clsx(NUM, "px-3 hidden sm:table-cell")}>{r.puestosAlDia}</td>
+                    <td className={clsx(NUM, "hidden md:table-cell")}>{r.empresas}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+        ),
+    });
+  }
+
+  // Orden por usuario: lo guardado primero, las tarjetas nuevas al final.
+  const ids = tarjetas.map((t) => t.id);
+  const [orden, setOrden] = useState<string[]>(() => [
+    ...datos.ordenGuardado.filter((id) => ids.includes(id)),
+    ...ids.filter((id) => !datos.ordenGuardado.includes(id)),
+  ]);
+  const [agarrado, setAgarrado] = useState<string | null>(null);
+  const [arrastrando, setArrastrando] = useState<string | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [, startGuardar] = useTransition();
+  const ordenadas = orden.map((id) => tarjetas.find((t) => t.id === id)).filter((t): t is Tarjeta => !!t);
+
+  function soltar(destino: string) {
+    if (!arrastrando || arrastrando === destino) return;
+    const nuevo = orden.filter((id) => id !== arrastrando);
+    nuevo.splice(nuevo.indexOf(destino), 0, arrastrando);
+    setOrden(nuevo);
+    startGuardar(async () => {
+      const res = await guardarOrdenDashboard(nuevo);
+      if (res.error) setError(res.error);
+    });
+  }
+
+  return (
+    <div className={PAGINA}>
+      <div className={ENCABEZADO}>
+        <span className={RAYA_MODULO} />
+        <h1 className={TITULO}>Dashboard</h1>
+        <span className={clsx(MONO, "text-[12px] text-ink-subtle")}>al {fmtFecha(datos.hoy)}</span>
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-8">
+        {error && <p className="mb-3 text-xs text-red-700 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+        <div className="grid gap-4 md:grid-cols-2">
+          {ordenadas.map((t) => (
+            <section
+              key={t.id}
+              draggable={agarrado === t.id}
+              onDragStart={() => setArrastrando(t.id)}
+              onDragOver={(e) => {
+                if (!arrastrando) return;
+                e.preventDefault();
+                setSobre(t.id);
+              }}
+              onDragLeave={() => setSobre((s) => (s === t.id ? null : s))}
+              onDrop={() => soltar(t.id)}
+              onDragEnd={() => {
+                setArrastrando(null);
+                setSobre(null);
+                setAgarrado(null);
+              }}
+              className={clsx(
+                PANEL,
+                "overflow-hidden",
+                t.ancho && "md:col-span-2",
+                arrastrando === t.id && "opacity-40",
+                sobre === t.id && arrastrando && arrastrando !== t.id && "ring-2 ring-bordo"
+              )}
+            >
+              <div className={clsx(PANEL_CABECERA, "px-3 py-2.5 flex items-center gap-2")}>
+                <span
+                  onMouseDown={() => setAgarrado(t.id)}
+                  onMouseUp={() => setAgarrado(null)}
+                  title="Arrastrá para cambiar el orden"
+                  aria-hidden="true"
+                  className="text-ink-subtle hover:text-ink cursor-grab active:cursor-grabbing"
+                >
+                  <GripVertical size={15} />
+                </span>
+                <h2 className="font-archivo text-[14px] font-bold text-ink">{t.titulo}</h2>
+                {t.ayuda && (
+                  <span title={t.ayuda} aria-label={t.ayuda} className="text-ink-subtle">
+                    <HelpCircle size={13} />
+                  </span>
+                )}
+              </div>
+              <div className="p-4">{t.contenido}</div>
+            </section>
+          ))}
+        </div>
       </div>
     </div>
   );

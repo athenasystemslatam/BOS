@@ -50,12 +50,14 @@ export type ResumenUbicacion = {
 };
 
 type MovimientoVista = LibroMovimiento & {
+  clienteId: string | null;
   libroNombre: string;
   clienteNombre: string;
   registradorNombre: string | null;
 };
 
 type IncidenciaVista = LibroIncidencia & {
+  clienteId: string | null;
   libroNombre: string;
   clienteNombre: string;
 };
@@ -80,6 +82,17 @@ const TIPOS_INCIDENCIA: { value: TipoIncidencia; label: string }[] = [
 function UbicacionIcon({ ubicacion }: { ubicacion: UbicacionLibro }) {
   const Icono = ubicacion === "copiadora" ? Printer : ubicacion === "cliente" ? Building : ubicacion === "estudio" ? Home : HelpCircle;
   return <Icono size={12} aria-hidden="true" className="inline mr-0.5 text-ink-subtle" />;
+}
+
+function MarcaSheet() {
+  return (
+    <span
+      title="Importado del sheet GESTION DE LIBROS"
+      className="ml-1.5 align-middle whitespace-nowrap rounded px-1 py-px text-[10px] font-semibold uppercase tracking-wide bg-paper-hover text-ink-subtle border border-line-rule"
+    >
+      del sheet
+    </span>
+  );
 }
 
 // ── Resumen en línea ─────────────────────────────────────────────────────────
@@ -454,24 +467,22 @@ export function MovimientosClient({
   const [tab, setTab] = useState<"movimientos" | "incidencias">("movimientos");
   const [filtroCliente, setFiltroCliente] = useState("");
 
-  const movsFiltrados = useMemo(() =>
-    filtroCliente
-      ? movimientos.filter((m) => {
-          const libro = clientes.flatMap((c) => c.libros).find((l) => l.id === m.libro_id);
-          return libro && clientes.find((c) => c.id === filtroCliente)?.libros.some((l) => l.id === libro.id);
-        })
-      : movimientos,
-    [movimientos, clientes, filtroCliente]
+  const movsFiltrados = useMemo(
+    () => (filtroCliente ? movimientos.filter((m) => m.clienteId === filtroCliente) : movimientos),
+    [movimientos, filtroCliente]
   );
 
-  const incFiltradas = useMemo(() =>
-    filtroCliente
-      ? incidencias.filter((i) =>
-          clientes.find((c) => c.id === filtroCliente)?.libros.some((l) => l.id === i.libro_id)
-        )
-      : incidencias,
-    [incidencias, clientes, filtroCliente]
+  const incFiltradas = useMemo(
+    () => (filtroCliente ? incidencias.filter((i) => i.clienteId === filtroCliente) : incidencias),
+    [incidencias, filtroCliente]
   );
+
+  // El filtro también ofrece los clientes que solo aparecen en lo importado del sheet.
+  const opcionesCliente = useMemo(() => {
+    const m = new Map(clientes.map((c) => [c.id, c.nombre]));
+    for (const x of [...movimientos, ...incidencias]) if (x.clienteId && !m.has(x.clienteId)) m.set(x.clienteId, x.clienteNombre);
+    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1], "es"));
+  }, [clientes, movimientos, incidencias]);
 
   const incAbiertas = incidencias.filter((i) => !i.resuelto).length;
 
@@ -521,8 +532,8 @@ export function MovimientosClient({
             onChange={(e) => setFiltroCliente(e.target.value)}
           >
             <option value="">Todos</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>{c.nombre}</option>
+            {opcionesCliente.map(([id, nombre]) => (
+              <option key={id} value={id}>{nombre}</option>
             ))}
           </select>
           {(["movimientos", "incidencias"] as const).map((t) => (
@@ -581,7 +592,10 @@ export function MovimientosClient({
                     <tr key={m.id} className={FILA}>
                       <td className={TD_FECHA}>{fmtFecha(m.fecha)}</td>
                       <td className={clsx(TD, "font-archivo font-bold text-ink")}>{m.clienteNombre}</td>
-                      <td className={TD}>{m.libroNombre}</td>
+                      <td className={clsx(TD, "whitespace-normal max-w-[280px]")}>
+                        <span className={m.libro_id ? undefined : "text-ink-muted"}>{m.libroNombre}</span>
+                        {m.importado && <MarcaSheet />}
+                      </td>
                       <td className={TD}>
                         <span className={clsx(CHIP, m.tipo === "salida" ? SEMAFORO.amarillo : SEMAFORO.verdeClaro)}>
                           {m.tipo === "salida"
@@ -641,7 +655,10 @@ export function MovimientosClient({
                     <tr key={inc.id} className={FILA}>
                       <td className={TD_FECHA}>{fmtFecha(inc.fecha)}</td>
                       <td className={clsx(TD, "font-archivo font-bold text-ink")}>{inc.clienteNombre}</td>
-                      <td className={TD}>{inc.libroNombre}</td>
+                      <td className={clsx(TD, "whitespace-normal max-w-[240px]")}>
+                        <span className={inc.libro_id ? undefined : "text-ink-muted"}>{inc.libroNombre}</span>
+                        {inc.importado && <MarcaSheet />}
+                      </td>
                       <td className={TD}>
                         <span className={clsx(CHIP, inc.resuelto ? SEMAFORO.verdeClaro : SEMAFORO.rojo)}>
                           {inc.resuelto ? "Resuelto" : "Abierto"}

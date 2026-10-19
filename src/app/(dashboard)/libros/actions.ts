@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAreaOrAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import {
   UMBRAL_FOLIOS,
   diasHasta,
@@ -187,6 +188,93 @@ export async function editarLibro(id: string, datos: DatosLibro): Promise<Result
 // Cierra el tomo activo y abre el siguiente (tomo + 1). El cierre va
 // primero porque el índice libros_un_activo_idx no admite dos activos; si
 // el alta falla, se reabre el anterior para no dejar el libro sin tomo.
+/** Alta de un libro (tomo 1) sin datos de rúbrica ni folios, desde Seguimiento → "+ Agregar". */
+export async function altaLibroRapida(clienteId: string, catalogoId: string): Promise<Resultado & { id?: string }> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const { data: existente } = await admin
+    .from("libros")
+    .select("id")
+    .eq("cliente_id", clienteId)
+    .eq("catalogo_id", catalogoId)
+    .in("estado", ["activo", "sin_libro"])
+    .order("tomo", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existente) return { id: existente.id as string };
+  const { data, error } = await admin
+    .from("libros")
+    .insert({
+      cliente_id: clienteId,
+      catalogo_id: catalogoId,
+      tomo: 1,
+      estado: "activo",
+      observaciones: "Alta desde Seguimiento: completar rúbrica, folios, último copiado y ubicación.",
+    })
+    .select("id")
+    .maybeSingle();
+  if (error || !data) return { error: traducirError(error?.message ?? "No se pudo dar de alta el libro.") };
+  revalidatePath("/libros", "layout");
+  return { id: data.id as string };
+}
+
+/**
+ * Último paso del circuito de un presupuesto aprobado: abre el tomo en la
+ * ficha. Si el libro estaba como "sin libro" (presupuesto de libro nuevo) se
+ * activa ese mismo registro; si no, se cierra el tomo actual y se abre el
+ * siguiente. El pedido queda cerrado con el detalle en su historial.
+ */
+export async function abrirTomoDesdePedido(
+  pedidoId: string,
+  libroId: string,
+  datos: Pick<DatosLibro, "rubrica_nro" | "rubrica_fecha" | "folios_totales">
+): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  if (datos.folios_totales != null && (!Number.isInteger(datos.folios_totales) || datos.folios_totales < 1)) {
+    return { error: "Los folios del tomo nuevo tienen que ser un número entero mayor a 0." };
+  }
+  const admin = createAdminClient();
+  const [{ data: pedido }, { data: libro }] = await Promise.all([
+    admin.from("libros_pedidos").select("id, cliente_id, tipo, estado").eq("id", pedidoId).maybeSingle(),
+    admin.from("libros").select("id, cliente_id, estado, tomo, libros_catalogo(nombre)").eq("id", libroId).maybeSingle(),
+  ]);
+  if (!pedido || !libro) return { error: "No se encontró el pedido o el libro." };
+  if (libro.cliente_id !== pedido.cliente_id) return { error: "El libro no es del cliente del pedido." };
+  if (pedido.estado !== "aprobado") return { error: "Primero marcá el presupuesto como aprobado." };
+
+  const ahora = new Date().toISOString();
+  if (libro.estado === "sin_libro") {
+    const { error } = await admin
+      .from("libros")
+      .update({ ...datos, estado: "activo", folios_usados: 0, actualizado_en: ahora })
+      .eq("id", libroId);
+    if (error) return { error: traducirError(error.message) };
+  } else {
+    const res = await abrirNuevoTomo(libroId, datos);
+    if (res.error) return res;
+  }
+
+  const nombre = (libro.libros_catalogo as unknown as { nombre: string } | null)?.nombre ?? "Libro";
+  const tomo = libro.estado === "sin_libro" ? libro.tomo : (libro.tomo as number) + 1;
+  await admin.from("libros_pedidos_seguimientos").insert({
+    pedido_id: pedidoId,
+    fecha: ahora.slice(0, 10),
+    nota: `Se abrió ${nombre} tomo ${tomo}${datos.rubrica_nro ? ` (rúbrica ${datos.rubrica_nro})` : ""}${
+      datos.folios_totales ? `, ${datos.folios_totales} folios` : ""
+    }.`,
+    registrado_por: yo.id,
+  });
+  const { error } = await admin
+    .from("libros_pedidos")
+    .update({ estado: "cerrado", proximo_seguimiento: null, actualizado_en: ahora })
+    .eq("id", pedidoId);
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
 export async function abrirNuevoTomo(
   libroId: string,
   datos: Pick<DatosLibro, "rubrica_nro" | "rubrica_fecha" | "folios_totales">
@@ -422,7 +510,7 @@ export async function enviarACopiar(tareaIds: string[], datos: DatosEnvioCopiado
   const [finales, { data: copiandose }, { data: tareas, error: errTareas }] = await Promise.all([
     estadosFinales(admin),
     admin.from("libros_estados").select("id").eq("codigo", "copiandose").maybeSingle(),
-    admin.from("libros_tareas").select("id, libro_id, estado_id").in("id", tareaIds),
+    admin.from("libros_tareas").select("id, libro_id, cliente_id, estado_id").in("id", tareaIds),
   ]);
   if (errTareas) return { error: errTareas.message };
   if (!copiandose) return { error: "Falta el estado Copiándose en libros_estados." };
@@ -432,6 +520,7 @@ export async function enviarACopiar(tareaIds: string[], datos: DatosEnvioCopiado
   const { error: errMov } = await admin.from("libros_movimientos").insert(
     abiertas.map((t) => ({
       libro_id: t.libro_id,
+      cliente_id: t.cliente_id,
       tarea_id: t.id,
       fecha: datos.fecha,
       tipo: "salida",
@@ -575,6 +664,7 @@ export async function registrarCopiado(
     if (enCopiadora) {
       const { error: errMov } = await admin.from("libros_movimientos").insert({
         libro_id: libro.id,
+        cliente_id: tarea.cliente_id,
         tarea_id: tarea.id,
         fecha: fechaFin,
         tipo: "entrada",
@@ -722,7 +812,12 @@ export async function crearPedido(datos: DatosPedido): Promise<Resultado> {
   return {};
 }
 
-export type CambiosPedido = Partial<Omit<DatosPedido, "cliente_id">> & { estado?: EstadoPedido; respuesta?: string };
+export type CambiosPedido = Partial<Omit<DatosPedido, "cliente_id">> & {
+  estado?: EstadoPedido;
+  respuesta?: string | null;
+  fecha_envio_cliente?: string | null;
+  fecha_respuesta?: string | null;
+};
 
 export async function actualizarPedido(id: string, cambios: CambiosPedido): Promise<Resultado> {
   const yo = await autorizar();
@@ -936,11 +1031,14 @@ export async function registrarMovimiento(
 
   const admin = createAdminClient();
   const ahora = new Date().toISOString();
+  const { data: librosCliente } = await admin.from("libros").select("id, cliente_id").in("id", libroIds);
+  const clienteDe = new Map((librosCliente ?? []).map((l) => [l.id as string, l.cliente_id as string]));
 
   // Insertar un movimiento por libro
   const { error: errMov } = await admin.from("libros_movimientos").insert(
     libroIds.map((libro_id) => ({
       libro_id,
+      cliente_id: clienteDe.get(libro_id) ?? null,
       fecha: datos.fecha,
       tipo: datos.tipo,
       destino: datos.destino,
@@ -1004,8 +1102,10 @@ export async function registrarIncidencia(datos: DatosIncidencia): Promise<Resul
   if ("error" in yo) return yo;
   if (!datos.situacion.trim()) return { error: "Describí la situación." };
   const admin = createAdminClient();
+  const { data: libro } = await admin.from("libros").select("cliente_id").eq("id", datos.libro_id).maybeSingle();
   const { error } = await admin.from("libros_incidencias").insert({
     ...datos,
+    cliente_id: libro?.cliente_id ?? null,
     situacion: datos.situacion.trim(),
     registrado_por: yo.id,
   });
@@ -1035,12 +1135,12 @@ export async function resolverIncidencia(id: string, resolucion: string): Promis
     .eq("id", id);
   if (error) return { error: error.message };
 
-  if ((inc as unknown as LibroIncidencia).tipo === "extravio") {
+  if ((inc as unknown as LibroIncidencia).tipo === "extravio" && (inc as unknown as LibroIncidencia).libro_id) {
     // Limpiar extraviado solo si no quedan otros extravíos abiertos
     const { count } = await admin
       .from("libros_incidencias")
       .select("id", { count: "exact", head: true })
-      .eq("libro_id", (inc as unknown as LibroIncidencia).libro_id)
+      .eq("libro_id", (inc as unknown as LibroIncidencia).libro_id!)
       .eq("tipo", "extravio")
       .eq("resuelto", false)
       .neq("id", id);
@@ -1048,7 +1148,7 @@ export async function resolverIncidencia(id: string, resolucion: string): Promis
       await admin
         .from("libros")
         .update({ extraviado: false, actualizado_en: ahora })
-        .eq("id", (inc as unknown as LibroIncidencia).libro_id);
+        .eq("id", (inc as unknown as LibroIncidencia).libro_id!);
     }
   }
   revalidatePath("/libros", "layout");
@@ -1074,7 +1174,21 @@ export async function crearFactura(datos: DatosFactura): Promise<Resultado & { i
 }
 
 export type PatchFactura = Partial<
-  Pick<CopiadoFactura, "proveedor" | "nro_factura" | "fecha_factura" | "mes" | "monto" | "factura_recibida" | "reenviada_cliente" | "pagado" | "comprobante_enviado" | "observaciones">
+  Pick<
+    CopiadoFactura,
+    | "cliente_id"
+    | "proveedor"
+    | "nro_factura"
+    | "fecha_factura"
+    | "mes"
+    | "monto"
+    | "factura_recibida"
+    | "reenviada_cliente"
+    | "pagado"
+    | "comprobante_enviado"
+    | "libros_texto"
+    | "observaciones"
+  >
 >;
 
 export async function actualizarFactura(id: string, patch: PatchFactura): Promise<Resultado> {
@@ -1090,6 +1204,41 @@ export async function actualizarFactura(id: string, patch: PatchFactura): Promis
   return {};
 }
 
+/**
+ * Suma copiados (tareas terminadas) a una factura: una factura puede cubrir
+ * varios libros o varios envíos del mismo cliente. Solo tareas de ese cliente.
+ */
+export async function vincularTareasFactura(facturaId: string, tareaIds: string[]): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  if (tareaIds.length === 0) return { error: "Elegí al menos un copiado." };
+  const admin = createAdminClient();
+  const [{ data: factura }, { data: tareas }] = await Promise.all([
+    admin.from("copiadora_facturas").select("cliente_id").eq("id", facturaId).maybeSingle(),
+    admin.from("libros_tareas").select("id, cliente_id").in("id", tareaIds),
+  ]);
+  if (!factura) return { error: "No se encontró la factura." };
+  if ((tareas ?? []).some((t) => t.cliente_id !== factura.cliente_id)) {
+    return { error: "Solo se pueden sumar copiados del mismo cliente de la factura." };
+  }
+  const { error } = await admin
+    .from("copiadora_facturas_tareas")
+    .upsert(tareaIds.map((tarea_id) => ({ factura_id: facturaId, tarea_id })), { ignoreDuplicates: true });
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export async function desvincularTareaFactura(facturaId: string, tareaId: string): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const { error } = await admin.from("copiadora_facturas_tareas").delete().eq("factura_id", facturaId).eq("tarea_id", tareaId);
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
 export async function eliminarFactura(id: string): Promise<Resultado> {
   const yo = await autorizar();
   if ("error" in yo) return yo;
@@ -1097,6 +1246,24 @@ export async function eliminarFactura(id: string): Promise<Resultado> {
   const { error } = await admin.from("copiadora_facturas").delete().eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/libros", "layout");
+  return {};
+}
+
+// ── Dashboard: orden de tarjetas por usuario ─────────────────────────────────
+
+export async function guardarOrdenDashboard(orden: string[]): Promise<Resultado> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return { error: "No hay sesión." };
+  const admin = createAdminClient();
+  const { error } = await admin.from("libros_preferencias").upsert({
+    email: user.email.toLowerCase(),
+    dashboard_orden: orden.slice(0, 50),
+    actualizado_en: new Date().toISOString(),
+  });
+  if (error) return { error: error.message.includes("libros_preferencias") ? "Falta correr add_libros_etapa9.sql en Supabase." : error.message };
   return {};
 }
 

@@ -4,6 +4,14 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
+- **`add_libros_etapa9.sql`** (19-oct) — movimientos e incidencias sin libro (`libro_id` opcional + `cliente_id`,
+  `libros_texto`, `importado`), circuito de presupuestos (`fecha_envio_cliente`, `fecha_respuesta`), `libros_texto`
+  en copiadora_facturas (migra el "Libros: …" de observaciones) y `libros_preferencias` (orden del Dashboard por
+  usuario). **El código ya lo usa**: sin correrlo fallan "Enviar a copiar", "Registrar copiado" desde la copiadora y
+  "Registrar movimiento" (insertan `cliente_id`).
+- **Importación de ENTRADA Y SALIDA e INCIDENCIAS del sheet** — `supabase/importar_libros_movimientos_control.sql`
+  y `importar_libros_movimientos.sql`, fuera del repo (datos de clientes). Esperando que Giuliana revise el cruce.
+
 - **`add_libros_etapa8.sql`** (19-oct) — `clientes_societario.mandato_vence_preciso`: si está, reemplaza al
   vencimiento calculado (designación + años). Sin correrlo, guardar un mandato desde la ficha o la lista da error
   ("Falta correr add_libros_etapa8.sql").
@@ -55,6 +63,23 @@ Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se a
   mandato anterior queda como seguimiento del pedido. Mail diario: cada umbral (90/60/30/vencido) una sola vez.
   Filtro "Mandato sin cargar" (SA y SAS) en Libros → Clientes.
 - **Puesta al día**: "Atrasados" (con último copiado) separado de "Sin dato" (hay que relevar, no copiar).
+
+### Ajustes tras la prueba (19-oct, etapa 9)
+
+- Prioridades (definición final, `DEFINICION_PRIORIDAD` en `src/lib/libros.ts`): P1 Urgente (fecha que no depende del
+  estudio, balance legalizado con acta, mandato vencido = tareas de una renovación vencida), P2 Planificado (envío anual
+  o material listo), P3 Bloqueado (falta material/información o sin libro esperando presupuesto). "?" en cada nivel.
+- Seguimiento: "+ Agregar" (`AgregarTareaModal.tsx`: cliente, uno o varios libros, alta de libros faltantes con
+  `altaLibroRapida`); aviso "N mandatos vencidos · N vencen en 90 días · Ver" sin lista.
+- Renovaciones: estado derivado (`estadoRenovacion`): Pendiente / En curso / Cerrada, sin columna nueva.
+- Pedidos: circuito de presupuestos Pedido → Enviado (monto, fecha) → Respuesta → Aprobado → "Abrir tomo nuevo"
+  (`abrirTomoDesdePedido`: activa el "sin libro" o abre el tomo siguiente y cierra el pedido).
+- Dashboard: en empresas y libros, por tipo de libro (Actas, Inv. y Balance, Diario, IVA, Registros) y por tipo
+  societario; Logrado cuenta el historial importado del sheet + lo registrado en BOS; tarjetas ordenables arrastrando,
+  orden guardado por usuario (`libros_preferencias`, por mail de login).
+- Entrada y salida: muestra movimientos/incidencias sin libro (cliente + texto del sheet, marca "del sheet").
+- Copiadora: todo editable en un modal; una factura puede sumar varios copiados del mismo cliente
+  (`vincularTareasFactura` / `desvincularTareaFactura`).
 
 ### Ajustes tras la prueba (19-oct, etapa 8)
 

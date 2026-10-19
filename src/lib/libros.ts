@@ -109,27 +109,39 @@ export const PRIORIDADES: PrioridadLibro[] = ["P1", "P2", "P3"];
 
 export const PRIORIDAD_INFO: Record<PrioridadLibro, { label: string; cls: string; borde: string }> = {
   P1: { label: "P1 · Urgente", cls: "bg-bordo-tint2 text-bordo", borde: "border-bordo-border" },
-  P2: { label: "P2 · En curso", cls: "bg-yellow-100 text-yellow-800", borde: "border-line-panel" },
-  P3: { label: "P3 · Sin material", cls: "bg-paper-hover text-ink-muted border border-line-rule", borde: "border-line-panel" },
+  P2: { label: "P2 · Planificado", cls: "bg-yellow-100 text-yellow-800", borde: "border-line-panel" },
+  P3: { label: "P3 · Bloqueado", cls: "bg-paper-hover text-ink-muted border border-line-rule", borde: "border-line-panel" },
 };
 
-// P1: fecha límite de un tercero, pedido con fecha o balance legalizado con
-// el acta por hacer. El mandato vencido y los folios bajos no suben la tarea:
-// generan su pedido (ver librosAutomaticos.ts).
-// P2: envío anual en curso o puesta al día con material listo. P3: el resto.
+// Definición acordada (oct-2026). Los folios bajos no suben la tarea: generan
+// el pedido de tomo nuevo (ver librosAutomaticos.ts).
+export const DEFINICION_PRIORIDAD: Record<PrioridadLibro, string> = {
+  P1: "Urgente: hay una fecha que no depende del estudio (pedido del cliente, banco o IGJ, trámite con fecha), un balance legalizado con el acta por hacer o un mandato vencido.",
+  P2: "Planificado: envío anual en curso, o puesta al día con el material listo.",
+  P3: "Bloqueado: falta material o información del cliente, o no hay libro y se espera el presupuesto.",
+};
+
 export function prioridadSugerida(
   tarea: Pick<LibroTarea, "origen" | "fecha_limite" | "material_listo">,
-  contexto: { pedidoConFecha: boolean; balanceEstado: string | null }
+  contexto: {
+    pedidoConFecha: boolean;
+    balanceEstado: string | null;
+    /** La tarea sale de una renovación de autoridades con el mandato vencido. */
+    renovacionVencida?: boolean;
+    /** El libro no existe todavía (estado sin_libro). */
+    sinLibro?: boolean;
+  }
 ): { prioridad: PrioridadLibro; motivo: string } {
-  if (tarea.fecha_limite) return { prioridad: "P1", motivo: "Fecha límite de un tercero" };
-  if (contexto.pedidoConFecha) return { prioridad: "P1", motivo: "Pedido con fecha límite" };
+  if (tarea.fecha_limite) return { prioridad: "P1", motivo: "Fecha que no depende del estudio" };
+  if (contexto.pedidoConFecha) return { prioridad: "P1", motivo: "Pedido con fecha (cliente, banco, IGJ o trámite)" };
   if (tarea.origen === "balance" && contexto.balanceEstado === "legalizado") {
     return { prioridad: "P1", motivo: "Balance legalizado: acta por hacer" };
   }
+  if (contexto.renovacionVencida) return { prioridad: "P1", motivo: "Mandato vencido: renovación de autoridades" };
+  if (contexto.sinLibro) return { prioridad: "P3", motivo: "Sin libro: esperando el presupuesto" };
   if (tarea.origen === "balance") return { prioridad: "P2", motivo: "Envío anual en curso" };
-  if (tarea.material_listo) return { prioridad: "P2", motivo: "Material listo" };
-  if (tarea.origen === "pedido" || tarea.origen === "asamblea") return { prioridad: "P2", motivo: "Pedido sin fecha" };
-  return { prioridad: "P3", motivo: "Falta material o información" };
+  if (tarea.material_listo) return { prioridad: "P2", motivo: "Puesta al día con material listo" };
+  return { prioridad: "P3", motivo: "Falta material o información del cliente" };
 }
 
 function iso(d: Date): string {
@@ -306,6 +318,31 @@ export const SEMAFORO_SEGUIMIENTO_INFO: Record<SemaforoPedido, { label: string; 
   hoy:       { label: "Vence hoy", cls: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-500" },
   al_dia:    { label: "Al día",    cls: "bg-green-100 text-green-700",   dot: "bg-green-500"  },
   sin_fecha: { label: "—",         cls: "text-ink-ghost",                dot: "bg-dot"        },
+};
+
+// ── Renovación de autoridades ────────────────────────────────────────────────
+
+export type EstadoRenovacion = "pendiente" | "en_curso" | "cerrada";
+
+/**
+ * Pendiente = saltó el aviso y nadie la tomó; En curso = alguien marcó un paso
+ * del checklist, cargó un seguimiento o la movió de "Abierto"; Cerrada = se
+ * cargó el mandato nuevo (o se cerró sola al actualizarlo).
+ */
+export function estadoRenovacion(p: {
+  estado: EstadoPedido;
+  checklist?: { hecho: boolean }[] | null;
+  ultimo_seguimiento?: string | null;
+}): EstadoRenovacion {
+  if (p.estado === "cerrado" || p.estado === "rechazado") return "cerrada";
+  if (p.estado !== "abierto" || (p.checklist ?? []).some((i) => i.hecho) || p.ultimo_seguimiento) return "en_curso";
+  return "pendiente";
+}
+
+export const ESTADO_RENOVACION_INFO: Record<EstadoRenovacion, { label: string; cls: string }> = {
+  pendiente: { label: "Pendiente", cls: "bg-orange-100 text-orange-700" },
+  en_curso: { label: "En curso", cls: "bg-yellow-100 text-yellow-800" },
+  cerrada: { label: "Cerrada", cls: "bg-green-600 text-white" },
 };
 
 // ── Movimientos ──────────────────────────────────────────────────────────────

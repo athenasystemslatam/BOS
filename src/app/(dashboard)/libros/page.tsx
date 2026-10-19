@@ -2,18 +2,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import {
   diasHasta,
+  vencimientoFinal,
   foliosLibres,
   hoyISO,
   libroAlDia,
   mandatoVencido,
   prioridadSugerida,
 } from "@/lib/libros";
-import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
+import { configLibros, sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
 import type { ClienteSocietario, Libro, LibroCatalogo, LibroEstado, LibroPedido, LibroTarea } from "@/types";
 import {
   SeguimientoLibrosClient,
   type AvisoBalance,
-  type AvisoRenovacion,
+  type AvisoMandatos,
+  type ClienteAgregar,
   type ClienteCola,
   type PuestaAlDiaCliente,
   type TareaVista,
@@ -83,6 +85,10 @@ export default async function SeguimientoLibrosPage() {
   const nombrePersona = new Map(((equipoRaw ?? []) as { id: string; nombre: string }[]).map((p) => [p.id, p.nombre]));
   const balances = new Map(((balancesRaw ?? []) as BalanceRaw[]).map((b) => [b.id, b]));
   const pedidosConFecha = new Set((pedidosRaw ?? []).map((p) => p.id as string));
+  const renovacionesVencidas = new Set(
+    ((renovacionesRaw ?? []) as LibroPedido[]).filter((p) => p.mandato_vence && p.mandato_vence < hoy).map((p) => p.id)
+  );
+  const primerAviso = (await configLibros(admin)).avisosMandato[0] ?? 90;
 
   const clientes = new Map<string, ClienteCola & { cierre: { mes: number | null; dia: number | null } }>();
   for (const s of servicios) {
@@ -119,6 +125,8 @@ export default async function SeguimientoLibrosPage() {
     const sugerida = prioridadSugerida(t, {
       pedidoConFecha: !!t.pedido_id && pedidosConFecha.has(t.pedido_id),
       balanceEstado: balance?.estado ?? null,
+      renovacionVencida: !!t.pedido_id && renovacionesVencidas.has(t.pedido_id),
+      sinLibro: libro?.estado === "sin_libro",
     });
     const ultimo = libro ? ultimoPorLibro.get(`${libro.cliente_id}|${libro.catalogo_id}`) ?? null : null;
     const exigible =
@@ -161,17 +169,44 @@ export default async function SeguimientoLibrosPage() {
     avisos.set(t.cliente_id, aviso);
   }
 
-  const avisosRenovacion: AvisoRenovacion[] = ((renovacionesRaw ?? []) as LibroPedido[])
-    .filter((p) => clientes.has(p.cliente_id))
-    .map((p) => ({
-      clienteId: p.cliente_id,
-      nombre: clientes.get(p.cliente_id)!.nombre,
-      vence: p.mandato_vence ?? null,
-      dias: p.mandato_vence ? diasHasta(p.mandato_vence) : null,
-      hechos: (p.checklist ?? []).filter((i) => i.hecho).length,
-      pasos: (p.checklist ?? []).length,
-    }))
-    .sort((a, b) => (a.dias ?? -9999) - (b.dias ?? -9999));
+  const avisoMandatos: AvisoMandatos = { vencidos: 0, proximos: 0, dias: primerAviso };
+  for (const c of Array.from(clientes.values())) {
+    const vence = vencimientoFinal(societarios.get(c.id));
+    if (!vence) continue;
+    const dias = diasHasta(vence);
+    if (dias < 0) avisoMandatos.vencidos++;
+    else if (dias <= primerAviso) avisoMandatos.proximos++;
+  }
+
+  // "+ Agregar": libros cargados de cada cliente y los del catálogo que faltan.
+  const clientesAgregar: ClienteAgregar[] = Array.from(clientes.values())
+    .map((c) => {
+      const tipo = societarios.get(c.id)?.tipo_societario ?? null;
+      const delCliente = libros.filter((l) => l.cliente_id === c.id && l.estado !== "cerrado");
+      const cargados = new Set(delCliente.map((l) => l.catalogo_id));
+      return {
+        id: c.id,
+        nombre: c.nombre,
+        cuit: c.cuit,
+        responsableId: c.responsableId,
+        tipo,
+        libros: delCliente
+          .map((l) => ({
+            id: l.id,
+            nombre: catalogo.get(l.catalogo_id)?.nombre ?? "Libro",
+            tomo: l.tomo,
+            sinLibro: l.estado === "sin_libro",
+            enCola: enCola.has(l.id),
+          }))
+          .sort((a, b) => a.nombre.localeCompare(b.nombre, "es")),
+        faltantes: tipo
+          ? Array.from(catalogo.values())
+              .filter((k) => k.activo && k.tipo_societario === tipo && !cargados.has(k.id))
+              .map((k) => ({ catalogoId: k.id, nombre: k.nombre }))
+          : [],
+      };
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
   const puestaAlDia: PuestaAlDiaCliente[] = [];
   for (const cliente of Array.from(clientes.values())) {
@@ -242,7 +277,8 @@ export default async function SeguimientoLibrosPage() {
       avisosBalance={Array.from(avisos.values()).sort(
         (a, b) => Number(b.legalizado) - Number(a.legalizado) || a.nombre.localeCompare(b.nombre, "es")
       )}
-      avisosRenovacion={avisosRenovacion}
+      avisoMandatos={avisoMandatos}
+      clientesAgregar={clientesAgregar}
       estados={estados.filter((e) => e.activo)}
       equipo={equipo}
       puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}

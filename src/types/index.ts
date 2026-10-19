@@ -401,6 +401,8 @@ export interface LibroPedido {
   prioridad: PrioridadLibro | null;
   checklist: ItemChecklist[];
   mandato_vence: string | null;
+  fecha_envio_cliente: string | null;
+  fecha_respuesta: string | null;
   creado_en: string;
   actualizado_en: string;
 }
@@ -414,7 +416,11 @@ export type DestinoMovimiento = "copiadora" | "cliente" | "estudio" | "otro";
 
 export interface LibroMovimiento {
   id: string;
-  libro_id: string;
+  /** null = movimiento importado del sheet sin libro identificado (ver libros_texto). */
+  libro_id: string | null;
+  cliente_id: string | null;
+  libros_texto: string | null;
+  importado: boolean;
   tarea_id: string | null;
   fecha: string;
   tipo: TipoMovimiento;
@@ -432,7 +438,10 @@ export type TipoIncidencia = "extravio" | "daño" | "otro";
 
 export interface LibroIncidencia {
   id: string;
-  libro_id: string;
+  libro_id: string | null;
+  cliente_id: string | null;
+  libros_texto: string | null;
+  importado: boolean;
   fecha: string;
   tipo: TipoIncidencia;
   situacion: string;
@@ -457,6 +466,8 @@ export interface CopiadoFactura {
   reenviada_cliente: boolean;
   pagado: boolean;
   comprobante_enviado: boolean;
+  /** Libros que cubre la factura, como texto libre (etapa 9). */
+  libros_texto?: string | null;
   observaciones: string | null;
   creado_por: string | null;
   creado_en: string;

@@ -8,12 +8,14 @@ import {
   ORIGEN_TAREA_LABEL,
   PRIORIDADES,
   PRIORIDAD_INFO,
+  DEFINICION_PRIORIDAD,
   UMBRAL_FOLIOS,
   fmtFecha,
 } from "@/lib/libros";
-import type { LibroEstado, LibroTarea, PrioridadLibro } from "@/types";
+import type { LibroEstado, LibroTarea, PrioridadLibro, TipoSocietario } from "@/types";
 import { actualizarTarea, reordenarBloques } from "./actions";
 import { NuevaTareaModal, type Persona } from "./NuevaTareaModal";
+import { AgregarTareaModal } from "./AgregarTareaModal";
 import { EnviarACopiarModal, PrioridadModal, RegistrarCopiadoModal } from "./SeguimientoModales";
 import {
   AVISO,
@@ -94,13 +96,18 @@ export type AvisoBalance = {
   libros: number;
 };
 
-export type AvisoRenovacion = {
-  clienteId: string;
+/** Mandatos de los clientes de Libros: vencidos y que vencen dentro del primer aviso. */
+export type AvisoMandatos = { vencidos: number; proximos: number; dias: number };
+
+/** Lo que necesita "+ Agregar": libros cargados del cliente y los del catálogo que faltan. */
+export type ClienteAgregar = {
+  id: string;
   nombre: string;
-  vence: string | null;
-  dias: number | null;
-  hechos: number;
-  pasos: number;
+  cuit: string | null;
+  responsableId: string | null;
+  tipo: TipoSocietario | null;
+  libros: { id: string; nombre: string; tomo: number; sinLibro: boolean; enCola: boolean }[];
+  faltantes: { catalogoId: string; nombre: string }[];
 };
 
 type Bloque = { cliente: ClienteCola; nivel: PrioridadLibro; orden: number; tareas: TareaVista[] };
@@ -491,6 +498,7 @@ function Cola({
           <section key={nivel} className="space-y-3">
             <h2 className="flex items-center gap-2">
               <span className={clsx(CHIP, PRIORIDAD_INFO[nivel].cls)}>{PRIORIDAD_INFO[nivel].label}</span>
+              <Ayuda>{DEFINICION_PRIORIDAD[nivel]}</Ayuda>
               <span className="text-[12px] text-ink-subtle">
                 <span className={MONO}>{bloques.length}</span> clientes
               </span>
@@ -547,7 +555,7 @@ function Cola({
                         <span className={MONO}>{b.tareas.length}</span> {b.tareas.length === 1 ? "libro" : "libros"} ·{" "}
                         {b.cliente.responsableNombre ?? "sin responsable"}
                         {b.cliente.mandatoVencido && (
-                          <Link href="/libros/pedidos" className="text-red-700 font-semibold hover:underline">
+                          <Link href={URL_RENOVACIONES} className="text-red-700 font-semibold hover:underline">
                             {" "}· Mandato vencido (ver renovación en Pedidos)
                           </Link>
                         )}
@@ -961,25 +969,20 @@ function AvisosBalance({ avisos }: { avisos: AvisoBalance[] }) {
   );
 }
 
-function AvisosRenovacion({ avisos }: { avisos: AvisoRenovacion[] }) {
-  if (avisos.length === 0) return null;
-  const vencidos = avisos.filter((a) => a.dias != null && a.dias < 0).length;
+const URL_RENOVACIONES = "/libros/pedidos?tipo=renovacion_autoridades&en_curso=1";
+
+function AvisoDeMandatos({ aviso }: { aviso: AvisoMandatos }) {
+  if (aviso.vencidos === 0 && aviso.proximos === 0) return null;
   return (
-    <p className={vencidos ? AVISO_URGENTE : AVISO}>
-      <Punto urgente={vencidos > 0} />
+    <p className={aviso.vencidos > 0 ? AVISO_URGENTE : AVISO}>
+      <Punto urgente={aviso.vencidos > 0} />
       <span>
         <b>
-          <span className={MONO}>{avisos.length}</span>{" "}
-          {avisos.length === 1 ? "renovación de autoridades en curso" : "renovaciones de autoridades en curso"}
-        </b>
-        {vencidos > 0 && (
-          <>
-            {" "}
-            (<span className={MONO}>{vencidos}</span> con el mandato vencido)
-          </>
-        )}{" "}
-        ·{" "}
-        <Link href="/libros/pedidos?tipo=renovacion_autoridades&en_curso=1" className="font-semibold underline">
+          <span className={MONO}>{aviso.vencidos}</span> {aviso.vencidos === 1 ? "mandato vencido" : "mandatos vencidos"}
+        </b>{" "}
+        · <span className={MONO}>{aviso.proximos}</span> {aviso.proximos === 1 ? "vence" : "vencen"} en{" "}
+        <span className={MONO}>{aviso.dias}</span> días ·{" "}
+        <Link href={URL_RENOVACIONES} className="font-semibold underline">
           Ver
         </Link>
       </span>
@@ -992,7 +995,8 @@ export function SeguimientoLibrosClient({
   clientes,
   puestaAlDia,
   avisosBalance,
-  avisosRenovacion,
+  avisoMandatos,
+  clientesAgregar,
   estados,
   equipo,
   puedeEditar,
@@ -1001,7 +1005,8 @@ export function SeguimientoLibrosClient({
   clientes: ClienteCola[];
   puestaAlDia: PuestaAlDiaCliente[];
   avisosBalance: AvisoBalance[];
-  avisosRenovacion: AvisoRenovacion[];
+  avisoMandatos: AvisoMandatos;
+  clientesAgregar: ClienteAgregar[];
   estados: LibroEstado[];
   equipo: Persona[];
   puedeEditar: boolean;
@@ -1012,7 +1017,8 @@ export function SeguimientoLibrosClient({
   const sinAsignar = puestaAlDia.map((f) => f.atrasados.filter((a) => !a.enCola).length);
   const librosSinAsignar = sinAsignar.reduce((n, x) => n + x, 0);
   const clientesSinAsignar = sinAsignar.filter((x) => x > 0).length;
-  const hayAvisos = avisosBalance.length > 0 || avisosRenovacion.length > 0;
+  const [agregando, setAgregando] = useState(false);
+  const hayAvisos = avisosBalance.length > 0 || avisoMandatos.vencidos > 0 || avisoMandatos.proximos > 0;
 
   return (
     <div className={PAGINA}>
@@ -1026,11 +1032,17 @@ export function SeguimientoLibrosClient({
             al historial. Arrastrá cada cliente para cambiar su orden dentro de la prioridad: el orden lo ve todo el
             equipo.
           </Ayuda>
+          <div className="flex-1" />
+          {puedeEditar && (
+            <button onClick={() => setAgregando(true)} className={BOTON_SECUNDARIO}>
+              <Plus size={14} /> Agregar
+            </button>
+          )}
         </div>
         {hayAvisos && (
           <div className="space-y-1.5">
             <AvisosBalance avisos={avisosBalance} />
-            <AvisosRenovacion avisos={avisosRenovacion} />
+            <AvisoDeMandatos aviso={avisoMandatos} />
           </div>
         )}
         <div className="flex flex-wrap items-end gap-x-6 gap-y-2 border-b border-line-rule">
@@ -1097,6 +1109,9 @@ export function SeguimientoLibrosClient({
           />
         )}
       </div>
+      {agregando && (
+        <AgregarTareaModal clientes={clientesAgregar} equipo={equipo} onClose={() => setAgregando(false)} />
+      )}
     </div>
   );
 }

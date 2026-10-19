@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { AlertTriangle, Receipt } from "lucide-react";
-import { PRIORIDADES, PRIORIDAD_INFO, UMBRAL_FOLIOS, fmtFecha, hoyISO } from "@/lib/libros";
+import { DEFINICION_PRIORIDAD, PRIORIDADES, PRIORIDAD_INFO, UMBRAL_FOLIOS, fmtFecha, hoyISO } from "@/lib/libros";
 import type { PrioridadLibro } from "@/types";
 import { cambiarPrioridad, enviarACopiar, registrarCopiado, type ItemCopiado } from "./actions";
 import { INPUT, LABEL, Modal, Pie, aEntero } from "./ModalBase";
@@ -45,17 +45,22 @@ export function PrioridadModal({ tarea, onClose }: { tarea: TareaVista; onClose:
             </span>
           </label>
           {PRIORIDADES.map((p) => (
-            <label key={p} className="flex items-center gap-2.5 text-[13px] cursor-pointer">
+            <label key={p} className="flex items-start gap-2.5 text-[13px] cursor-pointer">
               <input
                 type="radio"
                 checked={eleccion === p}
                 onChange={() => setEleccion(p)}
-                className="accent-bordo"
+                className="accent-bordo mt-1"
               />
-              <span className={clsx("text-[11px] font-medium rounded-full px-2 py-0.5", PRIORIDAD_INFO[p].cls)}>
-                {PRIORIDAD_INFO[p].label}
+              <span>
+                <span className="flex items-center gap-2">
+                  <span className={clsx("text-[11px] font-medium rounded-full px-2 py-0.5", PRIORIDAD_INFO[p].cls)}>
+                    {PRIORIDAD_INFO[p].label}
+                  </span>
+                  <span className="text-ink-subtle text-[11px]">a mano</span>
+                </span>
+                <span className="block mt-0.5 text-[11px] text-ink-subtle leading-snug">{DEFINICION_PRIORIDAD[p]}</span>
               </span>
-              <span className="text-ink-subtle text-[11px]">a mano</span>
             </label>
           ))}
           {eleccion !== "auto" && (

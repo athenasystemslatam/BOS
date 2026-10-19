@@ -48,7 +48,7 @@ export default async function MovimientosPage() {
       .select("*, registrador:liquidadoras!libros_movimientos_registrado_por_fkey(nombre)")
       .order("fecha", { ascending: false })
       .order("creado_en", { ascending: false })
-      .limit(200),
+      .limit(1000),
     admin.from("libros_incidencias").select("*").order("creado_en", { ascending: false }),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "libros"),
@@ -104,26 +104,49 @@ export default async function MovimientosPage() {
     .filter((c) => c.libros.length > 0)
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
-  // Enriquecer movimientos con nombre del libro y cliente
+  // Enriquecer movimientos con nombre del libro y cliente. Los importados del
+  // sheet pueden no tener libro (libros_texto) y ser de clientes que hoy no
+  // tienen el servicio Libros (o están inactivos): se buscan aparte.
   const libroPorId = new Map(libros.map((l) => [l.id, l]));
-  const clienteNombrePorId = new Map(
-    clientes.map((c) => [c.id, c.nombre])
+  const movs = (movimientosRaw ?? []) as unknown as MovimientoRaw[];
+  const incs = (incidenciasRaw ?? []) as unknown as LibroIncidencia[];
+  const clienteDe = (x: { libro_id: string | null; cliente_id?: string | null }) =>
+    x.cliente_id ?? (x.libro_id ? libroPorId.get(x.libro_id)?.cliente_id ?? null : null);
+  const clienteNombrePorId = new Map(clientes.map((c) => [c.id, c.nombre]));
+  const faltan = Array.from(
+    new Set([...movs, ...incs].map(clienteDe).filter((id): id is string => !!id && !clienteNombrePorId.has(id)))
   );
+  if (faltan.length > 0) {
+    const { data: otros } = await admin.from("clientes").select("id, nombre").in("id", faltan);
+    for (const c of (otros ?? []) as { id: string; nombre: string }[]) clienteNombrePorId.set(c.id, c.nombre);
+  }
+  const nombreLibro = (x: { libro_id: string | null; libros_texto?: string | null }) => {
+    const libro = x.libro_id ? libroPorId.get(x.libro_id) : undefined;
+    if (libro) return `${catalogoPorId.get(libro.catalogo_id)?.nombre ?? "Libro"} T.${libro.tomo}`;
+    return x.libros_texto?.trim() || "—";
+  };
 
-  const movimientos = ((movimientosRaw ?? []) as unknown as MovimientoRaw[]).map((m) => {
-    const libro = libroPorId.get(m.libro_id);
-    const catNombre = libro ? catalogoPorId.get(libro.catalogo_id)?.nombre ?? "Libro" : "Libro";
-    const libroNombre = libro ? `${catNombre} T.${libro.tomo}` : "—";
-    const clienteNombre = libro ? clienteNombrePorId.get(libro.cliente_id) ?? "—" : "—";
-    return { ...m, libroNombre, clienteNombre, registradorNombre: m.registrador?.nombre ?? null };
+  const movimientos = movs.map((m) => {
+    const clienteId = clienteDe(m);
+    return {
+      ...m,
+      importado: m.importado ?? false,
+      clienteId,
+      libroNombre: nombreLibro(m),
+      clienteNombre: clienteId ? clienteNombrePorId.get(clienteId) ?? "—" : "—",
+      registradorNombre: m.registrador?.nombre ?? null,
+    };
   });
 
-  const incidencias = ((incidenciasRaw ?? []) as unknown as LibroIncidencia[]).map((inc) => {
-    const libro = libroPorId.get(inc.libro_id);
-    const catNombre = libro ? catalogoPorId.get(libro.catalogo_id)?.nombre ?? "Libro" : "Libro";
-    const libroNombre = libro ? `${catNombre} T.${libro.tomo}` : "—";
-    const clienteNombre = libro ? clienteNombrePorId.get(libro.cliente_id) ?? "—" : "—";
-    return { ...inc, libroNombre, clienteNombre };
+  const incidencias = incs.map((inc) => {
+    const clienteId = clienteDe(inc);
+    return {
+      ...inc,
+      importado: inc.importado ?? false,
+      clienteId,
+      libroNombre: nombreLibro(inc),
+      clienteNombre: clienteId ? clienteNombrePorId.get(clienteId) ?? "—" : "—",
+    };
   });
 
   return (

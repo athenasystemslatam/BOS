@@ -4,6 +4,26 @@ import type { EstadoLibro, PeriodicidadLibro } from "@/types";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
+export type CategoriaLibro = "actas" | "inventario_balance" | "diario" | "iva" | "registros";
+
+export const CATEGORIAS_LIBRO: { id: CategoriaLibro; label: string; codigos: string[] }[] = [
+  { id: "actas", label: "Actas", codigos: ["actas_directorio", "actas_asamblea", "libro_actas", "consejo_administracion", "consejo_directivo"] },
+  { id: "inventario_balance", label: "Inv. y Balance", codigos: ["inventario_balance"] },
+  { id: "diario", label: "Diario", codigos: ["diario", "subdiario_caja_bancos"] },
+  { id: "iva", label: "IVA", codigos: ["iva_ventas", "iva_compras"] },
+  { id: "registros", label: "Registros", codigos: ["registro_acciones", "deposito_acciones_aaa", "libro_acciones", "asistencia_asamblea", "registro_asociados"] },
+];
+
+export function categoriaDe(codigo: string): CategoriaLibro | null {
+  return CATEGORIAS_LIBRO.find((c) => c.codigos.includes(codigo))?.id ?? null;
+}
+
+export type GrupoSocietario = "SA" | "SRL" | "SAS" | "Otros";
+export const GRUPOS_SOCIETARIOS: GrupoSocietario[] = ["SA", "SRL", "SAS", "Otros"];
+export function grupoSocietario(tipo: string | null | undefined): GrupoSocietario {
+  return tipo === "SA" || tipo === "SRL" || tipo === "SAS" ? tipo : "Otros";
+}
+
 /** Estado del sheet importado: la línea base del objetivo de puesta al día. */
 export const FECHA_BASE = "2026-10-16";
 
@@ -14,6 +34,8 @@ export type LibroAtraso = {
   responsableId: string | null;
   responsableNombre: string | null;
   libroNombre: string;
+  codigo: string;
+  tipoSocietario: string;
   periodicidad: PeriodicidadLibro;
   estado: EstadoAtraso;
   periodos: number;
@@ -51,6 +73,7 @@ type LibroRaw = {
 };
 type CatalogoRaw = {
   id: string;
+  codigo: string;
   nombre: string;
   tipo_societario: string;
   periodicidad: PeriodicidadLibro;
@@ -72,7 +95,7 @@ export async function calcularAtraso(admin: Admin, hoy: string = hoyISO()): Prom
         .eq("servicio", "libros")
         .eq("estado", true),
       admin.from("clientes_societario").select("cliente_id, tipo_societario"),
-      admin.from("libros_catalogo").select("id, nombre, tipo_societario, periodicidad, dispara_con_balance, activo"),
+      admin.from("libros_catalogo").select("id, codigo, nombre, tipo_societario, periodicidad, dispara_con_balance, activo"),
       admin.from("libros").select("id, cliente_id, catalogo_id, tomo, estado, periodicidad, ultimo_periodo_copiado"),
       admin.from("balances").select("cliente_id, anio_fiscal, fecha_cierre, estado").order("fecha_cierre", { ascending: false }),
     ]);
@@ -119,6 +142,8 @@ export async function calcularAtraso(admin: Admin, hoy: string = hoyISO()): Prom
           responsableId: s.responsable_id,
           responsableNombre: s.responsable?.nombre ?? null,
           libroNombre: item.nombre,
+          codigo: item.codigo,
+          tipoSocietario: tipo,
           periodicidad,
           estado: r.estado,
           periodos: r.periodos,
