@@ -4,21 +4,20 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-- **`add_libros_etapa9.sql`** (19-oct) — movimientos e incidencias sin libro (`libro_id` opcional + `cliente_id`,
-  `libros_texto`, `importado`), circuito de presupuestos (`fecha_envio_cliente`, `fecha_respuesta`), `libros_texto`
-  en copiadora_facturas (migra el "Libros: …" de observaciones) y `libros_preferencias` (orden del Dashboard por
-  usuario). **El código ya lo usa**: sin correrlo fallan "Enviar a copiar", "Registrar copiado" desde la copiadora y
-  "Registrar movimiento" (insertan `cliente_id`).
-- **Importación de ENTRADA Y SALIDA e INCIDENCIAS del sheet** — `supabase/importar_libros_movimientos_control.sql`
-  y `importar_libros_movimientos.sql`, fuera del repo (datos de clientes). Esperando que Giuliana revise el cruce.
+Ninguno de Libros. Corridos el 19-oct: `add_libros_etapa9.sql` y la importación de ENTRADA Y SALIDA e INCIDENCIAS
+del sheet (`supabase/importar_libros_movimientos_control.sql` + `importar_libros_movimientos.sql`, fuera del repo por
+datos de clientes; se generan desde los CSV de Descargas). Cruce: 336 de 355 movimientos (136 con libros separados,
+200 con el texto del sheet) y 27 de 29 incidencias; quedaron afuera clientes que no están en BOS (DIGISTORE, NORTH
+COFFEE, ROGEM, LOGISTICA DIEB…) y filas con dos clientes ("MIT, GETEL FIRST", "BLACKWATER/IVAISA"). Tipo y destino
+deducidos del comentario; 32 ambiguos quedaron como entrada / otro. Lo importado tiene `importado = true`.
+"BARILOCHE" → IGI BARILOCHE y "MADRYN" → IGI MADRYN (cruce por nombre) confirmados por Giuliana.
 
-- **`add_libros_etapa8.sql`** (19-oct) — `clientes_societario.mandato_vence_preciso`: si está, reemplaza al
-  vencimiento calculado (designación + años). Sin correrlo, guardar un mandato desde la ficha o la lista da error
-  ("Falta correr add_libros_etapa8.sql").
+`add_libros_etapa8.sql` (vencimiento preciso del mandato) también corrido el 19-oct.
 
-- **`add_libros_etapa7.sql`** (19-oct) — Dashboard de Libros: `libros_config.fecha_meta_puesta` y tabla
-  `libros_snapshot` (foto diaria del atraso). Sin correrlo el Dashboard funciona, pero sin evolución semanal ni
-  fecha meta.
+- **`add_libros_etapa7.sql`** (19-oct) — **sin confirmar si se corrió.** Dashboard de Libros:
+  `libros_config.fecha_meta_puesta` y tabla `libros_snapshot` (foto diaria del atraso). Sin correrlo el Dashboard
+  funciona, pero sin evolución semanal ni fecha meta, y la etapa 9 depende de que exista para nada (son
+  independientes). Se puede volver a correr sin problema.
 
 Corridos el 19-oct: `add_libros_etapa6.sql` y la importación del trabajo en curso del sheet
 (`supabase/importar_libros_trabajo_control.sql` + `importar_libros_trabajo.sql`, **fuera del repo** por datos
