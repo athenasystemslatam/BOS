@@ -208,7 +208,8 @@ export function FacturasClient({
         <div>
           <h1 className="text-[15px] font-semibold text-gray-900">Copiadora</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            {pendientes} sin pagar · {facturas.length} total
+            {pendientes} sin pagar · {facturas.length} total · al registrar un copiado desde Seguimiento queda
+            pendiente la factura del cliente
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2 flex-wrap">

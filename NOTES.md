@@ -4,8 +4,15 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno. `add_libros_etapa3.sql` y `add_libros_etapa4.sql` verificados como aplicados el 19-oct
-(tablas, columnas, constraint de estados de pedidos y la fila de `libros_config`).
+- **`add_libros_etapa6.sql`** (19-oct) — tipo de pedido `renovacion_autoridades`, columnas `prioridad`,
+  `checklist`, `mandato_vence` en `libros_pedidos`, `libros_config.mandato_avisos` y tabla
+  `libros_avisos_mandato`. Sin correrlo, el código no se rompe pero no se crean las renovaciones ni se
+  pueden configurar los avisos.
+- **Importación del trabajo en curso del sheet** (19-oct) — `supabase/importar_libros_trabajo_control.sql`
+  (solo lectura, correr primero) y `supabase/importar_libros_trabajo.sql`. **Fuera del repo** (datos de
+  clientes, en `.git/info/exclude` de la PC Windows). Se generan desde los 4 CSV de Descargas.
+
+(`add_libros_etapa3.sql` y `add_libros_etapa4.sql` verificados como aplicados el 19-oct.)
 
 ## Módulo Libros Societarios (rama `libros/modulo`, oct-2026)
 
@@ -18,6 +25,25 @@ Reemplaza el Google Sheet "GESTION DE LIBROS". Se trabaja en la rama `libros/mod
 6. ✅ Migración desde el sheet (cruce por CUIT) — **adelantada y corrida el 16-oct**: 93 clientes con Libros activo + tipo societario, 342 libros (tomo 1), 27 mandatos. El SQL (`supabase/importar_libros_sheet.sql` + `_control.sql`) y los CSV de origen quedaron **fuera del repo** a pedido (tienen datos de clientes); en la PC de origen están en `.git/info/exclude`. Para revisar a mano en la ficha: último copiado con fecha futura en CUSTOMCOFFEE (Libro de Actas, 31/12/2026) y METALURGICA PINTARELLI (Inv. y Balance, 01/11/2026); CISEC y RODBALL tenían "B2025-2026" / "2026 renovación cargos" y se cargaron como 2026; 3 mandatos solo traían el año (se cargó 01/01, con nota en observaciones).
 
 Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se activa desde Panel General → Editar).
+
+### Etapa 6 — flujo único + mandatos (19-oct, a partir de la auditoría de Giuliana)
+
+- **Seguimiento = un solo flujo**: cada bloque de cliente muestra lo de una fila de ACTUALIZACION (libro, prioridad,
+  estado, período, envío, retiro, detalle editable). Botones "Enviar a copiar" (`enviarACopiar`: movimiento de salida
+  + Copiándose) y "Retirado / Registrar copiado" (`registrarCopiado`: entrada si el libro estaba en la copiadora,
+  folios, historial y factura pendiente de la copiadora para el cliente, reutilizando una sin recibir si ya había).
+  Entrada y salida y Copiadora quedan de consulta. Se sacaron de la tabla las columnas Responsable e Insistencias
+  (los datos siguen en la base).
+- **Automático** (`src/lib/librosAutomaticos.ts`, corre al abrir Seguimiento y Pedidos y en el cron): tareas del envío
+  anual cuando el último balance está legalizado/finalizado (una vez por libro y balance), pedido de tomo nuevo por
+  folios bajos (una vez por tomo) y renovación de autoridades al primer aviso de mandato (90 días por defecto, uno por
+  cliente y mandato, con checklist, responsable de Libros y seguimiento a 7 días; pasa a P1 si el mandato vence).
+- **Prioridad**: P1 solo por fecha límite de un tercero, pedido con fecha o balance legalizado con acta por hacer.
+  Mandato vencido y folios bajos ya no suben las tareas.
+- **Mandatos**: cerrar la renovación pide la designación y duración nuevas y actualiza `clientes_societario`; el
+  mandato anterior queda como seguimiento del pedido. Mail diario: cada umbral (90/60/30/vencido) una sola vez.
+  Filtro "Mandato sin cargar" (SA y SAS) en Libros → Clientes.
+- **Puesta al día**: "Atrasados" (con último copiado) separado de "Sin dato" (hay que relevar, no copiar).
 
 ### En qué quedó (16-oct, segunda sesión)
 

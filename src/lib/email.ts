@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { configLibros } from "@/lib/librosAutomaticos";
 import {
   getVencimientoF931,
   getMesTrabajoActual,
@@ -545,7 +546,7 @@ function buildEmailAlertasLibros(data: AlertaLibrosData): { subject: string; htm
           : `<span style="color:#d97706">Vence: ${m.vence} (${m.diasRestantes} días)</span>`,
       ])
     ).join("");
-    body += seccion(`⚠️ Mandatos por vencer o vencidos (${mandatosVencidos.length})`, filas);
+    body += seccion(`⚠️ Mandatos: nuevos avisos de vencimiento (${mandatosVencidos.length})`, filas);
   }
 
   if (foliosCriticos.length > 0) {
@@ -598,10 +599,22 @@ export async function sendAlertasLibros(): Promise<AlertaLibrosResult> {
     responsable: p.responsable?.nombre ?? null,
   }));
 
-  // 3. Mandatos por vencer o vencidos (dentro de los próximos 30 días o ya vencidos)
+  // 3. Mandatos que cruzaron un umbral de aviso (90/60/30 por defecto) o
+  //    vencieron (umbral 0). Cada umbral sale una sola vez por mandato: lo
+  //    enviado queda en libros_avisos_mandato.
+  const { avisosMandato } = await configLibros(admin);
   const { data: societariosRaw } = await admin
     .from("clientes_societario")
     .select("mandato_designacion, mandato_anios, cliente_id");
+  const { data: enviadosRaw, error: errEnviados } = await admin
+    .from("libros_avisos_mandato")
+    .select("cliente_id, mandato_vence, umbral");
+  const yaEnviados = new Set(
+    ((enviadosRaw ?? []) as { cliente_id: string; mandato_vence: string; umbral: number }[]).map(
+      (a) => `${a.cliente_id}|${a.mandato_vence}|${a.umbral}`
+    )
+  );
+  const avisosARegistrar: { cliente_id: string; mandato_vence: string; umbral: number }[] = [];
   const { data: clientesRaw } = await admin
     .from("servicios_cliente")
     .select("cliente_id, clientes(nombre)")
@@ -615,22 +628,28 @@ export async function sendAlertasLibros(): Promise<AlertaLibrosResult> {
   );
 
   const mandatosVencidos: AlertaLibrosData["mandatosVencidos"] = [];
-  const MARGEN_DIAS = 30;
 
   for (const s of (societariosRaw ?? []) as { mandato_designacion: string | null; mandato_anios: number | null; cliente_id: string }[]) {
     if (!s.mandato_designacion || !s.mandato_anios) continue;
     const [y, m, d] = s.mandato_designacion.split("-").map(Number);
     const venceStr = `${y + s.mandato_anios}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const diasRestantes = Math.round((new Date(venceStr + "T00:00:00").getTime() - new Date(hoy + "T00:00:00").getTime()) / 86_400_000);
-    if (diasRestantes <= MARGEN_DIAS) {
-      const clienteNombre = clienteNombrePorId.get(s.cliente_id);
-      if (!clienteNombre) continue;
-      mandatosVencidos.push({
-        clienteNombre,
-        vence: new Date(venceStr + "T00:00:00").toLocaleDateString("es-AR"),
-        diasRestantes,
-      });
-    }
+    const cruzados = avisosMandato.filter((t) => diasRestantes <= t);
+    if (cruzados.length === 0) continue;
+    const umbral = diasRestantes < 0 ? 0 : Math.min(...cruzados);
+    // Sin la tabla (etapa 6 sin correr) se avisa solo el día exacto del umbral.
+    const corresponde = errEnviados
+      ? diasRestantes === -1 || avisosMandato.includes(diasRestantes)
+      : !yaEnviados.has(`${s.cliente_id}|${venceStr}|${umbral}`);
+    if (!corresponde) continue;
+    const clienteNombre = clienteNombrePorId.get(s.cliente_id);
+    if (!clienteNombre) continue;
+    mandatosVencidos.push({
+      clienteNombre,
+      vence: new Date(venceStr + "T00:00:00").toLocaleDateString("es-AR"),
+      diasRestantes,
+    });
+    avisosARegistrar.push({ cliente_id: s.cliente_id, mandato_vence: venceStr, umbral });
   }
   mandatosVencidos.sort((a, b) => a.diasRestantes - b.diasRestantes);
 
@@ -669,5 +688,9 @@ export async function sendAlertasLibros(): Promise<AlertaLibrosResult> {
 
   const { error } = await resend.emails.send({ from: FROM, to: ADMIN_EMAIL, subject: emailData.subject, html: emailData.html });
   if (error) return { enviados: 0, omitidos: 1, detalle: [`[omitido] ${error.message}`], error: error.message };
+  // Recién con el mail enviado: si falla, el aviso sale al día siguiente.
+  if (avisosARegistrar.length > 0 && !errEnviados) {
+    await admin.from("libros_avisos_mandato").upsert(avisosARegistrar, { ignoreDuplicates: true });
+  }
   return { enviados: 1, omitidos: 0, detalle: [`Alertas Libros → ${ADMIN_EMAIL}`] };
 }

@@ -358,7 +358,8 @@ export type TipoPedido =
   | "tramite"
   | "pedido_cliente"
   | "asamblea"
-  | "cambio_societario";
+  | "cambio_societario"
+  | "renovacion_autoridades";
 
 export type EstadoPedido =
   | "abierto"
@@ -395,9 +396,14 @@ export interface LibroPedido {
   automatico: boolean;
   creado_por: string | null;
   responsable_id: string | null;
+  prioridad: PrioridadLibro | null;
+  checklist: ItemChecklist[];
+  mandato_vence: string | null;
   creado_en: string;
   actualizado_en: string;
 }
+
+export type ItemChecklist = { texto: string; hecho: boolean };
 
 // ── Movimientos ──────────────────────────────────────────────────────────────
 

@@ -113,19 +113,19 @@ export const PRIORIDAD_INFO: Record<PrioridadLibro, { label: string; cls: string
   P3: { label: "P3 · Sin material", cls: "bg-gray-100 text-gray-600", borde: "border-gray-200" },
 };
 
-// P1: lo pide un tercero con fecha, mandato vencido o libro casi sin folios.
+// P1: fecha límite de un tercero, pedido con fecha o balance legalizado con
+// el acta por hacer. El mandato vencido y los folios bajos no suben la tarea:
+// generan su pedido (ver librosAutomaticos.ts).
 // P2: envío anual en curso o puesta al día con material listo. P3: el resto.
-// El caso "balance legalizado con acta por hacer" se suma con la conexión a
-// Contable (etapa 5).
 export function prioridadSugerida(
   tarea: Pick<LibroTarea, "origen" | "fecha_limite" | "material_listo">,
-  libro: Pick<Libro, "folios_totales" | "folios_usados"> | null,
-  mandatoVencido: boolean
+  contexto: { pedidoConFecha: boolean; balanceEstado: string | null }
 ): { prioridad: PrioridadLibro; motivo: string } {
-  if (tarea.fecha_limite) return { prioridad: "P1", motivo: "Tiene fecha límite" };
-  if (mandatoVencido) return { prioridad: "P1", motivo: "Mandato vencido" };
-  const libres = libro ? foliosLibres(libro.folios_totales, libro.folios_usados) : null;
-  if (libres != null && libres <= UMBRAL_FOLIOS) return { prioridad: "P1", motivo: `Quedan ${libres} folios` };
+  if (tarea.fecha_limite) return { prioridad: "P1", motivo: "Fecha límite de un tercero" };
+  if (contexto.pedidoConFecha) return { prioridad: "P1", motivo: "Pedido con fecha límite" };
+  if (tarea.origen === "balance" && contexto.balanceEstado === "legalizado") {
+    return { prioridad: "P1", motivo: "Balance legalizado: acta por hacer" };
+  }
   if (tarea.origen === "balance") return { prioridad: "P2", motivo: "Envío anual en curso" };
   if (tarea.material_listo) return { prioridad: "P2", motivo: "Material listo" };
   if (tarea.origen === "pedido" || tarea.origen === "asamblea") return { prioridad: "P2", motivo: "Pedido sin fecha" };
@@ -184,7 +184,7 @@ export function periodoExigible(
 
 // Se compara por mes: la importación guardó los períodos mensuales como el
 // día 1 (ej. 2025-06-01 = "copiado hasta junio 2025").
-function mesIndice(fecha: string): number {
+export function mesIndice(fecha: string): number {
   return Number(fecha.slice(0, 4)) * 12 + Number(fecha.slice(5, 7));
 }
 
@@ -204,6 +204,18 @@ export function libroAlDia(
   return { alDia: !!ultimo && mesIndice(ultimo) >= mesIndice(exigible), exigible };
 }
 
+// Días antes del vencimiento del mandato en que se avisa. El mayor crea el
+// pedido de renovación. Configurable en libros_config.mandato_avisos.
+export const AVISOS_MANDATO = [90, 60, 30];
+
+export const CHECKLIST_RENOVACION = [
+  "Acta de directorio que convoca",
+  "Convocatoria a asamblea",
+  "Asamblea de designación",
+  "Acta de distribución de cargos (aceptación al pie)",
+  "Inscripción ante el organismo",
+];
+
 export function mandatoVencido(designacion: string | null, anios: number | null, hoy: string = hoyISO()): boolean {
   const vence = vencimientoMandato(designacion, anios);
   return !!vence && vence < hoy;
@@ -218,6 +230,7 @@ export const TIPOS_PEDIDO: { value: TipoPedido; label: string }[] = [
   { value: "pedido_cliente",          label: "Pedido del cliente"        },
   { value: "asamblea",                label: "Asamblea"                  },
   { value: "cambio_societario",       label: "Cambio societario"         },
+  { value: "renovacion_autoridades",  label: "Renovación de autoridades" },
 ];
 
 export const TIPO_PEDIDO_LABEL = Object.fromEntries(

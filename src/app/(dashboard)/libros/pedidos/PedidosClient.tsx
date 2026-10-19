@@ -2,21 +2,25 @@
 
 import { useState, useTransition, useMemo } from "react";
 import clsx from "clsx";
-import { Plus, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, MessageSquare, X } from "lucide-react";
 import {
   TIPO_PEDIDO_LABEL,
   TIPOS_PEDIDO,
   ESTADO_PEDIDO_INFO,
+  PRIORIDAD_INFO,
   SEMAFORO_SEGUIMIENTO_INFO,
   semaforoSeguimiento,
+  diasHasta,
   hoyISO,
   fmtFecha,
 } from "@/lib/libros";
-import type { EstadoPedido, LibroPedido, LibroPedidoSeguimiento, TipoPedido } from "@/types";
+import type { EstadoPedido, ItemChecklist, LibroPedido, LibroPedidoSeguimiento, TipoPedido } from "@/types";
 import {
+  actualizarChecklist,
   actualizarPedido,
   agregarSeguimiento,
   aprobarPedido,
+  cerrarRenovacion,
   crearPedido,
 } from "../actions";
 import { Modal, Pie, LABEL, INPUT } from "../ModalBase";
@@ -374,6 +378,135 @@ function AprobarModal({
   );
 }
 
+// ── Renovación de autoridades ────────────────────────────────────────────────
+
+function CerrarRenovacionModal({ pedido, onClose }: { pedido: PedidoVista; onClose: () => void }) {
+  const [pendiente, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [designacion, setDesignacion] = useState("");
+  const [anios, setAnios] = useState("3");
+  const faltan = pedido.checklist.filter((i) => !i.hecho).length;
+
+  function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const n = Number(anios);
+    if (!designacion) return setError("Indicá la fecha de designación del mandato nuevo.");
+    if (!Number.isInteger(n) || n < 1) return setError("La duración tiene que ser un número entero de años.");
+    startTransition(async () => {
+      const res = await cerrarRenovacion(pedido.id, designacion, n);
+      if (res.error) return setError(res.error);
+      onClose();
+    });
+  }
+
+  return (
+    <Modal titulo="Cerrar renovación de autoridades" subtitulo="Libros · Pedidos" onClose={onClose}>
+      <form onSubmit={guardar} className="flex flex-col min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
+          {faltan > 0 && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+              Quedan {faltan} {faltan === 1 ? "paso" : "pasos"} del checklist sin marcar.
+            </p>
+          )}
+          <p className="text-sm text-gray-600">
+            Cargá el mandato nuevo: se actualiza en los datos societarios del cliente y el anterior queda en el
+            historial de este pedido.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={LABEL}>Fecha de designación</label>
+              <input type="date" className={INPUT} value={designacion} onChange={(e) => setDesignacion(e.target.value)} />
+            </div>
+            <div>
+              <label className={LABEL}>Duración (años)</label>
+              <input type="number" min={1} step={1} className={INPUT} value={anios} onChange={(e) => setAnios(e.target.value)} />
+            </div>
+          </div>
+        </div>
+        <Pie error={error} pendiente={pendiente} onClose={onClose} textoGuardar="Cerrar renovación" />
+      </form>
+    </Modal>
+  );
+}
+
+function ChecklistEditor({ pedido, puedeEditar }: { pedido: PedidoVista; puedeEditar: boolean }) {
+  const [items, setItems] = useState<ItemChecklist[]>(pedido.checklist);
+  const [nuevo, setNuevo] = useState("");
+  const [pendiente, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function guardar(siguiente: ItemChecklist[]) {
+    const anterior = items;
+    setItems(siguiente);
+    setError(null);
+    startTransition(async () => {
+      const res = await actualizarChecklist(pedido.id, siguiente);
+      if (res.error) {
+        setItems(anterior);
+        setError(res.error);
+      }
+    });
+  }
+
+  return (
+    <div className={clsx("space-y-1.5", pendiente && "opacity-60")}>
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Checklist</p>
+      {items.map((item, i) => (
+        <div key={i} className="flex items-center gap-2 group">
+          <input
+            type="checkbox"
+            checked={item.hecho}
+            disabled={!puedeEditar}
+            onChange={(e) => guardar(items.map((x, j) => (j === i ? { ...x, hecho: e.target.checked } : x)))}
+            className="accent-violet-600"
+          />
+          <input
+            defaultValue={item.texto}
+            disabled={!puedeEditar}
+            onBlur={(e) => {
+              const texto = e.target.value.trim();
+              if (texto && texto !== item.texto) guardar(items.map((x, j) => (j === i ? { ...x, texto } : x)));
+            }}
+            className={clsx(
+              "flex-1 text-xs bg-transparent border border-transparent hover:border-gray-200 focus:border-violet-400 rounded px-1.5 py-0.5 focus:outline-none",
+              item.hecho ? "text-gray-400 line-through" : "text-gray-700"
+            )}
+          />
+          {puedeEditar && (
+            <button
+              onClick={() => guardar(items.filter((_, j) => j !== i))}
+              title="Quitar paso"
+              className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      ))}
+      {puedeEditar && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!nuevo.trim()) return;
+            guardar([...items, { texto: nuevo.trim(), hecho: false }]);
+            setNuevo("");
+          }}
+          className="flex items-center gap-2 pl-5"
+        >
+          <input
+            value={nuevo}
+            onChange={(e) => setNuevo(e.target.value)}
+            placeholder="Agregar paso…"
+            className="flex-1 text-xs border border-gray-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-violet-400"
+          />
+        </form>
+      )}
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
 // ── Fila expandible con seguimientos ────────────────────────────────────────
 
 function FilaPedido({
@@ -393,9 +526,14 @@ function FilaPedido({
   const [modalEditar, setModalEditar] = useState(false);
   const [modalSeguimiento, setModalSeguimiento] = useState(false);
   const [modalAprobar, setModalAprobar] = useState(false);
+  const [modalCerrar, setModalCerrar] = useState(false);
+  const [errorEstado, setErrorEstado] = useState<string | null>(null);
 
   const cliente = clientes.find((c) => c.id === pedido.cliente_id);
   const esActivo = !["aprobado", "rechazado", "cerrado"].includes(pedido.estado);
+  const esRenovacion = pedido.tipo === "renovacion_autoridades";
+  const hechos = pedido.checklist.filter((i) => i.hecho).length;
+  const diasMandato = pedido.mandato_vence ? diasHasta(pedido.mandato_vence) : null;
 
   return (
     <>
@@ -413,15 +551,31 @@ function FilaPedido({
           )}
         </td>
         <td className={TD}>
+          {pedido.prioridad && (
+            <span className={clsx("mr-1.5 text-[10px] font-semibold rounded-full px-1.5 py-0.5", PRIORIDAD_INFO[pedido.prioridad].cls)}>
+              {pedido.prioridad}
+            </span>
+          )}
           <span className="text-xs font-medium text-gray-600">
             {TIPO_PEDIDO_LABEL[pedido.tipo]}
           </span>
           {pedido.automatico && (
             <span className="ml-1.5 text-[10px] text-violet-500 font-medium">(auto)</span>
           )}
+          {pedido.mandato_vence && diasMandato != null && pedido.estado !== "cerrado" && (
+            <p className={clsx("text-[11px] mt-0.5", diasMandato < 0 ? "text-red-600 font-medium" : "text-amber-700")}>
+              {diasMandato < 0 ? "Venció" : "Vence"} el {fmtFecha(pedido.mandato_vence)}
+              {diasMandato >= 0 && ` (en ${diasMandato} días)`}
+            </p>
+          )}
         </td>
         <td className={clsx(TD, "max-w-[200px]")}>
           <p className="truncate text-xs text-gray-600">{pedido.descripcion ?? "—"}</p>
+          {pedido.checklist.length > 0 && (
+            <button onClick={() => setExpandido(true)} className="text-[11px] text-violet-600 hover:underline">
+              Checklist {hechos}/{pedido.checklist.length}
+            </button>
+          )}
         </td>
         <td className={TD}>{pedido.responsableNombre ?? <span className="text-gray-300">—</span>}</td>
         <td className={TD}>
@@ -429,15 +583,20 @@ function FilaPedido({
             <select
               className="text-[11px] border border-gray-200 rounded-md px-1.5 py-1 bg-white focus:outline-none focus:border-violet-400 cursor-pointer"
               value={pedido.estado}
-              onChange={(e) => actualizarPedido(pedido.id, { estado: e.target.value as EstadoPedido })}
+              onChange={async (e) => {
+                setErrorEstado(null);
+                const res = await actualizarPedido(pedido.id, { estado: e.target.value as EstadoPedido });
+                if (res.error) setErrorEstado(res.error);
+              }}
             >
-              {ESTADOS_PEDIDO.map((s) => (
+              {ESTADOS_PEDIDO.filter((s) => !esRenovacion || s !== "cerrado").map((s) => (
                 <option key={s} value={s}>{ESTADO_PEDIDO_INFO[s].label}</option>
               ))}
             </select>
           ) : (
             <BadgeEstado estado={pedido.estado} />
           )}
+          {errorEstado && <p className="text-[11px] text-red-600 mt-1 whitespace-normal max-w-[180px]">{errorEstado}</p>}
         </td>
         <td className={TD}>
           <DotSemaforo proximo={pedido.proximo_seguimiento} />
@@ -460,7 +619,7 @@ function FilaPedido({
                   >
                     <MessageSquare size={14} />
                   </button>
-                  {pedido.estado !== "aprobado" && (
+                  {pedido.estado !== "aprobado" && !esRenovacion && (
                     <button
                       onClick={() => setModalAprobar(true)}
                       className="px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded"
@@ -469,6 +628,14 @@ function FilaPedido({
                     </button>
                   )}
                 </>
+              )}
+              {esRenovacion && pedido.estado !== "cerrado" && (
+                <button
+                  onClick={() => setModalCerrar(true)}
+                  className="px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded"
+                >
+                  Cerrar renovación
+                </button>
               )}
               <button
                 onClick={() => setModalEditar(true)}
@@ -483,7 +650,12 @@ function FilaPedido({
 
       {expandido && (
         <tr className="bg-violet-50/40">
-          <td colSpan={9} className="px-6 py-3">
+          <td colSpan={9} className="px-6 py-3 space-y-3">
+            {(esRenovacion || pedido.checklist.length > 0) && (
+              <div className="max-w-xl">
+                <ChecklistEditor pedido={pedido} puedeEditar={puedeEditar && pedido.estado !== "cerrado"} />
+              </div>
+            )}
             {seguimientos.length === 0 ? (
               <p className="text-xs text-gray-400">Sin seguimientos registrados.</p>
             ) : (
@@ -524,6 +696,13 @@ function FilaPedido({
           </td>
         </tr>
       )}
+      {modalCerrar && (
+        <tr>
+          <td>
+            <CerrarRenovacionModal pedido={pedido} onClose={() => setModalCerrar(false)} />
+          </td>
+        </tr>
+      )}
       {modalAprobar && cliente && (
         <tr>
           <td>
@@ -560,6 +739,7 @@ export function PedidosClient({
   const [filtroEstado, setFiltroEstado] = useState<"" | EstadoPedido>("");
   const [filtroTipo, setFiltroTipo] = useState<"" | "presupuesto" | TipoPedido>("");
 
+  // P1 primero (renovaciones con el mandato vencido), después el orden de carga.
   const filtrados = useMemo(() => {
     return pedidos.filter((p) => {
       if (filtroCliente && p.cliente_id !== filtroCliente) return false;
@@ -570,7 +750,7 @@ export function PedidosClient({
         return false;
       }
       return true;
-    });
+    }).sort((a, b) => Number(b.prioridad === "P1") - Number(a.prioridad === "P1"));
   }, [pedidos, filtroCliente, filtroEstado, filtroTipo]);
 
   const abiertos = pedidos.filter((p) => !["aprobado", "rechazado", "cerrado"].includes(p.estado)).length;

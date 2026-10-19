@@ -467,6 +467,11 @@ export function MovimientosClient({
         </div>
       )}
 
+      <p className="shrink-0 px-6 pt-4 text-[12px] text-gray-500">
+        Pantalla de consulta: la salida a la copiadora y el retiro se registran solos desde Seguimiento (&ldquo;Enviar a
+        copiar&rdquo; y &ldquo;Retirado / Registrar copiado&rdquo;). Acá se cargan los demás movimientos y los extravíos.
+      </p>
+
       {/* Resumen */}
       <div className="shrink-0 px-6 py-4 grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-5 gap-3">
         <CardResumen icon={Home}      label="En el estudio"   count={resumen.estudio}    cls="bg-green-50 text-green-600" />

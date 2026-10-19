@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendAlertasLibros } from "@/lib/email";
+import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
@@ -10,6 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    await sincronizarLibrosAutomaticos();
     const result = await sendAlertasLibros();
     return NextResponse.json(result);
   } catch (e: unknown) {

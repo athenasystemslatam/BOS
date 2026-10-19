@@ -19,6 +19,7 @@ export type FilaClienteLibros = {
   sinLibro: number;
   pocosFolios: number;
   mandatoVence: string | null;
+  mandatoSinCargar: boolean;
   balanceEstado: string | null;
   balanceAnio: number | null;
 };
@@ -28,6 +29,7 @@ const TH = "text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3
 export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) {
   const [busqueda, setBusqueda] = useState("");
   const [filtroResp, setFiltroResp] = useState("");
+  const [soloSinMandato, setSoloSinMandato] = useState(false);
 
   const responsables = useMemo(
     () => Array.from(new Set(filas.map((f) => f.responsable).filter(Boolean) as string[])).sort(),
@@ -38,10 +40,12 @@ export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) 
     const q = busqueda.trim().toLowerCase();
     if (q && !f.nombre.toLowerCase().includes(q) && !f.cuit.includes(q)) return false;
     if (filtroResp && f.responsable !== filtroResp) return false;
+    if (soloSinMandato && !f.mandatoSinCargar) return false;
     return true;
   });
 
   const sinTipo = filas.filter((f) => !f.tipo).length;
+  const sinMandato = filas.filter((f) => f.mandatoSinCargar).length;
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -72,6 +76,15 @@ export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) 
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-[12px] text-gray-600 cursor-pointer mr-2">
+            <input
+              type="checkbox"
+              checked={soloSinMandato}
+              onChange={(e) => setSoloSinMandato(e.target.checked)}
+              className="accent-violet-600"
+            />
+            Mandato sin cargar ({sinMandato})
+          </label>
           <div className="relative">
             <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -178,6 +191,8 @@ export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) 
                       >
                         {fmtFecha(f.mandatoVence)}
                       </span>
+                    ) : f.mandatoSinCargar ? (
+                      <span className="text-[12px] text-amber-600">Sin cargar</span>
                     ) : (
                       <span className="text-gray-300">—</span>
                     )}

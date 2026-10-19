@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import clsx from "clsx";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Receipt } from "lucide-react";
 import { PRIORIDADES, PRIORIDAD_INFO, UMBRAL_FOLIOS, fmtFecha, hoyISO } from "@/lib/libros";
 import type { PrioridadLibro } from "@/types";
-import { cambiarPrioridad, registrarCopiado, type ItemCopiado } from "./actions";
+import { cambiarPrioridad, enviarACopiar, registrarCopiado, type ItemCopiado } from "./actions";
 import { INPUT, LABEL, Modal, Pie, aEntero } from "./ModalBase";
 import type { TareaVista } from "./SeguimientoLibrosClient";
 
@@ -75,24 +76,121 @@ export function PrioridadModal({ tarea, onClose }: { tarea: TareaVista; onClose:
   );
 }
 
+export function EnviarACopiarModal({
+  clienteNombre,
+  tareas,
+  copiandoseId,
+  onClose,
+}: {
+  clienteNombre: string;
+  tareas: TareaVista[];
+  copiandoseId: string | null;
+  onClose: () => void;
+}) {
+  const [pendiente, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [fecha, setFecha] = useState(hoyISO());
+  const [persona, setPersona] = useState("");
+  const [mensajeria, setMensajeria] = useState(false);
+  const disponibles = tareas.filter((t) => t.estado_id !== copiandoseId);
+  const [elegidas, setElegidas] = useState<Set<string>>(() => new Set(disponibles.map((t) => t.id)));
+
+  function toggle(id: string) {
+    setElegidas((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (elegidas.size === 0) return setError("Elegí al menos un libro.");
+    startTransition(async () => {
+      const res = await enviarACopiar(Array.from(elegidas), { fecha, persona: persona || null, es_mensajeria: mensajeria });
+      if (res.error) return setError(res.error);
+      onClose();
+    });
+  }
+
+  return (
+    <Modal titulo={clienteNombre} subtitulo="Enviar a copiar" onClose={onClose}>
+      <form onSubmit={guardar} className="flex flex-col min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
+          <div className="space-y-1.5">
+            {disponibles.map((t) => (
+              <label key={t.id} className="flex items-center gap-2.5 text-[13px] text-gray-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={elegidas.has(t.id)}
+                  onChange={() => toggle(t.id)}
+                  className="accent-violet-600"
+                />
+                {t.libroNombre} <span className="text-[11px] text-gray-400">T{t.tomo}</span>
+              </label>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={LABEL}>Fecha de envío</label>
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={INPUT} />
+            </div>
+            <div>
+              <label className={LABEL}>Quién lo lleva (opcional)</label>
+              <input value={persona} onChange={(e) => setPersona(e.target.value)} className={INPUT} />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-[12px] text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={mensajeria}
+              onChange={(e) => setMensajeria(e.target.checked)}
+              className="accent-violet-600"
+            />
+            Por mensajería
+          </label>
+          <p className="text-[11px] text-gray-400">
+            Registra la salida a la copiadora y pasa las tareas a Copiándose. Cuando vuelvan, usá &ldquo;Retirado /
+            Registrar copiado&rdquo;.
+          </p>
+        </div>
+        <Pie error={error} pendiente={pendiente} onClose={onClose} textoGuardar="Enviar a copiar" />
+      </form>
+    </Modal>
+  );
+}
+
 type FilaCopiado = { incluir: boolean; folios: string; hasta: string };
 
 export function RegistrarCopiadoModal({
   clienteNombre,
   tareas,
+  copiandoseId,
   onClose,
 }: {
   clienteNombre: string;
   tareas: TareaVista[];
+  copiandoseId: string | null;
   onClose: () => void;
 }) {
   const [pendiente, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [alertas, setAlertas] = useState<string[] | null>(null);
+  const [resultado, setResultado] = useState<{ alertas: string[]; facturaPendiente: boolean } | null>(null);
   const [fecha, setFecha] = useState(hoyISO());
+  // Si algo está en la copiadora, se propone eso: es lo que se acaba de retirar.
+  const hayEnCopiadora = tareas.some((t) => t.estado_id === copiandoseId);
   const [filas, setFilas] = useState<Record<string, FilaCopiado>>(() =>
     Object.fromEntries(
-      tareas.map((t) => [t.id, { incluir: true, folios: "", hasta: t.periodo_hasta ?? t.exigible ?? "" }])
+      tareas.map((t) => [
+        t.id,
+        {
+          incluir: !hayEnCopiadora || t.estado_id === copiandoseId,
+          folios: "",
+          hasta: t.periodo_hasta ?? t.exigible ?? "",
+        },
+      ])
     )
   );
 
@@ -121,20 +219,31 @@ export function RegistrarCopiadoModal({
     startTransition(async () => {
       const res = await registrarCopiado(items, fecha);
       if (res.error) return setError(res.error);
-      if (res.alertas?.length) setAlertas(res.alertas);
-      else onClose();
+      if (res.alertas?.length || res.facturaPendiente) {
+        setResultado({ alertas: res.alertas ?? [], facturaPendiente: !!res.facturaPendiente });
+      } else onClose();
     });
   }
 
-  if (alertas) {
+  if (resultado) {
     return (
       <Modal titulo={clienteNombre} subtitulo="Copiado registrado" onClose={onClose}>
         <div className="px-6 py-5 space-y-3">
-          <p className="text-[13px] text-gray-700">
-            Listo, las tareas pasaron al historial. Ojo con estos libros ({UMBRAL_FOLIOS} folios libres o menos):
-          </p>
+          <p className="text-[13px] text-gray-700">Listo, las tareas pasaron al historial.</p>
+          {resultado.facturaPendiente && (
+            <p className="flex gap-2 text-[12px] text-violet-800 bg-violet-50 rounded-lg px-3 py-2">
+              <Receipt size={14} className="shrink-0 mt-0.5" />
+              <span>
+                Quedó pendiente la factura de la copiadora para este cliente. Cuando llegue, cargala en{" "}
+                <Link href="/libros/facturas" className="font-medium underline">
+                  Copiadora
+                </Link>
+                .
+              </span>
+            </p>
+          )}
           <ul className="space-y-2">
-            {alertas.map((a) => (
+            {resultado.alertas.map((a) => (
               <li key={a} className="flex gap-2 text-[12px] text-red-700 bg-red-50 rounded-lg px-3 py-2">
                 <AlertTriangle size={14} className="shrink-0 mt-0.5" />
                 {a}
@@ -155,11 +264,11 @@ export function RegistrarCopiadoModal({
   }
 
   return (
-    <Modal titulo={clienteNombre} subtitulo="Registrar copiado" onClose={onClose} ancho="max-w-3xl">
+    <Modal titulo={clienteNombre} subtitulo="Retirado / Registrar copiado" onClose={onClose} ancho="max-w-3xl">
       <form onSubmit={guardar} className="flex flex-col min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
           <div className="w-48">
-            <label className={LABEL}>Fecha del copiado</label>
+            <label className={LABEL}>Fecha de retiro / copiado</label>
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={INPUT} />
           </div>
           <table className="w-full text-sm">
@@ -218,8 +327,9 @@ export function RegistrarCopiadoModal({
             </tbody>
           </table>
           <p className="text-[11px] text-gray-400">
-            Suma los folios al libro, actualiza su último período copiado y pasa la tarea al historial. Si un libro
-            queda con {UMBRAL_FOLIOS} folios libres o menos, se crea el pedido de presupuesto de tomo nuevo.
+            Suma los folios al libro, actualiza su último período copiado y pasa la tarea al historial. Lo que estaba
+            en la copiadora registra la entrada y deja pendiente la factura de la copiadora. Si un libro queda con{" "}
+            {UMBRAL_FOLIOS} folios libres o menos, se crea el pedido de presupuesto de tomo nuevo.
           </p>
         </div>
         <Pie error={error} pendiente={pendiente} onClose={onClose} textoGuardar="Registrar copiado" />

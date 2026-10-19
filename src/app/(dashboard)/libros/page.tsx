@@ -1,15 +1,19 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import {
+  diasHasta,
   foliosLibres,
   hoyISO,
   libroAlDia,
   mandatoVencido,
   prioridadSugerida,
 } from "@/lib/libros";
-import type { ClienteSocietario, Libro, LibroCatalogo, LibroEstado, LibroTarea } from "@/types";
+import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
+import type { ClienteSocietario, Libro, LibroCatalogo, LibroEstado, LibroPedido, LibroTarea } from "@/types";
 import {
   SeguimientoLibrosClient,
+  type AvisoBalance,
+  type AvisoRenovacion,
   type ClienteCola,
   type PuestaAlDiaCliente,
   type TareaVista,
@@ -22,7 +26,11 @@ type ServicioRaw = {
   clientes: { id: string; nombre: string; cierre_ejercicio_mes: number | null; cierre_ejercicio_dia: number | null } | null;
 };
 
+type BalanceRaw = { id: string; cliente_id: string; anio_fiscal: number; fecha_cierre: string; estado: string };
+
 export default async function SeguimientoLibrosPage() {
+  await sincronizarLibrosAutomaticos();
+
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
   const areas = await getAreasDelUsuario();
@@ -37,6 +45,9 @@ export default async function SeguimientoLibrosPage() {
     { data: estadosRaw },
     { data: equipoRaw },
     { data: modulosRaw },
+    { data: balancesRaw },
+    { data: pedidosRaw },
+    { data: renovacionesRaw },
   ] = await Promise.all([
     admin
       .from("servicios_cliente")
@@ -50,6 +61,13 @@ export default async function SeguimientoLibrosPage() {
     admin.from("libros_estados").select("*").order("orden"),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "libros"),
+    admin.from("balances").select("id, cliente_id, anio_fiscal, fecha_cierre, estado"),
+    admin.from("libros_pedidos").select("id").not("fecha_limite", "is", null),
+    admin
+      .from("libros_pedidos")
+      .select("*")
+      .eq("tipo", "renovacion_autoridades")
+      .in("estado", ["abierto", "esperando_cliente", "esperando_tercero", "aprobado"]),
   ]);
 
   const servicios = ((serviciosRaw ?? []) as unknown as ServicioRaw[]).filter((s) => s.clientes);
@@ -63,6 +81,8 @@ export default async function SeguimientoLibrosPage() {
   const idsEquipo = new Set((modulosRaw ?? []).map((m) => m.equipo_id as string));
   const equipo = (equipoRaw ?? []).filter((p) => idsEquipo.has(p.id as string)) as { id: string; nombre: string }[];
   const nombrePersona = new Map(((equipoRaw ?? []) as { id: string; nombre: string }[]).map((p) => [p.id, p.nombre]));
+  const balances = new Map(((balancesRaw ?? []) as BalanceRaw[]).map((b) => [b.id, b]));
+  const pedidosConFecha = new Set((pedidosRaw ?? []).map((p) => p.id as string));
 
   const clientes = new Map<string, ClienteCola & { cierre: { mes: number | null; dia: number | null } }>();
   for (const s of servicios) {
@@ -94,7 +114,11 @@ export default async function SeguimientoLibrosPage() {
     const libro = librosPorId.get(t.libro_id) ?? null;
     const item = libro ? catalogo.get(libro.catalogo_id) : undefined;
     const cliente = clientes.get(t.cliente_id);
-    const sugerida = prioridadSugerida(t, libro, cliente?.mandatoVencido ?? false);
+    const balance = t.balance_id ? balances.get(t.balance_id) : undefined;
+    const sugerida = prioridadSugerida(t, {
+      pedidoConFecha: !!t.pedido_id && pedidosConFecha.has(t.pedido_id),
+      balanceEstado: balance?.estado ?? null,
+    });
     const ultimo = libro ? ultimoPorLibro.get(`${libro.cliente_id}|${libro.catalogo_id}`) ?? null : null;
     const exigible =
       libro && item && cliente
@@ -116,7 +140,36 @@ export default async function SeguimientoLibrosPage() {
     };
   });
 
-  const enCola = new Set(vistas.filter((t) => !t.esFinal).map((t) => t.libro_id));
+  const abiertas = vistas.filter((t) => !t.esFinal);
+  const enCola = new Set(abiertas.map((t) => t.libro_id));
+
+  // Aviso: tareas del envío anual abiertas por un balance legalizado o finalizado.
+  const avisos = new Map<string, AvisoBalance>();
+  for (const t of abiertas) {
+    const b = t.origen === "balance" && t.balance_id ? balances.get(t.balance_id) : undefined;
+    if (!b || (b.estado !== "legalizado" && b.estado !== "finalizado")) continue;
+    const aviso = avisos.get(t.cliente_id) ?? {
+      clienteId: t.cliente_id,
+      nombre: t.clienteNombre,
+      anio: b.anio_fiscal,
+      legalizado: b.estado === "legalizado",
+      libros: 0,
+    };
+    aviso.libros++;
+    avisos.set(t.cliente_id, aviso);
+  }
+
+  const avisosRenovacion: AvisoRenovacion[] = ((renovacionesRaw ?? []) as LibroPedido[])
+    .filter((p) => clientes.has(p.cliente_id))
+    .map((p) => ({
+      clienteId: p.cliente_id,
+      nombre: clientes.get(p.cliente_id)!.nombre,
+      vence: p.mandato_vence ?? null,
+      dias: p.mandato_vence ? diasHasta(p.mandato_vence) : null,
+      hechos: (p.checklist ?? []).filter((i) => i.hecho).length,
+      pasos: (p.checklist ?? []).length,
+    }))
+    .sort((a, b) => (a.dias ?? -9999) - (b.dias ?? -9999));
 
   const puestaAlDia: PuestaAlDiaCliente[] = [];
   for (const cliente of Array.from(clientes.values())) {
@@ -127,6 +180,7 @@ export default async function SeguimientoLibrosPage() {
     let total = 0;
     let sinCargar = 0;
     const atrasados: PuestaAlDiaCliente["atrasados"] = [];
+    const sinDato: PuestaAlDiaCliente["sinDato"] = [];
     for (const item of corresponden) {
       const tomos = libros
         .filter((l) => l.cliente_id === cliente.id && l.catalogo_id === item.id)
@@ -140,17 +194,22 @@ export default async function SeguimientoLibrosPage() {
       const r = libroAlDia(vigente, ultimo, vigente.periodicidad ?? item.periodicidad, cliente.cierre, hoy);
       if (r.alDia === null) continue;
       total++;
-      if (r.alDia) alDia++;
-      else
-        atrasados.push({
-          libroId: vigente.id,
-          nombre: item.nombre,
-          tomo: vigente.tomo,
-          ultimo,
-          exigible: r.exigible,
-          sinLibro: vigente.estado === "sin_libro",
-          enCola: enCola.has(vigente.id),
-        });
+      if (r.alDia) {
+        alDia++;
+        continue;
+      }
+      const fila = {
+        libroId: vigente.id,
+        nombre: item.nombre,
+        tomo: vigente.tomo,
+        ultimo,
+        exigible: r.exigible,
+        sinLibro: vigente.estado === "sin_libro",
+        enCola: enCola.has(vigente.id),
+      };
+      // Sin último copiado cargado no se sabe si está atrasado: hay que relevar.
+      if (!ultimo && !fila.sinLibro) sinDato.push(fila);
+      else atrasados.push(fila);
     }
     puestaAlDia.push({
       clienteId: cliente.id,
@@ -160,6 +219,7 @@ export default async function SeguimientoLibrosPage() {
       total,
       sinCargar,
       atrasados,
+      sinDato,
     });
   }
   puestaAlDia.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
@@ -175,6 +235,10 @@ export default async function SeguimientoLibrosPage() {
         mandatoVencido: c.mandatoVencido,
       }))}
       puestaAlDia={puestaAlDia}
+      avisosBalance={Array.from(avisos.values()).sort(
+        (a, b) => Number(b.legalizado) - Number(a.legalizado) || a.nombre.localeCompare(b.nombre, "es")
+      )}
+      avisosRenovacion={avisosRenovacion}
       estados={estados.filter((e) => e.activo)}
       equipo={equipo}
       puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}

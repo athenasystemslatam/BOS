@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import type { LibroEstado } from "@/types";
-import { actualizarEstado, actualizarUmbralFolios } from "../actions";
+import { actualizarAvisosMandato, actualizarEstado, actualizarUmbralFolios } from "../actions";
 
 const CODIGOS_PROTEGIDOS = new Set(["pendiente", "en_proceso", "en_espera", "para_copiar", "copiandose", "copiado"]);
 const INPUT = "text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-violet-500 bg-white w-full";
@@ -44,6 +44,53 @@ function UmbralCard({ umbralInicial }: { umbralInicial: number }) {
           value={valor}
           onChange={(e) => setValor(e.target.value)}
         />
+        <button
+          type="submit"
+          disabled={pendiente}
+          className="px-4 py-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg disabled:opacity-50 whitespace-nowrap"
+        >
+          {pendiente ? "Guardando…" : "Guardar"}
+        </button>
+      </form>
+      {msg && (
+        <p className={clsx("text-xs mt-2", msg.ok ? "text-green-600" : "text-red-600")}>
+          {msg.texto}
+        </p>
+      )}
+    </section>
+  );
+}
+
+// ── Avisos de mandato ────────────────────────────────────────────────────────
+
+function AvisosMandatoCard({ avisosIniciales }: { avisosIniciales: number[] }) {
+  const [valor, setValor] = useState(avisosIniciales.join(", "));
+  const [pendiente, startTransition] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
+
+  function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    const dias = valor.split(/[,\s]+/).filter(Boolean).map(Number);
+    if (dias.length === 0 || dias.some((d) => !Number.isInteger(d) || d < 1 || d > 365)) {
+      return setMsg({ ok: false, texto: "Cargá días enteros entre 1 y 365, separados por coma." });
+    }
+    startTransition(async () => {
+      const res = await actualizarAvisosMandato(dias);
+      if (res.error) setMsg({ ok: false, texto: res.error });
+      else setMsg({ ok: true, texto: "Guardado." });
+    });
+  }
+
+  return (
+    <section className="bg-white rounded-xl border border-gray-200 p-6">
+      <h2 className="text-[13px] font-semibold text-gray-800 mb-1">Avisos de vencimiento de mandato</h2>
+      <p className="text-xs text-gray-500 mb-4">
+        Días antes del vencimiento en que se avisa por mail (cada aviso una sola vez). El primero (el mayor) crea el
+        pedido de renovación de autoridades.
+      </p>
+      <form onSubmit={guardar} className="flex items-center gap-3 max-w-xs">
+        <input className={INPUT} value={valor} onChange={(e) => setValor(e.target.value)} placeholder="90, 60, 30" />
         <button
           type="submit"
           disabled={pendiente}
@@ -226,9 +273,11 @@ function EstadosCard({ estadosIniciales }: { estadosIniciales: LibroEstado[] }) 
 export function ConfiguracionClient({
   estados,
   umbralInicial,
+  avisosMandato,
 }: {
   estados: LibroEstado[];
   umbralInicial: number;
+  avisosMandato: number[];
 }) {
   return (
     <div className="flex flex-col h-full bg-gray-50 overflow-y-auto">
@@ -238,6 +287,7 @@ export function ConfiguracionClient({
       </div>
       <div className="flex-1 px-6 py-6 space-y-6 max-w-2xl">
         <UmbralCard umbralInicial={umbralInicial} />
+        <AvisosMandatoCard avisosIniciales={avisosMandato} />
         <EstadosCard estadosIniciales={estados} />
       </div>
     </div>

@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAreaOrAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { UMBRAL_FOLIOS, foliosLibres } from "@/lib/libros";
+import { UMBRAL_FOLIOS, fmtFecha, foliosLibres, vencimientoMandato } from "@/lib/libros";
 import type {
   ClienteSocietario,
   CopiadoFactura,
   DestinoMovimiento,
   EstadoPedido,
+  ItemChecklist,
   Libro,
   LibroIncidencia,
   LibroTarea,
@@ -322,19 +323,121 @@ export async function reordenarBloques(clienteIds: string[]): Promise<Resultado>
   return {};
 }
 
+export type DatosEnvioCopiadora = { fecha: string; persona: string | null; es_mensajeria: boolean };
+
+// Primer paso del flujo: registra solo la salida a la copiadora (un
+// movimiento por libro) y pasa las tareas a Copiándose.
+export async function enviarACopiar(tareaIds: string[], datos: DatosEnvioCopiadora): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  if (tareaIds.length === 0) return { error: "Elegí al menos un libro." };
+  if (!datos.fecha) return { error: "Indicá la fecha de envío." };
+
+  const admin = createAdminClient();
+  const [finales, { data: copiandose }, { data: tareas, error: errTareas }] = await Promise.all([
+    estadosFinales(admin),
+    admin.from("libros_estados").select("id").eq("codigo", "copiandose").maybeSingle(),
+    admin.from("libros_tareas").select("id, libro_id, estado_id").in("id", tareaIds),
+  ]);
+  if (errTareas) return { error: errTareas.message };
+  if (!copiandose) return { error: "Falta el estado Copiándose en libros_estados." };
+  const abiertas = (tareas ?? []).filter((t) => !finales.includes(t.estado_id as string));
+  if (abiertas.length === 0) return { error: "Esas tareas ya están terminadas." };
+
+  const { error: errMov } = await admin.from("libros_movimientos").insert(
+    abiertas.map((t) => ({
+      libro_id: t.libro_id,
+      tarea_id: t.id,
+      fecha: datos.fecha,
+      tipo: "salida",
+      destino: "copiadora",
+      persona: datos.persona?.trim() || null,
+      es_mensajeria: datos.es_mensajeria,
+      registrado_por: yo.id,
+    }))
+  );
+  if (errMov) return { error: errMov.message };
+
+  const ahora = new Date().toISOString();
+  const { error: errLibros } = await admin
+    .from("libros")
+    .update({ ubicacion: "copiadora", actualizado_en: ahora })
+    .in("id", abiertas.map((t) => t.libro_id as string));
+  if (errLibros) return { error: errLibros.message };
+
+  const { error } = await admin
+    .from("libros_tareas")
+    .update({ estado_id: copiandose.id, fecha_envio_copiar: datos.fecha, actualizado_en: ahora })
+    .in("id", abiertas.map((t) => t.id as string));
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
 export type ItemCopiado = { tarea_id: string; folios_usados: number; periodo_hasta: string };
 
 type TareaConLibro = {
   id: string;
+  cliente_id: string;
+  estado_id: string;
+  fecha_envio_copiar: string | null;
+  fecha_retiro: string | null;
   libros: (Libro & { libros_catalogo: { nombre: string } | null }) | null;
 };
 
-// Valida todo antes de escribir: si un libro no tiene folios suficientes no
-// se registra ninguno, así no queda el envío a medias.
+// Una factura pendiente por cliente: si ya hay una sin recibir ni numerar,
+// se le suman las tareas en vez de abrir otra.
+async function dejarFacturaPendiente(
+  admin: Admin,
+  yoId: string,
+  clienteId: string,
+  tareas: { id: string; nombre: string }[],
+  fecha: string
+): Promise<string | null> {
+  const detalle = `Copiado del ${fmtFecha(fecha)}: ${tareas.map((t) => t.nombre).join(", ")}.`;
+  const { data: abierta } = await admin
+    .from("copiadora_facturas")
+    .select("id, observaciones")
+    .eq("cliente_id", clienteId)
+    .eq("factura_recibida", false)
+    .is("nro_factura", null)
+    .order("creado_en", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let facturaId = abierta?.id as string | undefined;
+  if (facturaId) {
+    const { error } = await admin
+      .from("copiadora_facturas")
+      .update({
+        observaciones: [abierta?.observaciones, detalle].filter(Boolean).join("\n"),
+        actualizado_en: new Date().toISOString(),
+      })
+      .eq("id", facturaId);
+    if (error) return error.message;
+  } else {
+    const { data, error } = await admin
+      .from("copiadora_facturas")
+      .insert({ cliente_id: clienteId, mes: `${fecha.slice(0, 8)}01`, observaciones: detalle, creado_por: yoId })
+      .select("id")
+      .maybeSingle();
+    if (error || !data) return error?.message ?? "No se pudo crear la factura pendiente.";
+    facturaId = data.id as string;
+  }
+  const { error } = await admin
+    .from("copiadora_facturas_tareas")
+    .upsert(tareas.map((t) => ({ factura_id: facturaId, tarea_id: t.id })), { ignoreDuplicates: true });
+  return error?.message ?? null;
+}
+
+// "Retirado / Registrar copiado". Valida todo antes de escribir: si un libro
+// no tiene folios suficientes no se registra ninguno, así no queda el envío a
+// medias. Lo que estaba en la copiadora registra además la entrada y deja
+// pendiente la factura de la copiadora para el cliente.
 export async function registrarCopiado(
   items: ItemCopiado[],
   fechaFin: string
-): Promise<Resultado & { alertas?: string[] }> {
+): Promise<Resultado & { alertas?: string[]; facturaPendiente?: boolean }> {
   const yo = await autorizar();
   if ("error" in yo) return yo;
   if (items.length === 0) return { error: "Elegí al menos un libro." };
@@ -346,12 +449,15 @@ export async function registrarCopiado(
 
   const admin = createAdminClient();
   const umbral = await getUmbralFolios();
-  const { data: copiado } = await admin.from("libros_estados").select("id").eq("codigo", "copiado").maybeSingle();
+  const [{ data: copiado }, { data: copiandose }] = await Promise.all([
+    admin.from("libros_estados").select("id").eq("codigo", "copiado").maybeSingle(),
+    admin.from("libros_estados").select("id").eq("codigo", "copiandose").maybeSingle(),
+  ]);
   if (!copiado) return { error: "Falta el estado Copiado en libros_estados." };
 
   const { data: tareasRaw, error: errTareas } = await admin
     .from("libros_tareas")
-    .select("id, libros(*, libros_catalogo(nombre))")
+    .select("id, cliente_id, estado_id, fecha_envio_copiar, fecha_retiro, libros(*, libros_catalogo(nombre))")
     .in("id", items.map((i) => i.tarea_id));
   if (errTareas) return { error: errTareas.message };
 
@@ -369,17 +475,39 @@ export async function registrarCopiado(
 
   const alertas: string[] = [];
   const ahora = new Date().toISOString();
+  const porFacturar = new Map<string, { id: string; nombre: string }[]>();
   for (const item of items) {
-    const libro = porId.get(item.tarea_id)!.libros!;
+    const tarea = porId.get(item.tarea_id)!;
+    const libro = tarea.libros!;
     const usados = libro.folios_usados + item.folios_usados;
     const ultimo =
       libro.ultimo_periodo_copiado && libro.ultimo_periodo_copiado > item.periodo_hasta
         ? libro.ultimo_periodo_copiado
         : item.periodo_hasta;
+    const enCopiadora = libro.ubicacion === "copiadora";
+    const pasoPorCopiadora = enCopiadora || tarea.estado_id === copiandose?.id || !!tarea.fecha_envio_copiar;
+
+    if (enCopiadora) {
+      const { error: errMov } = await admin.from("libros_movimientos").insert({
+        libro_id: libro.id,
+        tarea_id: tarea.id,
+        fecha: fechaFin,
+        tipo: "entrada",
+        destino: "copiadora",
+        comentario: "Retirado de la copiadora al registrar el copiado.",
+        registrado_por: yo.id,
+      });
+      if (errMov) return { error: errMov.message };
+    }
 
     const { error: errLibro } = await admin
       .from("libros")
-      .update({ folios_usados: usados, ultimo_periodo_copiado: ultimo, actualizado_en: ahora })
+      .update({
+        folios_usados: usados,
+        ultimo_periodo_copiado: ultimo,
+        ...(enCopiadora ? { ubicacion: "estudio" } : {}),
+        actualizado_en: ahora,
+      })
       .eq("id", libro.id);
     if (errLibro) return { error: errLibro.message };
 
@@ -390,10 +518,17 @@ export async function registrarCopiado(
         folios_usados: item.folios_usados,
         periodo_hasta: item.periodo_hasta,
         fecha_fin: fechaFin,
+        fecha_retiro: tarea.fecha_retiro ?? (pasoPorCopiadora ? fechaFin : null),
         actualizado_en: ahora,
       })
       .eq("id", item.tarea_id);
     if (errTarea) return { error: errTarea.message };
+
+    if (pasoPorCopiadora) {
+      const lista = porFacturar.get(tarea.cliente_id) ?? [];
+      lista.push({ id: tarea.id, nombre: `${libro.libros_catalogo?.nombre ?? "Libro"} T${libro.tomo}` });
+      porFacturar.set(tarea.cliente_id, lista);
+    }
 
     const libres = foliosLibres(libro.folios_totales, usados);
     if (libres != null && libres <= umbral) {
@@ -416,8 +551,13 @@ export async function registrarCopiado(
     }
   }
 
+  for (const [clienteId, tareas] of Array.from(porFacturar.entries())) {
+    const errFactura = await dejarFacturaPendiente(admin, yo.id, clienteId, tareas, fechaFin);
+    if (errFactura) alertas.push(`El copiado quedó registrado, pero no se pudo dejar la factura pendiente: ${errFactura}`);
+  }
+
   revalidatePath("/libros", "layout");
-  return { alertas };
+  return { alertas, facturaPendiente: porFacturar.size > 0 };
 }
 
 export type FilaHistorial = {
@@ -503,6 +643,12 @@ export async function actualizarPedido(id: string, cambios: CambiosPedido): Prom
   const yo = await autorizar();
   if ("error" in yo) return yo;
   const admin = createAdminClient();
+  if (cambios.estado === "cerrado") {
+    const { data: actual } = await admin.from("libros_pedidos").select("tipo").eq("id", id).maybeSingle();
+    if (actual?.tipo === "renovacion_autoridades") {
+      return { error: "Para cerrar una renovación usá \"Cerrar renovación\": así se carga el mandato nuevo." };
+    }
+  }
   const patch: Record<string, unknown> = { ...cambios, actualizado_en: new Date().toISOString() };
   if (typeof patch.monto === "string") patch.monto = patch.monto ? parseFloat(patch.monto as string) : null;
   const { error } = await admin.from("libros_pedidos").update(patch).eq("id", id);
@@ -535,6 +681,81 @@ export async function agregarSeguimiento(
     proximo_seguimiento: proximoSeguimiento || null,
     actualizado_en: ahora,
   }).eq("id", pedidoId);
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export async function actualizarChecklist(pedidoId: string, checklist: ItemChecklist[]): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const limpio = checklist
+    .map((i) => ({ texto: i.texto.trim(), hecho: !!i.hecho }))
+    .filter((i) => i.texto);
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("libros_pedidos")
+    .update({ checklist: limpio, actualizado_en: new Date().toISOString() })
+    .eq("id", pedidoId);
+  if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+// Cierra la renovación de autoridades cargando el mandato nuevo en
+// clientes_societario. El mandato anterior queda en el historial del pedido.
+export async function cerrarRenovacion(pedidoId: string, designacion: string, anios: number): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  if (!designacion) return { error: "Indicá la fecha de designación del mandato nuevo." };
+  if (!Number.isInteger(anios) || anios < 1) return { error: "La duración tiene que ser un número entero de años." };
+
+  const admin = createAdminClient();
+  const { data: pedido, error: errPedido } = await admin
+    .from("libros_pedidos")
+    .select("cliente_id, tipo, estado")
+    .eq("id", pedidoId)
+    .maybeSingle();
+  if (errPedido || !pedido) return { error: errPedido?.message ?? "No se encontró el pedido." };
+  if (pedido.tipo !== "renovacion_autoridades") return { error: "El pedido no es una renovación de autoridades." };
+  if (pedido.estado === "cerrado") return { error: "La renovación ya está cerrada." };
+
+  const { data: soc } = await admin
+    .from("clientes_societario")
+    .select("mandato_designacion, mandato_anios")
+    .eq("cliente_id", pedido.cliente_id)
+    .maybeSingle();
+  const anterior = soc?.mandato_designacion
+    ? `designación ${fmtFecha(soc.mandato_designacion)}${
+        soc.mandato_anios
+          ? ` por ${soc.mandato_anios} años (vencía el ${fmtFecha(vencimientoMandato(soc.mandato_designacion, soc.mandato_anios))})`
+          : ", duración sin cargar"
+      }`
+    : "sin cargar";
+  const nuevo = `designación ${fmtFecha(designacion)} por ${anios} años (vence el ${fmtFecha(vencimientoMandato(designacion, anios))})`;
+
+  const ahora = new Date().toISOString();
+  const { error: errSoc } = await admin.from("clientes_societario").upsert({
+    cliente_id: pedido.cliente_id,
+    mandato_designacion: designacion,
+    mandato_anios: anios,
+    actualizado_por: yo.id,
+    actualizado_en: ahora,
+  });
+  if (errSoc) return { error: errSoc.message };
+
+  const { error: errSeg } = await admin.from("libros_pedidos_seguimientos").insert({
+    pedido_id: pedidoId,
+    fecha: ahora.slice(0, 10),
+    nota: `Renovación cerrada. Mandato anterior: ${anterior}. Mandato nuevo: ${nuevo}.`,
+    registrado_por: yo.id,
+  });
+  if (errSeg) return { error: errSeg.message };
+
+  const { error } = await admin
+    .from("libros_pedidos")
+    .update({ estado: "cerrado", proximo_seguimiento: null, actualizado_en: ahora })
+    .eq("id", pedidoId);
+  if (error) return { error: error.message };
   revalidatePath("/libros", "layout");
   return {};
 }
@@ -806,6 +1027,23 @@ export async function actualizarUmbralFolios(umbral: number): Promise<Resultado>
   if (!cfg) return { error: "Tabla libros_config no encontrada. ¿Corriste la migración de etapa 4?" };
   const { error } = await admin.from("libros_config").update({ umbral_folios: umbral }).eq("id", (cfg as { id: string }).id);
   if (error) return { error: error.message };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export async function actualizarAvisosMandato(avisos: number[]): Promise<Resultado> {
+  try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }
+  const limpios = Array.from(new Set(avisos)).sort((a, b) => b - a);
+  if (limpios.length === 0 || limpios.some((d) => !Number.isInteger(d) || d < 1 || d > 365)) {
+    return { error: "Cargá uno o más días entre 1 y 365, separados por coma (ej.: 90, 60, 30)." };
+  }
+  const admin = createAdminClient();
+  const { data: cfg } = await admin.from("libros_config").select("id").maybeSingle();
+  if (!cfg) return { error: "Tabla libros_config no encontrada. ¿Corriste la migración de etapa 4?" };
+  const { error } = await admin.from("libros_config").update({ mandato_avisos: limpios }).eq("id", (cfg as { id: string }).id);
+  if (error) {
+    return { error: error.message.includes("mandato_avisos") ? "Falta correr add_libros_etapa6.sql en Supabase." : error.message };
+  }
   revalidatePath("/libros", "layout");
   return {};
 }

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
+import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
 import type { LibroPedido, LibroPedidoSeguimiento } from "@/types";
 import { PedidosClient, type ClienteConLibros } from "./PedidosClient";
 
@@ -9,6 +10,7 @@ type PedidoRaw = LibroPedido & {
 };
 
 export default async function PedidosPage() {
+  await sincronizarLibrosAutomaticos();
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
   const areas = await getAreasDelUsuario();
@@ -90,6 +92,9 @@ export default async function PedidosPage() {
 
   const pedidos = ((pedidosRaw ?? []) as unknown as PedidoRaw[]).map((p) => ({
     ...p,
+    checklist: p.checklist ?? [],
+    prioridad: p.prioridad ?? null,
+    mandato_vence: p.mandato_vence ?? null,
     responsableNombre: p.responsable?.nombre ?? null,
     creadorNombre: p.creador?.nombre ?? null,
   }));

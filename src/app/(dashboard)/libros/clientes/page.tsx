@@ -71,6 +71,9 @@ export default async function LibrosClientesPage() {
           return libres != null && libres <= UMBRAL_FOLIOS;
         }).length,
         mandatoVence: vencimientoMandato(soc?.mandato_designacion ?? null, soc?.mandato_anios ?? null),
+        // SA y SAS tienen directorio/administración con mandato: sin la designación no hay aviso.
+        mandatoSinCargar:
+          (soc?.tipo_societario === "SA" || soc?.tipo_societario === "SAS") && !soc?.mandato_designacion,
         balanceEstado: bal?.estado ?? null,
         balanceAnio: bal?.anio ?? null,
       };
