@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { configLibros } from "@/lib/librosAutomaticos";
+import { vencimientoFinal, type DatosMandato } from "@/lib/libros";
 import {
   getVencimientoF931,
   getMesTrabajoActual,
@@ -605,7 +606,7 @@ export async function sendAlertasLibros(): Promise<AlertaLibrosResult> {
   const { avisosMandato } = await configLibros(admin);
   const { data: societariosRaw } = await admin
     .from("clientes_societario")
-    .select("mandato_designacion, mandato_anios, cliente_id");
+    .select("*");
   const { data: enviadosRaw, error: errEnviados } = await admin
     .from("libros_avisos_mandato")
     .select("cliente_id, mandato_vence, umbral");
@@ -629,10 +630,9 @@ export async function sendAlertasLibros(): Promise<AlertaLibrosResult> {
 
   const mandatosVencidos: AlertaLibrosData["mandatosVencidos"] = [];
 
-  for (const s of (societariosRaw ?? []) as { mandato_designacion: string | null; mandato_anios: number | null; cliente_id: string }[]) {
-    if (!s.mandato_designacion || !s.mandato_anios) continue;
-    const [y, m, d] = s.mandato_designacion.split("-").map(Number);
-    const venceStr = `${y + s.mandato_anios}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  for (const s of (societariosRaw ?? []) as (DatosMandato & { cliente_id: string })[]) {
+    const venceStr = vencimientoFinal(s);
+    if (!venceStr) continue;
     const diasRestantes = Math.round((new Date(venceStr + "T00:00:00").getTime() - new Date(hoy + "T00:00:00").getTime()) / 86_400_000);
     const cruzados = avisosMandato.filter((t) => diasRestantes <= t);
     if (cruzados.length === 0) continue;

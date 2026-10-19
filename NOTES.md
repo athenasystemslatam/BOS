@@ -4,6 +4,10 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
+- **`add_libros_etapa8.sql`** (19-oct) — `clientes_societario.mandato_vence_preciso`: si está, reemplaza al
+  vencimiento calculado (designación + años). Sin correrlo, guardar un mandato desde la ficha o la lista da error
+  ("Falta correr add_libros_etapa8.sql").
+
 - **`add_libros_etapa7.sql`** (19-oct) — Tablero de Libros: `libros_config.fecha_meta_puesta` y tabla
   `libros_snapshot` (foto diaria del atraso). Sin correrlo el Tablero funciona, pero sin evolución semanal ni
   fecha meta.
@@ -51,6 +55,19 @@ Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se a
   mandato anterior queda como seguimiento del pedido. Mail diario: cada umbral (90/60/30/vencido) una sola vez.
   Filtro "Mandato sin cargar" (SA y SAS) en Libros → Clientes.
 - **Puesta al día**: "Atrasados" (con último copiado) separado de "Sin dato" (hay que relevar, no copiar).
+
+### Ajustes tras la prueba (19-oct, etapa 8)
+
+- Seguimiento: aviso de renovaciones solo con el número y link a Pedidos filtrado (`?tipo=renovacion_autoridades&en_curso=1`);
+  pestañas "Cola · N clientes" y "Atrasos sin asignar · N libros en M clientes" (ex Puesta al día, sin el avance: va
+  al Tablero); un buscador por cliente o CUIT para las tres pestañas; orden por arrastrar y soltar (agarrando el ícono
+  de la izquierda del bloque), guardado en `orden_manual` para todo el equipo; se sacaron las flechas.
+- Registrar copiado propone "copiado hasta" = último cierre exigible del libro (en el envío anual, el cierre del
+  balance si es posterior); al confirmar actualiza `libros.ultimo_periodo_copiado` (se queda con el mayor).
+- Mandato: `vencimientoFinal` (`src/lib/libros.ts`) = vencimiento preciso o designación + años; lo usan avisos,
+  mail, renovaciones, Tablero, fichas y la llavecita de Panel General. Editable desde la lista de Clientes
+  (`MandatoModal`) y la ficha (`MandatoCampos`, 3 años por defecto en SA). Si al guardar queda vigente por más que el
+  primer aviso (o indeterminado), la renovación abierta se cierra sola con una nota en su historial.
 
 ### Etapa 7 — Tablero (`/libros/tablero`, 19-oct)
 

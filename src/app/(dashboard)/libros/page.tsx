@@ -23,7 +23,7 @@ type ServicioRaw = {
   cliente_id: string;
   responsable_id: string | null;
   responsable: { nombre: string } | null;
-  clientes: { id: string; nombre: string; cierre_ejercicio_mes: number | null; cierre_ejercicio_dia: number | null } | null;
+  clientes: { id: string; nombre: string; cuit: string | null; cierre_ejercicio_mes: number | null; cierre_ejercicio_dia: number | null } | null;
 };
 
 type BalanceRaw = { id: string; cliente_id: string; anio_fiscal: number; fecha_cierre: string; estado: string };
@@ -51,7 +51,7 @@ export default async function SeguimientoLibrosPage() {
   ] = await Promise.all([
     admin
       .from("servicios_cliente")
-      .select("cliente_id, responsable_id, responsable:liquidadoras(nombre), clientes(id, nombre, cierre_ejercicio_mes, cierre_ejercicio_dia)")
+      .select("cliente_id, responsable_id, responsable:liquidadoras(nombre), clientes(id, nombre, cuit, cierre_ejercicio_mes, cierre_ejercicio_dia)")
       .eq("servicio", "libros")
       .eq("estado", true),
     admin.from("clientes_societario").select("*"),
@@ -91,9 +91,10 @@ export default async function SeguimientoLibrosPage() {
     clientes.set(c.id, {
       id: c.id,
       nombre: c.nombre,
+      cuit: c.cuit,
       responsableId: s.responsable_id,
       responsableNombre: s.responsable?.nombre ?? null,
-      mandatoVencido: mandatoVencido(soc?.mandato_designacion ?? null, soc?.mandato_anios ?? null, hoy),
+      mandatoVencido: mandatoVencido(soc, hoy),
       cierre: { mes: c.cierre_ejercicio_mes, dia: c.cierre_ejercicio_dia },
     });
   }
@@ -127,6 +128,7 @@ export default async function SeguimientoLibrosPage() {
     return {
       ...t,
       clienteNombre: cliente?.nombre ?? "(cliente sin servicio Libros)",
+      clienteCuit: cliente?.cuit ?? null,
       libroNombre: item?.nombre ?? "Libro",
       tomo: libro?.tomo ?? 1,
       libres: libro ? foliosLibres(libro.folios_totales, libro.folios_usados) : null,
@@ -214,6 +216,7 @@ export default async function SeguimientoLibrosPage() {
     puestaAlDia.push({
       clienteId: cliente.id,
       nombre: cliente.nombre,
+      cuit: cliente.cuit,
       responsableId: cliente.responsableId,
       alDia,
       total,
@@ -230,6 +233,7 @@ export default async function SeguimientoLibrosPage() {
       clientes={Array.from(clientes.values()).map((c) => ({
         id: c.id,
         nombre: c.nombre,
+        cuit: c.cuit,
         responsableId: c.responsableId,
         responsableNombre: c.responsableNombre,
         mandatoVencido: c.mandatoVencido,

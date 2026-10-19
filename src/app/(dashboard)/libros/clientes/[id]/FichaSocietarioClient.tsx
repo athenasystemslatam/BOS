@@ -19,8 +19,9 @@ import {
   textoPeriodos,
   organismoSugerido,
   periodoExigible,
-  vencimientoMandato,
+  vencimientoFinal,
 } from "@/lib/libros";
+import { MandatoCampos, aDatosMandato, valoresIniciales } from "../../MandatoCampos";
 import type {
   ClienteSocietario,
   Libro,
@@ -97,17 +98,14 @@ function DatosSocietarios({
   const [nroInscripcion, setNroInscripcion] = useState(societario?.nro_inscripcion ?? "");
   const [digitales, setDigitales] = useState(societario?.libros_digitales ?? false);
   const [contacto, setContacto] = useState(societario?.contacto_libros ?? "");
-  const [designacion, setDesignacion] = useState(societario?.mandato_designacion ?? "");
-  const [anios, setAnios] = useState(societario?.mandato_anios?.toString() ?? "");
+  const [mandato, setMandato] = useState(() => valoresIniciales(societario, societario?.tipo_societario));
   const [observaciones, setObservaciones] = useState(societario?.observaciones ?? "");
 
   function guardar(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const nAnios = anios.trim() === "" ? null : Number(anios);
-    if (nAnios != null && (!Number.isInteger(nAnios) || nAnios < 1)) {
-      return setError("Los años de mandato tienen que ser un número entero mayor a 0 (vacío = indeterminado).");
-    }
+    const datosMandato = aDatosMandato(mandato);
+    if (typeof datosMandato === "string") return setError(datosMandato);
     startTransition(async () => {
       const res = await guardarSocietario(cliente.id, {
         tipo_societario: tipo || null,
@@ -115,8 +113,7 @@ function DatosSocietarios({
         nro_inscripcion: nroInscripcion.trim() || null,
         libros_digitales: digitales,
         contacto_libros: contacto.trim() || null,
-        mandato_designacion: designacion || null,
-        mandato_anios: nAnios,
+        ...datosMandato,
         observaciones: observaciones.trim() || null,
       });
       if (res.error) return setError(res.error);
@@ -141,7 +138,13 @@ function DatosSocietarios({
           <Campo label="Designación de autoridades" value={fmtFecha(societario.mandato_designacion)} mono />
           <Campo
             label="Duración del mandato"
-            value={societario.mandato_anios ? `${societario.mandato_anios} años` : "Indeterminado"}
+            value={
+              societario.mandato_vence_preciso
+                ? `Vence el ${fmtFecha(societario.mandato_vence_preciso)} (preciso)`
+                : societario.mandato_anios
+                  ? `${societario.mandato_anios} años`
+                  : "Indeterminado"
+            }
           />
           <div className="col-span-2">
             <Campo label="Contacto para libros" value={societario.contacto_libros} />
@@ -212,21 +215,10 @@ function DatosSocietarios({
               className={INPUT}
             />
           </div>
-          <div>
-            <label className={LABEL}>Designación de autoridades</label>
-            <input type="date" value={designacion} onChange={(e) => setDesignacion(e.target.value)} className={INPUT} />
-          </div>
-          <div>
-            <label className={LABEL}>Mandato (años)</label>
-            <input
-              type="number"
-              min={1}
-              value={anios}
-              onChange={(e) => setAnios(e.target.value)}
-              placeholder="Vacío = indeterminado"
-              className={INPUT}
-            />
-          </div>
+          <MandatoCampos
+            valores={mandato}
+            onChange={(v) => setMandato(v)}
+          />
           <div className="col-span-2 md:col-span-4">
             <label className={LABEL}>Observaciones</label>
             <textarea rows={2} value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className={INPUT} />
@@ -495,9 +487,10 @@ export function FichaSocietarioClient({
   const sinCargar = grupos.length - cargados.length;
   const exigible = periodoExigible("balance", cierre);
 
-  const vence = vencimientoMandato(societario?.mandato_designacion ?? null, societario?.mandato_anios ?? null);
+  const vence = vencimientoFinal(societario);
   const diasMandato = vence ? diasHasta(vence) : null;
-  const mandatoSinCargar = (tipo === "SA" || tipo === "SAS") && !societario?.mandato_designacion;
+  const mandatoSinCargar =
+    (tipo === "SA" || tipo === "SAS") && !societario?.mandato_designacion && !societario?.mandato_vence_preciso;
   const infoBalance = balance ? ESTADO_BALANCE[balance.estado] : undefined;
 
   function toggle(id: string) {

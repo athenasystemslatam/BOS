@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
-import { diasHasta, hoyISO, prioridadSugerida, vencimientoMandato } from "@/lib/libros";
+import { diasHasta, hoyISO, prioridadSugerida, vencimientoFinal } from "@/lib/libros";
 import { configLibros } from "@/lib/librosAutomaticos";
 import {
   FECHA_BASE,
@@ -53,7 +53,7 @@ export default async function TableroLibrosPage() {
     admin.from("balances").select("id, estado"),
     admin.from("libros_pedidos").select("id").not("fecha_limite", "is", null),
     admin.from("servicios_cliente").select("cliente_id, clientes(nombre)").eq("servicio", "libros").eq("estado", true),
-    admin.from("clientes_societario").select("cliente_id, tipo_societario, mandato_designacion, mandato_anios"),
+    admin.from("clientes_societario").select("*"),
   ]);
 
   // ── Línea base, hoy y fotos de referencia ──────────────────────────────────
@@ -123,14 +123,15 @@ export default async function TableroLibrosPage() {
     tipo_societario: string | null;
     mandato_designacion: string | null;
     mandato_anios: number | null;
+    mandato_vence_preciso?: string | null;
   }[]) {
     const nombre = nombres.get(s.cliente_id);
     if (!nombre) continue;
-    if (!s.mandato_designacion) {
+    if (!s.mandato_designacion && !s.mandato_vence_preciso) {
       if (s.tipo_societario === "SA" || s.tipo_societario === "SAS") mandatos.sinCargar.push({ clienteId: s.cliente_id, nombre });
       continue;
     }
-    const vence = vencimientoMandato(s.mandato_designacion, s.mandato_anios);
+    const vence = vencimientoFinal(s);
     if (!vence) {
       mandatos.vigentes++;
       continue;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { ArrowDown, ArrowUp, Plus, Search, Send } from "lucide-react";
+import { GripVertical, Plus, Search, Send } from "lucide-react";
 import {
   ORIGEN_TAREA_LABEL,
   PRIORIDADES,
@@ -40,6 +40,7 @@ import {
 
 export type TareaVista = LibroTarea & {
   clienteNombre: string;
+  clienteCuit: string | null;
   libroNombre: string;
   tomo: number;
   libres: number | null;
@@ -55,6 +56,7 @@ export type TareaVista = LibroTarea & {
 export type ClienteCola = {
   id: string;
   nombre: string;
+  cuit: string | null;
   responsableId: string | null;
   responsableNombre: string | null;
   mandatoVencido: boolean;
@@ -73,6 +75,7 @@ type LibroPuesta = {
 export type PuestaAlDiaCliente = {
   clienteId: string;
   nombre: string;
+  cuit: string | null;
   responsableId: string | null;
   alDia: number;
   total: number;
@@ -106,6 +109,14 @@ const BUSCADOR =
   "text-[13px] text-ink bg-paper border border-line-input rounded-[9px] pl-7 pr-2.5 min-h-[36px] w-full sm:w-52 focus:outline-none focus:border-bordo";
 const FOLIOS_BAJOS = "!text-orange-700 font-semibold";
 
+/** Por nombre o por CUIT (con o sin guiones). */
+function coincide(busqueda: string, nombre: string, cuit: string | null): boolean {
+  const q = busqueda.trim().toLowerCase();
+  if (!q) return true;
+  const digitos = q.replace(/\D/g, "");
+  return nombre.toLowerCase().includes(q) || (digitos.length >= 3 && (cuit ?? "").replace(/\D/g, "").includes(digitos));
+}
+
 function armarBloques(tareas: TareaVista[], clientes: Map<string, ClienteCola>): Record<PrioridadLibro, Bloque[]> {
   const porCliente = new Map<string, TareaVista[]>();
   for (const t of tareas) {
@@ -117,6 +128,7 @@ function armarBloques(tareas: TareaVista[], clientes: Map<string, ClienteCola>):
     const cliente = clientes.get(clienteId) ?? {
       id: clienteId,
       nombre: lista[0].clienteNombre,
+      cuit: lista[0].clienteCuit,
       responsableId: null,
       responsableNombre: null,
       mandatoVencido: false,
@@ -358,6 +370,7 @@ function Cola({
   estados,
   equipo,
   puedeEditar,
+  busqueda,
   onIrPuesta,
 }: {
   tareas: TareaVista[];
@@ -365,27 +378,48 @@ function Cola({
   estados: LibroEstado[];
   equipo: Persona[];
   puedeEditar: boolean;
+  busqueda: string;
   onIrPuesta: () => void;
 }) {
-  const [moviendo, startMover] = useTransition();
+  const [, startMover] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [filtroResp, setFiltroResp] = useState("");
   const [prioridadDe, setPrioridadDe] = useState<TareaVista | null>(null);
   const [envioDe, setEnvioDe] = useState<Bloque | null>(null);
   const [copiadoDe, setCopiadoDe] = useState<Bloque | null>(null);
 
-  const mapaClientes = useMemo(() => new Map(clientes.map((c) => [c.id, c])), [clientes]);
-  const niveles = useMemo(() => armarBloques(tareas, mapaClientes), [tareas, mapaClientes]);
-  const copiandose = estados.find((e) => e.codigo === "copiandose")?.id;
+  // Orden por arrastrar y soltar (como Sueldos), guardado en orden_manual:
+  // lo ve igual todo el equipo. ordenLocal evita el salto hasta que vuelve el
+  // server con el orden nuevo.
+  const [agarrado, setAgarrado] = useState<string | null>(null);
+  const [arrastrando, setArrastrando] = useState<{ id: string; nivel: PrioridadLibro } | null>(null);
+  const [sobre, setSobre] = useState<string | null>(null);
+  const [ordenLocal, setOrdenLocal] = useState<Partial<Record<PrioridadLibro, string[]>>>({});
+  useEffect(() => setOrdenLocal({}), [tareas]);
 
-  function mover(nivel: PrioridadLibro, indice: number, delta: -1 | 1) {
-    const ids = niveles[nivel].map((b) => b.cliente.id);
-    const destino = indice + delta;
-    if (destino < 0 || destino >= ids.length) return;
-    [ids[indice], ids[destino]] = [ids[destino], ids[indice]];
+  const mapaClientes = useMemo(() => new Map(clientes.map((c) => [c.id, c])), [clientes]);
+  const niveles = useMemo(() => {
+    const base = armarBloques(tareas, mapaClientes);
+    for (const p of PRIORIDADES) {
+      const orden = ordenLocal[p];
+      if (orden) base[p].sort((a, b) => orden.indexOf(a.cliente.id) - orden.indexOf(b.cliente.id));
+    }
+    return base;
+  }, [tareas, mapaClientes, ordenLocal]);
+  const copiandose = estados.find((e) => e.codigo === "copiandose")?.id;
+  const puedeOrdenar = puedeEditar && !filtroResp && !busqueda.trim();
+
+  function soltar(nivel: PrioridadLibro, destinoId: string) {
+    if (!arrastrando || arrastrando.nivel !== nivel || arrastrando.id === destinoId) return;
+    const ids = niveles[nivel].map((b) => b.cliente.id).filter((id) => id !== arrastrando.id);
+    ids.splice(ids.indexOf(destinoId), 0, arrastrando.id);
+    setOrdenLocal((prev) => ({ ...prev, [nivel]: ids }));
     startMover(async () => {
       const res = await reordenarBloques(ids);
-      if (res.error) setError(res.error);
+      if (res.error) {
+        setError(res.error);
+        setOrdenLocal({});
+      }
     });
   }
 
@@ -397,12 +431,12 @@ function Cola({
         <div className={clsx(PANEL, VACIO)}>
           <p className="font-archivo text-[15px] font-bold text-ink">La cola está vacía</p>
           <p className={VACIO_TEXTO}>
-            Las tareas se crean desde Puesta al día (libros atrasados), desde la ficha de cada cliente o solas, cuando
-            un balance queda legalizado.
+            Las tareas se crean desde Atrasos sin asignar, desde la ficha de cada cliente o solas, cuando un balance
+            queda legalizado.
           </p>
           {puedeEditar && (
             <button onClick={onIrPuesta} className={BOTON_PRIMARIO}>
-              <Plus size={14} /> Crear tareas desde Puesta al día
+              <Plus size={14} /> Crear tareas desde Atrasos sin asignar
             </button>
           )}
         </div>
@@ -431,9 +465,9 @@ function Cola({
           </select>
         </label>
       </div>
-      {filtroResp && (
+      {puedeEditar && !puedeOrdenar && (
         <p className="text-[11.5px] text-ink-subtle -mt-3">
-          Con un filtro aplicado no se puede reordenar: quitalo para subir o bajar clientes.
+          Con un filtro o una búsqueda no se puede reordenar: quitalos para arrastrar clientes.
         </p>
       )}
 
@@ -448,7 +482,9 @@ function Cola({
 
       {PRIORIDADES.map((nivel) => {
         const bloques = niveles[nivel].filter(
-          (b) => !filtroResp || b.cliente.responsableId === filtroResp || b.tareas.some((t) => t.responsable_id === filtroResp)
+          (b) =>
+            (!filtroResp || b.cliente.responsableId === filtroResp || b.tareas.some((t) => t.responsable_id === filtroResp)) &&
+            coincide(busqueda, b.cliente.nombre, b.cliente.cuit)
         );
         if (bloques.length === 0) return null;
         return (
@@ -463,27 +499,41 @@ function Cola({
               const indice = niveles[nivel].indexOf(b);
               const porEnviar = b.tareas.filter((t) => t.estado_id !== copiandose).length;
               return (
-                <div key={b.cliente.id} className={clsx(PANEL, "overflow-hidden", PRIORIDAD_INFO[nivel].borde)}>
+                <div
+                  key={b.cliente.id}
+                  draggable={puedeOrdenar && agarrado === b.cliente.id}
+                  onDragStart={() => setArrastrando({ id: b.cliente.id, nivel })}
+                  onDragOver={(e) => {
+                    if (!arrastrando || arrastrando.nivel !== nivel) return;
+                    e.preventDefault();
+                    setSobre(b.cliente.id);
+                  }}
+                  onDragLeave={() => setSobre((s) => (s === b.cliente.id ? null : s))}
+                  onDrop={() => soltar(nivel, b.cliente.id)}
+                  onDragEnd={() => {
+                    setArrastrando(null);
+                    setSobre(null);
+                    setAgarrado(null);
+                  }}
+                  className={clsx(
+                    PANEL,
+                    "overflow-hidden",
+                    PRIORIDAD_INFO[nivel].borde,
+                    arrastrando?.id === b.cliente.id && "opacity-40",
+                    sobre === b.cliente.id && arrastrando && arrastrando.id !== b.cliente.id && "ring-2 ring-bordo"
+                  )}
+                >
                   <div className={clsx(PANEL_CABECERA, "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 sm:px-4 py-2.5")}>
-                    {puedeEditar && !filtroResp && (
-                      <div className="flex gap-0.5">
-                        <button
-                          disabled={moviendo || indice === 0}
-                          onClick={() => mover(nivel, indice, -1)}
-                          aria-label={`Subir ${b.cliente.nombre}`}
-                          className="w-6 h-7 rounded-md border border-line-input bg-paper text-ink-muted hover:text-ink disabled:opacity-30 flex items-center justify-center"
-                        >
-                          <ArrowUp size={13} />
-                        </button>
-                        <button
-                          disabled={moviendo || indice === niveles[nivel].length - 1}
-                          onClick={() => mover(nivel, indice, 1)}
-                          aria-label={`Bajar ${b.cliente.nombre}`}
-                          className="w-6 h-7 rounded-md border border-line-input bg-paper text-ink-muted hover:text-ink disabled:opacity-30 flex items-center justify-center"
-                        >
-                          <ArrowDown size={13} />
-                        </button>
-                      </div>
+                    {puedeOrdenar && (
+                      <span
+                        onMouseDown={() => setAgarrado(b.cliente.id)}
+                        onMouseUp={() => setAgarrado(null)}
+                        title="Arrastrá para cambiar el orden"
+                        aria-hidden="true"
+                        className="text-ink-subtle hover:text-ink cursor-grab active:cursor-grabbing -ml-1"
+                      >
+                        <GripVertical size={16} />
+                      </span>
                     )}
                     <span className={clsx(MONO, "text-[12px] text-ink-subtle w-5 text-right")}>{indice + 1}</span>
                     <div className="min-w-0 flex-1 basis-56">
@@ -576,34 +626,33 @@ function PuestaAlDia({
   filas,
   equipo,
   puedeEditar,
+  busqueda,
+  onLimpiarBusqueda,
 }: {
   filas: PuestaAlDiaCliente[];
   equipo: Persona[];
   puedeEditar: boolean;
+  busqueda: string;
+  onLimpiarBusqueda: () => void;
 }) {
   const [vista, setVista] = useState<"atrasados" | "sinDato">("atrasados");
-  const [busqueda, setBusqueda] = useState("");
   const [creandoPara, setCreandoPara] = useState<{ fila: PuestaAlDiaCliente; libroIds: string[] } | null>(null);
 
+  // "Sin asignar" = atrasados que todavía no tienen tarea en la cola.
+  const sinAsignar = (f: PuestaAlDiaCliente) => f.atrasados.filter((a) => !a.enCola);
   const visibles = filas.filter(
-    (f) => f[vista].length > 0 && (!busqueda.trim() || f.nombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    (f) => (vista === "atrasados" ? sinAsignar(f) : f.sinDato).length > 0 && coincide(busqueda, f.nombre, f.cuit)
   );
-  const totalAlDia = filas.reduce((n, f) => n + f.alDia, 0);
-  const total = filas.reduce((n, f) => n + f.total, 0);
-  const nAtrasados = filas.reduce((n, f) => n + f.atrasados.length, 0);
+  const nAtrasados = filas.reduce((n, f) => n + sinAsignar(f).length, 0);
   const nSinDato = filas.reduce((n, f) => n + f.sinDato.length, 0);
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center gap-x-4 gap-y-3 flex-wrap">
-        <p className="text-[13px] text-ink-muted">
-          <b className="font-archivo text-[17px] text-ink tabular-nums">{totalAlDia}</b> de{" "}
-          <span className={MONO}>{total}</span> libros al día en <span className={MONO}>{filas.length}</span> clientes
-        </p>
         <div className="inline-flex rounded-full border border-line-input bg-paper p-0.5" role="tablist">
           {(
             [
-              ["atrasados", "Atrasados", nAtrasados],
+              ["atrasados", "Sin asignar", nAtrasados],
               ["sinDato", "Sin dato", nSinDato],
             ] as const
           ).map(([v, label, n]) => (
@@ -624,7 +673,8 @@ function PuestaAlDia({
         <Ayuda>
           {vista === "atrasados" ? (
             <>
-              <b>Atrasados:</b> tienen último copiado cargado y no llegan a lo exigible. Anuales: último cierre con el
+              <b>Sin asignar:</b> libros atrasados (con último copiado cargado, no llegan a lo exigible) que todavía
+              no tienen tarea en la cola. Anuales: último cierre con el
               balance ya vencido (cierre + 135 días). Trimestrales: último trimestre cerrado hace más de 30 días. Los
               libros por evento no cuentan.
             </>
@@ -636,16 +686,9 @@ function PuestaAlDia({
           )}
         </Ayuda>
         <div className="flex-1" />
-        <div className="relative w-full sm:w-auto">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
-          <input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar cliente…"
-            aria-label="Buscar cliente"
-            className={BUSCADOR}
-          />
-        </div>
+        <Link href="/libros/tablero" className="text-[12.5px] font-semibold text-ink-muted hover:text-ink">
+          Ver el avance en el Tablero
+        </Link>
       </div>
 
       <div className={clsx(PANEL, "divide-y divide-line-row")}>
@@ -655,18 +698,18 @@ function PuestaAlDia({
               {busqueda.trim()
                 ? "Ningún cliente coincide con la búsqueda"
                 : vista === "atrasados"
-                  ? "No hay libros atrasados"
+                  ? "No hay atrasos sin asignar"
                   : "No hay libros sin dato"}
             </p>
             <p className={VACIO_TEXTO}>
               {busqueda.trim()
-                ? "Probá con otra parte del nombre."
+                ? "Probá con otra parte del nombre o del CUIT."
                 : vista === "atrasados"
-                  ? "Todos los libros con último copiado cargado llegan a lo exigible."
+                  ? "Todos los libros atrasados ya tienen tarea en la cola, o están al día."
                   : "Todos los libros tienen el último copiado cargado en la ficha."}
             </p>
             {busqueda.trim() ? (
-              <button onClick={() => setBusqueda("")} className={BOTON_SECUNDARIO}>
+              <button onClick={onLimpiarBusqueda} className={BOTON_SECUNDARIO}>
                 Limpiar búsqueda
               </button>
             ) : (
@@ -680,8 +723,7 @@ function PuestaAlDia({
           </div>
         )}
         {visibles.map((f) => {
-          const pct = f.total ? Math.round((f.alDia / f.total) * 100) : 100;
-          const creables = f.atrasados.filter((a) => !a.enCola);
+          const creables = sinAsignar(f);
           return (
             <div key={f.clienteId} className="px-4 sm:px-5 py-3">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -691,17 +733,6 @@ function PuestaAlDia({
                 >
                   {f.nombre}
                 </Link>
-                <div className="flex items-center gap-2 w-48">
-                  <div className="flex-1 h-1.5 bg-paper-hover rounded-full overflow-hidden">
-                    <div
-                      className={clsx("h-full rounded-full", pct === 100 ? "bg-green-600" : pct >= 50 ? "bg-yellow-400" : "bg-red-300")}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <span className={clsx(NUM, "w-12")}>
-                    {f.alDia}/{f.total}
-                  </span>
-                </div>
                 {f.sinCargar > 0 && (
                   <span className="text-[11.5px] text-ink-subtle">
                     <span className={MONO}>{f.sinCargar}</span> sin cargar en la ficha
@@ -727,7 +758,7 @@ function PuestaAlDia({
               </div>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {vista === "atrasados"
-                  ? f.atrasados.map((a) => (
+                  ? creables.map((a) => (
                       <button
                         key={a.libroId}
                         disabled={!puedeEditar || a.enCola}
@@ -787,11 +818,20 @@ function PuestaAlDia({
   );
 }
 
-function Historial({ tareas, onIrCola }: { tareas: TareaVista[]; onIrCola: () => void }) {
-  const [busqueda, setBusqueda] = useState("");
+function Historial({
+  tareas,
+  busqueda,
+  onLimpiarBusqueda,
+  onIrCola,
+}: {
+  tareas: TareaVista[];
+  busqueda: string;
+  onLimpiarBusqueda: () => void;
+  onIrCola: () => void;
+}) {
   const todas = tareas.filter((t) => t.esFinal);
   const terminadas = todas
-    .filter((t) => !busqueda.trim() || t.clienteNombre.toLowerCase().includes(busqueda.trim().toLowerCase()))
+    .filter((t) => coincide(busqueda, t.clienteNombre, t.clienteCuit))
     .sort((a, b) => (b.fecha_fin ?? "").localeCompare(a.fecha_fin ?? ""));
 
   return (
@@ -800,17 +840,6 @@ function Historial({ tareas, onIrCola }: { tareas: TareaVista[]; onIrCola: () =>
         <p className="text-[13px] text-ink-muted">
           <b className="font-archivo text-[17px] text-ink tabular-nums">{terminadas.length}</b> copiados registrados
         </p>
-        <div className="flex-1" />
-        <div className="relative w-full sm:w-auto">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
-          <input
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar cliente…"
-            aria-label="Buscar cliente"
-            className={BUSCADOR}
-          />
-        </div>
       </div>
       <div className={clsx(PANEL, "overflow-x-auto")}>
         {terminadas.length === 0 ? (
@@ -821,14 +850,14 @@ function Historial({ tareas, onIrCola }: { tareas: TareaVista[]; onIrCola: () =>
             <p className={VACIO_TEXTO}>
               {todas.length === 0
                 ? "Cada vez que se registra un retiro o un copiado desde la Cola, queda acá."
-                : "Probá con otra parte del nombre."}
+                : "Probá con otra parte del nombre o del CUIT."}
             </p>
             {todas.length === 0 ? (
               <button onClick={onIrCola} className={BOTON_SECUNDARIO}>
                 Ir a la Cola
               </button>
             ) : (
-              <button onClick={() => setBusqueda("")} className={BOTON_SECUNDARIO}>
+              <button onClick={onLimpiarBusqueda} className={BOTON_SECUNDARIO}>
                 Limpiar búsqueda
               </button>
             )}
@@ -940,39 +969,18 @@ function AvisosRenovacion({ avisos }: { avisos: AvisoRenovacion[] }) {
       <Punto urgente={vencidos > 0} />
       <span>
         <b>
-          Renovación de autoridades
-          {vencidos ? (
-            <>
-              {" "}
-              (<span className={MONO}>{vencidos}</span> con el mandato vencido, P1)
-            </>
-          ) : (
-            ""
-          )}
-          :
-        </b>{" "}
-        {avisos.slice(0, 8).map((a, i) => (
-          <span key={a.clienteId}>
-            {i > 0 && ", "}
-            <span className="font-semibold">{a.nombre}</span>
-            {a.vence && (
-              <>
-                {" "}
-                ({a.dias! < 0 ? "venció" : "vence"} <span className={MONO}>{fmtFecha(a.vence)}</span>
-                {a.pasos > 0 && (
-                  <>
-                    {" "}
-                    · <span className={MONO}>{a.hechos}/{a.pasos}</span>
-                  </>
-                )}
-                )
-              </>
-            )}
-          </span>
-        ))}
-        {avisos.length > 8 && ` y ${avisos.length - 8} más`}.{" "}
-        <Link href="/libros/pedidos" className="font-semibold underline">
-          Ver en Pedidos
+          <span className={MONO}>{avisos.length}</span>{" "}
+          {avisos.length === 1 ? "renovación de autoridades en curso" : "renovaciones de autoridades en curso"}
+        </b>
+        {vencidos > 0 && (
+          <>
+            {" "}
+            (<span className={MONO}>{vencidos}</span> con el mandato vencido)
+          </>
+        )}{" "}
+        ·{" "}
+        <Link href="/libros/pedidos?tipo=renovacion_autoridades&en_curso=1" className="font-semibold underline">
+          Ver
         </Link>
       </span>
     </p>
@@ -999,9 +1007,11 @@ export function SeguimientoLibrosClient({
   puedeEditar: boolean;
 }) {
   const [pestaña, setPestaña] = useState<"cola" | "puesta" | "historial">("cola");
-  const abiertas = tareas.filter((t) => !t.esFinal).length;
-  const atrasados = puestaAlDia.reduce((n, f) => n + f.atrasados.filter((a) => !a.enCola).length, 0);
-  const sinDato = puestaAlDia.reduce((n, f) => n + f.sinDato.length, 0);
+  const [busqueda, setBusqueda] = useState("");
+  const clientesEnCola = new Set(tareas.filter((t) => !t.esFinal).map((t) => t.cliente_id)).size;
+  const sinAsignar = puestaAlDia.map((f) => f.atrasados.filter((a) => !a.enCola).length);
+  const librosSinAsignar = sinAsignar.reduce((n, x) => n + x, 0);
+  const clientesSinAsignar = sinAsignar.filter((x) => x > 0).length;
   const hayAvisos = avisosBalance.length > 0 || avisosRenovacion.length > 0;
 
   return (
@@ -1013,7 +1023,8 @@ export function SeguimientoLibrosClient({
           <Ayuda>
             Un bloque por cliente con sus libros en curso. &ldquo;Enviar a copiar&rdquo; registra la salida a la
             copiadora; &ldquo;Retirado / Registrar copiado&rdquo; registra la vuelta, pide los folios y pasa los libros
-            al historial. Subí o bajá cada cliente dentro de su prioridad.
+            al historial. Arrastrá cada cliente para cambiar su orden dentro de la prioridad: el orden lo ve todo el
+            equipo.
           </Ayuda>
         </div>
         {hayAvisos && (
@@ -1022,19 +1033,38 @@ export function SeguimientoLibrosClient({
             <AvisosRenovacion avisos={avisosRenovacion} />
           </div>
         )}
-        <div role="tablist" aria-label="Vistas" className="flex flex-wrap gap-x-6 border-b border-line-rule">
-          <Pestaña activa={pestaña === "cola"} onClick={() => setPestaña("cola")}>
-            Cola <span className="font-plex tabular-nums text-ink-subtle font-normal">{abiertas}</span>
-          </Pestaña>
-          <Pestaña activa={pestaña === "puesta"} onClick={() => setPestaña("puesta")}>
-            Puesta al día{" "}
-            <span className="font-plex tabular-nums text-ink-subtle font-normal">
-              {atrasados} atrasados · {sinDato} sin dato
-            </span>
-          </Pestaña>
-          <Pestaña activa={pestaña === "historial"} onClick={() => setPestaña("historial")}>
-            Historial
-          </Pestaña>
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-2 border-b border-line-rule">
+          <div role="tablist" aria-label="Vistas" className="flex flex-wrap gap-x-6">
+            <Pestaña activa={pestaña === "cola"} onClick={() => setPestaña("cola")}>
+              Cola{" "}
+              <span className="text-ink-subtle font-normal">
+                · <span className="font-plex tabular-nums">{clientesEnCola}</span>{" "}
+                {clientesEnCola === 1 ? "cliente" : "clientes"}
+              </span>
+            </Pestaña>
+            <Pestaña activa={pestaña === "puesta"} onClick={() => setPestaña("puesta")}>
+              Atrasos sin asignar{" "}
+              <span className="text-ink-subtle font-normal">
+                · <span className="font-plex tabular-nums">{librosSinAsignar}</span>{" "}
+                {librosSinAsignar === 1 ? "libro" : "libros"} en <span className="font-plex tabular-nums">{clientesSinAsignar}</span>{" "}
+                {clientesSinAsignar === 1 ? "cliente" : "clientes"}
+              </span>
+            </Pestaña>
+            <Pestaña activa={pestaña === "historial"} onClick={() => setPestaña("historial")}>
+              Historial
+            </Pestaña>
+          </div>
+          <div className="flex-1" />
+          <div className="relative w-full sm:w-auto pb-2">
+            <Search size={13} className="absolute left-2.5 top-[calc(50%-4px)] -translate-y-1/2 text-ink-subtle" />
+            <input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar cliente o CUIT…"
+              aria-label="Buscar cliente o CUIT"
+              className={BUSCADOR}
+            />
+          </div>
         </div>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -1045,11 +1075,27 @@ export function SeguimientoLibrosClient({
             estados={estados}
             equipo={equipo}
             puedeEditar={puedeEditar}
+            busqueda={busqueda}
             onIrPuesta={() => setPestaña("puesta")}
           />
         )}
-        {pestaña === "puesta" && <PuestaAlDia filas={puestaAlDia} equipo={equipo} puedeEditar={puedeEditar} />}
-        {pestaña === "historial" && <Historial tareas={tareas} onIrCola={() => setPestaña("cola")} />}
+        {pestaña === "puesta" && (
+          <PuestaAlDia
+            filas={puestaAlDia}
+            equipo={equipo}
+            puedeEditar={puedeEditar}
+            busqueda={busqueda}
+            onLimpiarBusqueda={() => setBusqueda("")}
+          />
+        )}
+        {pestaña === "historial" && (
+          <Historial
+            tareas={tareas}
+            busqueda={busqueda}
+            onLimpiarBusqueda={() => setBusqueda("")}
+            onIrCola={() => setPestaña("cola")}
+          />
+        )}
       </div>
     </div>
   );

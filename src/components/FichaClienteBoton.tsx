@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { IdCard, X, Eye, EyeOff, ExternalLink, Pencil } from "lucide-react";
 import type { Cliente, FichaLibrosSocietario, ModuloClave } from "@/types";
+import { vencimientoFinal } from "@/lib/libros";
 
 const MODULO_LABEL: Record<ModuloClave, string> = {
   "": "General",
@@ -49,9 +50,8 @@ function SeccionLibros({ data }: { data: FichaLibrosSocietario }) {
 
   let mandatoTexto: string | null = null;
   let mandatoColor = "text-gray-800";
-  if (soc?.mandato_designacion && soc?.mandato_anios) {
-    const [y, m, d] = soc.mandato_designacion.split("-").map(Number);
-    const venceStr = `${y + soc.mandato_anios}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const venceStr = vencimientoFinal(soc);
+  if (venceStr) {
     const dias = Math.round((new Date(venceStr + "T00:00:00").getTime() - new Date(hoy + "T00:00:00").getTime()) / 86_400_000);
     const venceFmt = fmtFecha(venceStr);
     if (dias < 0) { mandatoTexto = `Vencido el ${venceFmt}`; mandatoColor = "text-red-600"; }

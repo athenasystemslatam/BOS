@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 import { TIPO_SOCIETARIO_LABEL, diasHasta, fmtFecha } from "@/lib/libros";
 import type { OrganismoSocietario, TipoSocietario } from "@/types";
 import { ESTADO_BALANCE } from "../../contable/semaforo";
+import { MandatoModal } from "../MandatoCampos";
 import {
   BOTON_PRIMARIO,
   BOTON_SECUNDARIO,
@@ -38,11 +39,13 @@ export type FilaClienteLibros = {
   pocosFolios: number;
   mandatoVence: string | null;
   mandatoSinCargar: boolean;
+  mandato: { mandato_designacion: string | null; mandato_anios: number | null; mandato_vence_preciso?: string | null } | null;
   balanceEstado: string | null;
   balanceAnio: number | null;
 };
 
-export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) {
+export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClienteLibros[]; puedeEditar: boolean }) {
+  const [mandatoDe, setMandatoDe] = useState<FilaClienteLibros | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [filtroResp, setFiltroResp] = useState("");
   const [soloSinMandato, setSoloSinMandato] = useState(false);
@@ -198,13 +201,23 @@ export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) 
                           dias != null && dias >= 0 && dias <= 90 && "!text-orange-700 font-semibold"
                         )}
                       >
-                        {f.mandatoVence ? (
-                          fmtFecha(f.mandatoVence)
-                        ) : f.mandatoSinCargar ? (
-                          <span className={clsx(CHIP, SEMAFORO.sinDato, "font-sans")}>Sin cargar</span>
-                        ) : (
-                          <span className="text-ink-ghost">—</span>
-                        )}
+                        <button
+                          type="button"
+                          disabled={!puedeEditar || !f.tipo}
+                          onClick={() => setMandatoDe(f)}
+                          title={puedeEditar && f.tipo ? "Editar mandato" : undefined}
+                          className="rounded-md px-1 -mx-1 hover:bg-paper-hover disabled:hover:bg-transparent disabled:cursor-default"
+                        >
+                          {f.mandatoVence ? (
+                            fmtFecha(f.mandatoVence)
+                          ) : f.mandatoSinCargar ? (
+                            <span className={clsx(CHIP, SEMAFORO.sinDato, "font-sans")}>
+                              {puedeEditar ? "Cargar" : "Sin cargar"}
+                            </span>
+                          ) : (
+                            <span className="text-ink-ghost">—</span>
+                          )}
+                        </button>
                       </td>
                       <td className="px-3 py-2.5 hidden lg:table-cell">
                         {bal ? (
@@ -227,6 +240,12 @@ export function ClientesLibrosClient({ filas }: { filas: FilaClienteLibros[] }) 
           </div>
         )}
       </div>
+      {mandatoDe && (
+        <MandatoModal
+          cliente={{ id: mandatoDe.id, nombre: mandatoDe.nombre, tipo: mandatoDe.tipo, mandato: mandatoDe.mandato }}
+          onClose={() => setMandatoDe(null)}
+        />
+      )}
     </div>
   );
 }

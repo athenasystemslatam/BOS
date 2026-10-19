@@ -748,12 +748,15 @@ function FilaPedido({
 
 // ── Componente principal ─────────────────────────────────────────────────────
 
+const ESTADOS_EN_CURSO: EstadoPedido[] = ["abierto", "esperando_cliente", "esperando_tercero", "aprobado"];
+
 export function PedidosClient({
   pedidos,
   seguimientosPorPedido,
   clientes,
   equipo,
   puedeEditar,
+  filtroInicial,
 }: {
   pedidos: PedidoVista[];
   seguimientosPorPedido: Map<string, LibroPedidoSeguimiento[]>;
@@ -761,17 +764,21 @@ export function PedidosClient({
   equipo: Persona[];
   puedeEditar: boolean;
   yoId: string | null; // reservado para filtros futuros por responsable
+  /** Desde un link (ej. el aviso de renovaciones de Seguimiento). */
+  filtroInicial?: { tipo?: TipoPedido; enCurso?: boolean };
 }) {
   const [modalNuevo, setModalNuevo] = useState(false);
   const [filtroCliente, setFiltroCliente] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState<"" | EstadoPedido>("");
-  const [filtroTipo, setFiltroTipo] = useState<"" | "presupuesto" | TipoPedido>("");
+  const [filtroEstado, setFiltroEstado] = useState<"" | "en_curso" | EstadoPedido>(filtroInicial?.enCurso ? "en_curso" : "");
+  const [filtroTipo, setFiltroTipo] = useState<"" | "presupuesto" | TipoPedido>(filtroInicial?.tipo ?? "");
 
   // P1 primero (renovaciones con el mandato vencido), después el orden de carga.
   const filtrados = useMemo(() => {
     return pedidos.filter((p) => {
       if (filtroCliente && p.cliente_id !== filtroCliente) return false;
-      if (filtroEstado && p.estado !== filtroEstado) return false;
+      if (filtroEstado === "en_curso") {
+        if (!ESTADOS_EN_CURSO.includes(p.estado)) return false;
+      } else if (filtroEstado && p.estado !== filtroEstado) return false;
       if (filtroTipo === "presupuesto") {
         if (!p.tipo.startsWith("presupuesto")) return false;
       } else if (filtroTipo && p.tipo !== filtroTipo) {
@@ -821,6 +828,7 @@ export function PedidosClient({
         </select>
         <select aria-label="Estado" className={CONTROL} value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)}>
           <option value="">Todos los estados</option>
+          <option value="en_curso">En curso</option>
           {ESTADOS_PEDIDO.map((s) => (
             <option key={s} value={s}>{ESTADO_PEDIDO_INFO[s].label}</option>
           ))}

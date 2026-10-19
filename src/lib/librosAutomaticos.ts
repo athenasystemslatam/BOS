@@ -8,7 +8,7 @@ import {
   foliosLibres,
   hoyISO,
   mesIndice,
-  vencimientoMandato,
+  vencimientoFinal,
 } from "@/lib/libros";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -92,7 +92,7 @@ export async function sincronizarLibrosAutomaticos(): Promise<void> {
       config,
     ] = await Promise.all([
       admin.from("servicios_cliente").select("cliente_id, responsable_id").eq("servicio", "libros").eq("estado", true),
-      admin.from("clientes_societario").select("cliente_id, mandato_designacion, mandato_anios"),
+      admin.from("clientes_societario").select("*"),
       admin.from("libros_catalogo").select("id, nombre, dispara_con_balance, activo"),
       admin
         .from("libros")
@@ -176,15 +176,26 @@ export async function sincronizarLibrosAutomaticos(): Promise<void> {
       cliente_id: string;
       mandato_designacion: string | null;
       mandato_anios: number | null;
+      mandato_vence_preciso?: string | null;
     }[]) {
-      const vence = vencimientoMandato(s.mandato_designacion, s.mandato_anios);
+      const vence = vencimientoFinal(s);
       if (!vence || !clientes.has(s.cliente_id)) continue;
       const dias = diasHasta(vence);
       if (dias > primerAviso) continue;
       const prioridad = dias < 0 ? "P1" : "P2";
-      const existente = pedidos.find(
-        (p) => p.cliente_id === s.cliente_id && p.tipo === "renovacion_autoridades" && p.mandato_vence === vence
-      );
+      // La del mismo mandato; si no, la que esté abierta: si se corrigió el
+      // vencimiento (ej. se cargó el preciso) se actualiza, no se abre otra.
+      const delCliente = pedidos.filter((p) => p.cliente_id === s.cliente_id && p.tipo === "renovacion_autoridades");
+      const abierta = delCliente.find((p) => ESTADOS_ABIERTOS.includes(p.estado) || p.estado === "aprobado");
+      if (abierta && abierta.mandato_vence !== vence && !delCliente.some((p) => p.mandato_vence === vence)) {
+        const { error } = await admin
+          .from("libros_pedidos")
+          .update({ mandato_vence: vence, prioridad, actualizado_en: new Date().toISOString() })
+          .eq("id", abierta.id);
+        ignorarDuplicado(error, "actualizar vencimiento de la renovación");
+        continue;
+      }
+      const existente = delCliente.find((p) => p.mandato_vence === vence);
       if (existente) {
         if (prioridad === "P1" && existente.prioridad !== "P1" && ESTADOS_ABIERTOS.includes(existente.estado)) {
           const { error } = await admin

@@ -247,10 +247,25 @@ export const CHECKLIST_RENOVACION = [
   "Inscripción ante el organismo",
 ];
 
-export function mandatoVencido(designacion: string | null, anios: number | null, hoy: string = hoyISO()): boolean {
-  const vence = vencimientoMandato(designacion, anios);
+export type DatosMandato = {
+  mandato_designacion: string | null;
+  mandato_anios: number | null;
+  mandato_vence_preciso?: string | null;
+};
+
+/** Vencimiento del mandato: el preciso si está cargado, si no designación + años. */
+export function vencimientoFinal(m: DatosMandato | null | undefined): string | null {
+  if (!m) return null;
+  return m.mandato_vence_preciso || vencimientoMandato(m.mandato_designacion, m.mandato_anios);
+}
+
+export function mandatoVencido(m: DatosMandato | null | undefined, hoy: string = hoyISO()): boolean {
+  const vence = vencimientoFinal(m);
   return !!vence && vence < hoy;
 }
+
+// En las SA el mandato por defecto es de 3 ejercicios.
+export const ANIOS_MANDATO_SA = 3;
 
 // ── Pedidos ──────────────────────────────────────────────────────────────────
 

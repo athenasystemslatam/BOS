@@ -165,6 +165,14 @@ export function EnviarACopiarModal({
 
 type FilaCopiado = { incluir: boolean; folios: string; hasta: string };
 
+// "Copiado hasta" propuesto: el último cierre exigible del libro. En el envío
+// anual, si el balance que lo originó cierra después, ese cierre. Sin exigible
+// (libros por evento) queda el período de la tarea, o vacío.
+function hastaPropuesto(t: TareaVista): string {
+  if (t.origen === "balance" && t.periodo_hasta && (!t.exigible || t.periodo_hasta > t.exigible)) return t.periodo_hasta;
+  return t.exigible ?? t.periodo_hasta ?? "";
+}
+
 export function RegistrarCopiadoModal({
   clienteNombre,
   tareas,
@@ -189,7 +197,7 @@ export function RegistrarCopiadoModal({
         {
           incluir: !hayEnCopiadora || t.estado_id === copiandoseId,
           folios: "",
-          hasta: t.periodo_hasta ?? t.exigible ?? "",
+          hasta: hastaPropuesto(t),
         },
       ])
     )

@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { foliosLibres, vencimientoMandato } from "@/lib/libros";
+import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
+import { foliosLibres, vencimientoFinal } from "@/lib/libros";
 import { configLibros } from "@/lib/librosAutomaticos";
 import type { ClienteSocietario, Libro, LibroCatalogo } from "@/types";
 import { ClientesLibrosClient, type FilaClienteLibros } from "./ClientesLibrosClient";
@@ -73,10 +74,15 @@ export default async function LibrosClientesPage() {
           const libres = foliosLibres(l.folios_totales, l.folios_usados);
           return libres != null && libres <= config.umbralFolios;
         }).length,
-        mandatoVence: vencimientoMandato(soc?.mandato_designacion ?? null, soc?.mandato_anios ?? null),
+        mandatoVence: vencimientoFinal(soc),
         // SA y SAS tienen directorio/administración con mandato: sin la designación no hay aviso.
         mandatoSinCargar:
-          (soc?.tipo_societario === "SA" || soc?.tipo_societario === "SAS") && !soc?.mandato_designacion,
+          (soc?.tipo_societario === "SA" || soc?.tipo_societario === "SAS") &&
+          !soc?.mandato_designacion &&
+          !soc?.mandato_vence_preciso,
+        mandato: soc
+          ? { mandato_designacion: soc.mandato_designacion, mandato_anios: soc.mandato_anios, mandato_vence_preciso: soc.mandato_vence_preciso ?? null }
+          : null,
         balanceEstado: bal?.estado ?? null,
         balanceAnio: bal?.anio ?? null,
       };
@@ -84,5 +90,9 @@ export default async function LibrosClientesPage() {
     .filter((f): f is FilaClienteLibros => f !== null)
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
-  return <ClientesLibrosClient filas={filas} />;
+  const yo = await getCurrentLiquidadora();
+  const areas = await getAreasDelUsuario();
+  return (
+    <ClientesLibrosClient filas={filas} puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))} />
+  );
 }

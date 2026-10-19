@@ -3,7 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAreaOrAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { UMBRAL_FOLIOS, fmtFecha, foliosLibres, vencimientoMandato } from "@/lib/libros";
+import {
+  UMBRAL_FOLIOS,
+  diasHasta,
+  fmtFecha,
+  foliosLibres,
+  vencimientoFinal,
+  vencimientoMandato,
+  type DatosMandato,
+} from "@/lib/libros";
+import { configLibros } from "@/lib/librosAutomaticos";
 import type {
   ClienteSocietario,
   CopiadoFactura,
@@ -35,6 +44,8 @@ export type DatosSocietario = Omit<ClienteSocietario, "cliente_id" | "actualizad
 export async function guardarSocietario(clienteId: string, datos: DatosSocietario): Promise<Resultado> {
   const yo = await autorizar();
   if ("error" in yo) return yo;
+  const invalido = validarMandato({ ...datos, mandato_vence_preciso: datos.mandato_vence_preciso ?? null });
+  if (invalido) return { error: invalido };
 
   const admin = createAdminClient();
   const { error } = await admin.from("clientes_societario").upsert({
@@ -43,9 +54,83 @@ export async function guardarSocietario(clienteId: string, datos: DatosSocietari
     actualizado_por: yo.id,
     actualizado_en: new Date().toISOString(),
   });
-  if (error) return { error: error.message };
+  if (error) return { error: traducirErrorMandato(error.message) };
+  await cerrarRenovacionSiVigente(admin, clienteId, yo.id);
   revalidatePath("/libros", "layout");
   return {};
+}
+
+function traducirErrorMandato(message: string): string {
+  return message.includes("mandato_vence_preciso") ? "Falta correr add_libros_etapa8.sql en Supabase." : message;
+}
+
+export type DatosMandatoForm = { mandato_designacion: string | null; mandato_anios: number | null; mandato_vence_preciso: string | null };
+
+function validarMandato(m: DatosMandatoForm): string | null {
+  if (m.mandato_anios != null && (!Number.isInteger(m.mandato_anios) || m.mandato_anios < 1)) {
+    return "Los años de mandato tienen que ser un número entero mayor a 0 (vacío = indeterminado).";
+  }
+  if (m.mandato_vence_preciso && m.mandato_designacion && m.mandato_vence_preciso <= m.mandato_designacion) {
+    return "El vencimiento preciso tiene que ser posterior a la designación.";
+  }
+  return null;
+}
+
+/** Edita solo el mandato (desde la lista de Clientes). */
+export async function guardarMandato(clienteId: string, m: DatosMandatoForm): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const invalido = validarMandato(m);
+  if (invalido) return { error: invalido };
+  const admin = createAdminClient();
+  const { error } = await admin.from("clientes_societario").upsert({
+    cliente_id: clienteId,
+    mandato_designacion: m.mandato_designacion,
+    mandato_anios: m.mandato_anios,
+    mandato_vence_preciso: m.mandato_vence_preciso,
+    actualizado_por: yo.id,
+    actualizado_en: new Date().toISOString(),
+  });
+  if (error) return { error: traducirErrorMandato(error.message) };
+  await cerrarRenovacionSiVigente(admin, clienteId, yo.id);
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+// Si el mandato editado queda vigente por más que el primer aviso (90 días por
+// defecto) o pasó a indeterminado, la renovación abierta del cliente ya no hace
+// falta: se cierra sola, dejando el motivo en su historial.
+async function cerrarRenovacionSiVigente(admin: Admin, clienteId: string, yoId: string): Promise<void> {
+  const [{ data: soc }, config] = await Promise.all([
+    admin.from("clientes_societario").select("*").eq("cliente_id", clienteId).maybeSingle(),
+    configLibros(admin),
+  ]);
+  if (!soc?.mandato_designacion && !soc?.mandato_vence_preciso) return;
+  const vence = vencimientoFinal(soc as DatosMandato);
+  const primerAviso = config.avisosMandato[0] ?? 90;
+  if (vence && diasHasta(vence) <= primerAviso) return;
+
+  const { data: abiertas } = await admin
+    .from("libros_pedidos")
+    .select("id")
+    .eq("cliente_id", clienteId)
+    .eq("tipo", "renovacion_autoridades")
+    .in("estado", ["abierto", "esperando_cliente", "esperando_tercero", "aprobado"]);
+  const ahora = new Date().toISOString();
+  for (const p of abiertas ?? []) {
+    await admin.from("libros_pedidos_seguimientos").insert({
+      pedido_id: p.id,
+      fecha: ahora.slice(0, 10),
+      nota: vence
+        ? `Cerrado solo: se actualizó el mandato en la ficha y queda vigente hasta el ${fmtFecha(vence)}.`
+        : "Cerrado solo: se actualizó el mandato en la ficha y quedó como indeterminado.",
+      registrado_por: yoId,
+    });
+    await admin
+      .from("libros_pedidos")
+      .update({ estado: "cerrado", proximo_seguimiento: null, actualizado_en: ahora })
+      .eq("id", p.id);
+  }
 }
 
 export type DatosLibro = Omit<Libro, "id" | "cliente_id" | "catalogo_id">;
@@ -703,11 +788,17 @@ export async function actualizarChecklist(pedidoId: string, checklist: ItemCheck
 
 // Cierra la renovación de autoridades cargando el mandato nuevo en
 // clientes_societario. El mandato anterior queda en el historial del pedido.
-export async function cerrarRenovacion(pedidoId: string, designacion: string, anios: number): Promise<Resultado> {
+export async function cerrarRenovacion(
+  pedidoId: string,
+  designacion: string,
+  anios: number,
+  vencePreciso: string | null = null
+): Promise<Resultado> {
   const yo = await autorizar();
   if ("error" in yo) return yo;
   if (!designacion) return { error: "Indicá la fecha de designación del mandato nuevo." };
   if (!Number.isInteger(anios) || anios < 1) return { error: "La duración tiene que ser un número entero de años." };
+  if (vencePreciso && vencePreciso <= designacion) return { error: "El vencimiento preciso tiene que ser posterior a la designación." };
 
   const admin = createAdminClient();
   const { data: pedido, error: errPedido } = await admin
@@ -721,27 +812,30 @@ export async function cerrarRenovacion(pedidoId: string, designacion: string, an
 
   const { data: soc } = await admin
     .from("clientes_societario")
-    .select("mandato_designacion, mandato_anios")
+    .select("*")
     .eq("cliente_id", pedido.cliente_id)
     .maybeSingle();
+  const venceAnterior = vencimientoFinal(soc as DatosMandato | null);
   const anterior = soc?.mandato_designacion
-    ? `designación ${fmtFecha(soc.mandato_designacion)}${
-        soc.mandato_anios
-          ? ` por ${soc.mandato_anios} años (vencía el ${fmtFecha(vencimientoMandato(soc.mandato_designacion, soc.mandato_anios))})`
-          : ", duración sin cargar"
+    ? `designación ${fmtFecha(soc.mandato_designacion)}${soc.mandato_anios ? ` por ${soc.mandato_anios} años` : ", duración sin cargar"}${
+        venceAnterior ? ` (vencía el ${fmtFecha(venceAnterior)})` : ""
       }`
     : "sin cargar";
-  const nuevo = `designación ${fmtFecha(designacion)} por ${anios} años (vence el ${fmtFecha(vencimientoMandato(designacion, anios))})`;
+  const venceNuevo = vencePreciso || vencimientoMandato(designacion, anios);
+  const nuevo = `designación ${fmtFecha(designacion)} por ${anios} años (vence el ${fmtFecha(venceNuevo)}${vencePreciso ? ", vencimiento preciso" : ""})`;
 
   const ahora = new Date().toISOString();
   const { error: errSoc } = await admin.from("clientes_societario").upsert({
     cliente_id: pedido.cliente_id,
     mandato_designacion: designacion,
     mandato_anios: anios,
+    // El preciso del mandato anterior no tiene que pisar al nuevo. Sin la
+    // etapa 8 corrida la columna no existe y no se manda.
+    ...(soc && "mandato_vence_preciso" in soc ? { mandato_vence_preciso: vencePreciso } : {}),
     actualizado_por: yo.id,
     actualizado_en: ahora,
   });
-  if (errSoc) return { error: errSoc.message };
+  if (errSoc) return { error: traducirErrorMandato(errSoc.message) };
 
   const { error: errSeg } = await admin.from("libros_pedidos_seguimientos").insert({
     pedido_id: pedidoId,

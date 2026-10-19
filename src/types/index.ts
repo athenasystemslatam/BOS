@@ -277,6 +277,8 @@ export interface ClienteSocietario {
   contacto_libros: string | null;
   mandato_designacion: string | null;
   mandato_anios: number | null;
+  /** Si está, reemplaza a designación + años (etapa 8; opcional hasta correr el SQL). */
+  mandato_vence_preciso?: string | null;
   observaciones: string | null;
   actualizado_en: string;
 }

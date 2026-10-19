@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
-import type { LibroPedido, LibroPedidoSeguimiento } from "@/types";
+import { TIPOS_PEDIDO } from "@/lib/libros";
+import type { LibroPedido, LibroPedidoSeguimiento, TipoPedido } from "@/types";
 import { PedidosClient, type ClienteConLibros } from "./PedidosClient";
 
 type PedidoRaw = LibroPedido & {
@@ -9,7 +10,11 @@ type PedidoRaw = LibroPedido & {
   creador: { nombre: string } | null;
 };
 
-export default async function PedidosPage() {
+export default async function PedidosPage({
+  searchParams,
+}: {
+  searchParams: { tipo?: string; en_curso?: string };
+}) {
   await sincronizarLibrosAutomaticos();
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
@@ -101,6 +106,10 @@ export default async function PedidosPage() {
 
   return (
     <PedidosClient
+      filtroInicial={{
+        tipo: TIPOS_PEDIDO.some((x) => x.value === searchParams.tipo) ? (searchParams.tipo as TipoPedido) : undefined,
+        enCurso: searchParams.en_curso === "1",
+      }}
       pedidos={pedidos}
       seguimientosPorPedido={seguimientosPorPedido}
       clientes={clientes}
