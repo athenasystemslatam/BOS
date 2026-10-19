@@ -15,7 +15,8 @@ import {
   diasHasta,
   fmtFecha,
   foliosLibres,
-  libroAlDia,
+  atrasoLibro,
+  textoPeriodos,
   organismoSugerido,
   periodoExigible,
   vencimientoMandato,
@@ -275,8 +276,10 @@ function estadoLibro(g: GrupoLibro, cierre: Cierre): { label: string; cls: strin
   const periodicidad = l.periodicidad ?? g.item.periodicidad;
   if (periodicidad === "evento") return { label: "Sin atraso calculable", cls: SEMAFORO.sinDato };
   if (!g.ultimoCopiado) return { label: "Sin dato", cls: SEMAFORO.sinDato };
-  const r = libroAlDia(l, g.ultimoCopiado, periodicidad, cierre);
-  return r.alDia ? { label: "Al día", cls: SEMAFORO.verdeClaro } : { label: "Atrasado", cls: SEMAFORO.rojo };
+  const r = atrasoLibro(l, g.ultimoCopiado, periodicidad, cierre);
+  return r.estado === "atrasado"
+    ? { label: `Atrasado · faltan ${textoPeriodos(r.periodos, periodicidad)}`, cls: SEMAFORO.rojo }
+    : { label: "Al día", cls: SEMAFORO.verdeClaro };
 }
 
 /** Tomo, soporte y frecuencia solo cuando no son lo habitual. */

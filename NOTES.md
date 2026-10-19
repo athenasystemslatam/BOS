@@ -4,7 +4,11 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno. Corridos el 19-oct: `add_libros_etapa6.sql` y la importación del trabajo en curso del sheet
+- **`add_libros_etapa7.sql`** (19-oct) — Tablero de Libros: `libros_config.fecha_meta_puesta` y tabla
+  `libros_snapshot` (foto diaria del atraso). Sin correrlo el Tablero funciona, pero sin evolución semanal ni
+  fecha meta.
+
+Corridos el 19-oct: `add_libros_etapa6.sql` y la importación del trabajo en curso del sheet
 (`supabase/importar_libros_trabajo_control.sql` + `importar_libros_trabajo.sql`, **fuera del repo** por datos
 de clientes, en `.git/info/exclude` de la PC Windows; se generan desde los 4 CSV de Descargas). Antes,
 `add_libros_etapa3.sql` y `add_libros_etapa4.sql` verificados como aplicados.
@@ -47,6 +51,20 @@ Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)` (se a
   mandato anterior queda como seguimiento del pedido. Mail diario: cada umbral (90/60/30/vencido) una sola vez.
   Filtro "Mandato sin cargar" (SA y SAS) en Libros → Clientes.
 - **Puesta al día**: "Atrasados" (con último copiado) separado de "Sin dato" (hay que relevar, no copiar).
+
+### Etapa 7 — Tablero (`/libros/tablero`, 19-oct)
+
+- Visible para todo el equipo; "Avance por responsable" solo para admin (la parte de cada persona = libros de los
+  clientes que tiene asignados en Libros).
+- Atraso por libro en `atrasoLibro` (`src/lib/libros.ts`): ejercicios (anual) o trimestres hasta lo exigible hoy;
+  "sin dato" y "sin libro" aparte; por evento no cuenta. La ficha muestra "Atrasado · faltan N ejercicios".
+- `src/lib/librosTablero.ts`: `calcularAtraso` + `guardarSnapshots`. La foto del día la guarda el cron del mail
+  (`/api/alertas/libros`) y también el Tablero al abrirse. **Línea base** = fila `es_base` con fecha 16-oct,
+  calculada una sola vez (la primera vez que corre) con los datos actuales a esa fecha. Es el estado del sheet
+  importado mientras no se registren copiados desde la app antes de esa primera corrida; si ya se habían
+  registrado, la base queda un poco más baja que la real.
+- "Puestos al día" = libros que en la foto de referencia (hace 7 / 30 días, o la base) no estaban al día y hoy sí.
+  "Envíos anuales copiados" = tareas de origen balance terminadas en el período.
 
 ### En qué quedó (16-oct, segunda sesión)
 

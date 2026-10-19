@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import type { LibroEstado } from "@/types";
-import { actualizarAvisosMandato, actualizarEstado, actualizarUmbralFolios } from "../actions";
+import { actualizarAvisosMandato, actualizarEstado, actualizarFechaMeta, actualizarUmbralFolios } from "../actions";
 import { BOTON_PRIMARIO, ENCABEZADO, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO, SUBTITULO, TITULO } from "../ui";
 
 const CODIGOS_PROTEGIDOS = new Set(["pendiente", "en_proceso", "en_espera", "para_copiar", "copiandose", "copiado"]);
@@ -125,6 +125,43 @@ function AvisosMandatoCard({ avisosIniciales }: { avisosIniciales: number[] }) {
           {msg.texto}
         </p>
       )}
+    </section>
+  );
+}
+
+// ── Fecha meta de la puesta al día ───────────────────────────────────────────
+
+function FechaMetaCard({ fechaInicial }: { fechaInicial: string | null }) {
+  const [valor, setValor] = useState(fechaInicial ?? "");
+  const [pendiente, startTransition] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
+
+  function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    startTransition(async () => {
+      const res = await actualizarFechaMeta(valor || null);
+      if (res.error) setMsg({ ok: false, texto: res.error });
+      else setMsg({ ok: true, texto: "Guardado." });
+    });
+  }
+
+  return (
+    <section className={clsx(PANEL, "p-6")}>
+      <div className="flex items-start gap-2 mb-4">
+        <h2 className="font-archivo text-[15px] font-bold text-ink">Fecha meta de la puesta al día</h2>
+        <Ayuda>
+          Fecha para la que el atraso del estudio tiene que llegar a 0. El Tablero calcula con ella cuántos períodos hay
+          que copiar por semana. Vacía = sin meta.
+        </Ayuda>
+      </div>
+      <form onSubmit={guardar} className="flex items-center gap-3 max-w-xs">
+        <input type="date" className={INPUT} value={valor} onChange={(e) => setValor(e.target.value)} />
+        <button type="submit" disabled={pendiente} className={clsx(BOTON_PRIMARIO, "whitespace-nowrap")}>
+          {pendiente ? "Guardando…" : "Guardar"}
+        </button>
+      </form>
+      {msg && <p className={clsx("text-xs mt-2", msg.ok ? "text-green-700" : "text-red-700")}>{msg.texto}</p>}
     </section>
   );
 }
@@ -298,10 +335,12 @@ export function ConfiguracionClient({
   estados,
   umbralInicial,
   avisosMandato,
+  fechaMeta,
 }: {
   estados: LibroEstado[];
   umbralInicial: number;
   avisosMandato: number[];
+  fechaMeta: string | null;
 }) {
   return (
     <div className={clsx(PAGINA, "overflow-y-auto")}>
@@ -314,6 +353,7 @@ export function ConfiguracionClient({
       </div>
       <div className="flex-1 px-4 sm:px-6 pb-8 space-y-5 max-w-2xl">
         <UmbralCard umbralInicial={umbralInicial} />
+        <FechaMetaCard fechaInicial={fechaMeta} />
         <AvisosMandatoCard avisosIniciales={avisosMandato} />
         <EstadosCard estadosIniciales={estados} />
       </div>

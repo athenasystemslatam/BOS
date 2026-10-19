@@ -20,6 +20,7 @@ export default async function ConfiguracionLibrosPage() {
       estados={(estadosRaw ?? []) as LibroEstado[]}
       umbralInicial={config.umbralFolios}
       avisosMandato={config.avisosMandato}
+      fechaMeta={config.fechaMeta}
     />
   );
 }

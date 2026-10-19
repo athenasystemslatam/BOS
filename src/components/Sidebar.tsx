@@ -99,6 +99,7 @@ const SECTIONS: {
     modulo: "libros",
     items: [
       { href: "/libros",              label: "Seguimiento",    icon: ClipboardList, adminOnly: false },
+      { href: "/libros/tablero",      label: "Tablero",        icon: TrendingUp,    adminOnly: false },
       { href: "/libros/clientes",    label: "Clientes",       icon: Library,       adminOnly: false },
       { href: "/libros/pedidos",        label: "Pedidos",          icon: FileCheck,      adminOnly: false },
       { href: "/libros/movimientos",   label: "Entrada y salida", icon: ArrowLeftRight, adminOnly: false },

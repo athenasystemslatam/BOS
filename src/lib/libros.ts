@@ -204,6 +204,37 @@ export function libroAlDia(
   return { alDia: !!ultimo && mesIndice(ultimo) >= mesIndice(exigible), exigible };
 }
 
+export type EstadoAtraso = "al_dia" | "atrasado" | "sin_dato" | "sin_libro" | "no_aplica";
+
+/**
+ * Cuántos períodos le faltan copiar al libro hasta lo exigible hoy: ejercicios
+ * si es anual (ej. IVA copiado hasta 2019 con el cierre 2025 exigible = 6),
+ * trimestres si es trimestral. "Sin dato" = sin último copiado cargado (hay
+ * que relevar); "sin libro" = falta el libro (presupuesto); por evento no aplica.
+ */
+export function atrasoLibro(
+  libro: Pick<Libro, "estado" | "ultimo_periodo_copiado">,
+  ultimoCopiado: string | null,
+  periodicidad: PeriodicidadLibro,
+  cierre: { mes: number | null; dia: number | null },
+  hoy: string = hoyISO()
+): { estado: EstadoAtraso; periodos: number; exigible: string | null } {
+  if (periodicidad === "evento") return { estado: "no_aplica", periodos: 0, exigible: null };
+  const exigible = periodoExigible(periodicidad, cierre, hoy);
+  if (libro.estado === "sin_libro") return { estado: "sin_libro", periodos: 0, exigible };
+  if (!exigible) return { estado: "al_dia", periodos: 0, exigible };
+  const ultimo = ultimoCopiado ?? libro.ultimo_periodo_copiado;
+  if (!ultimo) return { estado: "sin_dato", periodos: 0, exigible };
+  const meses = mesIndice(exigible) - mesIndice(ultimo);
+  if (meses <= 0) return { estado: "al_dia", periodos: 0, exigible };
+  return { estado: "atrasado", periodos: Math.ceil(meses / (periodicidad === "trimestral" ? 3 : 12)), exigible };
+}
+
+export function textoPeriodos(n: number, periodicidad: PeriodicidadLibro): string {
+  if (periodicidad === "trimestral") return n === 1 ? "1 trimestre" : `${n} trimestres`;
+  return n === 1 ? "1 ejercicio" : `${n} ejercicios`;
+}
+
 // Días antes del vencimiento del mandato en que se avisa. El mayor crea el
 // pedido de renovación. Configurable en libros_config.mandato_avisos.
 export const AVISOS_MANDATO = [90, 60, 30];

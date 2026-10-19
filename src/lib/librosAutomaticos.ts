@@ -42,22 +42,19 @@ function ignorarDuplicado(error: { code?: string; message: string } | null, que:
   if (error && error.code !== "23505") console.error(`[libros] ${que}: ${error.message}`);
 }
 
-export type ConfigLibros = { umbralFolios: number; avisosMandato: number[] };
+export type ConfigLibros = { umbralFolios: number; avisosMandato: number[]; fechaMeta: string | null };
 
-/** Avisos de mandato de mayor a menor; sin la etapa 6 corrida vale el default. */
+/**
+ * Avisos de mandato de mayor a menor. select("*") para que funcione con las
+ * columnas que existan (etapa 6: mandato_avisos; etapa 7: fecha_meta_puesta).
+ */
 export async function configLibros(admin: Admin): Promise<ConfigLibros> {
-  const { data } = await admin.from("libros_config").select("umbral_folios, mandato_avisos").maybeSingle();
-  const cfg = data as { umbral_folios: number; mandato_avisos: number[] | null } | null;
-  if (cfg) {
-    return {
-      umbralFolios: cfg.umbral_folios,
-      avisosMandato: [...(cfg.mandato_avisos?.length ? cfg.mandato_avisos : AVISOS_MANDATO)].sort((a, b) => b - a),
-    };
-  }
-  const { data: soloUmbral } = await admin.from("libros_config").select("umbral_folios").maybeSingle();
+  const { data } = await admin.from("libros_config").select("*").maybeSingle();
+  const cfg = data as { umbral_folios?: number; mandato_avisos?: number[] | null; fecha_meta_puesta?: string | null } | null;
   return {
-    umbralFolios: (soloUmbral as { umbral_folios: number } | null)?.umbral_folios ?? UMBRAL_FOLIOS,
-    avisosMandato: AVISOS_MANDATO,
+    umbralFolios: cfg?.umbral_folios ?? UMBRAL_FOLIOS,
+    avisosMandato: [...(cfg?.mandato_avisos?.length ? cfg.mandato_avisos : AVISOS_MANDATO)].sort((a, b) => b - a),
+    fechaMeta: cfg?.fecha_meta_puesta ?? null,
   };
 }
 

@@ -1048,6 +1048,20 @@ export async function actualizarAvisosMandato(avisos: number[]): Promise<Resulta
   return {};
 }
 
+export async function actualizarFechaMeta(fecha: string | null): Promise<Resultado> {
+  try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }
+  if (fecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { error: "Fecha inválida." };
+  const admin = createAdminClient();
+  const { data: cfg } = await admin.from("libros_config").select("id").maybeSingle();
+  if (!cfg) return { error: "Tabla libros_config no encontrada. ¿Corriste la migración de etapa 4?" };
+  const { error } = await admin.from("libros_config").update({ fecha_meta_puesta: fecha }).eq("id", (cfg as { id: string }).id);
+  if (error) {
+    return { error: error.message.includes("fecha_meta_puesta") ? "Falta correr add_libros_etapa7.sql en Supabase." : error.message };
+  }
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
 export async function actualizarEstado(
   id: string,
   cambios: { nombre?: string; orden?: number; activo?: boolean }

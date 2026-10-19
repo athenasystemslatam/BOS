@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendAlertasLibros } from "@/lib/email";
 import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
+import { guardarSnapshots } from "@/lib/librosTablero";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization") ?? "";
@@ -12,6 +14,7 @@ export async function GET(req: NextRequest) {
 
   try {
     await sincronizarLibrosAutomaticos();
+    await guardarSnapshots(createAdminClient());
     const result = await sendAlertasLibros();
     return NextResponse.json(result);
   } catch (e: unknown) {
