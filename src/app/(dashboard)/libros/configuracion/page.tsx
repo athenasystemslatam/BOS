@@ -3,6 +3,7 @@ import { getCurrentLiquidadora } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { configLibros } from "@/lib/librosAutomaticos";
 import type { LibroEstado } from "@/types";
+import type { Objetivo } from "@/lib/librosObjetivosMetricas";
 import { ConfiguracionClient, type PersonaMail } from "./ConfiguracionClient";
 
 export default async function ConfiguracionLibrosPage() {
@@ -10,11 +11,12 @@ export default async function ConfiguracionLibrosPage() {
   if (!yo?.isAdmin) redirect("/libros");
 
   const admin = createAdminClient();
-  const [{ data: estadosRaw }, config, { data: personasRaw }, { data: modulosRaw }] = await Promise.all([
+  const [{ data: estadosRaw }, config, { data: personasRaw }, { data: modulosRaw }, { data: objetivosRaw }] = await Promise.all([
     admin.from("libros_estados").select("*").order("orden"),
     configLibros(admin),
     admin.from("liquidadoras").select("id, nombre, email, rol").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "libros"),
+    admin.from("libros_objetivos").select("*").order("orden").order("creado_en"),
   ]);
 
   // Para los mails: el equipo de Libros y los administradores.
@@ -30,6 +32,7 @@ export default async function ConfiguracionLibrosPage() {
       avisosMandato={config.avisosMandato}
       fechaMeta={config.fechaMeta}
       personas={personas}
+      objetivos={((objetivosRaw ?? []) as (Objetivo & { meta: number | string })[]).map((o) => ({ ...o, meta: Number(o.meta) }))}
       mails={{ diarioExcluidos: config.mailDiarioExcluidos, semanalIds: config.mailSemanalIds, semanalDia: config.mailSemanalDia }}
     />
   );

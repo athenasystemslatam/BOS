@@ -4,7 +4,13 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 10 corridas al 20-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct).
+
+### Objetivos de Libros (20-oct, `src/lib/librosObjetivos.ts`)
+
+- Métricas que calcula BOS: % SA/SAS con mandato cargado, % mandatos vencidos con renovación iniciada / cerrada, % libros con dato completo (último copiado + folios), % clientes con puesta al día completa, % envíos anuales copiados dentro de 60 días (desde que se crearon las tareas por balance legalizado).
+- Cartel fijo arriba de todas las pantallas de Libros (`libros/layout.tsx`) con los objetivos actuales; Dashboard con sección Objetivos primero y Cumplidos. Con fecha límite, al llegar a la meta pasan solos a cumplido; sin fecha = permanente.
+- Se editan en Configuración (admin), con machete SMART en el "?".
 
 ### Mails de Libros (20-oct, `src/lib/librosMails.ts`)
 

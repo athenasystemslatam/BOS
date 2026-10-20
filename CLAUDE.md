@@ -214,6 +214,12 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
 ### Módulo Libros Societarios (violeta, en producción desde 20-oct-2026)
 Reemplaza el Google Sheet "GESTION DE LIBROS" (desde el 20-oct en solo lectura: todo se carga en BOS). Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)`; área `libros` en `equipo_modulos`.
 
+**Cómo se trabaja en Libros (criterio de Giuliana, 20-oct-2026)** — se trabaja directo en `main`:
+- **Directo, sin preguntar:** cambios solo dentro del módulo Libros (pantallas, textos, estilos, lógica) y SQL solo aditivo (tablas o columnas nuevas).
+- **Frenar y preguntar antes:** SQL que borra, renombra o modifica datos o columnas existentes; cambios en archivos compartidos de BOS (auth, middleware, permisos, Sidebar, Panel General, otros módulos, mails/cron de otras áreas); cualquier cosa de Contable o fuera de Libros.
+- **Siempre:** `git fetch` antes de pushear (no pisar a Matías); `tsc` + `lint` + `build` antes; verificar el deploy en verde después; si algo se rompe, `git revert` inmediato (nunca force push).
+- **SQL aditivo:** se deja en el portapapeles, Giuliana lo corre y recién después se pushea el código que lo usa.
+
 | Ruta | Descripción |
 |---|---|
 | `/libros` | Seguimiento: Cola por cliente (P1 Urgente / P2 Planificado / P3 Bloqueado, orden por arrastrar), "Atrasos sin asignar", Historial; "+ Agregar", "Enviar a copiar", "Retirado / Registrar copiado" |

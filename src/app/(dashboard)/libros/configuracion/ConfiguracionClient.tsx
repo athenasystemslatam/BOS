@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import type { LibroEstado } from "@/types";
+import type { Objetivo } from "@/lib/librosObjetivosMetricas";
+import { ObjetivosCard } from "./ObjetivosCard";
 import {
   actualizarAvisosMandato,
   actualizarEstado,
@@ -467,6 +469,7 @@ export function ConfiguracionClient({
   fechaMeta,
   personas,
   mails,
+  objetivos,
 }: {
   estados: LibroEstado[];
   umbralInicial: number;
@@ -474,6 +477,7 @@ export function ConfiguracionClient({
   fechaMeta: string | null;
   personas: PersonaMail[];
   mails: ConfigMails;
+  objetivos: Objetivo[];
 }) {
   return (
     <div className={clsx(PAGINA, "overflow-y-auto")}>
@@ -485,6 +489,7 @@ export function ConfiguracionClient({
         </div>
       </div>
       <div className="flex-1 px-4 sm:px-6 pb-8 space-y-5 max-w-2xl">
+        <ObjetivosCard objetivos={objetivos} />
         <UmbralCard umbralInicial={umbralInicial} />
         <FechaMetaCard fechaInicial={fechaMeta} />
         <AvisosMandatoCard avisosIniciales={avisosMandato} />

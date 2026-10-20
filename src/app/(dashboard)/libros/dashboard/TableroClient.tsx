@@ -9,6 +9,8 @@ import type { EnvioAnual, LibroAtraso } from "@/lib/librosTablero";
 import type { PrioridadLibro } from "@/types";
 import { guardarOrdenDashboard } from "../actions";
 import { CHIP, ENCABEZADO, MONO, NUM, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO, SEMAFORO, TH, TITULO } from "../ui";
+import type { ObjetivoConAvance } from "@/lib/librosObjetivosMetricas";
+import { ObjetivosDashboard } from "./Objetivos";
 
 type MandatoFila = { clienteId: string; nombre: string; vence: string; dias: number };
 
@@ -26,6 +28,7 @@ type FilaLogrado = {
 };
 
 export type DatosTablero = {
+  objetivos: ObjetivoConAvance[];
   hoy: string;
   fechaMeta: string | null;
   tablaSnapshots: boolean;
@@ -630,6 +633,7 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-8">
         {error && <p className="mb-3 text-xs text-red-700 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+        <ObjetivosDashboard objetivos={datos.objetivos} />
         <div className="grid gap-4 md:grid-cols-2">
           {ordenadas.map((t) => (
             <section

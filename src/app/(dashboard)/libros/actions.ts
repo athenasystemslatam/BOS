@@ -14,6 +14,7 @@ import {
   type DatosMandato,
 } from "@/lib/libros";
 import { configLibros } from "@/lib/librosAutomaticos";
+import { METRICAS, type MetricaObjetivo } from "@/lib/librosObjetivosMetricas";
 import type {
   ClienteSocietario,
   CopiadoFactura,
@@ -1309,7 +1310,65 @@ export async function actualizarAvisosMandato(avisos: number[]): Promise<Resulta
   return {};
 }
 
-export type ConfigMails = { diarioExcluidos: string[]; semanalIds: string[] | null; semanalDia: number };
+// ── Objetivos del módulo (admin) ─────────────────────────────────────────────
+
+export type DatosObjetivo = {
+  nombre: string;
+  metrica: MetricaObjetivo;
+  meta: number;
+  fecha_limite: string | null;
+  estado: "actual" | "cumplido";
+  fecha_cumplimiento: string | null;
+};
+
+function validarObjetivo(o: DatosObjetivo): string | null {
+  if (!o.nombre.trim()) return "Poné un nombre al objetivo.";
+  if (!METRICAS.some((m) => m.id === o.metrica)) return "Elegí una métrica de la lista.";
+  if (!Number.isFinite(o.meta) || o.meta <= 0 || o.meta > 100) return "La meta es un porcentaje entre 1 y 100.";
+  if (o.estado === "cumplido" && !o.fecha_cumplimiento) return "Indicá la fecha en que se cumplió.";
+  return null;
+}
+
+function errorObjetivos(message: string): string {
+  return message.includes("libros_objetivos") ? "Falta correr add_libros_etapa11.sql en Supabase." : message;
+}
+
+export async function guardarObjetivo(id: string | null, o: DatosObjetivo): Promise<Resultado> {
+  try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }
+  const invalido = validarObjetivo(o);
+  if (invalido) return { error: invalido };
+  const admin = createAdminClient();
+  const fila = {
+    nombre: o.nombre.trim(),
+    metrica: o.metrica,
+    meta: o.meta,
+    fecha_limite: o.fecha_limite || null,
+    estado: o.estado,
+    fecha_cumplimiento: o.estado === "cumplido" ? o.fecha_cumplimiento : null,
+    actualizado_en: new Date().toISOString(),
+  };
+  if (id) {
+    const { error } = await admin.from("libros_objetivos").update(fila).eq("id", id);
+    if (error) return { error: errorObjetivos(error.message) };
+  } else {
+    const { data: ultimo } = await admin.from("libros_objetivos").select("orden").order("orden", { ascending: false }).limit(1).maybeSingle();
+    const { error } = await admin.from("libros_objetivos").insert({ ...fila, orden: ((ultimo?.orden as number | undefined) ?? 0) + 10 });
+    if (error) return { error: errorObjetivos(error.message) };
+  }
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export async function eliminarObjetivo(id: string): Promise<Resultado> {
+  try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }
+  const admin = createAdminClient();
+  const { error } = await admin.from("libros_objetivos").delete().eq("id", id);
+  if (error) return { error: errorObjetivos(error.message) };
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
+export type ConfigMails ={ diarioExcluidos: string[]; semanalIds: string[] | null; semanalDia: number };
 
 export async function actualizarMailsLibros(cfg: ConfigMails): Promise<Resultado> {
   try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { objetivosConAvance } from "@/lib/librosObjetivos";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { diasHasta, hoyISO, prioridadSugerida, vencimientoFinal } from "@/lib/libros";
@@ -306,6 +307,7 @@ export default async function TableroLibrosPage() {
   }
 
   const datos: DatosTablero = {
+    objetivos: await objetivosConAvance(),
     hoy,
     fechaMeta: config.fechaMeta,
     tablaSnapshots,
