@@ -10,12 +10,15 @@ export interface FilaResponsableContable {
   anios: {
     anio: number;
     total: number;
-    finalizados: number;
-    enProceso: number;
+    terminadosEnTermino: number;
+    margenProm: number | null;
+    demoraClienteProm: number | null;
+    tiempoInternoProm: number | null;
     frenados: number;
-    sinEmpezar: number;
-    avancePromedio: number;
-    vencidos: number;
+    diasFrenadoProm: number | null;
+    pctFormularios: number | null;
+    f855EnTermino: number;
+    f855Total: number;
   }[];
 }
 
@@ -23,13 +26,38 @@ function Pill({ value, total }: { value: number; total: number }) {
   if (total === 0) return <span className="text-gray-300 text-xs">—</span>;
   const pct = Math.round((value / total) * 100);
   return (
-    <span
-      className={clsx(
-        "inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded",
-        pct === 100 ? "bg-green-50 text-green-700" : pct >= 70 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-600"
-      )}
-    >
+    <span className={clsx(
+      "inline-flex items-center gap-1 text-xs font-medium px-1.5 py-0.5 rounded",
+      pct === 100 ? "bg-green-50 text-green-700" : pct >= 70 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-600"
+    )}>
       {value}/{total}
+    </span>
+  );
+}
+
+function DeltaDias({ avg }: { avg: number | null }) {
+  if (avg === null) return <span className="text-gray-300 text-xs">—</span>;
+  const label = avg >= 0 ? `+${Math.round(avg)}d` : `${Math.round(avg)}d`;
+  return (
+    <span className={clsx("text-xs font-medium", avg >= 3 ? "text-green-600" : avg >= 0 ? "text-amber-600" : "text-red-600")}>
+      {label}
+    </span>
+  );
+}
+
+function DiasSimple({ dias }: { dias: number | null }) {
+  if (dias === null) return <span className="text-gray-300 text-xs">—</span>;
+  return <span className="text-xs text-gray-600 font-medium">{Math.round(dias)}d</span>;
+}
+
+function PctPill({ pct }: { pct: number | null }) {
+  if (pct === null) return <span className="text-gray-300 text-xs">—</span>;
+  return (
+    <span className={clsx(
+      "text-xs font-semibold",
+      pct === 100 ? "text-green-600" : pct >= 70 ? "text-amber-600" : "text-red-600"
+    )}>
+      {pct}%
     </span>
   );
 }
@@ -45,7 +73,7 @@ export function ContableProductividadClient({ filas }: { filas: FilaResponsableC
         <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">Módulo Contable</p>
         <h1 className="text-2xl font-semibold text-gray-900 mt-1">Productividad</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Balances por responsable, año a año — cuenta doble si el balance tiene 2 responsables
+          Por contador y año fiscal, contra el objetivo del área — cuenta doble si el balance tiene 2 responsables
         </p>
       </div>
 
@@ -71,17 +99,18 @@ export function ContableProductividadClient({ filas }: { filas: FilaResponsableC
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px]">
+            <table className="w-full min-w-[1080px]">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr className="text-[11px] text-gray-400 uppercase tracking-wide">
                   <th className="px-5 py-3 text-left font-medium">Año fiscal</th>
                   <th className="px-4 py-3 text-center font-medium">Balances</th>
-                  <th className="px-4 py-3 text-center font-medium">Finalizados</th>
-                  <th className="px-4 py-3 text-center font-medium">Legalizado</th>
+                  <th className="px-4 py-3 text-center font-medium">En término</th>
+                  <th className="px-4 py-3 text-center font-medium">Margen prom.</th>
+                  <th className="px-4 py-3 text-center font-medium">Demora cliente</th>
+                  <th className="px-4 py-3 text-center font-medium">Tiempo interno</th>
                   <th className="px-4 py-3 text-center font-medium">Frenados</th>
-                  <th className="px-4 py-3 text-center font-medium">Sin empezar</th>
-                  <th className="px-4 py-3 text-center font-medium">Avance prom.</th>
-                  <th className="px-4 py-3 text-center font-medium">Vencidos sin cerrar</th>
+                  <th className="px-4 py-3 text-center font-medium">Formularios</th>
+                  <th className="px-4 py-3 text-center font-medium">F.855 en término</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -90,31 +119,44 @@ export function ContableProductividadClient({ filas }: { filas: FilaResponsableC
                     <td className="px-5 py-3 text-[13px] font-medium text-gray-900 whitespace-nowrap">{a.anio}</td>
                     <td className="px-4 py-3 text-center text-[13px] text-gray-600">{a.total}</td>
                     <td className="px-4 py-3 text-center">
-                      <Pill value={a.finalizados} total={a.total} />
+                      <Pill value={a.terminadosEnTermino} total={a.total} />
                     </td>
-                    <td className="px-4 py-3 text-center text-[13px] text-gray-600">{a.enProceso || "—"}</td>
-                    <td className="px-4 py-3 text-center text-[13px] text-red-500 font-medium">{a.frenados || "—"}</td>
-                    <td className="px-4 py-3 text-center text-[13px] text-gray-400">{a.sinEmpezar || "—"}</td>
                     <td className="px-4 py-3 text-center">
-                      <span
-                        className={clsx(
-                          "text-sm font-semibold",
-                          a.avancePromedio === 100 ? "text-green-600" : a.avancePromedio >= 50 ? "text-amber-600" : "text-gray-500"
-                        )}
-                      >
-                        {a.avancePromedio}%
-                      </span>
+                      <DeltaDias avg={a.margenProm} />
                     </td>
-                    <td className="px-4 py-3 text-center text-[13px] font-medium">
-                      {a.vencidos > 0 ? <span className="text-red-600">{a.vencidos}</span> : <span className="text-gray-300">—</span>}
+                    <td className="px-4 py-3 text-center">
+                      <DiasSimple dias={a.demoraClienteProm} />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <DiasSimple dias={a.tiempoInternoProm} />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {a.frenados > 0 ? (
+                        <span className="text-[13px] text-red-600 font-medium">
+                          {a.frenados}
+                          {a.diasFrenadoProm !== null && (
+                            <span className="text-[11px] text-red-400 font-normal"> ({a.diasFrenadoProm}d prom.)</span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <PctPill pct={a.pctFormularios} />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <Pill value={a.f855EnTermino} total={a.f855Total} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="px-5 py-3 border-t border-gray-50 text-[11px] text-gray-400">
-            &quot;Vencidos sin cerrar&quot; = balances con vencimiento (cierre + 135 días) ya pasado que todavía no están en estado Finalizado.
+          <div className="px-5 py-3 border-t border-gray-50 text-[11px] text-gray-400 space-y-0.5">
+            <p>&quot;Balances&quot; y &quot;En término&quot; no cuentan los frenados. &quot;En término&quot; = llegó a En ARCA antes del vencimiento (cierre + 135 días).</p>
+            <p>&quot;Demora cliente&quot; = días entre pedido y recepción de información. &quot;Tiempo interno&quot; = días entre recepción y Legalizado.</p>
+            <p>&quot;Formularios&quot; = % presentados de 855/899/713/657/IGJ/tasa, sin contar los que no aplican. &quot;F.855 en término&quot; se mide aparte, contra su propio vencimiento (cierre + 160 días).</p>
           </div>
         </div>
       )}

@@ -1,8 +1,34 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { DIAS_VTO_BALANCE } from "../../contable/semaforo";
+import { DIAS_VTO_BALANCE, DIAS_VTO_F855 } from "../../contable/semaforo";
 import { ContableProductividadClient, FilaResponsableContable } from "./ContableProductividadClient";
+
+function addDays(dateStr: string, days: number): Date {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function diffDias(desde: Date, hasta: Date): number {
+  return Math.round((hasta.getTime() - desde.getTime()) / 86400000);
+}
+
+function promedio(valores: number[]): number | null {
+  return valores.length > 0 ? valores.reduce((a, b) => a + b, 0) / valores.length : null;
+}
+
+// Ítem 50: formularios derivados del balance — se miden juntos (sin contar
+// los que no aplican), salvo el F.855 que además se mide en término contra
+// su propio vencimiento (cierre + 25 días sobre el VTO del balance).
+const CAMPOS_FORM = [
+  { campo: "f855_estado", presentadoVal: "presentado" },
+  { campo: "f899_estado", presentadoVal: "presentado" },
+  { campo: "f713_estado", presentadoVal: "presentado" },
+  { campo: "f657_estado", presentadoVal: "presentado" },
+  { campo: "igj_presentacion", presentadoVal: "presentado" },
+  { campo: "igj_tasa", presentadoVal: "enviada" },
+] as const;
 
 export default async function ProductividadContablePage() {
   const yo = await getCurrentLiquidadora();
@@ -10,12 +36,19 @@ export default async function ProductividadContablePage() {
 
   const admin = createAdminClient();
 
-  const [{ data: balances }, { data: liquidadoras }] = await Promise.all([
+  const [{ data: balancesRaw }, { data: liquidadoras }] = await Promise.all([
     admin
       .from("balances")
-      .select("anio_fiscal, fecha_cierre, estado, avance, responsable_id, responsable2_id"),
+      .select(
+        "anio_fiscal, fecha_cierre, estado, responsable_id, responsable2_id, " +
+        "envio1_fecha, info_recibida_fecha, legalizado_fecha, presentado_fecha, frenado_desde, " +
+        "f855_estado, f899_estado, f713_estado, f657_estado, igj_presentacion, igj_tasa, f855_fecha"
+      ),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
   ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const balances = balancesRaw as any[] | null;
 
   if (!balances || !liquidadoras) {
     return <div className="p-8 text-gray-400 text-sm">Sin datos suficientes.</div>;
@@ -47,34 +80,77 @@ export default async function ProductividadContablePage() {
       const fila = filaMap.get(respId);
       if (!fila) continue;
 
-      const finalizados = items.filter((b) => b.estado === "finalizado").length;
-      const enProceso = items.filter((b) => b.estado === "legalizado").length;
-      const frenados = items.filter((b) => b.estado === "frenado").length;
-      const sinEmpezar = items.filter((b) => b.estado === "sin_asignar" || b.estado === "asignado").length;
-      const avancePromedio = items.length > 0
-        ? Math.round(items.reduce((acc, b) => acc + (b.avance ?? 0), 0) / items.length)
-        : 0;
-      const vencidos = items.filter((b) => {
-        if (b.estado === "finalizado") return false;
-        const vto = new Date(b.fecha_cierre);
-        vto.setDate(vto.getDate() + DIAS_VTO_BALANCE);
-        return hoy > vto;
+      // Punto 1: % en término + margen — nunca contra los frenados.
+      const sinFrenar = items.filter((b) => b.estado !== "frenado");
+      const terminados = sinFrenar.filter((b) => b.estado === "finalizado");
+      const margenes: number[] = [];
+      let terminadosEnTermino = 0;
+      for (const b of terminados) {
+        if (!b.presentado_fecha) continue;
+        const vto = addDays(b.fecha_cierre, DIAS_VTO_BALANCE);
+        const margen = diffDias(new Date(b.presentado_fecha), vto);
+        margenes.push(margen);
+        if (margen >= 0) terminadosEnTermino++;
+      }
+
+      // Puntos 2 y 3: demora del cliente y tiempo interno.
+      const demorasCliente: number[] = [];
+      const tiemposInternos: number[] = [];
+      for (const b of items) {
+        if (b.envio1_fecha && b.info_recibida_fecha) {
+          demorasCliente.push(diffDias(new Date(b.envio1_fecha), new Date(b.info_recibida_fecha)));
+        }
+        if (b.info_recibida_fecha && b.legalizado_fecha) {
+          tiemposInternos.push(diffDias(new Date(b.info_recibida_fecha), new Date(b.legalizado_fecha)));
+        }
+      }
+
+      // Punto 4: frenados aparte, con cuántos días llevan frenados.
+      const frenados = items.filter((b) => b.estado === "frenado");
+      const diasFrenado = frenados
+        .filter((b) => b.frenado_desde)
+        .map((b) => diffDias(new Date(b.frenado_desde as string), hoy));
+
+      // Ítem 50: formularios derivados, juntos (sin contar N/A).
+      let formAplican = 0;
+      let formPresentados = 0;
+      for (const b of items) {
+        for (const { campo, presentadoVal } of CAMPOS_FORM) {
+          const valor = (b as unknown as Record<string, string>)[campo];
+          if (valor === "no_corresponde") continue;
+          formAplican++;
+          if (valor === presentadoVal) formPresentados++;
+        }
+      }
+
+      // F.855 en término, aparte (mismo criterio que la tarjeta de objetivo
+      // del dashboard pero acotado a este contador/año).
+      const f855Vencidos = items.filter((b) => {
+        if (b.f855_estado === "no_corresponde") return false;
+        return hoy > addDays(b.fecha_cierre, DIAS_VTO_F855);
+      });
+      const f855EnTermino = f855Vencidos.filter((b) => {
+        if (b.f855_estado !== "presentado" || !b.f855_fecha) return false;
+        return new Date(b.f855_fecha) <= addDays(b.fecha_cierre, DIAS_VTO_F855);
       }).length;
 
       fila.anios.push({
         anio,
-        total: items.length,
-        finalizados,
-        enProceso,
-        frenados,
-        sinEmpezar,
-        avancePromedio,
-        vencidos,
+        total: sinFrenar.length,
+        terminadosEnTermino,
+        margenProm: promedio(margenes),
+        demoraClienteProm: promedio(demorasCliente),
+        tiempoInternoProm: promedio(tiemposInternos),
+        frenados: frenados.length,
+        diasFrenadoProm: diasFrenado.length > 0 ? Math.round(promedio(diasFrenado)!) : null,
+        pctFormularios: formAplican > 0 ? Math.round((formPresentados / formAplican) * 100) : null,
+        f855EnTermino,
+        f855Total: f855Vencidos.length,
       });
     }
   }
 
-  const filas = Array.from(filaMap.values()).filter((f) => f.anios.some((a) => a.total > 0));
+  const filas = Array.from(filaMap.values()).filter((f) => f.anios.some((a) => a.total > 0 || a.frenados > 0));
 
   return <ContableProductividadClient filas={filas} />;
 }
