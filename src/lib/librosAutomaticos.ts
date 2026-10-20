@@ -1,5 +1,7 @@
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  TAG_LIBROS,
   AVISOS_MANDATO,
   CHECKLIST_RENOVACION,
   UMBRAL_FOLIOS,
@@ -96,7 +98,7 @@ function sumarDias(fecha: string, dias: number): string {
  * - Folios bajos: un pedido de presupuesto de tomo nuevo por tomo.
  * Nunca corta la carga de la página: los errores van al log.
  */
-export async function sincronizarLibrosAutomaticos(): Promise<void> {
+export async function sincronizarLibrosAutomaticosAhora(): Promise<void> {
   try {
     const admin = createAdminClient();
     const hoy = hoyISO();
@@ -263,3 +265,17 @@ export async function sincronizarLibrosAutomaticos(): Promise<void> {
     console.error("[libros] sincronizarLibrosAutomaticos:", e);
   }
 }
+
+/**
+ * Al abrir Seguimiento o Pedidos: corre lo automático como mucho una vez cada
+ * 10 minutos (o enseguida después de guardar algo en Libros, que invalida
+ * TAG_LIBROS). Antes corría en cada click y era lo más lento de esas pantallas.
+ */
+export const sincronizarLibrosAutomaticos = unstable_cache(
+  async () => {
+    await sincronizarLibrosAutomaticosAhora();
+    return true;
+  },
+  ["libros-sincronizar"],
+  { revalidate: 600, tags: [TAG_LIBROS] }
+);

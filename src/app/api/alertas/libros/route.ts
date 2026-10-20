@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
+import { sincronizarLibrosAutomaticosAhora } from "@/lib/librosAutomaticos";
 import { guardarSnapshots } from "@/lib/librosTablero";
 import { enviarMailsLibros } from "@/lib/librosMails";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    await sincronizarLibrosAutomaticos();
+    await sincronizarLibrosAutomaticosAhora();
     await guardarSnapshots(createAdminClient());
     const result = await enviarMailsLibros();
     return NextResponse.json(result);

@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin, requireAreaOrAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
+  TAG_LIBROS,
   UMBRAL_FOLIOS,
   diasHasta,
   fmtFecha,
@@ -33,6 +34,13 @@ import type {
 
 type Resultado = { error?: string };
 
+// Después de guardar algo en Libros: las pantallas, el cartel de objetivos y
+// lo automático (que quedan en caché unos minutos) se recalculan al toque.
+function refrescarLibros() {
+  revalidatePath("/libros", "layout");
+  revalidateTag(TAG_LIBROS);
+}
+
 async function autorizar(): Promise<{ id: string } | { error: string }> {
   try {
     return await requireAreaOrAdmin("libros");
@@ -58,7 +66,7 @@ export async function guardarSocietario(clienteId: string, datos: DatosSocietari
   });
   if (error) return { error: traducirErrorMandato(error.message) };
   await cerrarRenovacionSiVigente(admin, clienteId, yo.id);
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -95,7 +103,7 @@ export async function guardarMandato(clienteId: string, m: DatosMandatoForm): Pr
   });
   if (error) return { error: traducirErrorMandato(error.message) };
   await cerrarRenovacionSiVigente(admin, clienteId, yo.id);
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -166,7 +174,7 @@ export async function crearLibro(clienteId: string, catalogoId: string, datos: D
     .from("libros")
     .insert({ cliente_id: clienteId, catalogo_id: catalogoId, ...datos });
   if (error) return { error: traducirError(error.message) };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -182,7 +190,7 @@ export async function editarLibro(id: string, datos: DatosLibro): Promise<Result
     .update({ ...datos, actualizado_en: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: traducirError(error.message) };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -216,7 +224,7 @@ export async function altaLibroRapida(clienteId: string, catalogoId: string): Pr
     .select("id")
     .maybeSingle();
   if (error || !data) return { error: traducirError(error?.message ?? "No se pudo dar de alta el libro.") };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return { id: data.id as string };
 }
 
@@ -272,7 +280,7 @@ export async function abrirTomoDesdePedido(
     .update({ estado: "cerrado", proximo_seguimiento: null, actualizado_en: ahora })
     .eq("id", pedidoId);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -324,7 +332,7 @@ export async function abrirNuevoTomo(
     return { error: traducirError(errAlta.message) };
   }
 
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -396,7 +404,7 @@ export async function crearTareas(datos: NuevaTarea): Promise<Resultado & { crea
     }))
   );
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return { creadas: nuevas.length, omitidas: datos.libro_ids.length - nuevas.length };
 }
 
@@ -434,7 +442,7 @@ export async function actualizarTarea(id: string, cambios: CambiosTarea): Promis
     .update({ ...patch, actualizado_en: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -450,7 +458,7 @@ export async function sumarInsistencia(id: string): Promise<Resultado> {
     .update({ insistencias: (data.insistencias as number) + 1, actualizado_en: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -473,7 +481,7 @@ export async function cambiarPrioridad(id: string, prioridad: PrioridadLibro | n
     })
     .eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -493,7 +501,7 @@ export async function reordenarBloques(clienteIds: string[]): Promise<Resultado>
   );
   const conError = resultados.find((r) => r.error);
   if (conError?.error) return { error: conError.error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -545,7 +553,7 @@ export async function enviarACopiar(tareaIds: string[], datos: DatosEnvioCopiado
     .update({ estado_id: copiandose.id, fecha_envio_copiar: datos.fecha, actualizado_en: ahora })
     .in("id", abiertas.map((t) => t.id as string));
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -732,7 +740,7 @@ export async function registrarCopiado(
     if (errFactura) alertas.push(`El copiado quedó registrado, pero no se pudo dejar la factura pendiente: ${errFactura}`);
   }
 
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return { alertas, facturaPendiente: porFacturar.size > 0 };
 }
 
@@ -809,7 +817,7 @@ export async function crearPedido(datos: DatosPedido): Promise<Resultado> {
     creado_por: yo.id,
   });
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -834,7 +842,7 @@ export async function actualizarPedido(id: string, cambios: CambiosPedido): Prom
   if (typeof patch.monto === "string") patch.monto = patch.monto ? parseFloat(patch.monto as string) : null;
   const { error } = await admin.from("libros_pedidos").update(patch).eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -862,7 +870,7 @@ export async function agregarSeguimiento(
     proximo_seguimiento: proximoSeguimiento || null,
     actualizado_en: ahora,
   }).eq("id", pedidoId);
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -878,7 +886,7 @@ export async function actualizarChecklist(pedidoId: string, checklist: ItemCheck
     .update({ checklist: limpio, actualizado_en: new Date().toISOString() })
     .eq("id", pedidoId);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -946,7 +954,7 @@ export async function cerrarRenovacion(
     .update({ estado: "cerrado", proximo_seguimiento: null, actualizado_en: ahora })
     .eq("id", pedidoId);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -978,7 +986,7 @@ export async function aprobarPedido(
 
   const esPresupuesto = pedido.tipo === "presupuesto_libro_nuevo" || pedido.tipo === "presupuesto_tomo_nuevo";
   if (esPresupuesto || libroIds.length === 0) {
-    revalidatePath("/libros", "layout");
+    refrescarLibros();
     return { creadas: 0 };
   }
 
@@ -994,7 +1002,7 @@ export async function aprobarPedido(
     responsable_id: null,
     observaciones: null,
   });
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   if (res.error) return { error: res.error };
   // Vincular tareas creadas al pedido (best-effort: si falla no bloquea).
   // pedido_id no está seteado todavía — lo seteamos en las tareas del cliente
@@ -1086,7 +1094,7 @@ export async function registrarMovimiento(
     alertas.push("Acordate de registrar el copiado para actualizar los folios.");
   }
 
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return { alertas: alertas.length ? alertas : undefined };
 }
 
@@ -1114,7 +1122,7 @@ export async function registrarIncidencia(datos: DatosIncidencia): Promise<Resul
   if (datos.tipo === "extravio") {
     await admin.from("libros").update({ extraviado: true, actualizado_en: new Date().toISOString() }).eq("id", datos.libro_id);
   }
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1152,7 +1160,7 @@ export async function resolverIncidencia(id: string, resolucion: string): Promis
         .eq("id", (inc as unknown as LibroIncidencia).libro_id!);
     }
   }
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1170,7 +1178,7 @@ export async function crearFactura(datos: DatosFactura): Promise<Resultado & { i
     .select("id")
     .maybeSingle();
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return { id: (data as { id: string } | null)?.id };
 }
 
@@ -1201,7 +1209,7 @@ export async function actualizarFactura(id: string, patch: PatchFactura): Promis
     .update({ ...patch, actualizado_en: new Date().toISOString() })
     .eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1226,7 +1234,7 @@ export async function vincularTareasFactura(facturaId: string, tareaIds: string[
     .from("copiadora_facturas_tareas")
     .upsert(tareaIds.map((tarea_id) => ({ factura_id: facturaId, tarea_id })), { ignoreDuplicates: true });
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1236,7 +1244,7 @@ export async function desvincularTareaFactura(facturaId: string, tareaId: string
   const admin = createAdminClient();
   const { error } = await admin.from("copiadora_facturas_tareas").delete().eq("factura_id", facturaId).eq("tarea_id", tareaId);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1246,7 +1254,7 @@ export async function eliminarFactura(id: string): Promise<Resultado> {
   const admin = createAdminClient();
   const { error } = await admin.from("copiadora_facturas").delete().eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1289,7 +1297,7 @@ export async function actualizarUmbralFolios(umbral: number): Promise<Resultado>
   if (!cfg) return { error: "Tabla libros_config no encontrada. ¿Corriste la migración de etapa 4?" };
   const { error } = await admin.from("libros_config").update({ umbral_folios: umbral }).eq("id", (cfg as { id: string }).id);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1306,7 +1314,7 @@ export async function actualizarAvisosMandato(avisos: number[]): Promise<Resulta
   if (error) {
     return { error: error.message.includes("mandato_avisos") ? "Falta correr add_libros_etapa6.sql en Supabase." : error.message };
   }
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1355,7 +1363,7 @@ export async function guardarObjetivo(id: string | null, o: DatosObjetivo): Prom
     const { error } = await admin.from("libros_objetivos").insert({ ...fila, orden: ((ultimo?.orden as number | undefined) ?? 0) + 10 });
     if (error) return { error: errorObjetivos(error.message) };
   }
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1364,7 +1372,7 @@ export async function eliminarObjetivo(id: string): Promise<Resultado> {
   const admin = createAdminClient();
   const { error } = await admin.from("libros_objetivos").delete().eq("id", id);
   if (error) return { error: errorObjetivos(error.message) };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1389,7 +1397,7 @@ export async function actualizarMailsLibros(cfg: ConfigMails): Promise<Resultado
   if (error) {
     return { error: error.message.includes("mail_") ? "Falta correr add_libros_etapa10.sql en Supabase." : error.message };
   }
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1403,7 +1411,7 @@ export async function actualizarFechaMeta(fecha: string | null): Promise<Resulta
   if (error) {
     return { error: error.message.includes("fecha_meta_puesta") ? "Falta correr add_libros_etapa7.sql en Supabase." : error.message };
   }
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }
 
@@ -1415,6 +1423,6 @@ export async function actualizarEstado(
   const admin = createAdminClient();
   const { error } = await admin.from("libros_estados").update(cambios).eq("id", id);
   if (error) return { error: error.message };
-  revalidatePath("/libros", "layout");
+  refrescarLibros();
   return {};
 }

@@ -6,6 +6,12 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 Ninguno (Libros: etapas 1 a 11 corridas al 20-oct).
 
+### Velocidad de Libros (20-oct)
+
+- Vercel (`pdx1`, Portland) y Supabase (`us-west-2`, Oregon) están en la misma zona: no hace falta cambiar la región.
+- Cartel de Objetivos en caché 5 min y lo automático (`sincronizarLibrosAutomaticos`) como mucho cada 10 min al abrir pantallas; los dos se invalidan al guardar cualquier cosa en Libros (`refrescarLibros()` → `revalidateTag(TAG_LIBROS)`). El cron usa `sincronizarLibrosAutomaticosAhora` (sin caché). Cambios hechos fuera de Libros (estado del cliente en Panel General, balances en Contable) se reflejan en el cartel en hasta 5 min.
+- `libros/loading.tsx`: esqueleto de carga al navegar entre pantallas de Libros.
+
 ### Clientes inactivos en Libros (20-oct)
 
 - El servicio Libros no se da de baja: un cliente está en Libros mientras esté activo en BOS (`clientes.estado = 'activo'`). Seguimiento, Dashboard, Objetivos, mails y lo automático solo cuentan clientes activos (`clientes!inner(...)` + `.eq("clientes.estado", "activo")`). Libros → Clientes tiene Activos / Inactivos / Todos (arranca en Activos); el historial de los inactivos se conserva y se ve en su ficha. El estado del cliente se cambia solo en Panel General.

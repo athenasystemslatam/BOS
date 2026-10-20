@@ -1,7 +1,8 @@
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { calcularAtraso } from "@/lib/librosTablero";
-import { estadoRenovacion, hoyISO, vencimientoFinal, type DatosMandato } from "@/lib/libros";
+import { TAG_LIBROS, estadoRenovacion, hoyISO, vencimientoFinal, type DatosMandato } from "@/lib/libros";
 import type { EstadoPedido, ItemChecklist } from "@/types";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -112,10 +113,11 @@ export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Pr
 /**
  * Objetivos con su avance de hoy. Los que tienen fecha límite y llegaron a la
  * meta pasan solos a "cumplido" con la fecha (los permanentes, sin fecha, no
- * se cierran nunca). Memoizado por request: lo usan el cartel de Libros y el
- * Dashboard en la misma carga. Sin la tabla (etapa 11 sin correr) devuelve [].
+ * se cierran nunca). El cartel sale en cada pantalla de Libros: el cálculo
+ * queda en caché 5 minutos y se invalida al guardar algo en Libros
+ * (revalidateTag(TAG_LIBROS)). Sin la tabla (etapa 11 sin correr) devuelve [].
  */
-export const objetivosConAvance = cache(async (): Promise<ObjetivoConAvance[]> => {
+async function calcularObjetivos(): Promise<ObjetivoConAvance[]> {
   try {
     const admin = createAdminClient();
     const { data, error } = await admin.from("libros_objetivos").select("*").order("orden").order("creado_en");
@@ -150,4 +152,8 @@ export const objetivosConAvance = cache(async (): Promise<ObjetivoConAvance[]> =
     console.error("[libros] objetivosConAvance:", e);
     return [];
   }
-});
+}
+
+const objetivosEnCache = unstable_cache(calcularObjetivos, ["libros-objetivos"], { revalidate: 300, tags: [TAG_LIBROS] });
+
+export const objetivosConAvance = cache(() => objetivosEnCache());

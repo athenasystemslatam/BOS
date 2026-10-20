@@ -58,6 +58,9 @@ export const UBICACION_LABEL: Record<UbicacionLibro, string> = {
   otro: "Otro",
 };
 
+/** Tag de la caché de Libros (cartel de objetivos y lo automático): se invalida al guardar. */
+export const TAG_LIBROS = "libros-datos";
+
 // Pasa a ser configurable en la etapa 4 (Configuración del módulo).
 export const UMBRAL_FOLIOS = 10;
 
