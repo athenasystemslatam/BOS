@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import clsx from "clsx";
 import { Search } from "lucide-react";
-import { TIPO_SOCIETARIO_LABEL, diasHasta, fmtFecha } from "@/lib/libros";
+import { TIPOS_SOCIETARIOS, TIPO_SOCIETARIO_LABEL, diasHasta, fmtFecha } from "@/lib/libros";
 import type { OrganismoSocietario, TipoSocietario } from "@/types";
 import { ESTADO_BALANCE } from "../../contable/semaforo";
 import { MandatoModal } from "../MandatoCampos";
@@ -49,6 +49,7 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
   const [busqueda, setBusqueda] = useState("");
   const [filtroResp, setFiltroResp] = useState("");
   const [soloSinMandato, setSoloSinMandato] = useState(false);
+  const [filtroTipo, setFiltroTipo] = useState("");
 
   const responsables = useMemo(
     () => Array.from(new Set(filas.map((f) => f.responsable).filter(Boolean) as string[])).sort(),
@@ -59,17 +60,20 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
     const q = busqueda.trim().toLowerCase();
     if (q && !f.nombre.toLowerCase().includes(q) && !f.cuit.includes(q)) return false;
     if (filtroResp && f.responsable !== filtroResp) return false;
+    if (filtroTipo && (filtroTipo === "sin_tipo" ? f.tipo : f.tipo !== filtroTipo)) return false;
     if (soloSinMandato && !f.mandatoSinCargar) return false;
     return true;
   });
 
   const sinTipo = filas.filter((f) => !f.tipo).length;
   const sinMandato = filas.filter((f) => f.mandatoSinCargar).length;
-  const hayFiltros = !!busqueda.trim() || !!filtroResp || soloSinMandato;
+  const hayFiltros = !!busqueda.trim() || !!filtroResp || !!filtroTipo || soloSinMandato;
+  const cuentaTipo = (t: string) => filas.filter((f) => f.tipo === t).length;
 
   function limpiar() {
     setBusqueda("");
     setFiltroResp("");
+    setFiltroTipo("");
     setSoloSinMandato(false);
   }
 
@@ -110,6 +114,20 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
           {responsables.map((r) => (
             <option key={r} value={r}>{r}</option>
           ))}
+        </select>
+        <select
+          value={filtroTipo}
+          onChange={(e) => setFiltroTipo(e.target.value)}
+          aria-label="Tipo societario"
+          className={clsx(CONTROL, "cursor-pointer")}
+        >
+          <option value="">Todos los tipos</option>
+          {TIPOS_SOCIETARIOS.filter((t) => cuentaTipo(t.value) > 0).map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label} ({cuentaTipo(t.value)})
+            </option>
+          ))}
+          {sinTipo > 0 && <option value="sin_tipo">Sin tipo cargado ({sinTipo})</option>}
         </select>
         <label className="flex items-center gap-1.5 text-[12.5px] text-ink-muted cursor-pointer min-h-[36px] px-1">
           <input
