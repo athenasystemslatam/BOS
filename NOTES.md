@@ -12,6 +12,13 @@ COFFEE, ROGEM, LOGISTICA DIEB…) y filas con dos clientes ("MIT, GETEL FIRST", 
 deducidos del comentario; 32 ambiguos quedaron como entrada / otro. Lo importado tiene `importado = true`.
 "BARILOCHE" → IGI BARILOCHE y "MADRYN" → IGI MADRYN (cruce por nombre) confirmados por Giuliana.
 
+**Última importación del sheet (20-oct)** — `supabase/importar_libros_delta_20oct{,_control}.sql` (fuera del repo):
+diferencias del sheet contra lo importado el 19-oct. Se aplicaron 49 prioridades reordenadas, los copiados del 19/10
+de IVAISA y SAMRAY (actas), 7 movimientos del 14 al 19/10 (6 libros quedaron "en la copiadora" con la tarea en
+Copiándose) y 1 tarea nueva (BOULEVARD PILAR · Inventario y Balance). **No** se importaron 794 filas de
+ACTUALIZACION generadas en bloque (una por libro de cada cliente, "P1 · Pendiente"): BOS ya las calcula en "Atrasos
+sin asignar". Desde el 20-oct el sheet queda en solo lectura: todo se carga en BOS.
+
 `add_libros_etapa8.sql` (vencimiento preciso del mandato) también corrido el 19-oct.
 
 `add_libros_etapa7.sql` (Dashboard: fecha meta y `libros_snapshot`) corrido el 20-oct.
