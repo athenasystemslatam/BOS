@@ -1,12 +1,12 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Download, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Download, Pencil, Plus, Search, X } from "lucide-react";
 import clsx from "clsx";
 import { EquipoMiembro, TipoContribuyente, VistEmpresa } from "@/types";
 import { NuevoClienteModal } from "./NuevoClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
-import { darDeBajaServicio, darDeBajaCliente, getFichaCliente } from "./actions";
+import { darDeBajaServicio, darDeBajaCliente, reactivarCliente, getFichaCliente } from "./actions";
 import { useBackdropClose } from "@/lib/useBackdropClose";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 
@@ -74,7 +74,8 @@ function normalizar(t: string) {
 
 type Confirmando =
   | { tipo: "servicio"; clienteId: string; servicio: string; subtipo: string }
-  | { tipo: "cliente"; clienteId: string };
+  | { tipo: "cliente"; clienteId: string }
+  | { tipo: "reactivar"; clienteId: string };
 
 export function PanelGeneralClient({
   empresas,
@@ -96,6 +97,7 @@ export function PanelGeneralClient({
   const [search, setSearch] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<TipoContribuyente | "">("");
   const [soloSinResponsable, setSoloSinResponsable] = useState(false);
+  const [filtroEstado, setFiltroEstado] = useState<"activos" | "inactivos" | "">("activos");
   // Un no-admin que ya figura como responsable de al menos un cliente
   // arranca viendo su propia cartera en vez de "Cualquier responsable" — un
   // admin sigue viendo todo por defecto. La vista guarda nombres (no ids)
@@ -207,6 +209,8 @@ export function PanelGeneralClient({
     return empresas.filter((e) => {
       if (q && !normalizar(e.nombre).includes(q) && !(qCuit && e.cuit.includes(qCuit))) return false;
       if (filtroTipo && e.tipo_contribuyente !== filtroTipo) return false;
+      if (filtroEstado === "activos" && e.estado !== "activo") return false;
+      if (filtroEstado === "inactivos" && e.estado === "activo") return false;
       if (soloSinResponsable && !empresasSinResponsable.has(e.id)) return false;
       // "Cualquier área": alcanza con que la persona sea responsable de un
       // solo servicio (ej. solo IVA) para que la empresa aparezca — no hace
@@ -214,7 +218,7 @@ export function PanelGeneralClient({
       if (filtroResponsable && !RESPONSABLE_FIELDS.some((f) => e[f] === filtroResponsable)) return false;
       return true;
     });
-  }, [empresas, search, filtroTipo, soloSinResponsable, empresasSinResponsable, filtroResponsable]);
+  }, [empresas, search, filtroTipo, filtroEstado, soloSinResponsable, empresasSinResponsable, filtroResponsable]);
 
   const gruposVisibles = GRUPOS;
   const columnasVisibles = gruposVisibles.flatMap((g) => g.cols.map((c) => ({ ...c, grupo: g.key })));
@@ -265,7 +269,7 @@ export function PanelGeneralClient({
       confirmando &&
       confirmando.tipo === c.tipo &&
       confirmando.clienteId === c.clienteId &&
-      (c.tipo === "cliente" ||
+      (c.tipo !== "servicio" ||
         (confirmando.tipo === "servicio" &&
           confirmando.servicio === c.servicio &&
           confirmando.subtipo === c.subtipo))
@@ -279,6 +283,15 @@ export function PanelGeneralClient({
     }
   }
 
+  // La etiqueta Activa/Inactiva es el botón (solo admin): va directo a la
+  // ventana de confirmación.
+  function pedirCambioEstado(clienteId: string, activa: boolean) {
+    if (!isAdmin) return;
+    setActionError(null);
+    setConfirmando(null);
+    setBajaFinal({ tipo: activa ? "cliente" : "reactivar", clienteId });
+  }
+
   function ejecutarBaja() {
     const c = bajaFinal;
     if (!c) return;
@@ -286,7 +299,9 @@ export function PanelGeneralClient({
       const result =
         c.tipo === "servicio"
           ? await darDeBajaServicio(c.clienteId, c.servicio, c.subtipo)
-          : await darDeBajaCliente(c.clienteId);
+          : c.tipo === "reactivar"
+            ? await reactivarCliente(c.clienteId)
+            : await darDeBajaCliente(c.clienteId);
       if (result?.error) setActionError(result.error);
       setBajaFinal(null);
     });
@@ -301,6 +316,13 @@ export function PanelGeneralClient({
         titulo: "¿Dar de baja al cliente?",
         detalle: `Vas a dar de baja a «${nombre}». Va a pasar a Inactiva en todo el sistema.`,
         boton: "Sí, dar de baja el cliente",
+      };
+    }
+    if (bajaFinal.tipo === "reactivar") {
+      return {
+        titulo: "¿Reactivar al cliente?",
+        detalle: `Vas a reactivar a «${nombre}». Va a volver a figurar como Activa en todo el sistema.`,
+        boton: "Sí, reactivar el cliente",
       };
     }
     const key = `${bajaFinal.servicio}:${bajaFinal.subtipo}`;
@@ -421,6 +443,16 @@ export function PanelGeneralClient({
             <option value="inscripto">Inscripto</option>
           </select>
 
+          <select
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value as "activos" | "inactivos" | "")}
+            className="text-[12.5px] text-ink border border-line-input rounded-[9px] pl-3 pr-2 py-[9px] bg-paper outline-none focus:border-bordo"
+          >
+            <option value="activos">Activos</option>
+            <option value="inactivos">Inactivos</option>
+            <option value="">Todos</option>
+          </select>
+
           {isAdmin && (
             <a
               href="/api/exportar/clientes"
@@ -500,12 +532,18 @@ export function PanelGeneralClient({
                       )}
                     </div>
                     <div className="shrink-0 flex flex-col items-end gap-1">
-                      <span className={clsx(
-                        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                        empresa.estado === "activo" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-                      )}>
+                      <button
+                        type="button"
+                        disabled={!isAdmin}
+                        onClick={() => pedirCambioEstado(empresa.id, empresa.estado === "activo")}
+                        title={isAdmin ? (empresa.estado === "activo" ? "Dar de baja" : "Reactivar") : undefined}
+                        className={clsx(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium disabled:cursor-default",
+                          empresa.estado === "activo" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+                        )}
+                      >
                         {empresa.estado === "activo" ? "Activa" : "Inactiva"}
-                      </span>
+                      </button>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-500">
                         {TIPO_CONTRIB_LABEL[empresa.tipo_contribuyente] ?? empresa.tipo_contribuyente}
                       </span>
@@ -789,8 +827,6 @@ export function PanelGeneralClient({
                 <tbody>
                   {filasConEstilo.map(({ empresa, activa, zebra }) => {
                     const activos = serviciosActivos[empresa.id] ?? [];
-                    const confirmBajaCliente: Confirmando = { tipo: "cliente", clienteId: empresa.id };
-                    const pendienteBajaCliente = esConfirmando(confirmBajaCliente);
                     const filaHover = hoverRow === empresa.id;
                     const rowBg = filaHover ? "bg-paper-hover" : zebra;
 
@@ -894,10 +930,20 @@ export function PanelGeneralClient({
                             <span className="block text-[13px] font-medium tracking-[-.012em] whitespace-nowrap">X</span>
                             <span className="block font-plex text-[10.5px] mt-[3px] whitespace-nowrap">X</span>
                           </span>
-                          <span className={clsx("inline-flex items-center gap-[7px] text-[11.5px] font-medium", activa ? "text-activo" : "text-ink-subtle")}>
+                          <button
+                            type="button"
+                            disabled={!isAdmin}
+                            onClick={() => pedirCambioEstado(empresa.id, activa)}
+                            title={isAdmin ? (activa ? "Dar de baja" : "Reactivar") : undefined}
+                            className={clsx(
+                              "inline-flex items-center gap-[7px] text-[11.5px] font-medium rounded-[7px] px-[7px] py-[3px] -my-[3px] transition-colors disabled:cursor-default",
+                              activa ? "text-activo" : "text-ink-subtle",
+                              isAdmin && (activa ? "hover:bg-red-50 hover:text-danger" : "hover:bg-paper-hover hover:text-activo")
+                            )}
+                          >
                             <span className={clsx("w-[5px] h-[5px] rounded-full shrink-0", activa ? "bg-activo-dot" : "bg-dot")} />
                             {activa ? "Activa" : "Inactiva"}
-                          </span>
+                          </button>
                         </td>
 
                         {/* Acciones */}
@@ -918,33 +964,6 @@ export function PanelGeneralClient({
                               >
                                 <Pencil size={12} />
                               </button>
-                              {activa && (
-                                pendienteBajaCliente ? (
-                                  <span className="inline-flex items-center gap-[5px]">
-                                    <button
-                                      onClick={() => confirmar(confirmBajaCliente)}
-                                      disabled={isPending}
-                                      className="text-[10.5px] font-bold text-white bg-danger rounded-[7px] px-[9px] py-[5px] disabled:opacity-50"
-                                    >
-                                      Confirmar baja
-                                    </button>
-                                    <button
-                                      onClick={() => setConfirmando(null)}
-                                      className="text-[11px] text-ink-faint p-[3px]"
-                                    >
-                                      ✕
-                                    </button>
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={() => confirmar(confirmBajaCliente)}
-                                    className="text-[11.5px] font-medium text-transparent group-hover/acciones:text-ink-subtle hover:!text-danger hover:bg-red-50 border border-transparent hover:!border-red-100 rounded-[7px] px-[9px] py-[5px] transition-colors whitespace-nowrap"
-                                  >
-                                    <Trash2 size={11} className="inline -mt-px mr-1" />
-                                    Dar de baja
-                                  </button>
-                                )
-                              )}
                             </span>
                           </td>
                         )}
@@ -984,9 +1003,12 @@ export function PanelGeneralClient({
               <button
                 onClick={ejecutarBaja}
                 disabled={isPending}
-                className="px-[18px] py-2.5 text-[12.5px] font-semibold text-white bg-danger rounded-[9px] hover:brightness-95 transition-[filter] disabled:opacity-50"
+                className={clsx(
+                  "px-[18px] py-2.5 text-[12.5px] font-semibold text-white rounded-[9px] hover:brightness-95 transition-[filter] disabled:opacity-50",
+                  bajaFinal.tipo === "reactivar" ? "bg-bordo" : "bg-danger"
+                )}
               >
-                {isPending ? "Dando de baja…" : bajaFinalInfo.boton}
+                {isPending ? (bajaFinal.tipo === "reactivar" ? "Reactivando…" : "Dando de baja…") : bajaFinalInfo.boton}
               </button>
             </div>
           </div>

@@ -586,3 +586,22 @@ export async function darDeBajaCliente(clienteId: string) {
   revalidatePath("/", "layout");
   return { success: true };
 }
+
+export async function reactivarCliente(clienteId: string) {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("clientes")
+    .update({ estado: "activo", fecha_modificacion: new Date().toISOString() })
+    .eq("id", clienteId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/", "layout");
+  return { success: true };
+}
