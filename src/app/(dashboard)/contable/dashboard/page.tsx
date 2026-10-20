@@ -1,9 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TrendingUp, Building2, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { Building2, CheckCircle2, Clock, AlertTriangle, Ban, UserX, Target } from "lucide-react";
 import clsx from "clsx";
-import { ESTADO_BALANCE } from "../semaforo";
-
-const ANIOS = [2026, 2025];
+import { ESTADO_BALANCE, calcularAvance, DIAS_VTO_BALANCE, DIAS_VTO_F855, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
 
 function addDays(dateStr: string, days: number) {
   const d = new Date(dateStr + "T00:00:00");
@@ -19,159 +17,223 @@ function diasRestantes(d: Date) {
   return Math.ceil((d.getTime() - Date.now()) / 86400000);
 }
 
-export default async function ContableDashboardPage({
-  searchParams,
-}: {
-  searchParams: { anio?: string };
-}) {
-  const anio = Number(searchParams.anio) || new Date().getFullYear();
+export default async function ContableDashboardPage() {
+  // Ventana de dos años: un balance que cierra a fin de un año fiscal puede
+  // vencer (cierre + 135/160 días) recién entrado el año siguiente, así que
+  // el dashboard siempre mira el año actual + el anterior juntos, no uno
+  // por vez (ver nota del 2026-10-20).
+  const anioActual = new Date().getFullYear();
+  const anios = [anioActual - 1, anioActual];
   const admin = createAdminClient();
 
   const { data: balancesRaw } = await admin
     .from("balances")
     .select(
-      "id, cliente_id, fecha_cierre, estado, avance, " +
+      "id, cliente_id, anio_fiscal, fecha_cierre, estado, f855_estado, presentado_fecha, f855_fecha, " +
       "clientes(nombre), " +
       "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
       "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
     )
-    .eq("anio_fiscal", anio)
+    .in("anio_fiscal", anios)
     .order("fecha_cierre");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const balances = (balancesRaw as any[]) ?? [];
+  const hoy = new Date();
 
+  const conVto = balances.map((b) => ({
+    ...b,
+    vtoBalance: addDays(b.fecha_cierre, DIAS_VTO_BALANCE),
+    vto855: addDays(b.fecha_cierre, DIAS_VTO_F855),
+  }));
+
+  // Objetivo del área (ítems 67/70): el mínimo legal es 100% en término.
+  // Solo cuenta lo que ya venció (no tiene sentido evaluar "en término" algo
+  // que todavía tiene plazo) y nunca a los frenados.
+  const vencidosBalance = conVto.filter((b) => b.estado !== "frenado" && b.vtoBalance < hoy);
+  const enTerminoBalance = vencidosBalance.filter(
+    (b) => b.estado === "finalizado" && b.presentado_fecha && new Date(b.presentado_fecha) <= b.vtoBalance
+  ).length;
+  const vencidosF855 = conVto.filter((b) => b.estado !== "frenado" && b.vto855 < hoy);
+  const enTerminoF855 = vencidosF855.filter(
+    (b) => b.f855_estado === "presentado" && b.f855_fecha && new Date(b.f855_fecha) <= b.vto855
+  ).length;
+
+  // Estado general del área
   const total = balances.length;
-  const finalizados = balances.filter((b) => b.estado === "finalizado").length;
-  const enProceso = balances.filter((b) => b.estado === "legalizado").length;
-  const asignados = balances.filter((b) => b.estado === "asignado").length;
+  const terminados = balances.filter((b) => b.estado === "finalizado").length;
   const frenados = balances.filter((b) => b.estado === "frenado").length;
   const sinAsignar = balances.filter((b) => b.estado === "sin_asignar").length;
-  const avancePromedio =
-    total > 0 ? Math.round(balances.reduce((s: number, b: { avance: number }) => s + (b.avance ?? 0), 0) / total) : 0;
+  const enProceso = balances.filter((b) => b.estado === "asignado" || b.estado === "legalizado").length;
+  const vencidosSinCerrar = conVto.filter(
+    (b) => b.estado !== "finalizado" && b.vtoBalance < hoy
+  ).length;
 
-  // Agrupación por responsable
-  const respMap = new Map<string, { nombre: string; total: number; finalizados: number; avanceSum: number }>();
-  for (const b of balances) {
+  // Resumen por contador: "sin empezar" = asignado pero todavía en 0% de
+  // avance (ni siquiera se pidió información); "en proceso" = cualquier
+  // avance > 0% que no sea ni terminado ni frenado.
+  const respMap = new Map<
+    string,
+    {
+      nombre: string;
+      total: number;
+      terminados: number;
+      enProceso: number;
+      sinEmpezar: number;
+      frenados: number;
+      proximosVencimientos: number;
+    }
+  >();
+  for (const b of conVto) {
     const resps = [b.responsable, b.responsable2].filter(Boolean);
     for (const r of resps) {
       if (!r?.id) continue;
-      if (!respMap.has(r.id)) respMap.set(r.id, { nombre: r.nombre, total: 0, finalizados: 0, avanceSum: 0 });
+      if (!respMap.has(r.id)) {
+        respMap.set(r.id, {
+          nombre: r.nombre,
+          total: 0,
+          terminados: 0,
+          enProceso: 0,
+          sinEmpezar: 0,
+          frenados: 0,
+          proximosVencimientos: 0,
+        });
+      }
       const entry = respMap.get(r.id)!;
       entry.total++;
-      if (b.estado === "finalizado") entry.finalizados++;
-      entry.avanceSum += b.avance ?? 0;
+      if (b.estado === "finalizado") entry.terminados++;
+      else if (b.estado === "frenado") entry.frenados++;
+      else if (calcularAvance(b) === 0) entry.sinEmpezar++;
+      else entry.enProceso++;
+      if (b.estado !== "finalizado" && diasRestantes(b.vtoBalance) <= 30) entry.proximosVencimientos++;
     }
   }
-  const porResponsable = Array.from(respMap.values())
-    .map((r) => ({ ...r, avanceProm: r.total > 0 ? Math.round(r.avanceSum / r.total) : 0 }))
-    .sort((a, b) => b.total - a.total);
+  const porResponsable = Array.from(respMap.values()).sort((a, b) => b.total - a.total);
 
-  // Próximos vencimientos (balances no finalizados, con VTO balance más próximo)
-  const hoy = new Date();
-  const proximosVto = balances
+  // Próximos vencimientos (detalle) — incluye los ya vencidos sin cerrar,
+  // ordenados primero por ser lo más urgente.
+  const proximosVto = conVto
     .filter((b) => b.estado !== "finalizado")
     .map((b) => ({
       nombre: b.clientes?.nombre ?? "—",
       estado: b.estado,
       fechaCierre: b.fecha_cierre,
-      vtoBalance: addDays(b.fecha_cierre, 135),
-      vto855: addDays(b.fecha_cierre, 160),
+      vtoBalance: b.vtoBalance,
+      vto855: b.vto855,
     }))
-    .filter((b) => b.vtoBalance >= hoy)
     .sort((a, b) => a.vtoBalance.getTime() - b.vtoBalance.getTime())
     .slice(0, 10);
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable · Resumen mensual</p>
-          <h1 className="text-[20px] font-semibold text-gray-900">Dashboard {anio}</h1>
+      <div className="mb-6">
+        <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable · Resumen</p>
+        <h1 className="text-[20px] font-semibold text-gray-900">
+          Dashboard {anios[0]}–{anios[1]}
+        </h1>
+        <p className="text-[12px] text-gray-400 mt-1">
+          Ventana de dos años fiscales: un balance que cierra en {anios[0]} puede vencer recién en {anios[1]}.
+        </p>
+      </div>
+
+      {/* Objetivo del área (ítems 67/68/70) — mínimo legal: 100% en término.
+          Todavía hardcodeado acá (ver DIAS_VTO_BALANCE/DIAS_VTO_F855 en
+          semaforo.ts) hasta que exista la pantalla de configuración del
+          ítem 67 (objetivo general + excepción por cliente). */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 mb-5 flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0">
+          <Target size={16} className="text-emerald-600" />
+          <span className="text-[13px] font-semibold text-gray-900">Objetivo: {OBJETIVO_CONTABLE_TEXTO}</span>
         </div>
-        <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
-          {ANIOS.map((a) => (
-            <a
-              key={a}
-              href={`/contable/dashboard?anio=${a}`}
-              className={clsx(
-                "px-3 py-1.5 text-[13px] font-medium rounded-md transition-all",
-                a === anio ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
-              )}
-            >
-              {a}
-            </a>
-          ))}
+        <div className="flex items-center gap-5 ml-auto text-[12px]">
+          <ObjetivoRatio label="Balances" ok={enTerminoBalance} total={vencidosBalance.length} />
+          <ObjetivoRatio label="F.855" ok={enTerminoF855} total={vencidosF855.length} />
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      {/* Estado general */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
         <StatCard label="Total balances" value={total} icon={<Building2 size={16} className="text-gray-400" />} />
         <StatCard
-          label="Finalizados"
-          value={finalizados}
+          label="Terminados (En ARCA)"
+          value={terminados}
           icon={<CheckCircle2 size={16} className="text-emerald-500" />}
           valueColor="text-emerald-600"
-          sub={total > 0 ? `${Math.round((finalizados / total) * 100)}%` : undefined}
         />
         <StatCard
           label="En proceso"
-          value={enProceso + asignados}
+          value={enProceso}
           icon={<Clock size={16} className="text-amber-500" />}
           valueColor="text-amber-600"
         />
-        <AvanceCard pct={avancePromedio} />
+        <StatCard
+          label="Sin asignar"
+          value={sinAsignar}
+          icon={<UserX size={16} className="text-gray-400" />}
+        />
+        <StatCard
+          label="Frenados"
+          value={frenados}
+          icon={<Ban size={16} className="text-red-500" />}
+          valueColor={frenados > 0 ? "text-red-600" : "text-gray-900"}
+        />
+        <StatCard
+          label="Vencidos sin cerrar"
+          value={vencidosSinCerrar}
+          icon={<AlertTriangle size={16} className="text-red-500" />}
+          valueColor={vencidosSinCerrar > 0 ? "text-red-600" : "text-gray-900"}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Avance por responsable */}
+        {/* Resumen por contador */}
         <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-[14px] font-semibold text-gray-900">Avance por responsable</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">Año fiscal {anio}</p>
+            <h2 className="text-[14px] font-semibold text-gray-900">Resumen por contador</h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">Años fiscales {anios[0]} y {anios[1]}</p>
           </div>
           {porResponsable.length === 0 ? (
             <div className="py-14 text-center text-[13px] text-gray-400">Sin responsables asignados</div>
           ) : (
             <div className="max-h-[420px] overflow-auto [scrollbar-gutter:stable]">
-            <table className="w-full">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                  <th className="px-6 py-3 text-left">Responsable</th>
-                  <th className="px-4 py-3 text-center">Total</th>
-                  <th className="px-4 py-3 text-center">Finalizados</th>
-                  <th className="px-4 py-3 text-center">Avance prom.</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {porResponsable.map((r) => (
-                  <tr key={r.nombre} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="px-6 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-[11px] font-bold text-emerald-700 shrink-0">
-                          {r.nombre.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-[13px] font-medium text-gray-800">{r.nombre}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-center text-[13px] text-gray-600">{r.total}</td>
-                    <td className="px-4 py-3.5 text-center">
-                      <RatioCell done={r.finalizados} total={r.total} />
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <span className={clsx(
-                        "text-[13px] font-semibold",
-                        r.avanceProm >= 80 ? "text-emerald-600" : r.avanceProm >= 40 ? "text-amber-600" : "text-gray-500"
-                      )}>
-                        {r.avanceProm}%
-                      </span>
-                    </td>
+              <table className="w-full">
+                <thead className="sticky top-0 z-10 bg-white">
+                  <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left">Contador</th>
+                    <th className="px-3 py-3 text-center">Total</th>
+                    <th className="px-3 py-3 text-center">Terminados</th>
+                    <th className="px-3 py-3 text-center">En proceso</th>
+                    <th className="px-3 py-3 text-center">Sin empezar</th>
+                    <th className="px-3 py-3 text-center">Frenados</th>
+                    <th className="px-3 py-3 text-center">Próx. vtos.</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {porResponsable.map((r) => (
+                    <tr key={r.nombre} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center text-[11px] font-bold text-emerald-700 shrink-0">
+                            {r.nombre.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-[13px] font-medium text-gray-800">{r.nombre}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3.5 text-center text-[13px] text-gray-600">{r.total}</td>
+                      <td className="px-3 py-3.5 text-center text-[13px] text-emerald-600 font-medium">{r.terminados}</td>
+                      <td className="px-3 py-3.5 text-center text-[13px] text-amber-600 font-medium">{r.enProceso}</td>
+                      <td className="px-3 py-3.5 text-center text-[13px] text-gray-500">{r.sinEmpezar}</td>
+                      <td className={clsx("px-3 py-3.5 text-center text-[13px] font-medium", r.frenados > 0 ? "text-red-600" : "text-gray-300")}>
+                        {r.frenados}
+                      </td>
+                      <td className={clsx("px-3 py-3.5 text-center text-[13px] font-medium", r.proximosVencimientos > 0 ? "text-red-600" : "text-gray-300")}>
+                        {r.proximosVencimientos}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -180,13 +242,13 @@ export default async function ContableDashboardPage({
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="text-[14px] font-semibold text-gray-900">Por estado</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">Año fiscal {anio}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">Años fiscales {anios[0]} y {anios[1]}</p>
           </div>
           <div className="p-5 space-y-3">
             {[
-              { label: "Finalizado", count: finalizados, color: ESTADO_BALANCE.finalizado.bar },
-              { label: "Legalizado", count: enProceso, color: ESTADO_BALANCE.legalizado.bar },
-              { label: "Asignado", count: asignados, color: ESTADO_BALANCE.asignado.bar },
+              { label: "Finalizado", count: terminados, color: ESTADO_BALANCE.finalizado.bar },
+              { label: "Legalizado", count: balances.filter((b) => b.estado === "legalizado").length, color: ESTADO_BALANCE.legalizado.bar },
+              { label: "Asignado", count: balances.filter((b) => b.estado === "asignado").length, color: ESTADO_BALANCE.asignado.bar },
               { label: "Frenado", count: frenados, color: ESTADO_BALANCE.frenado.bar },
               { label: "Sin asignar", count: sinAsignar, color: ESTADO_BALANCE.sin_asignar.bar },
             ].map(({ label, count, color }) => (
@@ -267,53 +329,33 @@ export default async function ContableDashboardPage({
   );
 }
 
-function StatCard({ label, value, icon, valueColor = "text-gray-900", sub }: {
-  label: string; value: number; icon: React.ReactNode; valueColor?: string; sub?: string;
+function StatCard({ label, value, icon, valueColor = "text-gray-900" }: {
+  label: string; value: number; icon: React.ReactNode; valueColor?: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+        <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider leading-tight">{label}</p>
         {icon}
       </div>
-      <p className={clsx("text-[28px] font-bold leading-none tracking-tight", valueColor)}>{value}</p>
-      {sub && <p className="text-[11px] text-gray-400 mt-1">{sub}</p>}
+      <p className={clsx("text-[26px] font-bold leading-none tracking-tight", valueColor)}>{value}</p>
     </div>
   );
 }
 
-function AvanceCard({ pct }: { pct: number }) {
+function ObjetivoRatio({ label, ok, total }: { label: string; ok: number; total: number }) {
+  if (total === 0) {
+    return (
+      <span className="text-gray-400">
+        <span className="font-medium text-gray-500">{label}:</span> sin vencidos todavía
+      </span>
+    );
+  }
+  const completo = ok === total;
   return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Avance global</p>
-        <TrendingUp size={16} className="text-emerald-600" />
-      </div>
-      <p className={clsx(
-        "text-[28px] font-bold leading-none tracking-tight",
-        pct >= 80 ? "text-emerald-600" : pct >= 40 ? "text-amber-600" : "text-gray-500"
-      )}>
-        {pct}%
-      </p>
-      <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={clsx("h-full rounded-full", pct >= 80 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-400" : "bg-gray-300")}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function RatioCell({ done, total }: { done: number; total: number }) {
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[12px] text-gray-700 font-medium">{done}/{total}</span>
-      <span className={clsx("text-[10px] font-semibold",
-        pct === 100 ? "text-emerald-600" : pct >= 50 ? "text-amber-600" : "text-gray-400"
-      )}>{pct}%</span>
-    </div>
+    <span className={completo ? "text-emerald-600" : "text-red-600"}>
+      <span className="font-medium">{label}:</span> {ok} de {total} en término
+    </span>
   );
 }
 

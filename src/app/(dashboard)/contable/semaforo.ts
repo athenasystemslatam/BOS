@@ -86,3 +86,28 @@ export function calcularAvance(b: {
   if (b.envio1) return 10;
   return 0;
 }
+
+// Vencimientos del área (ítems 67/70) — hardcodeados acá nomás por ahora,
+// en un único lugar, hasta que exista una pantalla de configuración (ítem
+// 67, objetivo general + excepción por cliente). Todo lo que hoy calcula
+// estos plazos debe importar de acá, no repetir el número.
+export const DIAS_VTO_BALANCE = 135;
+export const DIAS_VTO_F855 = 160; // = VTO Balance + 25 días; F899 usa la misma fecha
+export const OBJETIVO_CONTABLE_TEXTO = "Balances En ARCA antes del vencimiento";
+
+// Ítem 34 — el Estado deja de cargarse a mano y se calcula desde el
+// semáforo EECC: EECC Legalizado → Estado Legalizado; EECC En ARCA → Estado
+// Finalizado (= terminado). Asignado/Sin asignar siguen dependiendo de si
+// tiene responsable. Frenado es la única excepción manual: una vez frenado,
+// se queda frenado pase lo que pase con EECC/responsable hasta que alguien
+// lo reanude a propósito (quien llama esto decide eso, acá solo se calcula
+// el estado "automático").
+export function calcularEstado(b: {
+  estado_eecc?: string;
+  responsable_id?: string | null;
+  responsable2_id?: string | null;
+}): string {
+  if (b.estado_eecc === "presentado_arca") return "finalizado";
+  if (b.estado_eecc === "legalizado") return "legalizado";
+  return b.responsable_id || b.responsable2_id ? "asignado" : "sin_asignar";
+}

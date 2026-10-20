@@ -1,9 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { DIAS_VTO_BALANCE } from "../../contable/semaforo";
 import { ContableProductividadClient, FilaResponsableContable } from "./ContableProductividadClient";
-
-const DIAS_VTO_BALANCE = 135;
 
 export default async function ProductividadContablePage() {
   const yo = await getCurrentLiquidadora();

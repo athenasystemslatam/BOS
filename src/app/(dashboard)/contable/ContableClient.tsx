@@ -8,7 +8,10 @@ import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
-import { ESTADO_BALANCE, ESTADO_EECC, avanceCls, calcularAvance, diasDemoraPedido, colorAlertaDemora } from "./semaforo";
+import {
+  ESTADO_BALANCE, ESTADO_EECC, avanceCls, calcularAvance, calcularEstado,
+  diasDemoraPedido, colorAlertaDemora, DIAS_VTO_BALANCE, DIAS_VTO_F855,
+} from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
 import type { ClaveAcceso, EquipoMiembro } from "@/types";
 
@@ -117,10 +120,40 @@ export function ContableClient({
   }
 
   function update(id: string, updates: Partial<Balance>) {
-    patch(id, updates);
+    // El Estado es automático (ítem 34): si este cambio toca EECC o
+    // responsable, se recalcula al toque en la UI para no esperar a que se
+    // recargue la página — el server hace exactamente el mismo cálculo y
+    // queda como la versión que realmente se guarda.
+    const actual = balancesMap.get(id);
+    let finalUpdates: Partial<Balance> = updates;
+    if (
+      actual &&
+      actual.estado !== "frenado" &&
+      ("estado_eecc" in updates || "responsable_id" in updates || "responsable2_id" in updates)
+    ) {
+      finalUpdates = { ...updates, estado: calcularEstado({ ...actual, ...updates }) };
+    }
+    patch(id, finalUpdates);
     startTransition(async () => {
       await updateBalance(id, updates as Record<string, unknown>);
     });
+  }
+
+  // Frenar/reanudar (ítem 34): única forma manual de tocar el Estado. Al
+  // reanudar se manda el centinela "auto" al server, que recalcula desde
+  // EECC/responsable — acá se refleja ese mismo cálculo al toque.
+  function toggleFrenado(b: Balance) {
+    if (b.estado === "frenado") {
+      patch(b.id, { estado: calcularEstado(b) });
+      startTransition(async () => {
+        await updateBalance(b.id, { estado: "auto" });
+      });
+    } else {
+      patch(b.id, { estado: "frenado" });
+      startTransition(async () => {
+        await updateBalance(b.id, { estado: "frenado" });
+      });
+    }
   }
 
   // IDs already in this year
@@ -339,8 +372,8 @@ export function ContableClient({
               </tr>
             )}
             {filas.map((b) => {
-              const vtoBalance = addDays(b.fecha_cierre, 135);
-              const vto855 = addDays(b.fecha_cierre, 160);
+              const vtoBalance = addDays(b.fecha_cierre, DIAS_VTO_BALANCE);
+              const vto855 = addDays(b.fecha_cierre, DIAS_VTO_F855);
               const estadoInfo = ESTADO_BALANCE[b.estado] ?? ESTADO_BALANCE.sin_asignar;
               const eeccInfo = ESTADO_EECC[b.estado_eecc] ?? ESTADO_EECC.pendiente;
 
@@ -377,32 +410,28 @@ export function ContableClient({
                     <span className="text-[12px] text-gray-500">{fmt(vto855)}</span>
                   </td>
 
-                  {/* Estado */}
+                  {/* Estado — automático desde EECC/responsable (ítem 34);
+                      Frenado es la única excepción manual. */}
                   <td className="px-3 py-2.5 text-center">
-                    {puedeEditar ? (
-                      <div className="relative inline-block">
-                        <span className={clsx(
-                          "flex items-center gap-0.5 text-[11px] font-medium rounded-full pl-2.5 pr-1.5 py-1",
-                          estadoInfo.cls
-                        )}>
-                          {estadoInfo.label}
-                          <ChevronDown size={10} className="opacity-50 shrink-0" />
-                        </span>
-                        <select
-                          value={b.estado}
-                          onChange={(e) => update(b.id, { estado: e.target.value })}
-                          className="absolute inset-0 opacity-0 cursor-pointer w-full"
-                        >
-                          {Object.entries(ESTADO_BALANCE).map(([v, { label }]) => (
-                            <option key={v} value={v}>{label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : (
-                      <span className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", estadoInfo.cls)}>
+                    <div className="flex flex-col items-center gap-1">
+                      <span
+                        className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", estadoInfo.cls)}
+                        title="Se calcula solo según EECC y responsable asignado"
+                      >
                         {estadoInfo.label}
                       </span>
-                    )}
+                      {puedeEditar && (
+                        <button
+                          onClick={() => toggleFrenado(b)}
+                          className={clsx(
+                            "text-[10px]",
+                            b.estado === "frenado" ? "text-emerald-600 hover:text-emerald-700" : "text-gray-300 hover:text-red-500"
+                          )}
+                        >
+                          {b.estado === "frenado" ? "Reanudar" : "Frenar"}
+                        </button>
+                      )}
+                    </div>
                   </td>
 
                   {/* Avance — calculado por etapa, ya no se elige a mano */}

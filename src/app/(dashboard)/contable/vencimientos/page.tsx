@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
-import { ESTADO_BALANCE } from "../semaforo";
+import { ESTADO_BALANCE, DIAS_VTO_BALANCE, DIAS_VTO_F855 } from "../semaforo";
 
 const ANIOS = [2026, 2025];
 
@@ -39,8 +39,8 @@ export default async function ContableVencimientosPage({
   const hoy = new Date();
 
   const filas = balances.map((b) => {
-    const vtoBalance = addDays(b.fecha_cierre, 135);
-    const vto855 = addDays(b.fecha_cierre, 160);
+    const vtoBalance = addDays(b.fecha_cierre, DIAS_VTO_BALANCE);
+    const vto855 = addDays(b.fecha_cierre, DIAS_VTO_F855);
     const diasVto = Math.ceil((vtoBalance.getTime() - hoy.getTime()) / 86400000);
     return { ...b, vtoBalance, vto855, diasVto };
   });
