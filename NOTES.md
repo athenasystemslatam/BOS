@@ -4,6 +4,22 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
+- **`add_libros_etapa10.sql`** (20-oct) — configuración de mails de Libros en `libros_config`
+  (`mail_diario_excluidos`, `mail_semanal_ids`, `mail_semanal_dia`). Sin correrlo, los mails usan los valores por
+  defecto (diario a todo el equipo de Libros, resumen semanal a los admins los viernes) y "Guardar" en la tarjeta
+  Mails da error.
+
+### Mails de Libros (20-oct, `src/lib/librosMails.ts`)
+
+- Cron diario `/api/alertas/libros` (8:00 ART, solo corre desde `main`). Lunes a viernes: **mail diario** a cada
+  persona del equipo de Libros (equipo_modulos 'libros', con mail, no excluida) con lo de sus clientes (responsable
+  de Libros del cliente o del pedido) más lo de clientes sin responsable: seguimientos vencidos, avisos de mandato
+  (cada umbral una sola vez) y folios bajos sin pedido. Si nadie del equipo lo recibe, va a los admins.
+- **Resumen semanal** el día configurado (viernes por defecto) a las personas elegidas (por defecto los admins):
+  puesta al día, mantenimiento, tareas por prioridad, mandatos y avance por responsable.
+- Se configura en Libros → Configuración → Mails. Reemplazó a `sendAlertasLibros` de `email.ts` (un solo mail a
+  ADMIN_EMAIL).
+
 Ninguno de Libros. Corridos el 19-oct: `add_libros_etapa9.sql` y la importación de ENTRADA Y SALIDA e INCIDENCIAS
 del sheet (`supabase/importar_libros_movimientos_control.sql` + `importar_libros_movimientos.sql`, fuera del repo por
 datos de clientes; se generan desde los CSV de Descargas). Cruce: 336 de 355 movimientos (136 con libros separados,

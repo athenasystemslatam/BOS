@@ -1309,6 +1309,31 @@ export async function actualizarAvisosMandato(avisos: number[]): Promise<Resulta
   return {};
 }
 
+export type ConfigMails = { diarioExcluidos: string[]; semanalIds: string[] | null; semanalDia: number };
+
+export async function actualizarMailsLibros(cfg: ConfigMails): Promise<Resultado> {
+  try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }
+  if (!Number.isInteger(cfg.semanalDia) || cfg.semanalDia < 1 || cfg.semanalDia > 5) {
+    return { error: "El resumen semanal sale de lunes a viernes." };
+  }
+  const admin = createAdminClient();
+  const { data: actual } = await admin.from("libros_config").select("id").maybeSingle();
+  if (!actual) return { error: "Tabla libros_config no encontrada. ¿Corriste la migración de etapa 4?" };
+  const { error } = await admin
+    .from("libros_config")
+    .update({
+      mail_diario_excluidos: Array.from(new Set(cfg.diarioExcluidos)),
+      mail_semanal_ids: cfg.semanalIds ? Array.from(new Set(cfg.semanalIds)) : null,
+      mail_semanal_dia: cfg.semanalDia,
+    })
+    .eq("id", (actual as { id: string }).id);
+  if (error) {
+    return { error: error.message.includes("mail_") ? "Falta correr add_libros_etapa10.sql en Supabase." : error.message };
+  }
+  revalidatePath("/libros", "layout");
+  return {};
+}
+
 export async function actualizarFechaMeta(fecha: string | null): Promise<Resultado> {
   try { await requireAdmin(); } catch (e) { return { error: e instanceof Error ? e.message : "No autorizado." }; }
   if (fecha && !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { error: "Fecha inválida." };

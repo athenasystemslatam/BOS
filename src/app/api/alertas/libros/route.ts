@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendAlertasLibros } from "@/lib/email";
 import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
 import { guardarSnapshots } from "@/lib/librosTablero";
+import { enviarMailsLibros } from "@/lib/librosMails";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(req: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   try {
     await sincronizarLibrosAutomaticos();
     await guardarSnapshots(createAdminClient());
-    const result = await sendAlertasLibros();
+    const result = await enviarMailsLibros();
     return NextResponse.json(result);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

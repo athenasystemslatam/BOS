@@ -42,19 +42,39 @@ function ignorarDuplicado(error: { code?: string; message: string } | null, que:
   if (error && error.code !== "23505") console.error(`[libros] ${que}: ${error.message}`);
 }
 
-export type ConfigLibros = { umbralFolios: number; avisosMandato: number[]; fechaMeta: string | null };
+export type ConfigLibros = {
+  umbralFolios: number;
+  avisosMandato: number[];
+  fechaMeta: string | null;
+  /** Personas del equipo de Libros que NO reciben el mail diario. */
+  mailDiarioExcluidos: string[];
+  /** Quiénes reciben el resumen semanal; null = los administradores. */
+  mailSemanalIds: string[] | null;
+  /** Día del resumen semanal: 1 = lunes … 5 = viernes. */
+  mailSemanalDia: number;
+};
 
 /**
  * Avisos de mandato de mayor a menor. select("*") para que funcione con las
- * columnas que existan (etapa 6: mandato_avisos; etapa 7: fecha_meta_puesta).
+ * columnas que existan (etapa 6: mandato_avisos; 7: fecha_meta_puesta; 10: mails).
  */
 export async function configLibros(admin: Admin): Promise<ConfigLibros> {
   const { data } = await admin.from("libros_config").select("*").maybeSingle();
-  const cfg = data as { umbral_folios?: number; mandato_avisos?: number[] | null; fecha_meta_puesta?: string | null } | null;
+  const cfg = data as {
+    umbral_folios?: number;
+    mandato_avisos?: number[] | null;
+    fecha_meta_puesta?: string | null;
+    mail_diario_excluidos?: string[] | null;
+    mail_semanal_ids?: string[] | null;
+    mail_semanal_dia?: number | null;
+  } | null;
   return {
     umbralFolios: cfg?.umbral_folios ?? UMBRAL_FOLIOS,
     avisosMandato: [...(cfg?.mandato_avisos?.length ? cfg.mandato_avisos : AVISOS_MANDATO)].sort((a, b) => b - a),
     fechaMeta: cfg?.fecha_meta_puesta ?? null,
+    mailDiarioExcluidos: cfg?.mail_diario_excluidos ?? [],
+    mailSemanalIds: cfg?.mail_semanal_ids ?? null,
+    mailSemanalDia: cfg?.mail_semanal_dia ?? 5,
   };
 }
 

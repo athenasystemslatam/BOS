@@ -4,7 +4,14 @@ import { useState, useTransition } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 import type { LibroEstado } from "@/types";
-import { actualizarAvisosMandato, actualizarEstado, actualizarFechaMeta, actualizarUmbralFolios } from "../actions";
+import {
+  actualizarAvisosMandato,
+  actualizarEstado,
+  actualizarFechaMeta,
+  actualizarMailsLibros,
+  actualizarUmbralFolios,
+  type ConfigMails,
+} from "../actions";
 import { BOTON_PRIMARIO, ENCABEZADO, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO, SUBTITULO, TITULO } from "../ui";
 
 const CODIGOS_PROTEGIDOS = new Set(["pendiente", "en_proceso", "en_espera", "para_copiar", "copiandose", "copiado"]);
@@ -329,6 +336,128 @@ function EstadosCard({ estadosIniciales }: { estadosIniciales: LibroEstado[] }) 
   );
 }
 
+// ── Mails ────────────────────────────────────────────────────────────────────
+
+export type PersonaMail = { id: string; nombre: string; email: string | null; enLibros: boolean; esAdmin: boolean };
+
+const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
+function MailsCard({ personas, inicial }: { personas: PersonaMail[]; inicial: ConfigMails }) {
+  const equipo = personas.filter((p) => p.enLibros);
+  const [excluidos, setExcluidos] = useState<Set<string>>(() => new Set(inicial.diarioExcluidos));
+  // null = los administradores: se muestra tildado lo que vale hoy.
+  const [semanal, setSemanal] = useState<Set<string>>(
+    () => new Set(inicial.semanalIds ?? personas.filter((p) => p.esAdmin).map((p) => p.id))
+  );
+  const [dia, setDia] = useState(inicial.semanalDia);
+  const [pendiente, startTransition] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; texto: string } | null>(null);
+
+  function alternar(set: Set<string>, id: string, cambiar: (s: Set<string>) => void) {
+    const n = new Set(set);
+    if (n.has(id)) n.delete(id);
+    else n.add(id);
+    cambiar(n);
+  }
+
+  function guardar() {
+    setMsg(null);
+    startTransition(async () => {
+      const res = await actualizarMailsLibros({
+        diarioExcluidos: Array.from(excluidos),
+        semanalIds: Array.from(semanal),
+        semanalDia: dia,
+      });
+      setMsg(res.error ? { ok: false, texto: res.error } : { ok: true, texto: "Guardado." });
+    });
+  }
+
+  const FILA = "flex items-center justify-between gap-3 py-2 border-t border-line-row text-sm";
+  const sinMail = <span className="text-[11px] text-ink-subtle">sin mail cargado</span>;
+
+  return (
+    <section className={clsx(PANEL, "p-6 space-y-5")}>
+      <div className="flex items-start gap-2">
+        <h2 className="font-archivo text-[15px] font-bold text-ink">Mails</h2>
+        <Ayuda>
+          El mail diario sale de lunes a viernes a las 8:00 a cada persona del equipo de Libros, con lo de sus clientes
+          (y lo de los clientes sin responsable). Quien se suma al equipo de Libros lo recibe sin tocar nada. El
+          resumen semanal es lo del Dashboard en corto. Se mandan solos una vez que Libros está en producción.
+        </Ayuda>
+      </div>
+
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-subtle mb-1">Mail diario · equipo de Libros</p>
+        {equipo.length === 0 ? (
+          <p className="text-[13px] text-ink-muted">
+            No hay nadie en el equipo de Libros: el diario va a los administradores. Se agrega gente desde Equipo.
+          </p>
+        ) : (
+          equipo.map((p) => (
+            <label key={p.id} className={FILA}>
+              <span className="text-ink">
+                {p.nombre} {!p.email && sinMail}
+              </span>
+              <input
+                type="checkbox"
+                className="accent-[#7D1C2E] w-4 h-4"
+                checked={!excluidos.has(p.id)}
+                disabled={!p.email}
+                onChange={() => alternar(excluidos, p.id, setExcluidos)}
+              />
+            </label>
+          ))
+        )}
+      </div>
+
+      <div>
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-subtle">Resumen semanal</p>
+          <label className="flex items-center gap-2 text-[13px] text-ink-muted">
+            Día
+            <select
+              value={dia}
+              onChange={(e) => setDia(Number(e.target.value))}
+              className="text-sm text-ink border border-line-input rounded-[9px] px-2 py-1 bg-paper focus:outline-none focus:border-bordo"
+            >
+              {DIAS.map((d, i) => (
+                <option key={d} value={i + 1}>{d}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {personas.map((p) => (
+          <label key={p.id} className={FILA}>
+            <span className="text-ink">
+              {p.nombre}
+              <span className="text-[11px] text-ink-subtle">
+                {" "}
+                {[p.esAdmin && "admin", p.enLibros && "Libros"].filter(Boolean).join(" · ")}
+              </span>{" "}
+              {!p.email && sinMail}
+            </span>
+            <input
+              type="checkbox"
+              className="accent-[#7D1C2E] w-4 h-4"
+              checked={semanal.has(p.id)}
+              disabled={!p.email}
+              onChange={() => alternar(semanal, p.id, setSemanal)}
+            />
+          </label>
+        ))}
+        {semanal.size === 0 && <p className="text-[12px] text-ink-subtle pt-2">Sin destinatarios: el resumen no sale.</p>}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={guardar} disabled={pendiente} className={BOTON_PRIMARIO}>
+          {pendiente ? "Guardando…" : "Guardar"}
+        </button>
+        {msg && <p className={clsx("text-xs", msg.ok ? "text-green-700" : "text-red-700")}>{msg.texto}</p>}
+      </div>
+    </section>
+  );
+}
+
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export function ConfiguracionClient({
@@ -336,11 +465,15 @@ export function ConfiguracionClient({
   umbralInicial,
   avisosMandato,
   fechaMeta,
+  personas,
+  mails,
 }: {
   estados: LibroEstado[];
   umbralInicial: number;
   avisosMandato: number[];
   fechaMeta: string | null;
+  personas: PersonaMail[];
+  mails: ConfigMails;
 }) {
   return (
     <div className={clsx(PAGINA, "overflow-y-auto")}>
@@ -355,6 +488,7 @@ export function ConfiguracionClient({
         <UmbralCard umbralInicial={umbralInicial} />
         <FechaMetaCard fechaInicial={fechaMeta} />
         <AvisosMandatoCard avisosIniciales={avisosMandato} />
+        <MailsCard personas={personas} inicial={mails} />
         <EstadosCard estadosIniciales={estados} />
       </div>
     </div>
