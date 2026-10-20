@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Building2, CheckCircle2, Clock, AlertTriangle, Ban, UserX, Target } from "lucide-react";
 import clsx from "clsx";
 import { ESTADO_BALANCE, calcularAvance, DIAS_VTO_BALANCE, DIAS_VTO_F855, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
+import { MapaCargaClient } from "./MapaCargaClient";
 
 function addDays(dateStr: string, days: number) {
   const d = new Date(dateStr + "T00:00:00");
@@ -26,20 +27,27 @@ export default async function ContableDashboardPage() {
   const anios = [anioActual - 1, anioActual];
   const admin = createAdminClient();
 
-  const { data: balancesRaw } = await admin
-    .from("balances")
-    .select(
-      "id, cliente_id, anio_fiscal, fecha_cierre, estado, f855_estado, presentado_fecha, f855_fecha, " +
-      "clientes(nombre), " +
-      "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
-      "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
-    )
-    .in("anio_fiscal", anios)
-    .order("fecha_cierre");
+  const [{ data: balancesRaw }, { data: equipoRaw }, { data: modulosRaw }] = await Promise.all([
+    admin
+      .from("balances")
+      .select(
+        "id, cliente_id, anio_fiscal, fecha_cierre, estado, f855_estado, presentado_fecha, f855_fecha, " +
+        "clientes(nombre), " +
+        "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
+        "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
+      )
+      .in("anio_fiscal", anios)
+      .order("fecha_cierre"),
+    admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+    admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const balances = (balancesRaw as any[]) ?? [];
   const hoy = new Date();
+
+  const equipoIdsContable = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
+  const equipoContable = (equipoRaw ?? []).filter((e) => equipoIdsContable.has(e.id));
 
   const conVto = balances.map((b) => ({
     ...b,
@@ -270,6 +278,21 @@ export default async function ContableDashboardPage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Mapa de carga por contador — cómo se distribuye el trabajo de cada
+          uno a lo largo de la ventana de dos años, para detectar picos. */}
+      <div className="mt-5">
+        <MapaCargaClient
+          contadores={equipoContable}
+          balances={conVto.map((b) => ({
+            responsable_id: b.responsable?.id ?? null,
+            responsable2_id: b.responsable2?.id ?? null,
+            fechaCierre: b.fecha_cierre,
+            fechaVencimiento: b.vtoBalance.toISOString().slice(0, 10),
+          }))}
+          anios={anios}
+        />
       </div>
 
       {/* Próximos vencimientos */}
