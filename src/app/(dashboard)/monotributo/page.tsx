@@ -14,15 +14,19 @@ export default async function MonotributoPage({
   const anio = Number(searchParams.anio) || anioDefault;
 
   const admin = createAdminClient();
-  const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
-
   const [
+    yo,
+    areas,
+    // Responsable vigente para el período mostrado — igual criterio que Sueldos.
+    vigentes,
     { data: serviciosRaw },
     { data: tareas },
     { data: equipoRaw },
     { data: modulosRaw },
   ] = await Promise.all([
+    getCurrentLiquidadora(),
+    getAreasDelUsuario(),
+    resolverResponsablesVigentes("monotributo", "general", anio, mes),
     admin
       .from("servicios_cliente")
       .select("cliente_id, responsable_id, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso)")
@@ -41,9 +45,6 @@ export default async function MonotributoPage({
   const equipoMonotributo = (equipoRaw ?? []).filter((e) => equipoIdsMonotributo.has(e.id));
 
   const equipoMap = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
-
-  // Responsable vigente para el período mostrado — igual criterio que Sueldos.
-  const vigentes = await resolverResponsablesVigentes("monotributo", "general", anio, mes);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const servicios = (serviciosRaw ?? []).map((s: any) => {

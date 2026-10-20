@@ -10,6 +10,17 @@ function vencimientoRecibos(anio: number, mes: number): Date {
   return d;
 }
 
+/** Todas las filas de una consulta, de a 1000: PostgREST corta en 1000 por
+ * defecto y tareas (clientes × meses) y asignaciones ya lo superan. */
+async function traerTodas<T>(pagina: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
+  const filas: T[] = [];
+  for (let desde = 0; ; desde += 1000) {
+    const { data } = await pagina(desde, desde + 999);
+    filas.push(...(data ?? []));
+    if (!data || data.length < 1000) return filas;
+  }
+}
+
 function diffDias(desde: Date, hasta: Date): number {
   return Math.round((hasta.getTime() - desde.getTime()) / (1000 * 60 * 60 * 24));
 }
@@ -20,13 +31,30 @@ export default async function ProductividadPage() {
 
   const admin = createAdminClient();
 
-  // Períodos desde junio 2026 en adelante (antes no se usaba el sistema)
-  const { data: periodos } = await admin
-    .from("periodos")
-    .select("id, anio, mes, nombre_mes")
-    .or("anio.gt.2026,and(anio.eq.2026,mes.gte.6)")
-    .order("anio", { ascending: true })
-    .order("mes", { ascending: true });
+  type Asignacion = { cliente_id: string; liquidador_id: string; desde_anio: number; desde_mes: number; creado_en: string };
+
+  // Todo lo que no depende de los períodos va en paralelo.
+  const [{ data: periodos }, { data: clientes }, asignaciones, { data: liquidadoras }] = await Promise.all([
+    // Períodos desde junio 2026 en adelante (antes no se usaba el sistema)
+    admin
+      .from("periodos")
+      .select("id, anio, mes, nombre_mes")
+      .or("anio.gt.2026,and(anio.eq.2026,mes.gte.6)")
+      .order("anio", { ascending: true })
+      .order("mes", { ascending: true }),
+    // Clientes activos con liquidadora
+    admin.from("clientes").select("id, liquidador_id, terminacion_cuit").eq("estado", "activo"),
+    // Asignaciones para resolver liquidadora histórica
+    traerTodas<Asignacion>((desde, hasta) =>
+      admin
+        .from("asignaciones")
+        .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en")
+        .order("id")
+        .range(desde, hasta)
+    ),
+    // Liquidadoras activas
+    admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+  ]);
 
   if (!periodos || periodos.length === 0) {
     return <div className="p-8 text-gray-400 text-sm">Sin períodos registrados.</div>;
@@ -34,46 +62,50 @@ export default async function ProductividadPage() {
 
   const periodoIds = periodos.map((p) => p.id);
 
-  // Tareas con timestamps y cliente
-  const { data: tareas } = await admin
-    .from("tareas")
-    .select("cliente_id, periodo_id, f931_manual, recibos_manual, f931_manual_en, recibos_manual_en, f931_drive, recibos_drive, legajos_cantidad")
-    .in("periodo_id", periodoIds);
+  // Tareas con timestamps y cliente (de a 1000: crecen cada mes)
+  const tareas = await traerTodas<{
+    cliente_id: string;
+    periodo_id: string;
+    f931_manual: boolean;
+    recibos_manual: boolean;
+    f931_manual_en: string | null;
+    recibos_manual_en: string | null;
+    f931_drive: boolean;
+    recibos_drive: boolean;
+    legajos_cantidad: number | null;
+  }>((desde, hasta) =>
+    admin
+      .from("tareas")
+      .select("cliente_id, periodo_id, f931_manual, recibos_manual, f931_manual_en, recibos_manual_en, f931_drive, recibos_drive, legajos_cantidad")
+      .in("periodo_id", periodoIds)
+      .order("id")
+      .range(desde, hasta)
+  );
 
-  // Clientes activos con liquidadora
-  const { data: clientes } = await admin
-    .from("clientes")
-    .select("id, liquidador_id, terminacion_cuit")
-    .eq("estado", "activo");
-
-  // Asignaciones para resolver liquidadora histórica
-  const { data: asignaciones } = await admin
-    .from("asignaciones")
-    .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en");
-
-  // Liquidadoras activas
-  const { data: liquidadoras } = await admin
-    .from("liquidadoras")
-    .select("id, nombre")
-    .eq("activa", true)
-    .order("nombre");
-
-  if (!clientes || !liquidadoras || !tareas) {
+  if (!clientes || !liquidadoras) {
     return <div className="p-8 text-gray-400 text-sm">Sin datos suficientes.</div>;
   }
 
   // Mapa cliente → terminacion_cuit y liquidador_id actual
   const clienteMap = new Map(clientes.map((c) => [c.id, c]));
 
+  // Asignaciones agrupadas por cliente una sola vez (antes se recorrían todas
+  // por cada cliente y cada período).
+  const asignacionesPorCliente = new Map<string, Asignacion[]>();
+  for (const a of asignaciones) {
+    const lista = asignacionesPorCliente.get(a.cliente_id);
+    if (lista) lista.push(a);
+    else asignacionesPorCliente.set(a.cliente_id, [a]);
+  }
+
   // Función: resolver liquidadora para un cliente en un período
   function resolverLiquidadora(clienteId: string, anio: number, mes: number): string | null {
     const cliente = clienteMap.get(clienteId);
     if (!cliente) return null;
-    if (!asignaciones || asignaciones.length === 0) return cliente.liquidador_id;
+    if (asignaciones.length === 0) return cliente.liquidador_id;
 
-    let mejor: typeof asignaciones[0] | null = null;
-    for (const a of asignaciones) {
-      if (a.cliente_id !== clienteId) continue;
+    let mejor: Asignacion | null = null;
+    for (const a of asignacionesPorCliente.get(clienteId) ?? []) {
       if (a.desde_anio * 100 + a.desde_mes > anio * 100 + mes) continue;
       // Desempate por creado_en cuando dos asignaciones caen en el mismo
       // desde_anio/desde_mes — mismo criterio que en Seguimiento, así no

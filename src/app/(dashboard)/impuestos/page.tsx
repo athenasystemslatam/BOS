@@ -14,15 +14,25 @@ export default async function ImpuestosPage({
   const anio = Number(searchParams.anio) || anioDefault;
 
   const admin = createAdminClient();
-  const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
-
+  // Responsable vigente por subtipo para el período mostrado (no el
+  // "actual" a secas — igual que /seguimiento resuelve la liquidadora
+  // vigente por período con la tabla asignaciones).
   const [
+    yo,
+    areas,
+    vigentesIva,
+    vigentesIibb,
+    vigentesSeh,
     { data: serviciosRaw },
     { data: tareas },
     { data: equipoRaw },
     { data: modulosRaw },
   ] = await Promise.all([
+    getCurrentLiquidadora(),
+    getAreasDelUsuario(),
+    resolverResponsablesVigentes("impuestos", "iva", anio, mes),
+    resolverResponsablesVigentes("impuestos", "iibb", anio, mes),
+    resolverResponsablesVigentes("impuestos", "seh", anio, mes),
     admin
       .from("servicios_cliente")
       .select("cliente_id, subtipo, responsable_id, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso)")
@@ -40,14 +50,6 @@ export default async function ImpuestosPage({
   const equipoIdsImpuestos = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipoImpuestos = (equipoRaw ?? []).filter((e) => equipoIdsImpuestos.has(e.id));
 
-  // Responsable vigente por subtipo para el período mostrado (no el
-  // "actual" a secas — igual que /seguimiento resuelve la liquidadora
-  // vigente por período con la tabla asignaciones).
-  const [vigentesIva, vigentesIibb, vigentesSeh] = await Promise.all([
-    resolverResponsablesVigentes("impuestos", "iva", anio, mes),
-    resolverResponsablesVigentes("impuestos", "iibb", anio, mes),
-    resolverResponsablesVigentes("impuestos", "seh", anio, mes),
-  ]);
   const vigentesPorSubtipo: Record<string, Map<string, { id: string; nombre: string }>> = {
     iva: vigentesIva,
     iibb: vigentesIibb,

@@ -9,17 +9,16 @@ export default async function ContablePage({
 }) {
   const anio = Number(searchParams.anio) || new Date().getFullYear();
   const admin = createAdminClient();
-  const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
-
   const [
+    yo,
+    areas,
     { data: balancesRaw },
-    { data: equipoRaw },
-    { data: modulosRaw },
     { data: clientesContable },
     { data: equipoTodos },
     { data: equipoModulosTodos },
   ] = await Promise.all([
+    getCurrentLiquidadora(),
+    getAreasDelUsuario(),
     admin
       .from("balances")
       .select(
@@ -29,8 +28,6 @@ export default async function ContablePage({
       )
       .eq("anio_fiscal", anio)
       .order("fecha_cierre"),
-    admin.from("liquidadoras").select("id, nombre").eq("activa", true),
-    admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
     admin
       .from("servicios_cliente")
       .select("cliente_id, clientes(id, nombre, cuit, cierre_ejercicio_mes, cierre_ejercicio_dia)")
@@ -43,10 +40,12 @@ export default async function ContablePage({
     admin.from("equipo_modulos").select("equipo_id, modulo"),
   ]);
 
-  const equipoIdsContable = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
-  const equipoContable = (equipoRaw ?? []).filter((e) =>
-    equipoIdsContable.has(e.id)
+  const equipoIdsContable = new Set(
+    (equipoModulosTodos ?? []).filter((m) => m.modulo === "contable").map((m) => m.equipo_id)
   );
+  const equipoContable = (equipoTodos ?? [])
+    .filter((e) => equipoIdsContable.has(e.id))
+    .map((e) => ({ id: e.id, nombre: e.nombre }));
 
   const equipo = (equipoTodos ?? []).map((e) => ({
     id: e.id,

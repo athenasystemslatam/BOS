@@ -4,15 +4,15 @@ import { PanelGeneralClient } from "./PanelGeneralClient";
 
 export default async function PanelGeneralPage() {
   const supabase = createAdminClient();
-  const yo = await getCurrentLiquidadora();
-
   const [
+    yo,
     { data: empresas },
     { data: equipo },
     { data: equipoModulos },
     { data: servicios },
     { data: clientesData },
   ] = await Promise.all([
+    getCurrentLiquidadora(),
     supabase.from("vista_empresas").select("*").order("nombre"),
     supabase.from("liquidadoras").select("id, nombre, activa, rol").eq("activa", true).order("nombre"),
     supabase.from("equipo_modulos").select("equipo_id, modulo"),
