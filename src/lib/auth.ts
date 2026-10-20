@@ -15,6 +15,17 @@ export interface CurrentLiquidadora {
   esCobranzas: boolean;
 }
 
+// Usuario logueado, una sola vez por request: getCurrentLiquidadora y
+// getAreasDelUsuario lo necesitan las dos y antes cada una le preguntaba
+// al servidor de Auth por su cuenta (un viaje de red más en cada click).
+const getUsuario = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
+
 /**
  * Liquidadora asociada al usuario de Supabase Auth logueado, o null si no hay
  * sesión, si el usuario no tiene una fila vinculada en `liquidadoras`, o si
@@ -23,13 +34,10 @@ export interface CurrentLiquidadora {
  * además está en `accesos_bloqueados` — eso lo corta middleware.ts).
  */
 export const getCurrentLiquidadora = cache(async (): Promise<CurrentLiquidadora | null> => {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUsuario();
   if (!user) return null;
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("liquidadoras")
     .select("id, nombre, rol, activa")
@@ -66,18 +74,9 @@ export async function requireLiquidadoraOrAdmin(): Promise<CurrentLiquidadora> {
  * Fuente de verdad de "a qué módulo pertenece cada persona" — reemplaza el
  * chequeo implícito de antes ("está en liquidadoras" = "es de Sueldos"). */
 export const getAreasDelUsuario = cache(async (): Promise<string[]> => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const { data: liq } = await supabase
-    .from("liquidadoras")
-    .select("id, rol")
-    .eq("user_id", user.id)
-    .eq("activa", true)
-    .maybeSingle();
+  // Misma fila que getCurrentLiquidadora (activa, vinculada al login): se
+  // reutiliza en vez de volver a consultarla.
+  const liq = await getCurrentLiquidadora();
   if (!liq) return [];
 
   // Cobranzas ve todos los módulos sin que haga falta anotarla módulo por
@@ -85,6 +84,7 @@ export const getAreasDelUsuario = cache(async (): Promise<string[]> => {
   // (requireLiquidadoraOrAdmin/requireAreaOrAdmin la rechazan).
   if (liq.rol === "cobranzas") return [...MODULOS_VALIDOS];
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("equipo_modulos")
     .select("modulo")

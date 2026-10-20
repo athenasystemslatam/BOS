@@ -11,75 +11,60 @@ type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 // Las operaciones de sistema (periodos) usan admin client para evitar bloqueos RLS.
 export default async function SeguimientoPage() {
   const admin = createAdminClient();
-  const yo = await getCurrentLiquidadora();
-
   const { mes, anio } = getMesTrabajoActual();
 
-  // Fetch or create current period (+ repetir legajos del historial si
-  // corresponde) — misma función que usa el selector de mes dentro de
-  // Seguimiento, así el período queda creado con ese paso sin importar por
-  // dónde se cree primero.
-  const periodo = await fetchPeriodo(anio, mes);
+  // Ojo: para las asignaciones se usa la fecha calendario real, no el "mes de
+  // trabajo" (anio/mes de arriba, que durante los primeros días del mes todavía
+  // apunta al período anterior por la ventana de 2 días post-F.931). Un
+  // traspaso hecho hoy tiene que pesar ya para saber quién es responsable
+  // ahora — es el mismo criterio de vigencia que usa insertarAsignacion al
+  // sincronizar clientes.liquidador_id, así los dos quedan de acuerdo.
+  const hoyReal = new Date();
+  const anioReal = hoyReal.getFullYear();
+  const mesReal = hoyReal.getMonth() + 1;
 
-  // All periods for reference
-  const { data: periodos } = await admin
-    .from("periodos")
-    .select("*")
-    .order("anio", { ascending: false })
-    .order("mes", { ascending: false })
-    .limit(24);
-
-  // Empresas: solo clientes con el servicio "sueldos" activo (no toda la base
-  // de /panel-general). Admin ve todas, liquidadora solo las suyas.
-  const { data: serviciosSueldos } = await admin
-    .from("servicios_cliente")
-    .select("cliente_id")
-    .eq("servicio", "sueldos")
-    .eq("estado", true);
+  // Primera tanda, todo en paralelo (antes iba una consulta detrás de otra).
+  // fetchPeriodo trae o crea el período actual (+ repetir legajos del
+  // historial si corresponde) — misma función que usa el selector de mes
+  // dentro de Seguimiento, así el período queda creado con ese paso sin
+  // importar por dónde se cree primero.
+  const [yo, periodo, { data: periodos }, { data: serviciosSueldos }, { data: asignaciones }, { data: liquidadorasActivas }] =
+    await Promise.all([
+      getCurrentLiquidadora(),
+      fetchPeriodo(anio, mes),
+      admin.from("periodos").select("*").order("anio", { ascending: false }).order("mes", { ascending: false }).limit(24),
+      // Empresas: solo clientes con el servicio "sueldos" activo (no toda la
+      // base de /panel-general).
+      admin.from("servicios_cliente").select("cliente_id").eq("servicio", "sueldos").eq("estado", true),
+      admin
+        .from("asignaciones")
+        .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en, liquidadora:liquidadoras!liquidador_id(id, nombre)")
+        .lte("desde_anio", anioReal),
+      admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+    ]);
   const idsSueldos = (serviciosSueldos ?? []).map((s) => s.cliente_id);
 
-  let clientes: (Cliente & { liquidadora: { id: string; nombre: string } })[] = [];
-  if (idsSueldos.length > 0) {
-    let clientesQuery = admin
-      .from("clientes")
-      .select("*, liquidadora:liquidadoras!liquidador_id(id, nombre)")
-      .eq("estado", "activo")
-      .in("id", idsSueldos)
-      .order("terminacion_cuit");
-    if (!yo?.isAdmin && !yo?.esCobranzas && yo) {
-      clientesQuery = clientesQuery.eq("liquidador_id", yo.id);
-    }
-    const { data } = await clientesQuery;
-    clientes = (data as (Cliente & { liquidadora: { id: string; nombre: string } })[]) ?? [];
+  // Segunda tanda: lo que depende de la primera. Admin ve todas las
+  // empresas, liquidadora solo las suyas.
+  let clientesQuery = admin
+    .from("clientes")
+    .select("*, liquidadora:liquidadoras!liquidador_id(id, nombre)")
+    .eq("estado", "activo")
+    .in("id", idsSueldos)
+    .order("terminacion_cuit");
+  if (!yo?.isAdmin && !yo?.esCobranzas && yo) {
+    clientesQuery = clientesQuery.eq("liquidador_id", yo.id);
   }
-
-  // Tareas for current period
-  const { data: tareas } = periodo
-    ? await admin.from("tareas").select("*").eq("periodo_id", periodo.id)
-    : { data: [] };
-
-  // Recordatorios del período anterior (para mostrar como alertas)
-  const recordatoriosPrevios = periodo
-    ? await fetchRecordatoriosPrevios(periodo.id)
-    : {};
+  const [{ data: clientesRaw }, { data: tareas }, recordatoriosPrevios] = await Promise.all([
+    idsSueldos.length > 0 ? clientesQuery : Promise.resolve({ data: [] }),
+    periodo ? admin.from("tareas").select("*").eq("periodo_id", periodo.id) : Promise.resolve({ data: [] }),
+    // Recordatorios del período anterior (para mostrar como alertas)
+    periodo ? fetchRecordatoriosPrevios(periodo.id, { anio: periodo.anio, mes: periodo.mes }) : Promise.resolve({}),
+  ]);
+  const clientes = ((clientesRaw ?? []) as ClienteConLiq[]);
 
   // Resolver liquidadora por período usando tabla asignaciones
-  if (clientes && clientes.length > 0) {
-    // Ojo: acá se usa la fecha calendario real, no el "mes de trabajo"
-    // (anio/mes de arriba, que durante los primeros días del mes todavía
-    // apunta al período anterior por la ventana de 2 días post-F.931). Un
-    // traspaso hecho hoy tiene que pesar ya para saber quién es responsable
-    // ahora — es el mismo criterio de vigencia que usa insertarAsignacion
-    // al sincronizar clientes.liquidador_id, así los dos quedan de acuerdo.
-    const hoyReal = new Date();
-    const anioReal = hoyReal.getFullYear();
-    const mesReal = hoyReal.getMonth() + 1;
-
-    const { data: asignaciones } = await admin
-      .from("asignaciones")
-      .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en, liquidadora:liquidadoras!liquidador_id(id, nombre)")
-      .lte("desde_anio", anioReal);
-
+  if (clientes.length > 0) {
     if (asignaciones && asignaciones.length > 0) {
       const porCliente = new Map<string, typeof asignaciones[0]>();
       for (const a of asignaciones) {
@@ -111,10 +96,9 @@ export default async function SeguimientoPage() {
 
   // Liquidadoras activas con al menos 1 cliente asignado (para el selector de admin)
   const clienteLiqIds = new Set((clientes ?? []).map((c) => c.liquidador_id).filter(Boolean));
-  const { data: liquidadorasRaw } = yo?.isAdmin || yo?.esCobranzas
-    ? await admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre")
-    : { data: [] };
-  const liquidadoras = (liquidadorasRaw ?? []).filter((l) => clienteLiqIds.has(l.id));
+  const liquidadoras = yo?.isAdmin || yo?.esCobranzas
+    ? (liquidadorasActivas ?? []).filter((l) => clienteLiqIds.has(l.id))
+    : [];
 
   return (
     <SeguimientoClient

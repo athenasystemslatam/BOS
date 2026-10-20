@@ -42,7 +42,12 @@ export default async function DashboardPage({
   const esMesActual = mesActual === mesTrabajo && anioActual === anioTrabajo;
   const monthOptions = generateMonthOptions(mesTrabajo, anioTrabajo);
 
-  const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }] = await Promise.all([
+  // Misma función que usa Seguimiento para crear/pedir el período — antes
+  // este dashboard lo creaba por su cuenta con un simple upsert, sin repetir
+  // los legajos del mes anterior; si alguien entraba acá primero en un mes
+  // nuevo, esa copia no pasaba y quedaba en 0 hasta que alguien lo cargara
+  // a mano en Seguimiento. Todo lo que no depende del período va en paralelo.
+  const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }, periodoActual, { data: alertasPostcierre }] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
     supabase.from("clientes").select("*, liquidadora:liquidadoras!liquidador_id(*)").eq("estado", "activo"),
     supabase
@@ -51,6 +56,13 @@ export default async function DashboardPage({
       .eq("servicio", "sueldos")
       .eq("subtipo", "general")
       .eq("estado", true),
+    fetchPeriodo(anioActual, mesActual),
+    supabase
+      .from("alertas_postcierre")
+      .select("*, cliente:clientes(nombre), periodo:periodos(nombre_mes)")
+      .gte("modificado_at", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
+      .order("modificado_at", { ascending: false })
+      .limit(50),
   ]);
 
   // "clientes" trae toda empresa activa, tenga o no Sueldos contratado (ej:
@@ -59,23 +71,9 @@ export default async function DashboardPage({
   // solo de las que sí tienen el servicio activo, no de todas las activas.
   const idsConSueldos = new Set((serviciosSueldos ?? []).map((s) => s.cliente_id));
 
-  // Misma función que usa Seguimiento para crear/pedir el período — antes
-  // este dashboard lo creaba por su cuenta con un simple upsert, sin repetir
-  // los legajos del mes anterior; si alguien entraba acá primero en un mes
-  // nuevo, esa copia no pasaba y quedaba en 0 hasta que alguien lo cargara
-  // a mano en Seguimiento.
-  const periodoActual = await fetchPeriodo(anioActual, mesActual);
-
   const { data: tareas } = periodoActual
     ? await supabase.from("tareas").select("*").eq("periodo_id", periodoActual.id)
     : { data: [] };
-
-  const { data: alertasPostcierre } = await supabase
-    .from("alertas_postcierre")
-    .select("*, cliente:clientes(nombre), periodo:periodos(nombre_mes)")
-    .gte("modificado_at", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
-    .order("modificado_at", { ascending: false })
-    .limit(50);
 
   const clientesList = ((clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? []).filter((c) =>
     idsConSueldos.has(c.id)

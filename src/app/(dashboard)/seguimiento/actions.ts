@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireLiquidadoraOrAdmin, requireAreaOrAdmin } from "@/lib/auth";
 
@@ -200,6 +200,7 @@ export async function updateLegajos(
     .from("tareas")
     .update({ legajos_cantidad: cantidad })
     .eq("cliente_id", clienteId);
+  revalidateTag(TAG_LEGAJOS);
 
   if (!errorResto) revalidatePath("/", "layout");
   return errorResto ? { error: errorResto.message } : { success: true };
@@ -254,7 +255,9 @@ export async function fetchPeriodo(
     .eq("mes", mes)
     .maybeSingle();
 
+  let recienCreado = false;
   if (!data) {
+    recienCreado = true;
     const { data: nuevo } = await admin
       .from("periodos")
       .upsert(
@@ -275,11 +278,38 @@ export async function fetchPeriodo(
   // mano. Ahora busca, período por período hacia atrás, el último valor
   // cargado de cada cliente (sin importar cuántos meses de por medio),
   // así "repite" indefinidamente hasta que alguien lo cambie.
+  // Al crearse el período se copia en el momento; en las visitas siguientes,
+  // como mucho una vez por hora (antes corría en cada visita a Seguimiento y
+  // Dashboard y era de lo más lento). updateLegajos invalida esta caché, y
+  // además ya propaga el valor a todos los períodos del cliente.
   if (data) {
-    await copiarLegajosDelHistorial(admin, (data as Periodo).id, anio, mes);
+    if (recienCreado) await copiarLegajosDelHistorial(admin, (data as Periodo).id, anio, mes);
+    else await copiarLegajosCacheado((data as Periodo).id, anio, mes);
   }
 
   return data as Periodo | null;
+}
+
+const TAG_LEGAJOS = "sueldos-legajos";
+
+const copiarLegajosCacheado = unstable_cache(
+  async (periodoId: string, anio: number, mes: number) => {
+    await copiarLegajosDelHistorial(createAdminClient(), periodoId, anio, mes);
+    return true;
+  },
+  ["sueldos-copiar-legajos"],
+  { revalidate: 3600, tags: [TAG_LEGAJOS] }
+);
+
+/** Todas las filas de una consulta, de a 1000: PostgREST corta en 1000 por
+ * defecto y el historial de tareas (clientes × meses) ya supera eso. */
+async function traerTodas<T>(pagina: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null }>): Promise<T[]> {
+  const filas: T[] = [];
+  for (let desde = 0; ; desde += 1000) {
+    const { data } = await pagina(desde, desde + 999);
+    filas.push(...(data ?? []));
+    if (!data || data.length < 1000) return filas;
+  }
 }
 
 /** Completa legajos_cantidad en `periodoId` para todo cliente que no lo
@@ -299,10 +329,17 @@ async function copiarLegajosDelHistorial(
   anio: number,
   mes: number
 ) {
-  const [{ data: periodos }, { data: yaExistentes }, { data: tareasConLegajos }] = await Promise.all([
+  const [{ data: periodos }, { data: yaExistentes }, tareasConLegajos] = await Promise.all([
     admin.from("periodos").select("id, anio, mes"),
     admin.from("tareas").select("cliente_id").eq("periodo_id", periodoId).gt("legajos_cantidad", 0),
-    admin.from("tareas").select("cliente_id, periodo_id, legajos_cantidad").gt("legajos_cantidad", 0),
+    traerTodas<{ cliente_id: string; periodo_id: string; legajos_cantidad: number }>((desde, hasta) =>
+      admin
+        .from("tareas")
+        .select("cliente_id, periodo_id, legajos_cantidad")
+        .gt("legajos_cantidad", 0)
+        .order("id")
+        .range(desde, hasta)
+    ),
   ]);
 
   const ordenPeriodo = new Map((periodos ?? []).map((p) => [p.id, p.anio * 100 + p.mes]));
@@ -356,34 +393,28 @@ export async function updateRecordatorio(
 
 // Devuelve un mapa clienteId → recordatorio del período anterior al dado
 export async function fetchRecordatoriosPrevios(
-  periodoId: string
+  periodoId: string,
+  anioMes?: { anio: number; mes: number }
 ): Promise<Record<string, string>> {
   const admin = createAdminClient();
 
-  const { data: periodo } = await admin
-    .from("periodos")
-    .select("mes, anio")
-    .eq("id", periodoId)
-    .single();
-
+  // Si quien llama ya sabe el mes del período, se ahorra esa consulta.
+  let periodo = anioMes ?? null;
+  if (!periodo) {
+    const { data } = await admin.from("periodos").select("mes, anio").eq("id", periodoId).single();
+    periodo = data;
+  }
   if (!periodo) return {};
 
   const mesPrev = periodo.mes === 1 ? 12 : periodo.mes - 1;
   const anioPrev = periodo.mes === 1 ? periodo.anio - 1 : periodo.anio;
 
-  const { data: periodoAnterior } = await admin
-    .from("periodos")
-    .select("id")
-    .eq("anio", anioPrev)
-    .eq("mes", mesPrev)
-    .maybeSingle();
-
-  if (!periodoAnterior) return {};
-
+  // Período anterior y sus recordatorios en una sola consulta.
   const { data: tareas } = await admin
     .from("tareas")
-    .select("cliente_id, recordatorio")
-    .eq("periodo_id", periodoAnterior.id)
+    .select("cliente_id, recordatorio, periodos!inner(anio, mes)")
+    .eq("periodos.anio", anioPrev)
+    .eq("periodos.mes", mesPrev)
     .not("recordatorio", "is", null)
     .neq("recordatorio", "");
 
