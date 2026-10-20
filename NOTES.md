@@ -14,9 +14,7 @@ deducidos del comentario; 32 ambiguos quedaron como entrada / otro. Lo importado
 
 `add_libros_etapa8.sql` (vencimiento preciso del mandato) también corrido el 19-oct.
 
-- **`add_libros_etapa7.sql`** (19-oct) — **sin confirmar si se corrió.** Dashboard de Libros:
-  `libros_config.fecha_meta_puesta` y tabla `libros_snapshot` (foto diaria del atraso). Sin correrlo el Dashboard
-  funciona, pero sin evolución semanal ni fecha meta. Se puede volver a correr sin problema.
+`add_libros_etapa7.sql` (Dashboard: fecha meta y `libros_snapshot`) corrido el 20-oct.
 
 Corridos el 19-oct: `add_libros_etapa6.sql` y la importación del trabajo en curso del sheet
 (`supabase/importar_libros_trabajo_control.sql` + `importar_libros_trabajo.sql`, **fuera del repo** por datos
