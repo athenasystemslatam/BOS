@@ -45,7 +45,7 @@ export default function LoginPage() {
 
     setLoading(false);
     if (error) {
-      setError("No pudimos enviar el link. Verificá el email e intentá de nuevo.");
+      setError("No pudimos enviar el código. Verificá el email e intentá de nuevo.");
       return;
     }
     setSent(true);
@@ -102,21 +102,15 @@ export default function LoginPage() {
               </svg>
             </div>
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Revisá tu email</h2>
-            <p className="text-sm text-gray-400">
-              Te enviamos un link de acceso a <span className="font-medium text-gray-600">{email}</span>.
-              Abrilo desde este mismo dispositivo para ingresar.
+            <p className="text-sm text-gray-400 mb-5">
+              Te enviamos un código de acceso a <span className="font-medium text-gray-600">{email}</span>.
+              Escribilo acá para ingresar.
             </p>
-
-            <div className="flex items-center gap-3 my-5">
-              <div className="h-px bg-gray-100 flex-1" />
-              <span className="text-xs text-gray-400 uppercase tracking-wide">o</span>
-              <div className="h-px bg-gray-100 flex-1" />
-            </div>
 
             <form onSubmit={handleVerificarCodigo} className="text-left space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Ingresá el código del mail
+                  Código del mail
                 </label>
                 <input
                   type="text"
@@ -138,7 +132,7 @@ export default function LoginPage() {
                 disabled={verificando || codigo.trim().length === 0}
                 className="w-full bg-bordo hover:bg-bordo-dark text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
               >
-                {verificando ? "Verificando..." : "Ingresar con código"}
+                {verificando ? "Verificando..." : "Ingresar"}
               </button>
             </form>
 
@@ -153,7 +147,7 @@ export default function LoginPage() {
           <>
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Iniciar sesión</h2>
             <p className="text-sm text-gray-400 mb-6">
-              Ingresá tu email y te mandamos un link de acceso, sin contraseña.
+              Ingresá tu email y te mandamos un código de acceso, sin contraseña.
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -195,7 +189,7 @@ export default function LoginPage() {
                     Enviando...
                   </span>
                 ) : (
-                  "Enviar link de acceso"
+                  "Enviar código"
                 )}
               </button>
             </form>
