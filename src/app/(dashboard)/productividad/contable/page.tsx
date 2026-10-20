@@ -40,8 +40,8 @@ export default async function ProductividadContablePage() {
     admin
       .from("balances")
       .select(
-        "anio_fiscal, fecha_cierre, estado, responsable_id, responsable2_id, " +
-        "envio1_fecha, info_recibida_fecha, legalizado_fecha, presentado_fecha, frenado_desde, " +
+        "id, anio_fiscal, fecha_cierre, estado, responsable_id, responsable2_id, " +
+        "envio1_fecha, info_recibida_fecha, legalizado_fecha, presentado_fecha, " +
         "f855_estado, f899_estado, f713_estado, f657_estado, igj_presentacion, igj_tasa, f855_fecha"
       ),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
@@ -59,6 +59,22 @@ export default async function ProductividadContablePage() {
   }
 
   const hoy = new Date();
+
+  // Días frenado acumulados (ítem 34/47): un balance se puede frenar y
+  // destrabar varias veces, así que el total real sale del historial
+  // (balance_frenados), no solo del ciclo que está abierto ahora mismo.
+  const idsFrenados = balances.filter((b) => b.estado === "frenado").map((b) => b.id);
+  const diasFrenadoAcumPorBalance = new Map<string, number>();
+  if (idsFrenados.length > 0) {
+    const { data: ciclosFrenado } = await admin
+      .from("balance_frenados")
+      .select("balance_id, desde, hasta")
+      .in("balance_id", idsFrenados);
+    for (const c of ciclosFrenado ?? []) {
+      const dias = diffDias(new Date(c.desde), c.hasta ? new Date(c.hasta) : hoy);
+      diasFrenadoAcumPorBalance.set(c.balance_id, (diasFrenadoAcumPorBalance.get(c.balance_id) ?? 0) + dias);
+    }
+  }
   const anios = Array.from(new Set(balances.map((b) => b.anio_fiscal))).sort((a, b) => a - b);
 
   const filaMap = new Map<string, FilaResponsableContable>();
@@ -105,11 +121,12 @@ export default async function ProductividadContablePage() {
         }
       }
 
-      // Punto 4: frenados aparte, con cuántos días llevan frenados.
+      // Punto 4: frenados aparte, con cuántos días llevan frenados en total
+      // (suma de todos sus ciclos de freno, no solo el que está abierto).
       const frenados = items.filter((b) => b.estado === "frenado");
       const diasFrenado = frenados
-        .filter((b) => b.frenado_desde)
-        .map((b) => diffDias(new Date(b.frenado_desde as string), hoy));
+        .map((b) => diasFrenadoAcumPorBalance.get(b.id))
+        .filter((d): d is number => d != null);
 
       // Ítem 50: formularios derivados, juntos (sin contar N/A).
       let formAplican = 0;

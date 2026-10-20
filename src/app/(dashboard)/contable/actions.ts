@@ -62,7 +62,8 @@ export async function updateBalance(
       .from("balances")
       .select(
         "estado, estado_eecc, responsable_id, responsable2_id, " +
-        "envio1, info_recibida, f855_estado, legalizado_fecha, presentado_fecha"
+        "envio1, envio1_fecha, info_recibida, info_recibida_fecha, f855_estado, " +
+        "asignado_fecha, en_proceso_fecha, pendiente_pago_fecha, legalizado_fecha, presentado_fecha"
       )
       .eq("id", id)
       .maybeSingle();
@@ -72,6 +73,33 @@ export async function updateBalance(
 
     if (tocaAvance) {
       avanceUpdate = { avance: calcularAvance(merged) };
+
+      // Pedido/Recepción de información: fecha y hora igual que F.931/
+      // recibos en Sueldos. Se autocompleta la primera vez que se tilda, y
+      // se libera si se destilda por error (se vuelve a pisar la próxima).
+      if ("envio1" in updates) {
+        if (updates.envio1 === true && !actual?.envio1_fecha) {
+          fechasUpdate.envio1_fecha = new Date().toISOString();
+        } else if (updates.envio1 === false) {
+          fechasUpdate.envio1_fecha = null;
+        }
+      }
+      if ("info_recibida" in updates) {
+        if (updates.info_recibida === true && !actual?.info_recibida_fecha) {
+          fechasUpdate.info_recibida_fecha = new Date().toISOString();
+        } else if (updates.info_recibida === false) {
+          fechasUpdate.info_recibida_fecha = null;
+        }
+      }
+
+      // Etapas intermedias del avance (ítem 29): En proceso (50%) y
+      // Pendiente de pago (75%), primera vez que se alcanzan.
+      if (merged.estado_eecc === "en_proceso" && !actual?.en_proceso_fecha) {
+        fechasUpdate.en_proceso_fecha = new Date().toISOString();
+      }
+      if (merged.estado_eecc === "pendiente_pago" && !actual?.pendiente_pago_fecha) {
+        fechasUpdate.pendiente_pago_fecha = new Date().toISOString();
+      }
     }
 
     // El Estado se deriva solo de EECC/responsable — Frenado es la única
@@ -80,6 +108,9 @@ export async function updateBalance(
     if (tocaEstado && actual && !(actual.estado === "frenado" && !reanudando)) {
       const nuevoEstado = calcularEstado(merged);
       estadoUpdate = { estado: nuevoEstado };
+      if (nuevoEstado === "asignado" && !actual.asignado_fecha) {
+        fechasUpdate.asignado_fecha = new Date().toISOString();
+      }
       if ((nuevoEstado === "legalizado" || nuevoEstado === "finalizado") && !actual.legalizado_fecha) {
         fechasUpdate.legalizado_fecha = new Date().toISOString();
       }
@@ -100,10 +131,20 @@ export async function updateBalance(
   }
 
   // Frenar/reanudar manual: la única forma de tocar el Estado a mano.
+  // balance_frenados guarda el historial completo (puede frenarse y
+  // destrabarse varias veces) — frenado_desde en balances es solo el
+  // "caché" del ciclo abierto, para no tener que hacer join en la UI.
   if (updates.estado === "frenado") {
-    fechasUpdate.frenado_desde = new Date().toISOString();
+    const ahora = new Date().toISOString();
+    fechasUpdate.frenado_desde = ahora;
+    await admin.from("balance_frenados").insert({ balance_id: id, desde: ahora });
   } else if (reanudando) {
     fechasUpdate.frenado_desde = null;
+    await admin
+      .from("balance_frenados")
+      .update({ hasta: new Date().toISOString() })
+      .eq("balance_id", id)
+      .is("hasta", null);
   }
 
   const { error } = await admin
@@ -131,9 +172,11 @@ export async function crearBalance(data: {
   }
 
   const admin = createAdminClient();
+  const estadoInicial = calcularEstado(data);
   const { error } = await admin.from("balances").insert({
     ...data,
-    estado: calcularEstado(data),
+    estado: estadoInicial,
+    asignado_fecha: estadoInicial === "asignado" ? new Date().toISOString() : null,
   });
   if (error) return { error: error.message };
 

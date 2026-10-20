@@ -58,7 +58,9 @@ export function diasDemoraPedido(b: {
   info_recibida?: boolean;
 }): number | null {
   if (!b.envio1 || !b.envio1_fecha || b.info_recibida) return null;
-  const pedido = new Date(b.envio1_fecha + "T00:00:00");
+  // envio1_fecha ahora es timestamp completo (fecha y hora) — para "días
+  // de demora" lo que importa es el día de calendario, no la hora exacta.
+  const pedido = new Date(b.envio1_fecha.slice(0, 10) + "T00:00:00");
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
   return Math.floor((hoy.getTime() - pedido.getTime()) / 86400000);

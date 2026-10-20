@@ -156,6 +156,18 @@ export function ContableClient({
     }
   }
 
+  // Pedido/Recepción de información: fecha y hora igual que F.931/recibos
+  // en Sueldos. El servidor es quien realmente la autocompleta (para que
+  // quede la hora real del guardado) — acá solo se aproxima para que la
+  // casilla muestre algo al toque, sin esperar la respuesta.
+  function toggleFecha(id: string, campo: "envio1" | "info_recibida", marcado: boolean) {
+    const fechaCampo = campo === "envio1" ? "envio1_fecha" : "info_recibida_fecha";
+    patch(id, { [campo]: marcado, [fechaCampo]: marcado ? new Date().toISOString() : null } as Partial<Balance>);
+    startTransition(async () => {
+      await updateBalance(id, { [campo]: marcado });
+    });
+  }
+
   // IDs already in this year
   const yaEnAnio = useMemo(
     () => new Set(balances.map((b) => b.cliente_id)),
@@ -501,7 +513,7 @@ export function ContableClient({
                     marcado={b.envio1}
                     fecha={b.envio1_fecha}
                     puedeEditar={puedeEditar}
-                    onChange={(marcado, fecha) => update(b.id, { envio1: marcado, envio1_fecha: fecha })}
+                    onChange={(marcado) => toggleFecha(b.id, "envio1", marcado)}
                     diasDemora={diasDemoraPedido(b)}
                   />
 
@@ -510,7 +522,7 @@ export function ContableClient({
                     marcado={b.info_recibida}
                     fecha={b.info_recibida_fecha}
                     puedeEditar={puedeEditar}
-                    onChange={(marcado, fecha) => update(b.id, { info_recibida: marcado, info_recibida_fecha: fecha })}
+                    onChange={(marcado) => toggleFecha(b.id, "info_recibida", marcado)}
                   />
 
                   {/* EECC / Legalización */}
@@ -613,23 +625,17 @@ export function ContableClient({
   );
 }
 
-// Fecha de hoy según el reloj local (no toISOString, que da UTC y de noche
-// en Argentina ya marcaría el día siguiente).
-function hoyISO(): string {
-  const d = new Date();
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-// DD/MM/AA
+// DD/MM/AA — admite tanto "YYYY-MM-DD" como un timestamp completo
+// ("YYYY-MM-DDTHH:mm:ss.sssZ"), toma solo la parte de fecha.
 function fmtCorta(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-");
+  const [y, m, d] = dateStr.slice(0, 10).split("-");
   return `${d}/${m}/${y.slice(2)}`;
 }
 
-// Casilla que al tildarse registra sola la fecha del día, y al destildarse
-// la borra.
+// Casilla que al tildarse/destildarse avisa al padre — la fecha y hora
+// real la decide y guarda el servidor (ver updateBalance), acá solo se
+// muestra lo que ya está en el balance.
 function FechaCheckCell({
   marcado,
   fecha,
@@ -640,7 +646,7 @@ function FechaCheckCell({
   marcado: boolean;
   fecha: string | null;
   puedeEditar: boolean;
-  onChange: (marcado: boolean, fecha: string | null) => void;
+  onChange: (marcado: boolean) => void;
   /** Días desde el pedido sin recepción — solo la celda de "Pedido de
    * información" la pasa. 5+ días dispara el degradé hacia rojo. */
   diasDemora?: number | null;
@@ -657,7 +663,7 @@ function FechaCheckCell({
           type="checkbox"
           checked={marcado}
           disabled={!puedeEditar}
-          onChange={(e) => onChange(e.target.checked, e.target.checked ? hoyISO() : null)}
+          onChange={(e) => onChange(e.target.checked)}
           className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
         />
         <span className="w-[52px] text-left text-[11px] text-gray-500 tabular-nums">
