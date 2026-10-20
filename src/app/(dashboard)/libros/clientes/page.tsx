@@ -64,6 +64,7 @@ export default async function LibrosClientesPage() {
         id: c.id,
         nombre: c.nombre,
         cuit: c.cuit,
+        activo: c.estado === "activo",
         responsable: s.responsable?.nombre ?? null,
         tipo: soc?.tipo_societario ?? null,
         organismo: soc?.organismo ?? null,

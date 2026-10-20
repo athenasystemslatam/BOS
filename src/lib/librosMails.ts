@@ -94,7 +94,7 @@ async function mailDiario(admin: Admin, hoy: string): Promise<ResultadoMails> {
 
   const [{ data: servicios }, { data: pedidosRaw }, { data: societariosRaw }, { data: enviadosRaw, error: errEnviados }, { data: librosRaw }, { data: catalogoRaw }, { data: presupuestosRaw }] =
     await Promise.all([
-      admin.from("servicios_cliente").select("cliente_id, responsable_id, clientes(nombre)").eq("servicio", "libros").eq("estado", true),
+      admin.from("servicios_cliente").select("cliente_id, responsable_id, clientes!inner(nombre, estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),
       admin
         .from("libros_pedidos")
         .select("cliente_id, tipo, descripcion, proximo_seguimiento, responsable_id")
@@ -237,7 +237,7 @@ async function resumenSemanal(admin: Admin, hoy: string): Promise<ResultadoMails
       admin.from("balances").select("id, estado"),
       admin.from("libros_pedidos").select("id, fecha_limite, tipo, mandato_vence"),
       admin.from("clientes_societario").select("*"),
-      admin.from("servicios_cliente").select("cliente_id, responsable_id").eq("servicio", "libros").eq("estado", true),
+      admin.from("servicios_cliente").select("cliente_id, responsable_id, clientes!inner(estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),
     ]);
 
   const hoySnap = armarSnapshot(hoy, atraso);

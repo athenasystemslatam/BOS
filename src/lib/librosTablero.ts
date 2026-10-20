@@ -91,8 +91,9 @@ export async function calcularAtraso(admin: Admin, hoy: string = hoyISO()): Prom
     await Promise.all([
       admin
         .from("servicios_cliente")
-        .select("cliente_id, responsable_id, responsable:liquidadoras(nombre), clientes(id, nombre, cierre_ejercicio_mes, cierre_ejercicio_dia)")
+        .select("cliente_id, responsable_id, responsable:liquidadoras(nombre), clientes!inner(id, nombre, estado, cierre_ejercicio_mes, cierre_ejercicio_dia)")
         .eq("servicio", "libros")
+        .eq("clientes.estado", "activo")
         .eq("estado", true),
       admin.from("clientes_societario").select("cliente_id, tipo_societario"),
       admin.from("libros_catalogo").select("id, codigo, nombre, tipo_societario, periodicidad, dispara_con_balance, activo"),

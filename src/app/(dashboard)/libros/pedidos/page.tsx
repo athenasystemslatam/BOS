@@ -43,8 +43,9 @@ export default async function PedidosPage({
       .order("fecha", { ascending: false }),
     admin
       .from("servicios_cliente")
-      .select("cliente_id, clientes(id, nombre)")
+      .select("cliente_id, clientes!inner(id, nombre, estado)")
       .eq("servicio", "libros")
+      .eq("clientes.estado", "activo")
       .eq("estado", true),
     admin.from("libros").select("id, cliente_id, catalogo_id, tomo, estado").neq("estado", "cerrado"),
     admin.from("libros_catalogo").select("id, nombre").order("orden"),

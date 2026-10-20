@@ -6,6 +6,10 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 Ninguno (Libros: etapas 1 a 11 corridas al 20-oct).
 
+### Clientes inactivos en Libros (20-oct)
+
+- El servicio Libros no se da de baja: un cliente está en Libros mientras esté activo en BOS (`clientes.estado = 'activo'`). Seguimiento, Dashboard, Objetivos, mails y lo automático solo cuentan clientes activos (`clientes!inner(...)` + `.eq("clientes.estado", "activo")`). Libros → Clientes tiene Activos / Inactivos / Todos (arranca en Activos); el historial de los inactivos se conserva y se ve en su ficha. El estado del cliente se cambia solo en Panel General.
+
 ### Objetivos de Libros (20-oct, `src/lib/librosObjetivos.ts`)
 
 - Métricas que calcula BOS: % SA/SAS con mandato cargado, % mandatos vencidos con renovación iniciada / cerrada, % libros con dato completo (último copiado + folios), % clientes con puesta al día completa, % envíos anuales copiados dentro de 60 días (desde que se crearon las tareas por balance legalizado).

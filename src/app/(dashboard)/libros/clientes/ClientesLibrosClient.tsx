@@ -30,6 +30,8 @@ export type FilaClienteLibros = {
   id: string;
   nombre: string;
   cuit: string;
+  /** Cliente activo en BOS. Los inactivos conservan su historial pero no estorban la vista. */
+  activo: boolean;
   responsable: string | null;
   tipo: TipoSocietario | null;
   organismo: OrganismoSocietario | null;
@@ -50,6 +52,7 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
   const [filtroResp, setFiltroResp] = useState("");
   const [soloSinMandato, setSoloSinMandato] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState("");
+  const [vista, setVista] = useState<"activos" | "inactivos" | "todos">("activos");
 
   const responsables = useMemo(
     () => Array.from(new Set(filas.map((f) => f.responsable).filter(Boolean) as string[])).sort(),
@@ -57,6 +60,7 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
   );
 
   const visibles = filas.filter((f) => {
+    if (vista === "activos" ? !f.activo : vista === "inactivos" ? f.activo : false) return false;
     const q = busqueda.trim().toLowerCase();
     if (q && !f.nombre.toLowerCase().includes(q) && !f.cuit.includes(q)) return false;
     if (filtroResp && f.responsable !== filtroResp) return false;
@@ -83,7 +87,7 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
         <span className={RAYA_MODULO} />
         <h1 className={TITULO}>Clientes</h1>
         <p className="text-[12.5px] text-ink-muted">
-          <span className={MONO}>{filas.length}</span> clientes
+          <span className={MONO}>{filas.filter((f) => f.activo).length}</span> clientes activos
           {sinTipo > 0 && (
             <>
               {" · "}
@@ -115,6 +119,28 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
             <option key={r} value={r}>{r}</option>
           ))}
         </select>
+        <div className="inline-flex rounded-full border border-line-input bg-paper p-0.5" role="tablist" aria-label="Estado del cliente">
+          {(
+            [
+              ["activos", "Activos", filas.filter((f) => f.activo).length],
+              ["inactivos", "Inactivos", filas.filter((f) => !f.activo).length],
+              ["todos", "Todos", filas.length],
+            ] as const
+          ).map(([v, label, n]) => (
+            <button
+              key={v}
+              role="tab"
+              aria-selected={vista === v}
+              onClick={() => setVista(v)}
+              className={clsx(
+                "px-3 py-1 text-[12.5px] font-semibold rounded-full",
+                vista === v ? "bg-ink text-white" : "text-ink-muted hover:text-ink"
+              )}
+            >
+              {label} <span className="font-plex tabular-nums">{n}</span>
+            </button>
+          ))}
+        </div>
         <select
           value={filtroTipo}
           onChange={(e) => setFiltroTipo(e.target.value)}
@@ -185,7 +211,10 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
                     <tr key={f.id} className="border-t border-line-row hover:bg-paper-hover">
                       <td className="px-4 py-2.5 whitespace-normal">
                         <Link href={`/libros/clientes/${f.id}`} className="block">
-                          <p className="font-archivo text-[13.5px] font-bold text-ink hover:text-bordo">{f.nombre}</p>
+                          <p className="font-archivo text-[13.5px] font-bold text-ink hover:text-bordo">
+                            {f.nombre}
+                            {!f.activo && <span className={clsx(CHIP, SEMAFORO.sinDato, "ml-2 align-middle font-sans")}>Inactivo</span>}
+                          </p>
                           <p className={clsx(MONO, "text-[11.5px] text-ink-subtle")}>{f.cuit}</p>
                         </Link>
                       </td>

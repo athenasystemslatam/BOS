@@ -111,7 +111,7 @@ export async function sincronizarLibrosAutomaticos(): Promise<void> {
       { data: pedidosRaw },
       config,
     ] = await Promise.all([
-      admin.from("servicios_cliente").select("cliente_id, responsable_id").eq("servicio", "libros").eq("estado", true),
+      admin.from("servicios_cliente").select("cliente_id, responsable_id, clientes!inner(estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),
       admin.from("clientes_societario").select("*"),
       admin.from("libros_catalogo").select("id, nombre, dispara_con_balance, activo"),
       admin

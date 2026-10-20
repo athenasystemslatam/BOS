@@ -47,8 +47,9 @@ export default async function FacturasPage() {
       .order("creado_en", { ascending: false }),
     admin
       .from("servicios_cliente")
-      .select("cliente_id, clientes(id, nombre)")
+      .select("cliente_id, clientes!inner(id, nombre, estado)")
       .eq("servicio", "libros")
+      .eq("clientes.estado", "activo")
       .eq("estado", true),
     admin.from("copiadora_facturas_tareas").select("factura_id, tarea_id"),
     admin.from("libros_tareas").select("id, cliente_id, libro_id, estado_id, fecha_fin, periodo_hasta"),

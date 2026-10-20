@@ -89,7 +89,7 @@ export default async function TableroLibrosPage() {
     admin.from("libros_estados").select("id, es_final"),
     admin.from("balances").select("id, estado"),
     admin.from("libros_pedidos").select("id, tipo, fecha_limite, mandato_vence"),
-    admin.from("servicios_cliente").select("cliente_id, clientes(nombre)").eq("servicio", "libros").eq("estado", true),
+    admin.from("servicios_cliente").select("cliente_id, clientes!inner(nombre, estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),
     admin.from("clientes_societario").select("*"),
     admin.from("libros").select("id, cliente_id, catalogo_id, estado"),
     admin.from("libros_catalogo").select("id, codigo"),

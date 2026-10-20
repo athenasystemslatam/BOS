@@ -25,7 +25,7 @@ export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Pr
   const [atraso, { data: servicios }, { data: societariosRaw }, { data: pedidosRaw }, { data: librosRaw }, { data: tareasRaw }, { data: estadosRaw }] =
     await Promise.all([
       calcularAtraso(admin, hoy),
-      admin.from("servicios_cliente").select("cliente_id").eq("servicio", "libros").eq("estado", true),
+      admin.from("servicios_cliente").select("cliente_id, clientes!inner(estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),
       admin.from("clientes_societario").select("*"),
       admin.from("libros_pedidos").select("*").eq("tipo", "renovacion_autoridades"),
       admin.from("libros").select("cliente_id, estado, ultimo_periodo_copiado, folios_totales").eq("estado", "activo"),

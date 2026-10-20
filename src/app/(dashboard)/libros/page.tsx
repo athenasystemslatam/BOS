@@ -53,8 +53,9 @@ export default async function SeguimientoLibrosPage() {
   ] = await Promise.all([
     admin
       .from("servicios_cliente")
-      .select("cliente_id, responsable_id, responsable:liquidadoras(nombre), clientes(id, nombre, cuit, cierre_ejercicio_mes, cierre_ejercicio_dia)")
+      .select("cliente_id, responsable_id, responsable:liquidadoras(nombre), clientes!inner(id, nombre, cuit, estado, cierre_ejercicio_mes, cierre_ejercicio_dia)")
       .eq("servicio", "libros")
+      .eq("clientes.estado", "activo")
       .eq("estado", true),
     admin.from("clientes_societario").select("*"),
     admin.from("libros_catalogo").select("*").order("orden"),
@@ -117,7 +118,7 @@ export default async function SeguimientoLibrosPage() {
     }
   }
 
-  const vistas: TareaVista[] = tareas.map((t) => {
+  const vistas: TareaVista[] = tareas.filter((t) => clientes.has(t.cliente_id)).map((t) => {
     const libro = librosPorId.get(t.libro_id) ?? null;
     const item = libro ? catalogo.get(libro.catalogo_id) : undefined;
     const cliente = clientes.get(t.cliente_id);
