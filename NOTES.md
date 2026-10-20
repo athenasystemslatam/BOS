@@ -6,6 +6,14 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 Ninguno (Libros: etapas 1 a 11 corridas al 20-oct).
 
+### Velocidad de todo BOS (20-oct, `2e651a4` + `f6d6a3e`)
+
+- La sesión se consulta una vez por click (`getUsuario` con `cache()` en `lib/auth.ts`).
+- Seguimiento/Dashboard de Sueldos, Productividad, Empresas, Panel General, Impuestos, Monotributo y Contable: consultas en paralelo en vez de una atrás de otra; Contable ya no repite consultas.
+- Copiar legajos del mes anterior: al instante si el período es nuevo; si no, como mucho 1 vez por hora (tag `sueldos-legajos`, invalidado por `updateLegajos`).
+- Tareas y asignaciones se leen de a 1000 filas (`traerTodas`): antes PostgREST las cortaba en 1000 sin avisar (Productividad, Empresas y legajos ya superaban ese número).
+- Quedó afuera a propósito: cambiar el `<a>` del Sidebar por `<Link>` (riesgo de datos viejos, ya pasó), `loading.tsx` global e índices nuevos (requieren SQL).
+
 ### Velocidad de Libros (20-oct)
 
 - Vercel (`pdx1`, Portland) y Supabase (`us-west-2`, Oregon) están en la misma zona: no hace falta cambiar la región.
