@@ -211,6 +211,21 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
 | `/monotributo/vencimientos` | Pendientes cuota, calendario anual día 20 |
 | `/monotributo/equipo` | Cards por miembro: cuotas, recategorización, deuda |
 
+### Módulo Libros Societarios (violeta, en producción desde 20-oct-2026)
+Reemplaza el Google Sheet "GESTION DE LIBROS" (desde el 20-oct en solo lectura: todo se carga en BOS). Clientes del módulo = `servicios_cliente(servicio='libros', estado=true)`; área `libros` en `equipo_modulos`.
+
+| Ruta | Descripción |
+|---|---|
+| `/libros` | Seguimiento: Cola por cliente (P1 Urgente / P2 Planificado / P3 Bloqueado, orden por arrastrar), "Atrasos sin asignar", Historial; "+ Agregar", "Enviar a copiar", "Retirado / Registrar copiado" |
+| `/libros/dashboard` | Objetivos, pendiente y logrado en empresas y libros, evolución semanal (`libros_snapshot`) |
+| `/libros/clientes` y `/libros/clientes/[id]` | Lista y ficha societaria (mandato, libros por tomo, atraso) |
+| `/libros/pedidos` | Pedidos y trámites: presupuestos con circuito y "Abrir tomo nuevo", renovación de autoridades con checklist |
+| `/libros/movimientos` | Entrada y salida + incidencias (consulta; los de copiadora se registran solos desde Seguimiento) |
+| `/libros/facturas` | Copiadora (facturas, varios copiados por factura) |
+| `/libros/configuracion` | Admin: umbral de folios, fecha meta, avisos de mandato, mails, estados |
+
+Claves: `src/lib/libros.ts` (prioridad, atraso, mandato), `src/lib/librosAutomaticos.ts` (tareas por balance legalizado, renovación de autoridades, tomo nuevo por folios; corre al abrir Seguimiento/Pedidos y en el cron), `src/lib/librosTablero.ts` (Dashboard y foto diaria), `src/lib/librosMails.ts` (mail diario por responsable + resumen semanal; cron `.github/workflows/alertas-libros.yml` → `/api/alertas/libros`). Migraciones `add_libros_etapa1..10.sql`, todas corridas. Las importaciones del sheet (`supabase/importar_libros_*.sql`) quedaron fuera del repo por tener datos de clientes. Historia y decisiones en `NOTES.md`.
+
 ---
 
 ## Navegación por módulo

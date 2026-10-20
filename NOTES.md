@@ -4,10 +4,7 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-- **`add_libros_etapa10.sql`** (20-oct) — configuración de mails de Libros en `libros_config`
-  (`mail_diario_excluidos`, `mail_semanal_ids`, `mail_semanal_dia`). Sin correrlo, los mails usan los valores por
-  defecto (diario a todo el equipo de Libros, resumen semanal a los admins los viernes) y "Guardar" en la tarjeta
-  Mails da error.
+Ninguno (Libros: etapas 1 a 10 corridas al 20-oct).
 
 ### Mails de Libros (20-oct, `src/lib/librosMails.ts`)
 
@@ -52,7 +49,7 @@ de los presupuestos se asignó solo si había una sola en el equipo de Libros.
 **Quedaron afuera** FLASHOVER y FUNDACION PAN Y ARTE (sin servicio Libros) y TALLER BILLY (inactivo): cuando
 se les active Libros y se cargue el tipo societario, se vuelve a correr la importación (no duplica).
 
-## Módulo Libros Societarios (rama `libros/modulo`, oct-2026)
+## Módulo Libros Societarios (en producción desde el 20-oct-2026; rama `libros/modulo` integrada a `main`)
 
 Reemplaza el Google Sheet "GESTION DE LIBROS". Se trabaja en la rama `libros/modulo` y se integra a `main` por PR, por etapas (cada una se muestra en el deploy de prueba de la rama antes de seguir):
 1. ✅ SQL `add_libros_etapa1.sql` (**corrido** en Supabase el 16-oct): `clientes_societario`, `libros_catalogo` (43 libros cargados), `libros`. Ficha "Societario y libros" en `/libros/clientes/[id]`.
