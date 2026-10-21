@@ -1,13 +1,49 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getVencimientoF931 } from "@/lib/vencimientos";
+import { getVencimientoF931, restarDiasHabiles, sumarDiasHabiles, enesimoDiaHabilDelMes } from "@/lib/vencimientos";
+import { getObjetivoSueldos, ObjetivoSueldos } from "@/lib/objetivos";
 import { ProductividadClient, FilaLiquidadora } from "./ProductividadClient";
 
-function vencimientoRecibos(anio: number, mes: number): Date {
-  // Deadline recibos: día 3 del mes siguiente
-  const d = new Date(anio, mes, 3); // mes es 1-based, Date usa 0-based: mes = siguiente
+type Color = "verde" | "amarillo" | "rojo";
+
+/** Ítem 69: objetivo = fin de la ventana ideal, límite = tope real antes de
+ * considerarlo tarde. Verde = dentro del objetivo, amarillo = después del
+ * objetivo pero dentro del límite, rojo = pasado el límite. */
+function clasificar(marcadoEn: string, objetivo: Date, limite: Date): Color {
+  const marcado = new Date(marcadoEn);
+  if (diffDias(marcado, objetivo) >= 0) return "verde";
+  if (diffDias(marcado, limite) >= 0) return "amarillo";
+  return "rojo";
+}
+
+/** Objetivo de Recibos del período: por defecto N días calendario antes del
+ * último día del mes liquidado. Si el cliente se marcó "Preliquidado" antes
+ * de fin de mes y ya se recibieron las novedades, el objetivo pasa a ser esa
+ * fecha + 1 día hábil (ítem 97) — el F.931 nunca se ve afectado por esto y
+ * el límite de Recibos tampoco cambia. */
+function objetivoRecibos(
+  anio: number,
+  mes: number,
+  objetivoGeneral: ObjetivoSueldos,
+  tarea: { preliquidado: boolean; preliquidado_fecha: string | null; novedades_recibidas_fecha: string | null }
+): Date {
+  const finDeMes = new Date(anio, mes, 0, 23, 59, 59);
+  if (tarea.preliquidado && tarea.preliquidado_fecha && tarea.novedades_recibidas_fecha) {
+    const preliquidadoEn = new Date(tarea.preliquidado_fecha);
+    if (preliquidadoEn <= finDeMes) {
+      return sumarDiasHabiles(new Date(tarea.novedades_recibidas_fecha), 1);
+    }
+  }
+  const d = new Date(anio, mes, 0); // último día del mes liquidado
+  d.setDate(d.getDate() - objetivoGeneral.recibos_dias_antes_fin_mes);
   return d;
+}
+
+function limiteRecibos(anio: number, mes: number, objetivoGeneral: ObjetivoSueldos): Date {
+  const mesSiguiente = mes === 12 ? 1 : mes + 1;
+  const anioSiguiente = mes === 12 ? anio + 1 : anio;
+  return enesimoDiaHabilDelMes(anioSiguiente, mesSiguiente, objetivoGeneral.recibos_limite_dia_habil_mes_siguiente);
 }
 
 /** Todas las filas de una consulta, de a 1000: PostgREST corta en 1000 por
@@ -34,7 +70,7 @@ export default async function ProductividadPage() {
   type Asignacion = { cliente_id: string; liquidador_id: string; desde_anio: number; desde_mes: number; creado_en: string };
 
   // Todo lo que no depende de los períodos va en paralelo.
-  const [{ data: periodos }, { data: clientes }, asignaciones, { data: liquidadoras }] = await Promise.all([
+  const [{ data: periodos }, { data: clientes }, asignaciones, { data: liquidadoras }, objetivoGeneral] = await Promise.all([
     // Períodos desde junio 2026 en adelante (antes no se usaba el sistema)
     admin
       .from("periodos")
@@ -54,6 +90,7 @@ export default async function ProductividadPage() {
     ),
     // Liquidadoras activas
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+    getObjetivoSueldos(),
   ]);
 
   if (!periodos || periodos.length === 0) {
@@ -73,14 +110,23 @@ export default async function ProductividadPage() {
     f931_drive: boolean;
     recibos_drive: boolean;
     legajos_cantidad: number | null;
-  }>((desde, hasta) =>
-    admin
+    preliquidado: boolean;
+    preliquidado_fecha: string | null;
+    novedades_recibidas: boolean;
+    novedades_recibidas_fecha: string | null;
+  }>(async (desde, hasta) => {
+    const { data } = await admin
       .from("tareas")
-      .select("cliente_id, periodo_id, f931_manual, recibos_manual, f931_manual_en, recibos_manual_en, f931_drive, recibos_drive, legajos_cantidad")
+      .select(
+        "cliente_id, periodo_id, f931_manual, recibos_manual, f931_manual_en, recibos_manual_en, f931_drive, recibos_drive, legajos_cantidad, " +
+        "preliquidado, preliquidado_fecha, novedades_recibidas, novedades_recibidas_fecha"
+      )
       .in("periodo_id", periodoIds)
       .order("id")
-      .range(desde, hasta)
-  );
+      .range(desde, hasta);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { data: data as any };
+  });
 
   if (!clientes || !liquidadoras) {
     return <div className="p-8 text-gray-400 text-sm">Sin datos suficientes.</div>;
@@ -148,13 +194,13 @@ export default async function ProductividadPage() {
       const entry = liqData.get(liqId);
       if (!entry) continue;
 
-      let f931ATiempo = 0, f931Tarde = 0, f931SinTs = 0;
-      let recibosATiempo = 0, recibosTarde = 0, recibosSinTs = 0;
+      let f931Verde = 0, f931Amarillo = 0, f931Rojo = 0, f931SinTs = 0;
+      let recibosVerde = 0, recibosAmarillo = 0, recibosRojo = 0, recibosSinTs = 0;
       let completadas = 0;
       let legajos = 0;
       const diasF931: number[] = [];
       const diasRecibos: number[] = [];
-      const vencRecibos = vencimientoRecibos(periodo.anio, periodo.mes);
+      const limiteRecibosPeriodo = limiteRecibos(periodo.anio, periodo.mes, objetivoGeneral);
 
       for (const { terminacion, tarea } of items) {
         if (!tarea) continue;
@@ -166,9 +212,10 @@ export default async function ProductividadPage() {
         if (tarea.f931_manual) {
           if (tarea.f931_manual_en) {
             const venc = getVencimientoF931(terminacion, periodo.anio, periodo.mes);
-            const delta = diffDias(new Date(tarea.f931_manual_en), venc);
-            if (delta >= 0) f931ATiempo++; else f931Tarde++;
-            diasF931.push(delta);
+            const objetivo = restarDiasHabiles(venc, objetivoGeneral.f931_dias_habiles_antes_vencimiento);
+            const color = clasificar(tarea.f931_manual_en, objetivo, venc);
+            if (color === "verde") f931Verde++; else if (color === "amarillo") f931Amarillo++; else f931Rojo++;
+            diasF931.push(diffDias(new Date(tarea.f931_manual_en), venc));
           } else {
             f931SinTs++;
           }
@@ -176,9 +223,10 @@ export default async function ProductividadPage() {
 
         if (tarea.recibos_manual) {
           if (tarea.recibos_manual_en) {
-            const delta = diffDias(new Date(tarea.recibos_manual_en), vencRecibos);
-            if (delta >= 0) recibosATiempo++; else recibosTarde++;
-            diasRecibos.push(delta);
+            const objetivo = objetivoRecibos(periodo.anio, periodo.mes, objetivoGeneral, tarea);
+            const color = clasificar(tarea.recibos_manual_en, objetivo, limiteRecibosPeriodo);
+            if (color === "verde") recibosVerde++; else if (color === "amarillo") recibosAmarillo++; else recibosRojo++;
+            diasRecibos.push(diffDias(new Date(tarea.recibos_manual_en), limiteRecibosPeriodo));
           } else {
             recibosSinTs++;
           }
@@ -197,8 +245,8 @@ export default async function ProductividadPage() {
         anio: periodo.anio,
         mes: periodo.mes,
         total: items.length,
-        f931ATiempo, f931Tarde, f931SinTs,
-        recibosATiempo, recibosTarde, recibosSinTs,
+        f931Verde, f931Amarillo, f931Rojo, f931SinTs,
+        recibosVerde, recibosAmarillo, recibosRojo, recibosSinTs,
         completadas,
         legajos,
         avgDiasF931,

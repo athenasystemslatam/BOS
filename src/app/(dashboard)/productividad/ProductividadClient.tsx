@@ -13,11 +13,13 @@ export interface FilaLiquidadora {
     anio: number;
     mes: number;
     total: number;
-    f931ATiempo: number;
-    f931Tarde: number;
+    f931Verde: number;
+    f931Amarillo: number;
+    f931Rojo: number;
     f931SinTs: number;
-    recibosATiempo: number;
-    recibosTarde: number;
+    recibosVerde: number;
+    recibosAmarillo: number;
+    recibosRojo: number;
     recibosSinTs: number;
     completadas: number;
     legajos: number;
@@ -54,6 +56,21 @@ function DeltaDias({ avg }: { avg: number | null }) {
   );
 }
 
+/** Ítem 69: clasificación por tarea contra el objetivo configurado.
+ * Verde = dentro de objetivo, amarillo = después del objetivo pero dentro
+ * del límite, rojo = pasado el límite. */
+function Clasificacion({ verde, amarillo, rojo, sinTs }: { verde: number; amarillo: number; rojo: number; sinTs: number }) {
+  if (verde + amarillo + rojo + sinTs === 0) return <span className="text-gray-300 text-xs">—</span>;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-medium">
+      {verde > 0 && <span className="px-1.5 py-0.5 rounded bg-green-50 text-green-700">{verde}</span>}
+      {amarillo > 0 && <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">{amarillo}</span>}
+      {rojo > 0 && <span className="px-1.5 py-0.5 rounded bg-red-50 text-red-600">{rojo}</span>}
+      {sinTs > 0 && <span className="text-[10px] text-gray-400">({sinTs} sin ts)</span>}
+    </span>
+  );
+}
+
 export function ProductividadClient({ filas }: {
   filas: FilaLiquidadora[];
 }) {
@@ -68,7 +85,7 @@ export function ProductividadClient({ filas }: {
         <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">Módulo Sueldos</p>
         <h1 className="text-2xl font-semibold text-gray-900 mt-1">Productividad</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Rendimiento por liquidadora — días antes/después del vencimiento al marcar cada tarea
+          Rendimiento por liquidadora — clasificación contra el objetivo configurado al marcar cada tarea
         </p>
       </div>
 
@@ -95,7 +112,7 @@ export function ProductividadClient({ filas }: {
       ) : (
         <>
         <p className="text-[11px] text-gray-400 mb-3">
-          Días al vencimiento: positivo = completado antes, negativo = completado después. &quot;sin ts&quot; = marcado antes de julio 2026 (sin registro de hora).
+          <span className="text-green-700 font-medium">Verde</span> = dentro del objetivo · <span className="text-amber-700 font-medium">amarillo</span> = después del objetivo pero antes del límite · <span className="text-red-600 font-medium">rojo</span> = pasado el límite. &quot;sin ts&quot; = marcado antes de julio 2026 (sin registro de hora).
         </p>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -106,9 +123,9 @@ export function ProductividadClient({ filas }: {
                   <th className="px-4 py-3 text-center font-medium">Clientes</th>
                   <th className="px-4 py-3 text-center font-medium">Legajos liquidados</th>
                   <th className="px-4 py-3 text-center font-medium">F.931 completadas</th>
-                  <th className="px-4 py-3 text-center font-medium">Días al venc. F.931</th>
+                  <th className="px-4 py-3 text-center font-medium">F.931 contra objetivo</th>
                   <th className="px-4 py-3 text-center font-medium">Recibos completados</th>
-                  <th className="px-4 py-3 text-center font-medium">Días al venc. recibos</th>
+                  <th className="px-4 py-3 text-center font-medium">Recibos contra objetivo</th>
                   <th className="px-4 py-3 text-center font-medium">% completitud</th>
                 </tr>
               </thead>
@@ -127,22 +144,18 @@ export function ProductividadClient({ filas }: {
                         {m.legajos}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Pill value={m.f931ATiempo + m.f931Tarde + m.f931SinTs} total={m.total} />
+                        <Pill value={m.f931Verde + m.f931Amarillo + m.f931Rojo + m.f931SinTs} total={m.total} />
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <DeltaDias avg={m.avgDiasF931} />
-                        {m.f931SinTs > 0 && (
-                          <span className="text-[10px] text-gray-400 ml-1">({m.f931SinTs} sin ts)</span>
-                        )}
+                        <Clasificacion verde={m.f931Verde} amarillo={m.f931Amarillo} rojo={m.f931Rojo} sinTs={m.f931SinTs} />
+                        <div className="mt-0.5"><DeltaDias avg={m.avgDiasF931} /></div>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <Pill value={m.recibosATiempo + m.recibosTarde + m.recibosSinTs} total={m.total} />
+                        <Pill value={m.recibosVerde + m.recibosAmarillo + m.recibosRojo + m.recibosSinTs} total={m.total} />
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <DeltaDias avg={m.avgDiasRecibos} />
-                        {m.recibosSinTs > 0 && (
-                          <span className="text-[10px] text-gray-400 ml-1">({m.recibosSinTs} sin ts)</span>
-                        )}
+                        <Clasificacion verde={m.recibosVerde} amarillo={m.recibosAmarillo} rojo={m.recibosRojo} sinTs={m.recibosSinTs} />
+                        <div className="mt-0.5"><DeltaDias avg={m.avgDiasRecibos} /></div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={clsx(

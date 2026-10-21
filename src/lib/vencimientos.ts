@@ -27,6 +27,46 @@ export function getVencimientoF931(terminacion: number, anio: number, mes: numbe
   return new Date(anioV, mesV - 1, dia, 12, 0, 0);
 }
 
+export function esDiaHabil(d: Date): boolean {
+  const dia = d.getDay();
+  return dia !== 0 && dia !== 6;
+}
+
+/** Resta N días hábiles (lunes a viernes, sin descontar feriados) a una fecha. */
+export function restarDiasHabiles(fecha: Date, dias: number): Date {
+  const d = new Date(fecha);
+  let restantes = dias;
+  while (restantes > 0) {
+    d.setDate(d.getDate() - 1);
+    if (esDiaHabil(d)) restantes--;
+  }
+  return d;
+}
+
+/** Suma N días hábiles (lunes a viernes, sin descontar feriados) a una fecha. */
+export function sumarDiasHabiles(fecha: Date, dias: number): Date {
+  const d = new Date(fecha);
+  let restantes = dias;
+  while (restantes > 0) {
+    d.setDate(d.getDate() + 1);
+    if (esDiaHabil(d)) restantes--;
+  }
+  return d;
+}
+
+/** N-ésimo día hábil (1-based) de un mes dado (mes 1-based). */
+export function enesimoDiaHabilDelMes(anio: number, mes: number, n: number): Date {
+  const d = new Date(anio, mes - 1, 1, 12, 0, 0);
+  let contados = 0;
+  while (true) {
+    if (esDiaHabil(d)) {
+      contados++;
+      if (contados === n) return new Date(d);
+    }
+    d.setDate(d.getDate() + 1);
+  }
+}
+
 export const GRUPOS_CUIT = [
   { label: "CUITs 0–3", min: 0, max: 3 },
   { label: "CUITs 4–6", min: 4, max: 6 },
