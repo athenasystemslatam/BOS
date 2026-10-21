@@ -19,17 +19,25 @@ body {
   }
 }
 
-/* Scrollbar horizontal visible en tablas */
+/* Scrollbar horizontal visible en tablas — más gruesa y con track visible
+   para que se note que hay más columnas para el lado, sobre todo en tablas
+   anchas (ej. Productividad). Firefox usa scrollbar-width/-color; el resto,
+   los ::-webkit-scrollbar-*. */
+.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #9ca3af #f3f4f6;
+}
 .overflow-x-auto::-webkit-scrollbar {
-  height: 4px;
+  height: 8px;
 }
 .overflow-x-auto::-webkit-scrollbar-track {
-  background: transparent;
+  background: #f3f4f6;
+  border-radius: 4px;
 }
 .overflow-x-auto::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 2px;
+  background: #9ca3af;
+  border-radius: 4px;
 }
 .overflow-x-auto::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #6b7280;
 }
