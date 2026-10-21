@@ -141,7 +141,11 @@ export function ProductividadClient({ filas }: {
           <span className="text-green-700 font-medium">Verde</span> = dentro del objetivo · <span className="text-amber-700 font-medium">amarillo</span> = después del objetivo pero antes del límite · <span className="text-red-600 font-medium">rojo</span> = pasado el límite. &quot;sin ts&quot; = marcado antes de julio 2026 (sin registro de hora).
         </p>
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* max-h + overflow-auto (no solo overflow-x-auto): con muchos
+              períodos la tabla es más alta que la pantalla y la barra de
+              scroll horizontal quedaba al final de todo, fuera de vista.
+              Así queda siempre a la vista, debajo de las filas visibles. */}
+          <div className="overflow-auto max-h-[65vh] [scrollbar-gutter:stable]">
             <table className="w-full min-w-[860px]">
               <thead className="sticky top-0 z-20 bg-gray-50 border-b border-gray-100">
                 <tr className="text-[11px] text-gray-400 uppercase tracking-wide">
