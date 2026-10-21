@@ -517,17 +517,23 @@ function ClavesModal({
 function ObservacionModal({
   nombre,
   periodoLabel,
+  campo,
+  placeholder,
   value,
   onChange,
   onClose,
   puedeEditar,
+  tema = "bordo",
 }: {
   nombre: string;
   periodoLabel: string;
+  campo: string;
+  placeholder: string;
   value: string;
   onChange: (valor: string) => void;
   onClose: () => void;
   puedeEditar: boolean;
+  tema?: "bordo" | "amber";
 }) {
   const backdrop = useBackdropClose(onClose);
   return (
@@ -542,7 +548,7 @@ function ObservacionModal({
         <div className="flex items-center justify-between mb-3 shrink-0">
           <div>
             <p className="text-[13px] font-semibold text-gray-800">{nombre}</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">{periodoLabel} · Observaciones</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{periodoLabel} · {campo}</p>
           </div>
           <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition-colors">
             <X size={16} />
@@ -552,9 +558,14 @@ function ObservacionModal({
           autoFocus
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Agregar nota..."
+          placeholder={placeholder}
           disabled={!puedeEditar}
-          className="w-full flex-1 min-h-[240px] text-[13px] text-gray-700 border border-gray-200 rounded-lg px-3 py-2.5 outline-none focus:border-bordo focus:ring-1 focus:ring-bordo resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+          className={clsx(
+            "w-full flex-1 min-h-[240px] text-[13px] border rounded-lg px-3 py-2.5 outline-none resize-none disabled:opacity-60 disabled:cursor-not-allowed",
+            tema === "amber"
+              ? "text-amber-800 border-amber-200 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 bg-amber-50/30"
+              : "text-gray-700 border-gray-200 focus:border-bordo focus:ring-1 focus:ring-bordo"
+          )}
         />
       </div>
     </div>
@@ -593,6 +604,9 @@ export function SeguimientoClient({
 
   // Modal de observaciones expandidas (para leer/editar notas largas cómodo)
   const [obsExpandida, setObsExpandida] = useState<{ clienteId: string; nombre: string } | null>(null);
+
+  // Modal de "Nota → Sig. mes" expandida (mismo criterio que Observaciones)
+  const [recExpandida, setRecExpandida] = useState<{ clienteId: string; nombre: string } | null>(null);
 
   // Recordatorios del período anterior
   const [recordatoriosPrevios, setRecordatoriosPrevios] = useState<Record<string, string>>(
@@ -977,10 +991,25 @@ export function SeguimientoClient({
         <ObservacionModal
           nombre={obsExpandida.nombre}
           periodoLabel={currentPeriodo?.nombre_mes ?? ""}
+          campo="Observaciones"
+          placeholder="Agregar nota..."
           value={getEffective(obsExpandida.clienteId).observaciones}
           onChange={(valor) => handleObservaciones(obsExpandida.clienteId, valor)}
           onClose={() => setObsExpandida(null)}
           puedeEditar={puedeEditar}
+        />
+      )}
+      {recExpandida && (
+        <ObservacionModal
+          nombre={recExpandida.nombre}
+          periodoLabel={currentPeriodo?.nombre_mes ?? ""}
+          campo="Nota → Sig. mes"
+          placeholder="Recordar el mes que viene..."
+          value={getEffective(recExpandida.clienteId).recordatorio}
+          onChange={(valor) => handleRecordatorio(recExpandida.clienteId, valor)}
+          onClose={() => setRecExpandida(null)}
+          puedeEditar={puedeEditar}
+          tema="amber"
         />
       )}
       {/* Header */}
@@ -1853,16 +1882,26 @@ export function SeguimientoClient({
 
                       {/* Recordatorio para el mes siguiente */}
                       <td className="px-4 py-2.5">
-                        <input
-                          type="text"
-                          value={t.recordatorio}
-                          placeholder="Recordar el mes que viene..."
-                          disabled={!puedeEditar}
-                          onChange={(e) =>
-                            handleRecordatorio(cliente.id, e.target.value)
-                          }
-                          className="w-full text-[12px] text-amber-700 border border-transparent rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-300 focus:bg-amber-50/50 hover:border-amber-200 bg-transparent placeholder:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        />
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={t.recordatorio}
+                            placeholder="Recordar el mes que viene..."
+                            disabled={!puedeEditar}
+                            onChange={(e) =>
+                              handleRecordatorio(cliente.id, e.target.value)
+                            }
+                            className="w-full text-[12px] text-amber-700 border border-transparent rounded-md pl-2 pr-6 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-300 focus:bg-amber-50/50 hover:border-amber-200 bg-transparent placeholder:text-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setRecExpandida({ clienteId: cliente.id, nombre: cliente.nombre })}
+                            title="Ver completo"
+                            className="absolute top-1 right-1 text-amber-300 hover:text-amber-600 transition-colors"
+                          >
+                            <Maximize2 size={11} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
