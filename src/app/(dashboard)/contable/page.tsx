@@ -79,6 +79,12 @@ export default async function ContablePage({
 
   return (
     <ContableClient
+      // balancesMap se inicializa una sola vez (useState lazy) a partir de
+      // los balances que llegan por props: sin este key, cambiar de año solo
+      // actualizaba la URL (router.push) pero el componente seguía montado
+      // con los datos viejos hasta un F5. Con key={anio} React lo remonta
+      // entero cada vez que cambia el año.
+      key={anio}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       balances={balancesConObjetivo as any[]}
       equipoContable={equipoContable}
