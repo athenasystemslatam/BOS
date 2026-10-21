@@ -1,50 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getVencimientoF931, restarDiasHabiles, sumarDiasHabiles, enesimoDiaHabilDelMes } from "@/lib/vencimientos";
-import { getObjetivoSueldos, ObjetivoSueldos } from "@/lib/objetivos";
+import { getObjetivoSueldos } from "@/lib/objetivos";
+import { clasificar, objetivoLimiteF931, objetivoRecibos, limiteRecibos, diffDias } from "@/lib/objetivoSueldos";
 import { ProductividadClient, FilaLiquidadora } from "./ProductividadClient";
-
-type Color = "verde" | "amarillo" | "rojo";
-
-/** Ítem 69: objetivo = fin de la ventana ideal, límite = tope real antes de
- * considerarlo tarde. Verde = dentro del objetivo, amarillo = después del
- * objetivo pero dentro del límite, rojo = pasado el límite. */
-function clasificar(marcadoEn: string, objetivo: Date, limite: Date): Color {
-  const marcado = new Date(marcadoEn);
-  if (diffDias(marcado, objetivo) >= 0) return "verde";
-  if (diffDias(marcado, limite) >= 0) return "amarillo";
-  return "rojo";
-}
-
-/** Objetivo de Recibos del período: por defecto N días calendario antes del
- * último día del mes liquidado. Si el cliente se marcó "Preliquidado" antes
- * de fin de mes y ya se recibieron las novedades, el objetivo pasa a ser esa
- * fecha + 1 día hábil (ítem 97) — el F.931 nunca se ve afectado por esto y
- * el límite de Recibos tampoco cambia. */
-function objetivoRecibos(
-  anio: number,
-  mes: number,
-  objetivoGeneral: ObjetivoSueldos,
-  tarea: { preliquidado: boolean; preliquidado_fecha: string | null; novedades_recibidas_fecha: string | null }
-): Date {
-  const finDeMes = new Date(anio, mes, 0, 23, 59, 59);
-  if (tarea.preliquidado && tarea.preliquidado_fecha && tarea.novedades_recibidas_fecha) {
-    const preliquidadoEn = new Date(tarea.preliquidado_fecha);
-    if (preliquidadoEn <= finDeMes) {
-      return sumarDiasHabiles(new Date(tarea.novedades_recibidas_fecha), 1);
-    }
-  }
-  const d = new Date(anio, mes, 0); // último día del mes liquidado
-  d.setDate(d.getDate() - objetivoGeneral.recibos_dias_antes_fin_mes);
-  return d;
-}
-
-function limiteRecibos(anio: number, mes: number, objetivoGeneral: ObjetivoSueldos): Date {
-  const mesSiguiente = mes === 12 ? 1 : mes + 1;
-  const anioSiguiente = mes === 12 ? anio + 1 : anio;
-  return enesimoDiaHabilDelMes(anioSiguiente, mesSiguiente, objetivoGeneral.recibos_limite_dia_habil_mes_siguiente);
-}
 
 /** Todas las filas de una consulta, de a 1000: PostgREST corta en 1000 por
  * defecto y tareas (clientes × meses) y asignaciones ya lo superan. */
@@ -55,10 +14,6 @@ async function traerTodas<T>(pagina: (desde: number, hasta: number) => PromiseLi
     filas.push(...(data ?? []));
     if (!data || data.length < 1000) return filas;
   }
-}
-
-function diffDias(desde: Date, hasta: Date): number {
-  return Math.round((hasta.getTime() - desde.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export default async function ProductividadPage() {
@@ -211,8 +166,7 @@ export default async function ProductividadPage() {
 
         if (tarea.f931_manual) {
           if (tarea.f931_manual_en) {
-            const venc = getVencimientoF931(terminacion, periodo.anio, periodo.mes);
-            const objetivo = restarDiasHabiles(venc, objetivoGeneral.f931_dias_habiles_antes_vencimiento);
+            const { objetivo, limite: venc } = objetivoLimiteF931(terminacion, periodo.anio, periodo.mes, objetivoGeneral);
             const color = clasificar(tarea.f931_manual_en, objetivo, venc);
             if (color === "verde") f931Verde++; else if (color === "amarillo") f931Amarillo++; else f931Rojo++;
             diasF931.push(diffDias(new Date(tarea.f931_manual_en), venc));

@@ -1,7 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente, Liquidadora, Tarea } from "@/types";
 import { getVencimientosGrupos, getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
-import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle } from "lucide-react";
+import { getObjetivoSueldos } from "@/lib/objetivos";
+import { objetivoLimiteF931, objetivoRecibos, limiteRecibos, clasificarEstado, type Color } from "@/lib/objetivoSueldos";
+import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle, Target } from "lucide-react";
 import clsx from "clsx";
 import { MonthSelector } from "./MonthSelector";
 import { fetchPeriodo } from "../seguimiento/actions";
@@ -10,6 +12,10 @@ const CAMPO_LABELS: Record<string, string> = {
   f931: "F.931", recibos: "Recibos", rec_q1: "Recibos Q1",
   bol_sind: "Boleta sindical", rub_lsd: "Rúbrica LSD", sac: "SAC",
 };
+
+function fmtCorta(d: Date): string {
+  return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+}
 
 function generateMonthOptions(mesTrabajo: number, anioTrabajo: number) {
   let mes = mesTrabajo;
@@ -47,7 +53,7 @@ export default async function DashboardPage({
   // los legajos del mes anterior; si alguien entraba acá primero en un mes
   // nuevo, esa copia no pasaba y quedaba en 0 hasta que alguien lo cargara
   // a mano en Seguimiento. Todo lo que no depende del período va en paralelo.
-  const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }, periodoActual, { data: alertasPostcierre }] = await Promise.all([
+  const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }, periodoActual, { data: alertasPostcierre }, objetivoGeneral] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
     supabase.from("clientes").select("*, liquidadora:liquidadoras!liquidador_id(*)").eq("estado", "activo"),
     supabase
@@ -63,6 +69,7 @@ export default async function DashboardPage({
       .gte("modificado_at", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
       .order("modificado_at", { ascending: false })
       .limit(50),
+    getObjetivoSueldos(),
   ]);
 
   // "clientes" trae toda empresa activa, tenga o no Sueldos contratado (ej:
@@ -95,22 +102,52 @@ export default async function DashboardPage({
   const total = clientesList.length;
   const pctAvance = total > 0 ? Math.round(((recibosOk + cargasOk) / (total * 2)) * 100) : 0;
 
+  // Ítem 69: objetivo/límite de Recibos del mes — el límite no depende del
+  // cliente, el objetivo sí (por la excepción de Preliquidado, ítem 97).
+  const limiteRecibosGeneral = limiteRecibos(anioActual, mesActual, objetivoGeneral);
+  const objetivoRecibosGeneral = objetivoRecibos(anioActual, mesActual, objetivoGeneral, {
+    preliquidado: false, preliquidado_fecha: null, novedades_recibidas_fecha: null,
+  });
+
   const resumen = liquidadorasList.map((liq) => {
     const mis = clientesList.filter((c) => c.liquidador_id === liq.id);
     let recibosOk = 0, f931Ok = 0, sacOk = 0, pendientes = 0, legajos = 0;
+    let f931Verde = 0, f931Amarillo = 0, f931Rojo = 0;
+    let recibosVerde = 0, recibosAmarillo = 0, recibosRojo = 0;
     for (const c of mis) {
       const t = tareasMap.get(c.id);
-      if (!t) { pendientes++; continue; }
-      if (t.recibos_manual || t.recibos_drive) recibosOk++;
-      if (t.f931_manual || t.f931_drive) f931Ok++;
-      if (esMesSAC && (t.sac_manual || t.sac_drive)) sacOk++;
-      legajos += t.legajos_cantidad ?? 0;
-      if (
-        !(t.recibos_manual || t.recibos_drive) ||
-        !(t.f931_manual || t.f931_drive)
-      ) pendientes++;
+      const tieneRecibos = !!t && (t.recibos_manual || t.recibos_drive);
+      const tieneF931 = !!t && (t.f931_manual || t.f931_drive);
+      if (!t) {
+        pendientes++;
+      } else {
+        if (tieneRecibos) recibosOk++;
+        if (tieneF931) f931Ok++;
+        if (esMesSAC && (t.sac_manual || t.sac_drive)) sacOk++;
+        legajos += t.legajos_cantidad ?? 0;
+        if (!tieneRecibos || !tieneF931) pendientes++;
+      }
+
+      // Ítem 69: estado en vivo contra el objetivo del área — a diferencia
+      // de Productividad (histórico, solo tareas ya marcadas), acá una
+      // tarea pendiente también se clasifica, comparando "hoy" contra el
+      // objetivo/límite (¿vamos a tiempo o ya estamos tarde?).
+      const { objetivo: objF931, limite: limF931 } = objetivoLimiteF931(c.terminacion_cuit, anioActual, mesActual, objetivoGeneral);
+      const colorF931 = clasificarEstado(tieneF931, t?.f931_manual_en ?? null, objF931, limF931, hoy);
+      if (colorF931 === "verde") f931Verde++; else if (colorF931 === "amarillo") f931Amarillo++; else f931Rojo++;
+
+      const objRecibos = objetivoRecibos(anioActual, mesActual, objetivoGeneral, {
+        preliquidado: t?.preliquidado ?? false,
+        preliquidado_fecha: t?.preliquidado_fecha ?? null,
+        novedades_recibidas_fecha: t?.novedades_recibidas_fecha ?? null,
+      });
+      const colorRecibos = clasificarEstado(tieneRecibos, t?.recibos_manual_en ?? null, objRecibos, limiteRecibosGeneral, hoy);
+      if (colorRecibos === "verde") recibosVerde++; else if (colorRecibos === "amarillo") recibosAmarillo++; else recibosRojo++;
     }
-    return { liq, total: mis.length, recibosOk, f931Ok, sacOk, pendientes, legajos };
+    return {
+      liq, total: mis.length, recibosOk, f931Ok, sacOk, pendientes, legajos,
+      f931Verde, f931Amarillo, f931Rojo, recibosVerde, recibosAmarillo, recibosRojo,
+    };
   });
   const totalLegajos = resumen.reduce((sum, r) => sum + r.legajos, 0);
 
@@ -125,7 +162,8 @@ export default async function DashboardPage({
     }).length;
     const ms = g.fecha.getTime() - hoy.getTime();
     const diasRestantes = Math.ceil(ms / 86400000);
-    return { ...g, ok, total: clientesGrupo.length, diasRestantes };
+    const { objetivo } = objetivoLimiteF931(g.min, anioActual, mesActual, objetivoGeneral);
+    return { ...g, ok, total: clientesGrupo.length, diasRestantes, objetivo };
   });
 
   return (
@@ -145,6 +183,44 @@ export default async function DashboardPage({
             Mes actual
           </a>
         )}
+      </div>
+
+      {/* Objetivo del área (ítem 69) — días configurables desde
+          /productividad/configuracion. Acá se muestra sin la excepción de
+          Preliquidado (ítem 97), que es por cliente/período. */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 mb-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Target size={16} className="text-bordo" />
+          <span className="text-[13px] font-semibold text-gray-900">Objetivo del área</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <p className="text-[11px] text-gray-400 mb-2">
+              F.931 — objetivo: {objetivoGeneral.f931_dias_habiles_antes_vencimiento} días hábiles antes del vencimiento · límite: el vencimiento
+            </p>
+            <div className="flex gap-4 flex-wrap">
+              {gruposF931.map((g) => (
+                <div key={g.label} className="text-[12px]">
+                  <p className="text-gray-500 font-medium">{g.label}</p>
+                  <p className="text-gray-700">Objetivo: <span className="font-medium">{fmtCorta(g.objetivo)}</span></p>
+                  <p className="text-gray-700">Límite: <span className="font-medium">{fmtCorta(g.fecha)}</span></p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-[11px] text-gray-400 mb-2">
+              Recibos — objetivo: {objetivoGeneral.recibos_dias_antes_fin_mes} días antes de fin de mes · límite: {objetivoGeneral.recibos_limite_dia_habil_mes_siguiente}º día hábil del mes siguiente
+            </p>
+            <div className="text-[12px]">
+              <p className="text-gray-700">Objetivo: <span className="font-medium">{fmtCorta(objetivoRecibosGeneral)}</span></p>
+              <p className="text-gray-700">Límite: <span className="font-medium">{fmtCorta(limiteRecibosGeneral)}</span></p>
+              <p className="text-[11px] text-amber-600 mt-1">
+                Con &quot;Preliquidado&quot; (ítem 97), el objetivo pasa a ser novedades recibidas + 1 día hábil.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stat cards */}
@@ -186,7 +262,7 @@ export default async function DashboardPage({
             <table className="w-full min-w-[520px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50">
-                  {["Liquidadora", "Clientes", "Legajos", "Recibos", "F.931", ...(esMesSAC ? ["SAC"] : []), "Pendientes"].map((h) => (
+                  {["Liquidadora", "Clientes", "Legajos", "Recibos", "F.931", "En objetivo F.931", "En objetivo Recibos", ...(esMesSAC ? ["SAC"] : []), "Pendientes"].map((h) => (
                     <th
                       key={h}
                       className={clsx(
@@ -200,7 +276,10 @@ export default async function DashboardPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {resumen.map(({ liq, total: tot, recibosOk, f931Ok, sacOk, pendientes, legajos }) => (
+                {resumen.map(({
+                  liq, total: tot, recibosOk, f931Ok, sacOk, pendientes, legajos,
+                  f931Verde, f931Amarillo, f931Rojo, recibosVerde, recibosAmarillo, recibosRojo,
+                }) => (
                   <tr key={liq.id} className="hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-2.5">
@@ -217,6 +296,12 @@ export default async function DashboardPage({
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <ProgressPill done={f931Ok} total={tot} />
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <ObjetivoPill verde={f931Verde} amarillo={f931Amarillo} rojo={f931Rojo} />
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <ObjetivoPill verde={recibosVerde} amarillo={recibosAmarillo} rojo={recibosRojo} />
                     </td>
                     {esMesSAC && (
                       <td className="px-4 py-3.5 text-center">
@@ -240,6 +325,8 @@ export default async function DashboardPage({
                   <td className="px-6 py-3 text-[12px] font-semibold text-gray-500">Total</td>
                   <td className="px-4 py-3 text-center text-[13px] font-semibold text-gray-700">{total}</td>
                   <td className="px-4 py-3 text-center text-[13px] font-semibold text-gray-700">{totalLegajos}</td>
+                  <td className="px-4 py-3" />
+                  <td className="px-4 py-3" />
                   <td className="px-4 py-3" />
                   <td className="px-4 py-3" />
                   {esMesSAC && <td className="px-4 py-3" />}
@@ -431,6 +518,30 @@ function ProgressPill({ done, total }: { done: number; total: number }) {
       )}>
         {pct}%
       </span>
+    </div>
+  );
+}
+
+/** Ítem 69: "en objetivo" (verde) sobre el total, con el desglose de
+ * amarillo/rojo debajo cuando corresponde — ej. 20/28 en objetivo, con
+ * 5 amarillo y 3 rojo. */
+function ObjetivoPill({ verde, amarillo, rojo }: { verde: number; amarillo: number; rojo: number }) {
+  const total = verde + amarillo + rojo;
+  if (total === 0) return <span className="text-gray-300 text-xs">—</span>;
+  const colorPrincipal: Color = verde === total ? "verde" : rojo > 0 ? "rojo" : "amarillo";
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className={clsx("text-[12px] font-medium",
+        colorPrincipal === "verde" ? "text-success" : colorPrincipal === "amarillo" ? "text-warning" : "text-danger"
+      )}>
+        {verde}/{total}
+      </span>
+      {(amarillo > 0 || rojo > 0) && (
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold">
+          {amarillo > 0 && <span className="text-warning">{amarillo}</span>}
+          {rojo > 0 && <span className="text-danger">{rojo}</span>}
+        </span>
+      )}
     </div>
   );
 }
