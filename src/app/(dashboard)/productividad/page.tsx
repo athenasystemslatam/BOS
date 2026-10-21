@@ -34,7 +34,7 @@ export default async function ProductividadPage() {
       .order("anio", { ascending: true })
       .order("mes", { ascending: true }),
     // Clientes activos con liquidadora
-    admin.from("clientes").select("id, liquidador_id, terminacion_cuit").eq("estado", "activo"),
+    admin.from("clientes").select("id, nombre, liquidador_id, terminacion_cuit").eq("estado", "activo"),
     // Asignaciones para resolver liquidadora histórica
     traerTodas<Asignacion>((desde, hasta) =>
       admin
@@ -129,35 +129,49 @@ export default async function ProductividadPage() {
   for (const t of tareas) tareasMap.set(`${t.cliente_id}:${t.periodo_id}`, t);
 
   const liqData = new Map<string, FilaLiquidadora>();
+  // Ítem 72: cuántas veces se marcó "Preliquidado" cada cliente, acumulado
+  // en toda la ventana de períodos — sirve para ver quién manda tarde.
+  const preliquidadoPorCliente = new Map<string, Map<string, { nombre: string; veces: number; totalPeriodos: number }>>();
   for (const liq of liquidadoras) {
-    liqData.set(liq.id, { id: liq.id, nombre: liq.nombre, meses: [] });
+    liqData.set(liq.id, { id: liq.id, nombre: liq.nombre, meses: [], clientesPreliquidado: [] });
+    preliquidadoPorCliente.set(liq.id, new Map());
   }
 
   for (const periodo of periodos) {
     // Agrupar clientes por liquidadora en este período
-    const porLiq = new Map<string, { terminacion: number; tarea: typeof tareas[0] | null }[]>();
+    const porLiq = new Map<string, { terminacion: number; clienteId: string; nombre: string; tarea: typeof tareas[0] | null }[]>();
 
     for (const cliente of clientes) {
       const liqId = resolverLiquidadora(cliente.id, periodo.anio, periodo.mes);
       if (!liqId) continue;
       if (!porLiq.has(liqId)) porLiq.set(liqId, []);
       const tarea = tareasMap.get(`${cliente.id}:${periodo.id}`) ?? null;
-      porLiq.get(liqId)!.push({ terminacion: cliente.terminacion_cuit, tarea });
+      porLiq.get(liqId)!.push({ terminacion: cliente.terminacion_cuit, clienteId: cliente.id, nombre: cliente.nombre, tarea });
     }
 
     for (const [liqId, items] of Array.from(porLiq.entries())) {
       const entry = liqData.get(liqId);
-      if (!entry) continue;
+      const preliqMap = preliquidadoPorCliente.get(liqId);
+      if (!entry || !preliqMap) continue;
 
       let f931Verde = 0, f931Amarillo = 0, f931Rojo = 0, f931SinTs = 0;
       let recibosVerde = 0, recibosAmarillo = 0, recibosRojo = 0, recibosSinTs = 0;
       let completadas = 0;
       let legajos = 0;
-      const diasF931: number[] = [];
-      const diasRecibos: number[] = [];
+      let preliquidadoCount = 0;
+      const diasF931Objetivo: number[] = [];
+      const diasF931Limite: number[] = [];
+      const diasRecibosObjetivo: number[] = [];
+      const diasRecibosLimite: number[] = [];
       const limiteRecibosPeriodo = limiteRecibos(periodo.anio, periodo.mes, objetivoGeneral);
 
-      for (const { terminacion, tarea } of items) {
+      for (const { terminacion, clienteId, nombre, tarea } of items) {
+        // Ítem 72: por cliente, independiente de si ya marcó F.931/Recibos.
+        const registro = preliqMap.get(clienteId) ?? { nombre, veces: 0, totalPeriodos: 0 };
+        registro.totalPeriodos++;
+        if (tarea?.preliquidado) { registro.veces++; preliquidadoCount++; }
+        preliqMap.set(clienteId, registro);
+
         if (!tarea) continue;
         const tieneF931 = tarea.f931_manual || tarea.f931_drive;
         const tieneRecibos = tarea.recibos_manual || tarea.recibos_drive;
@@ -169,7 +183,9 @@ export default async function ProductividadPage() {
             const { objetivo, limite: venc } = objetivoLimiteF931(terminacion, periodo.anio, periodo.mes, objetivoGeneral);
             const color = clasificar(tarea.f931_manual_en, objetivo, venc);
             if (color === "verde") f931Verde++; else if (color === "amarillo") f931Amarillo++; else f931Rojo++;
-            diasF931.push(diffDias(new Date(tarea.f931_manual_en), venc));
+            const marcado = new Date(tarea.f931_manual_en);
+            diasF931Objetivo.push(diffDias(marcado, objetivo));
+            diasF931Limite.push(diffDias(marcado, venc));
           } else {
             f931SinTs++;
           }
@@ -180,19 +196,16 @@ export default async function ProductividadPage() {
             const objetivo = objetivoRecibos(periodo.anio, periodo.mes, objetivoGeneral, tarea);
             const color = clasificar(tarea.recibos_manual_en, objetivo, limiteRecibosPeriodo);
             if (color === "verde") recibosVerde++; else if (color === "amarillo") recibosAmarillo++; else recibosRojo++;
-            diasRecibos.push(diffDias(new Date(tarea.recibos_manual_en), limiteRecibosPeriodo));
+            const marcado = new Date(tarea.recibos_manual_en);
+            diasRecibosObjetivo.push(diffDias(marcado, objetivo));
+            diasRecibosLimite.push(diffDias(marcado, limiteRecibosPeriodo));
           } else {
             recibosSinTs++;
           }
         }
       }
 
-      const avgDiasF931 = diasF931.length > 0
-        ? diasF931.reduce((a, b) => a + b, 0) / diasF931.length
-        : null;
-      const avgDiasRecibos = diasRecibos.length > 0
-        ? diasRecibos.reduce((a, b) => a + b, 0) / diasRecibos.length
-        : null;
+      const promedio = (valores: number[]) => valores.length > 0 ? valores.reduce((a, b) => a + b, 0) / valores.length : null;
 
       entry.meses.push({
         periodoId: periodo.id,
@@ -203,10 +216,22 @@ export default async function ProductividadPage() {
         recibosVerde, recibosAmarillo, recibosRojo, recibosSinTs,
         completadas,
         legajos,
-        avgDiasF931,
-        avgDiasRecibos,
+        preliquidadoCount,
+        avgDiasF931Objetivo: promedio(diasF931Objetivo),
+        avgDiasF931Limite: promedio(diasF931Limite),
+        avgDiasRecibosObjetivo: promedio(diasRecibosObjetivo),
+        avgDiasRecibosLimite: promedio(diasRecibosLimite),
       });
     }
+  }
+
+  for (const [liqId, entry] of Array.from(liqData.entries())) {
+    const preliqMap = preliquidadoPorCliente.get(liqId);
+    if (!preliqMap) continue;
+    entry.clientesPreliquidado = Array.from(preliqMap.entries())
+      .map(([clienteId, r]) => ({ clienteId, ...r }))
+      .filter((r) => r.veces > 0)
+      .sort((a, b) => b.veces - a.veces);
   }
 
   // Solo liquidadoras con al menos 1 período con datos
