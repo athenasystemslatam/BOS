@@ -162,6 +162,41 @@ export async function toggleManual(
   return error ? { error: error.message } : { success: true };
 }
 
+// Ítem 97: "Preliquidado – esperando novedades" / "Novedades recibidas".
+// A diferencia de toggleManual, estas 2 casillas no tienen contraparte en
+// Drive — son solo una marca manual, con su propia fecha y hora que se
+// autocompleta al tildar y se borra al destildar (igual que Pedido/
+// Recepción de información en Contable). Esa fecha es lo que después usa
+// Productividad (ítem 69) para mover el objetivo de Recibos.
+export async function toggleSeguimientoExtra(
+  clienteId: string,
+  periodoId: string,
+  campo: "preliquidado" | "novedades_recibidas",
+  valor: boolean
+) {
+  try {
+    await requireLiquidadoraOrAdmin();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("tareas")
+    .upsert(
+      {
+        cliente_id: clienteId,
+        periodo_id: periodoId,
+        [campo]: valor,
+        [`${campo}_fecha`]: valor ? new Date().toISOString() : null,
+      },
+      { onConflict: "cliente_id,periodo_id" }
+    );
+
+  if (!error) revalidatePath("/", "layout");
+  return error ? { error: error.message } : { success: true };
+}
+
 // A diferencia de recibos/F.931/etc. (que sí son por mes), la cantidad de
 // legajos es un dato del CLIENTE — casi nunca cambia de un mes a otro. Por
 // eso editarlo desde cualquier período lo actualiza en todos los períodos

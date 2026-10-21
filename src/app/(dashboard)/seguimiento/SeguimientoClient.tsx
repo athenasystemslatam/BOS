@@ -33,6 +33,7 @@ import { useBackdropClose } from "@/lib/useBackdropClose";
 import {
   editarDatosCliente,
   toggleManual,
+  toggleSeguimientoExtra,
   updateLegajos,
   updateObservaciones,
   updateRecordatorio,
@@ -77,6 +78,13 @@ type TareaState = {
   legajos_cantidad: number;
   observaciones: string;
   recordatorio: string;
+  // Ítem 97: "Preliquidado – esperando novedades" / "Novedades recibidas".
+  // Si se tilda (1) antes de fin del mes liquidado, el objetivo de Recibos
+  // pasa a ser la fecha de (2) + 1 día hábil (ver ítem 69).
+  preliquidado: boolean;
+  preliquidado_fecha: string | null;
+  novedades_recibidas: boolean;
+  novedades_recibidas_fecha: string | null;
 };
 
 const DEFAULTS: TareaState = {
@@ -89,6 +97,8 @@ const DEFAULTS: TareaState = {
   legajos_cantidad: 0,
   observaciones: "",
   recordatorio: "",
+  preliquidado: false, preliquidado_fecha: null,
+  novedades_recibidas: false, novedades_recibidas_fecha: null,
 };
 
 type CheckState = "empty" | "warning" | "drive" | "confirmed";
@@ -148,6 +158,53 @@ function CheckboxCell({
 
 function DashCell() {
   return <span className="text-gray-200 text-base font-light select-none">—</span>;
+}
+
+// ─── FechaMarcaCell (ítem 97) ─────────────────────────────────────────────────
+// Casilla que registra sola la fecha (sin "drive" de por medio, a
+// diferencia de CheckboxCell) — igual al patrón ya usado en Contable.
+
+function fmtCortaSeguimiento(fechaISO: string | null): string {
+  if (!fechaISO) return "";
+  const [, m, d] = fechaISO.slice(0, 10).split("-");
+  return `${d}/${m}`;
+}
+
+function FechaMarcaCell({
+  marcado,
+  fecha,
+  onToggle,
+  disabled,
+  tituloMarcado,
+  tituloVacio,
+}: {
+  marcado: boolean;
+  fecha: string | null;
+  onToggle: () => void;
+  disabled?: boolean;
+  tituloMarcado: string;
+  tituloVacio: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      title={disabled ? "Modo consulta — solo lectura" : marcado ? tituloMarcado : tituloVacio}
+      className={clsx(
+        "flex flex-col items-center justify-center gap-0.5 w-11 h-8 rounded-lg border-2 mx-auto transition-all",
+        disabled && "opacity-50 cursor-not-allowed",
+        marcado
+          ? "bg-violet-50 border-violet-300 text-violet-600 hover:bg-violet-100"
+          : "border-dashed border-gray-300 text-gray-300 hover:border-gray-400 hover:bg-gray-50"
+      )}
+    >
+      {marcado ? <Check size={12} strokeWidth={3} /> : <span className="text-[13px] leading-none">·</span>}
+      {marcado && fecha && (
+        <span className="text-[8px] font-medium leading-none tabular-nums">{fmtCortaSeguimiento(fecha)}</span>
+      )}
+    </button>
+  );
 }
 
 // ─── CopyButton ───────────────────────────────────────────────────────────────
@@ -631,6 +688,10 @@ export function SeguimientoClient({
         legajos_cantidad: t.legajos_cantidad,
         observaciones: t.observaciones ?? "",
         recordatorio: t.recordatorio ?? "",
+        preliquidado: t.preliquidado ?? false,
+        preliquidado_fecha: t.preliquidado_fecha ?? null,
+        novedades_recibidas: t.novedades_recibidas ?? false,
+        novedades_recibidas_fecha: t.novedades_recibidas_fecha ?? null,
       });
     }
     return m;
@@ -775,6 +836,29 @@ export function SeguimientoClient({
     });
 
     toggleManual(clienteId, currentPeriodo.id, campo, newValue);
+  }
+
+  // Ítem 97: a diferencia de handleToggle, acá SÍ hay una fecha propia que
+  // mostrar al toque (el servidor la vuelve a calcular igual, esto es solo
+  // para no esperar la respuesta antes de pintar la fecha en la celda).
+  function handleTogglePreliquidado(clienteId: string, campo: "preliquidado" | "novedades_recibidas") {
+    if (!currentPeriodo || !puedeEditar) return;
+    const current = getEffective(clienteId);
+    const newValue = !current[campo];
+    const fechaCampo = campo === "preliquidado" ? "preliquidado_fecha" : "novedades_recibidas_fecha";
+
+    setOverrides((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(clienteId) ?? {};
+      next.set(clienteId, {
+        ...existing,
+        [campo]: newValue,
+        [fechaCampo]: newValue ? new Date().toISOString() : null,
+      });
+      return next;
+    });
+
+    toggleSeguimientoExtra(clienteId, currentPeriodo.id, campo, newValue);
   }
 
   // ── Legajos (debounced) ───────────────────────────────────────────────────
@@ -1146,6 +1230,12 @@ export function SeguimientoClient({
             </div>
             Confirmado
           </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md border-2 bg-violet-50 border-violet-300 flex items-center justify-center">
+              <Check size={10} strokeWidth={3} className="text-violet-600" />
+            </div>
+            Preliq. / Novedades recibidas
+          </div>
         </div>
       </div>
 
@@ -1244,6 +1334,28 @@ export function SeguimientoClient({
 
                 {/* Checkboxes row */}
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Preliquidado / Novedades recibidas (ítem 97) */}
+                  {([
+                    { key: "preliquidado" as const, label: "Preliq", marcado: t.preliquidado },
+                    { key: "novedades_recibidas" as const, label: "Noved", marcado: t.novedades_recibidas },
+                  ]).map(({ key, label, marcado }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleTogglePreliquidado(cliente.id, key)}
+                      disabled={!puedeEditar}
+                      className={clsx(
+                        "flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg border-2 transition-all min-w-[44px]",
+                        !puedeEditar && "opacity-50",
+                        marcado ? "bg-violet-50 border-violet-300 text-violet-600" : "border-dashed border-gray-300 text-gray-300"
+                      )}
+                    >
+                      <span className="text-[9px] font-semibold uppercase tracking-wide leading-none">{label}</span>
+                      <span className="text-[13px] leading-none">
+                        {marcado ? <Check size={13} strokeWidth={3} /> : "·"}
+                      </span>
+                    </button>
+                  ))}
                   {campos.map(({ key, label, aplica, manual, drive }) =>
                     aplica ? (
                       <button
@@ -1357,6 +1469,12 @@ export function SeguimientoClient({
                       Rec.Q1
                     </th>
                   )}
+                  <th className="px-2 py-3 text-center text-[11px] font-semibold text-violet-400 uppercase tracking-wider w-[60px]" title="Preliquidado – esperando novedades">
+                    Preliq.
+                  </th>
+                  <th className="px-2 py-3 text-center text-[11px] font-semibold text-violet-400 uppercase tracking-wider w-[60px]" title="Novedades recibidas">
+                    Noved.
+                  </th>
                   {(
                     [
                       { key: "recibos" as CampoManual, label: "Recibos" },
@@ -1595,6 +1713,30 @@ export function SeguimientoClient({
                           )}
                         </td>
                       )}
+
+                      {/* Preliquidado (ítem 97) */}
+                      <td className="px-2 py-2.5 text-center">
+                        <FechaMarcaCell
+                          marcado={t.preliquidado}
+                          fecha={t.preliquidado_fecha}
+                          onToggle={() => handleTogglePreliquidado(cliente.id, "preliquidado")}
+                          disabled={!puedeEditar}
+                          tituloMarcado="Preliquidado, esperando novedades del cliente"
+                          tituloVacio="Marcar como preliquidado — esperando novedades"
+                        />
+                      </td>
+
+                      {/* Novedades recibidas (ítem 97) */}
+                      <td className="px-2 py-2.5 text-center">
+                        <FechaMarcaCell
+                          marcado={t.novedades_recibidas}
+                          fecha={t.novedades_recibidas_fecha}
+                          onToggle={() => handleTogglePreliquidado(cliente.id, "novedades_recibidas")}
+                          disabled={!puedeEditar}
+                          tituloMarcado="Novedades recibidas del cliente"
+                          tituloVacio="Marcar novedades recibidas"
+                        />
+                      </td>
 
                       {/* Recibos */}
                       <td className="px-2 py-2.5 text-center">

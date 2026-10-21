@@ -159,6 +159,10 @@ export interface Tarea {
   recordatorio?: string;
   f931_manual_en?: string | null;
   recibos_manual_en?: string | null;
+  preliquidado?: boolean;
+  preliquidado_fecha?: string | null;
+  novedades_recibidas?: boolean;
+  novedades_recibidas_fecha?: string | null;
   cliente?: Cliente;
   periodo?: Periodo;
 }
