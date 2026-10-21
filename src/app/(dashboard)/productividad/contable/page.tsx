@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { DIAS_VTO_BALANCE, DIAS_VTO_F855 } from "../../contable/semaforo";
+import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
 import { ContableProductividadClient, FilaResponsableContable } from "./ContableProductividadClient";
 
 function addDays(dateStr: string, days: number): Date {
@@ -36,15 +36,17 @@ export default async function ProductividadContablePage() {
 
   const admin = createAdminClient();
 
-  const [{ data: balancesRaw }, { data: liquidadoras }] = await Promise.all([
+  const [{ data: balancesRaw }, { data: liquidadoras }, objetivoGeneral, excepciones] = await Promise.all([
     admin
       .from("balances")
       .select(
-        "id, anio_fiscal, fecha_cierre, estado, responsable_id, responsable2_id, " +
+        "id, cliente_id, anio_fiscal, fecha_cierre, estado, responsable_id, responsable2_id, " +
         "envio1_fecha, info_recibida_fecha, legalizado_fecha, presentado_fecha, " +
         "f855_estado, f899_estado, f713_estado, f657_estado, igj_presentacion, igj_tasa, f855_fecha"
       ),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+    getObjetivoContable(),
+    getExcepcionesCliente("contable"),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,7 +105,8 @@ export default async function ProductividadContablePage() {
       let terminadosEnTermino = 0;
       for (const b of terminados) {
         if (!b.presentado_fecha) continue;
-        const vto = addDays(b.fecha_cierre, DIAS_VTO_BALANCE);
+        const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
+        const vto = addDays(b.fecha_cierre, objetivo.balance_dias_vto);
         const margen = diffDias(new Date(b.presentado_fecha), vto);
         margenes.push(margen);
         if (margen >= 0) terminadosEnTermino++;
@@ -142,13 +145,17 @@ export default async function ProductividadContablePage() {
 
       // F.855 en término, aparte (mismo criterio que la tarjeta de objetivo
       // del dashboard pero acotado a este contador/año).
+      const vtoF855 = (b: { fecha_cierre: string; cliente_id: string }) => {
+        const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
+        return addDays(b.fecha_cierre, objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra);
+      };
       const f855Vencidos = items.filter((b) => {
         if (b.f855_estado === "no_corresponde") return false;
-        return hoy > addDays(b.fecha_cierre, DIAS_VTO_F855);
+        return hoy > vtoF855(b);
       });
       const f855EnTermino = f855Vencidos.filter((b) => {
         if (b.f855_estado !== "presentado" || !b.f855_fecha) return false;
-        return new Date(b.f855_fecha) <= addDays(b.fecha_cierre, DIAS_VTO_F855);
+        return new Date(b.f855_fecha) <= vtoF855(b);
       }).length;
 
       fila.anios.push({

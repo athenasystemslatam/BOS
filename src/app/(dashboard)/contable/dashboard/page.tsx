@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Building2, CheckCircle2, Clock, AlertTriangle, Ban, UserX, Target } from "lucide-react";
 import clsx from "clsx";
-import { ESTADO_BALANCE, calcularAvance, DIAS_VTO_BALANCE, DIAS_VTO_F855, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
+import { ESTADO_BALANCE, calcularAvance, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
+import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
 import { MapaCargaClient } from "./MapaCargaClient";
 
 function addDays(dateStr: string, days: number) {
@@ -27,7 +28,7 @@ export default async function ContableDashboardPage() {
   const anios = [anioActual - 1, anioActual];
   const admin = createAdminClient();
 
-  const [{ data: balancesRaw }, { data: equipoRaw }, { data: modulosRaw }] = await Promise.all([
+  const [{ data: balancesRaw }, { data: equipoRaw }, { data: modulosRaw }, objetivoGeneral, excepciones] = await Promise.all([
     admin
       .from("balances")
       .select(
@@ -40,6 +41,8 @@ export default async function ContableDashboardPage() {
       .order("fecha_cierre"),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
+    getObjetivoContable(),
+    getExcepcionesCliente("contable"),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,11 +52,14 @@ export default async function ContableDashboardPage() {
   const equipoIdsContable = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipoContable = (equipoRaw ?? []).filter((e) => equipoIdsContable.has(e.id));
 
-  const conVto = balances.map((b) => ({
-    ...b,
-    vtoBalance: addDays(b.fecha_cierre, DIAS_VTO_BALANCE),
-    vto855: addDays(b.fecha_cierre, DIAS_VTO_F855),
-  }));
+  const conVto = balances.map((b) => {
+    const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
+    return {
+      ...b,
+      vtoBalance: addDays(b.fecha_cierre, objetivo.balance_dias_vto),
+      vto855: addDays(b.fecha_cierre, objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra),
+    };
+  });
 
   // Objetivo del área (ítems 67/70): el mínimo legal es 100% en término.
   // Solo cuenta lo que ya venció (no tiene sentido evaluar "en término" algo
@@ -146,9 +152,8 @@ export default async function ContableDashboardPage() {
       </div>
 
       {/* Objetivo del área (ítems 67/68/70) — mínimo legal: 100% en término.
-          Todavía hardcodeado acá (ver DIAS_VTO_BALANCE/DIAS_VTO_F855 en
-          semaforo.ts) hasta que exista la pantalla de configuración del
-          ítem 67 (objetivo general + excepción por cliente). */}
+          Días configurables desde /productividad/configuracion, con
+          excepción por cliente (ver src/lib/objetivos.ts). */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 mb-5 flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2 shrink-0">
           <Target size={16} className="text-emerald-600" />

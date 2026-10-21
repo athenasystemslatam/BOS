@@ -10,7 +10,7 @@ import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloP
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import {
   ESTADO_BALANCE, ESTADO_EECC, avanceCls, calcularAvance, calcularEstado,
-  diasDemoraPedido, colorAlertaDemora, DIAS_VTO_BALANCE, DIAS_VTO_F855,
+  diasDemoraPedido, colorAlertaDemora,
 } from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
 import type { ClaveAcceso, EquipoMiembro } from "@/types";
@@ -38,6 +38,11 @@ type Balance = {
   igj_presentacion: string;
   igj_tasa: string;
   observaciones: string | null;
+  // Ítem 67: ya vienen resueltos desde el servidor (general del área, o la
+  // excepción del cliente si tiene una cargada) — este componente no sabe
+  // nada de objetivos/excepciones, solo usa lo que le llega.
+  dias_vto_balance: number;
+  dias_vto_f855: number;
   clientes: { nombre: string; cuit: string; claves_acceso: ClaveAcceso[] | null } | null;
   responsable: { id: string; nombre: string } | null;
   responsable2: { id: string; nombre: string } | null;
@@ -384,8 +389,8 @@ export function ContableClient({
               </tr>
             )}
             {filas.map((b) => {
-              const vtoBalance = addDays(b.fecha_cierre, DIAS_VTO_BALANCE);
-              const vto855 = addDays(b.fecha_cierre, DIAS_VTO_F855);
+              const vtoBalance = addDays(b.fecha_cierre, b.dias_vto_balance);
+              const vto855 = addDays(b.fecha_cierre, b.dias_vto_f855);
               const estadoInfo = ESTADO_BALANCE[b.estado] ?? ESTADO_BALANCE.sin_asignar;
               const eeccInfo = ESTADO_EECC[b.estado_eecc] ?? ESTADO_EECC.pendiente;
 

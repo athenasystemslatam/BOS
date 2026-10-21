@@ -89,12 +89,10 @@ export function calcularAvance(b: {
   return 0;
 }
 
-// Vencimientos del área (ítems 67/70) — hardcodeados acá nomás por ahora,
-// en un único lugar, hasta que exista una pantalla de configuración (ítem
-// 67, objetivo general + excepción por cliente). Todo lo que hoy calcula
-// estos plazos debe importar de acá, no repetir el número.
-export const DIAS_VTO_BALANCE = 135;
-export const DIAS_VTO_F855 = 160; // = VTO Balance + 25 días; F899 usa la misma fecha
+// Ítem 67: los días de vencimiento ya NO son una constante fija acá — se
+// configuran desde /productividad/configuracion y se resuelven por cliente
+// (objetivo general + excepción opcional) vía src/lib/objetivos.ts. Solo
+// queda el texto de la tarjeta del dashboard, que no es configurable.
 export const OBJETIVO_CONTABLE_TEXTO = "Balances En ARCA antes del vencimiento";
 
 // Ítem 34 — el Estado deja de cargarse a mano y se calcula desde el

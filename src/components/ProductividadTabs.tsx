@@ -5,6 +5,7 @@ const TABS = [
   { href: "/productividad/impuestos", label: "Impuestos", color: "text-blue-600 border-blue-600" },
   { href: "/productividad/contable", label: "Contable", color: "text-emerald-600 border-emerald-600" },
   { href: "/productividad/monotributo", label: "Monotributo", color: "text-amber-600 border-amber-600" },
+  { href: "/productividad/configuracion", label: "Configuración", color: "text-gray-700 border-gray-700" },
 ] as const;
 
 export function ProductividadTabs({ current }: { current: (typeof TABS)[number]["href"] }) {

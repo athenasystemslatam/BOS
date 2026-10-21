@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
-import { ESTADO_BALANCE, DIAS_VTO_BALANCE, DIAS_VTO_F855 } from "../semaforo";
+import { ESTADO_BALANCE } from "../semaforo";
+import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
 
 const ANIOS = [2026, 2025];
 
@@ -23,24 +24,29 @@ export default async function ContableVencimientosPage({
   const anio = Number(searchParams.anio) || new Date().getFullYear();
   const admin = createAdminClient();
 
-  const { data: balancesRaw } = await admin
-    .from("balances")
-    .select(
-      "id, fecha_cierre, estado, avance, " +
-      "clientes(nombre), " +
-      "responsable:equipo!balances_responsable_id_fkey(nombre), " +
-      "responsable2:equipo!balances_responsable2_id_fkey(nombre)"
-    )
-    .eq("anio_fiscal", anio)
-    .order("fecha_cierre");
+  const [{ data: balancesRaw }, objetivoGeneral, excepciones] = await Promise.all([
+    admin
+      .from("balances")
+      .select(
+        "id, cliente_id, fecha_cierre, estado, avance, " +
+        "clientes(nombre), " +
+        "responsable:equipo!balances_responsable_id_fkey(nombre), " +
+        "responsable2:equipo!balances_responsable2_id_fkey(nombre)"
+      )
+      .eq("anio_fiscal", anio)
+      .order("fecha_cierre"),
+    getObjetivoContable(),
+    getExcepcionesCliente("contable"),
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const balances = (balancesRaw as any[]) ?? [];
   const hoy = new Date();
 
   const filas = balances.map((b) => {
-    const vtoBalance = addDays(b.fecha_cierre, DIAS_VTO_BALANCE);
-    const vto855 = addDays(b.fecha_cierre, DIAS_VTO_F855);
+    const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
+    const vtoBalance = addDays(b.fecha_cierre, objetivo.balance_dias_vto);
+    const vto855 = addDays(b.fecha_cierre, objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra);
     const diasVto = Math.ceil((vtoBalance.getTime() - hoy.getTime()) / 86400000);
     return { ...b, vtoBalance, vto855, diasVto };
   });
@@ -56,7 +62,7 @@ export default async function ContableVencimientosPage({
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable</p>
           <h1 className="text-[20px] font-semibold text-gray-900">Vencimientos {anio}</h1>
           <p className="text-[13px] text-gray-400 mt-1">
-            VTO Balance y Ganancias = cierre + 135 días · VTO F.855/F899 = cierre + 160 días
+            VTO Balance y Ganancias = cierre + {objetivoGeneral.balance_dias_vto} días · VTO F.855/F899 = cierre + {objetivoGeneral.balance_dias_vto + objetivoGeneral.f855_dias_vto_extra} días (general — algún cliente puede tener excepción)
           </p>
         </div>
         <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
