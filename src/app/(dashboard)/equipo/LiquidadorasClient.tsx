@@ -8,6 +8,7 @@ import { NuevaLiquidadoraModal } from "./NuevaLiquidadoraModal";
 import { EditarLiquidadoraModal } from "./EditarLiquidadoraModal";
 import { TransferirCarteraModal } from "./TransferirCarteraModal";
 import { BloqueosPanel } from "./BloqueosPanel";
+import { BackupButton } from "@/components/BackupButton";
 
 const ROL_LABELS: Record<string, { label: string; cls: string }> = {
   admin:       { label: "Admin",        cls: "bg-purple-50 text-purple-700" },
@@ -62,7 +63,10 @@ export function LiquidadorasClient({
               Todo el personal de KMA — quién tiene acceso al sistema, con qué rol, y a qué áreas pertenece.
             </p>
           </div>
-          {isAdmin && <NuevaLiquidadoraModal />}
+          <div className="flex items-center gap-2">
+            {isAdmin && <BackupButton modulo="completo" />}
+            {isAdmin && <NuevaLiquidadoraModal />}
+          </div>
         </div>
 
         {/* Filtro tabs */}
