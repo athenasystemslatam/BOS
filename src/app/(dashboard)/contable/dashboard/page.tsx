@@ -21,13 +21,19 @@ function diasRestantes(d: Date) {
   return Math.ceil((d.getTime() - Date.now()) / 86400000);
 }
 
-export default async function ContableDashboardPage() {
+export default async function ContableDashboardPage({
+  searchParams,
+}: {
+  searchParams: { anio?: string };
+}) {
   // Ventana de dos años: un balance que cierra a fin de un año fiscal puede
   // vencer (cierre + 135/160 días) recién entrado el año siguiente, así que
-  // el dashboard siempre mira el año actual + el anterior juntos, no uno
-  // por vez (ver nota del 2026-10-20).
+  // el dashboard siempre trae los datos de año actual + el anterior juntos
+  // (ver nota del 2026-10-20). El selector de arriba (2025/2026/Ambos) solo
+  // filtra qué parte de esa ventana se muestra, no vuelve a consultar nada.
   const anioActual = new Date().getFullYear();
   const anios = [anioActual - 1, anioActual];
+  const filtroAnio = anios.includes(Number(searchParams.anio)) ? Number(searchParams.anio) : null;
   const admin = createAdminClient();
 
   const [{ data: balancesRaw }, { data: equipoRaw }, { data: modulosRaw }, objetivoGeneral, excepciones, yo] = await Promise.all([
@@ -49,13 +55,13 @@ export default async function ContableDashboardPage() {
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const balances = (balancesRaw as any[]) ?? [];
+  const balancesTodos = (balancesRaw as any[]) ?? [];
   const hoy = new Date();
 
   const equipoIdsContable = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipoContable = (equipoRaw ?? []).filter((e) => equipoIdsContable.has(e.id));
 
-  const conVto = balances.map((b) => {
+  const conVtoTodos = balancesTodos.map((b) => {
     const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
     return {
       ...b,
@@ -63,6 +69,19 @@ export default async function ContableDashboardPage() {
       vto855: addDays(b.fecha_cierre, objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra),
     };
   });
+  // Todo lo que sigue se calcula sobre esto — ya sea la ventana completa
+  // ("Ambos") o un solo año fiscal si el selector de arriba lo acota.
+  const conVto = filtroAnio ? conVtoTodos.filter((b) => b.anio_fiscal === filtroAnio) : conVtoTodos;
+  const balances = conVto;
+
+  // Para el desglose por año de cada tarjeta (solo tiene sentido con "Ambos"
+  // elegido — con un año puntual ya está todo acotado a ese año).
+  function porAnio(pred: (b: (typeof conVtoTodos)[number]) => boolean): [number, number] {
+    return [
+      conVtoTodos.filter((b) => b.anio_fiscal === anios[0] && pred(b)).length,
+      conVtoTodos.filter((b) => b.anio_fiscal === anios[1] && pred(b)).length,
+    ];
+  }
 
   // Objetivo del área (ítems 67/70): el mínimo legal es 100% en término.
   // Solo cuenta lo que ya venció (no tiene sentido evaluar "en término" algo
@@ -141,6 +160,14 @@ export default async function ContableDashboardPage() {
     .sort((a, b) => a.vtoBalance.getTime() - b.vtoBalance.getTime())
     .slice(0, 10);
 
+  // Desglose por año de una tarjeta — solo tiene sentido con "Ambos", con un
+  // año puntual elegido ya está todo acotado a ese año.
+  function desglose(pred: (b: (typeof conVtoTodos)[number]) => boolean): string | undefined {
+    if (filtroAnio) return undefined;
+    const [a, b] = porAnio(pred);
+    return `${a} de ${anios[0]} · ${b} de ${anios[1]}`;
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
       {/* Header */}
@@ -148,10 +175,35 @@ export default async function ContableDashboardPage() {
         <div>
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable · Resumen</p>
           <h1 className="text-[20px] font-semibold text-gray-900">
-            Dashboard {anios[0]}–{anios[1]}
+            Dashboard {filtroAnio ?? `${anios[0]}–${anios[1]}`}
           </h1>
         </div>
-        {yo?.isAdmin && <BackupButton modulo="contable" />}
+        <div className="flex items-center gap-3">
+          <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg text-[13px] font-medium">
+            {anios.map((a) => (
+              <a
+                key={a}
+                href={`/contable/dashboard?anio=${a}`}
+                className={clsx(
+                  "px-3 py-1.5 rounded-md transition-all",
+                  filtroAnio === a ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                )}
+              >
+                {a}
+              </a>
+            ))}
+            <a
+              href="/contable/dashboard"
+              className={clsx(
+                "px-3 py-1.5 rounded-md transition-all",
+                !filtroAnio ? "bg-white text-emerald-700 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              Ambos
+            </a>
+          </div>
+          {yo?.isAdmin && <BackupButton modulo="contable" />}
+        </div>
       </div>
 
       {/* Objetivo del área (ítems 67/68/70) — mínimo legal: 100% en término.
@@ -170,34 +222,44 @@ export default async function ContableDashboardPage() {
 
       {/* Estado general */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-        <StatCard label="Total balances" value={total} icon={<Building2 size={16} className="text-gray-400" />} />
+        <StatCard
+          label="Total balances"
+          value={total}
+          icon={<Building2 size={16} className="text-gray-400" />}
+          desglose={desglose(() => true)}
+        />
         <StatCard
           label="Terminados (En ARCA)"
           value={terminados}
           icon={<CheckCircle2 size={16} className="text-emerald-500" />}
           valueColor="text-emerald-600"
+          desglose={desglose((b) => b.estado === "finalizado")}
         />
         <StatCard
           label="En proceso"
           value={enProceso}
           icon={<Clock size={16} className="text-amber-500" />}
           valueColor="text-amber-600"
+          desglose={desglose((b) => b.estado === "asignado" || b.estado === "legalizado")}
         />
         <StatCard
           label="Sin asignar"
           value={sinAsignar}
           icon={<UserX size={16} className="text-gray-400" />}
+          desglose={desglose((b) => b.estado === "sin_asignar")}
         />
         <StatCard
           label="Frenados"
           value={frenados}
           icon={<Ban size={16} className="text-red-500" />}
           valueColor={frenados > 0 ? "text-red-600" : "text-gray-900"}
+          desglose={desglose((b) => b.estado === "frenado")}
         />
         <StatCard
           label="Vencidos sin cerrar"
           value={vencidosSinCerrar}
           icon={<AlertTriangle size={16} className="text-red-500" />}
+          desglose={desglose((b) => b.estado !== "finalizado" && b.vtoBalance < hoy)}
           valueColor={vencidosSinCerrar > 0 ? "text-red-600" : "text-gray-900"}
         />
       </div>
@@ -207,7 +269,9 @@ export default async function ContableDashboardPage() {
         <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-[14px] font-semibold text-gray-900">Resumen por contador</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">Años fiscales {anios[0]} y {anios[1]}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {filtroAnio ? `Año fiscal ${filtroAnio}` : `Años fiscales ${anios[0]} y ${anios[1]}`}
+            </p>
           </div>
           {porResponsable.length === 0 ? (
             <div className="py-14 text-center text-[13px] text-gray-400">Sin responsables asignados</div>
@@ -254,35 +318,19 @@ export default async function ContableDashboardPage() {
           )}
         </div>
 
-        {/* Distribución por estado */}
+        {/* Distribución por estado — una barra por año fiscal, nunca
+            combinadas: son años de trabajo distintos (ver nota arriba). Con
+            un año puntual elegido, se ve una sola. */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">
             <h2 className="text-[14px] font-semibold text-gray-900">Por estado</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">Años fiscales {anios[0]} y {anios[1]}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {filtroAnio ? `Año fiscal ${filtroAnio}` : `Años fiscales ${anios[0]} y ${anios[1]}`}
+            </p>
           </div>
-          <div className="p-5 space-y-3">
-            {[
-              { label: "Finalizado", count: terminados, color: ESTADO_BALANCE.finalizado.bar },
-              { label: "Legalizado", count: balances.filter((b) => b.estado === "legalizado").length, color: ESTADO_BALANCE.legalizado.bar },
-              { label: "Asignado", count: balances.filter((b) => b.estado === "asignado").length, color: ESTADO_BALANCE.asignado.bar },
-              { label: "Frenado", count: frenados, color: ESTADO_BALANCE.frenado.bar },
-              { label: "Sin asignar", count: sinAsignar, color: ESTADO_BALANCE.sin_asignar.bar },
-            ].map(({ label, count, color }) => (
-              <div key={label}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[12px] text-gray-600">{label}</span>
-                  <span className="text-[12px] font-semibold text-gray-700">
-                    {count}
-                    {total > 0 && <span className="text-gray-400 font-normal ml-1">({Math.round((count / total) * 100)}%)</span>}
-                  </span>
-                </div>
-                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={clsx("h-full rounded-full", color)}
-                    style={{ width: total > 0 ? `${Math.round((count / total) * 100)}%` : "0%" }}
-                  />
-                </div>
-              </div>
+          <div className="p-5 space-y-5">
+            {(filtroAnio ? [filtroAnio] : anios).map((a) => (
+              <BarraEstadoAnio key={a} anio={a} balances={conVtoTodos.filter((b) => b.anio_fiscal === a)} />
             ))}
           </div>
         </div>
@@ -360,8 +408,8 @@ export default async function ContableDashboardPage() {
   );
 }
 
-function StatCard({ label, value, icon, valueColor = "text-gray-900" }: {
-  label: string; value: number; icon: React.ReactNode; valueColor?: string;
+function StatCard({ label, value, icon, valueColor = "text-gray-900", desglose }: {
+  label: string; value: number; icon: React.ReactNode; valueColor?: string; desglose?: string;
 }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-4">
@@ -370,6 +418,47 @@ function StatCard({ label, value, icon, valueColor = "text-gray-900" }: {
         {icon}
       </div>
       <p className={clsx("text-[26px] font-bold leading-none tracking-tight", valueColor)}>{value}</p>
+      {desglose && <p className="text-[11px] text-gray-400 mt-1.5 leading-tight">{desglose}</p>}
+    </div>
+  );
+}
+
+// Barra apilada por estado para UN año fiscal — nunca mezcla dos años en la
+// misma barra, son cohortes de trabajo distintas (balances de 2025 y 2026
+// vencen y se trabajan en ventanas separadas).
+function BarraEstadoAnio({ anio, balances }: { anio: number; balances: { estado: string }[] }) {
+  const total = balances.length;
+  const segmentos = [
+    { label: "Finalizado", count: balances.filter((b) => b.estado === "finalizado").length, color: ESTADO_BALANCE.finalizado.bar },
+    { label: "Legalizado", count: balances.filter((b) => b.estado === "legalizado").length, color: ESTADO_BALANCE.legalizado.bar },
+    { label: "Asignado", count: balances.filter((b) => b.estado === "asignado").length, color: ESTADO_BALANCE.asignado.bar },
+    { label: "Sin asignar", count: balances.filter((b) => b.estado === "sin_asignar").length, color: ESTADO_BALANCE.sin_asignar.bar },
+    { label: "Frenado", count: balances.filter((b) => b.estado === "frenado").length, color: ESTADO_BALANCE.frenado.bar },
+  ].filter((s) => s.count > 0);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[13px] font-semibold text-gray-800">{anio}</span>
+        <span className="text-[11px] text-gray-400">{total} balance{total === 1 ? "" : "s"}</span>
+      </div>
+      <div className="h-4 bg-gray-100 rounded-md overflow-hidden flex">
+        {total === 0
+          ? null
+          : segmentos.map((s) => (
+              <div
+                key={s.label}
+                className={s.color}
+                style={{ width: `${(s.count / total) * 100}%` }}
+                title={`${s.label}: ${s.count}`}
+              />
+            ))}
+      </div>
+      <p className="text-[11px] text-gray-500 mt-1.5">
+        {segmentos.length === 0
+          ? "Sin balances"
+          : segmentos.map((s) => `${s.count} ${s.label.toLowerCase()}`).join(" · ")}
+      </p>
     </div>
   );
 }
