@@ -63,7 +63,7 @@ export function NavWrapper({
         >
           <Menu size={22} />
         </button>
-        <span className="font-semibold text-white text-sm">KMA · Módulo Sueldos</span>
+        <span className="font-semibold text-white text-sm">KMA Consultores · BOS</span>
       </header>
 
       {/* Backdrop */}
