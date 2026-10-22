@@ -30,10 +30,12 @@ export const ESTADO_EECC: Record<string, SemaforoInfo> = {
   presentado_arca: { label: "En ARCA",           ...VERDE_INTENSO },
 };
 
-export function avanceCls(v: number): string {
-  if (v >= 100) return VERDE_INTENSO.cls;
-  if (v > 0) return AMARILLO.cls;
-  return ROJO.cls;
+// El avance se muestra como barra fina (no pastilla) en la tabla de
+// Seguimiento — este es el color sólido para rellenarla.
+export function avanceBarCls(v: number): string {
+  if (v >= 100) return VERDE_INTENSO.bar;
+  if (v > 0) return AMARILLO.bar;
+  return ROJO.bar;
 }
 
 // Avance por etapas: el contador no elige un número, marca la etapa (pedido

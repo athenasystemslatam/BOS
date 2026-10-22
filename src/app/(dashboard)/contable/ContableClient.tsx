@@ -2,18 +2,47 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, Check, Minus } from "lucide-react";
+import { Plus, ChevronDown, Check, Minus, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
 import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import {
-  ESTADO_BALANCE, ESTADO_EECC, avanceCls, calcularAvance, calcularEstado,
+  ESTADO_BALANCE, ESTADO_EECC, avanceBarCls, calcularAvance, calcularEstado,
   diasDemoraPedido, colorAlertaDemora,
 } from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
 import type { ClaveAcceso, EquipoMiembro } from "@/types";
+
+// Grupos de columnas de la tabla (diseño nuevo): una franja de color suave
+// por bloque arriba del encabezado, para orientarse más rápido en una tabla
+// ancha. Mismos tonos pastel que ya usa el resto de BOS (emerald/blue/amber/
+// violet/orange), nada nuevo inventado.
+const GRUPO = {
+  fechas: "bg-emerald-50",
+  estado: "bg-blue-50",
+  etapas: "bg-amber-50",
+  formularios: "bg-violet-50",
+  igj: "bg-orange-50",
+} as const;
+
+// Semáforo de vencimiento para los formularios con fecha (855/899/657):
+// verde +30 días, amarillo 14-30, rojo -14 o ya vencido. Mismos tonos que
+// semaforo.ts (ROJO/AMARILLO/VERDE_CLARO) para no sumar una paleta nueva.
+function diasRestantes(vtoStr: string): number {
+  const vto = new Date(vtoStr + "T00:00:00");
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  return Math.ceil((vto.getTime() - hoy.getTime()) / 86400000);
+}
+function vtoSemaforoCls(dias: number): string {
+  if (dias < 14) return "bg-red-100 text-red-700";
+  if (dias <= 30) return "bg-yellow-100 text-yellow-800";
+  return "bg-green-100 text-green-700";
+}
+
+type FiltroRapido = "todos" | "vencidos" | "vencen30" | "mis" | "sin_asignar" | "frenados";
 
 const ACCENT_CONTABLE = { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700" };
 
@@ -80,6 +109,7 @@ export function ContableClient({
   clientesConServicio,
   anio,
   isAdmin,
+  miId,
   puedeEditar,
   equipo,
   equipoModulos,
@@ -95,6 +125,7 @@ export function ContableClient({
   }[];
   anio: number;
   isAdmin: boolean;
+  miId: string | null;
   puedeEditar: boolean;
   equipo: EquipoMiembro[];
   equipoModulos: { equipo_id: string; modulo: string }[];
@@ -103,7 +134,7 @@ export function ContableClient({
   const [, startTransition] = useTransition();
   const [showModal, setShowModal] = useState(false);
   const [filterResp, setFilterResp] = useState("");
-  const [filterEstado, setFilterEstado] = useState("");
+  const [filtroRapido, setFiltroRapido] = useState<FiltroRapido>("todos");
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
   const [editandoClienteId, setEditandoClienteId] = useState<string | null>(null);
 
@@ -211,29 +242,61 @@ export function ContableClient({
     return m;
   }, [balances]);
 
-  // Apply filters + sort by fecha_cierre
-  const filas = useMemo(() => {
-    let list = balances;
-    if (filterResp) {
-      list = list.filter(
-        (b) =>
-          b.responsable?.nombre === filterResp ||
-          b.responsable2?.nombre === filterResp
-      );
-    }
-    if (filterEstado) list = list.filter((b) => b.estado === filterEstado);
-    return [...list].sort(
-      (a, b) => a.fecha_cierre.localeCompare(b.fecha_cierre)
+  // Por responsable — se aplica antes de los filtros rápidos, así ambos se
+  // pueden combinar (ej. "Mi" responsable + "Vencidos").
+  const porResp = useMemo(() => {
+    if (!filterResp) return balances;
+    return balances.filter(
+      (b) => b.responsable?.nombre === filterResp || b.responsable2?.nombre === filterResp
     );
-  }, [balances, filterResp, filterEstado]);
+  }, [balances, filterResp]);
 
-  // Stats
-  const stats = useMemo(() => ({
-    total: balances.length,
-    finalizados: balances.filter((b) => b.estado === "finalizado").length,
-    enProceso: balances.filter((b) => b.estado === "legalizado" || b.estado === "asignado").length,
-    sinAsignar: balances.filter((b) => b.estado === "sin_asignar").length,
-  }), [balances]);
+  // Predicado de cada filtro rápido — "Vencidos"/"Vencen en 30 días" nunca
+  // cuentan lo ya finalizado ni lo frenado (no tiene sentido evaluarlos).
+  function cumpleFiltro(b: Balance, filtro: FiltroRapido): boolean {
+    switch (filtro) {
+      case "todos":
+        return true;
+      case "vencidos": {
+        if (b.estado === "finalizado" || b.estado === "frenado") return false;
+        return diasRestantes(addDays(b.fecha_cierre, b.dias_vto_balance)) < 0;
+      }
+      case "vencen30": {
+        if (b.estado === "finalizado" || b.estado === "frenado") return false;
+        const d = diasRestantes(addDays(b.fecha_cierre, b.dias_vto_balance));
+        return d >= 0 && d <= 30;
+      }
+      case "mis":
+        return !!miId && (b.responsable_id === miId || b.responsable2_id === miId);
+      case "sin_asignar":
+        return b.estado === "sin_asignar";
+      case "frenados":
+        return b.estado === "frenado";
+    }
+  }
+
+  // Contador de cada chip — sobre "porResp" (respeta el responsable elegido
+  // en el panel de equipo), independiente entre sí (no se van acotando en
+  // cascada: cada chip cuenta como si fuera el único filtro aplicado).
+  const conteosFiltro = useMemo(
+    () => ({
+      todos: porResp.length,
+      vencidos: porResp.filter((b) => cumpleFiltro(b, "vencidos")).length,
+      vencen30: porResp.filter((b) => cumpleFiltro(b, "vencen30")).length,
+      mis: porResp.filter((b) => cumpleFiltro(b, "mis")).length,
+      sin_asignar: porResp.filter((b) => cumpleFiltro(b, "sin_asignar")).length,
+      frenados: porResp.filter((b) => cumpleFiltro(b, "frenados")).length,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [porResp, miId]
+  );
+
+  // Filas finales: responsable + filtro rápido, ordenadas por fecha de cierre.
+  const filas = useMemo(() => {
+    const list = porResp.filter((b) => cumpleFiltro(b, filtroRapido));
+    return [...list].sort((a, b) => a.fecha_cierre.localeCompare(b.fecha_cierre));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [porResp, filtroRapido, miId]);
 
   const FORM_OPTIONS_IGJ = [
     { value: "pendiente", label: "Pendiente" },
@@ -296,56 +359,53 @@ export function ContableClient({
         </div>
       </div>
 
-      {/* Stats + Filters */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 shrink-0 flex items-center gap-6 flex-wrap">
-        <div className="flex items-center gap-4 text-[12px]">
-          <span className="text-gray-500">
-            <span className="font-semibold text-emerald-600">{stats.finalizados}</span>
-            <span className="text-gray-400"> finalizados</span>
-          </span>
-          <span className="text-gray-300">·</span>
-          <span className="text-gray-500">
-            <span className="font-semibold text-amber-600">{stats.enProceso}</span>
-            <span className="text-gray-400"> en proceso</span>
-          </span>
-          <span className="text-gray-300">·</span>
-          <span className="text-gray-500">
-            <span className="font-semibold text-gray-500">{stats.sinAsignar}</span>
-            <span className="text-gray-400"> sin asignar</span>
-          </span>
-          <span className="text-gray-300">·</span>
-          <span className="text-gray-400">{stats.total} total</span>
-        </div>
+      {/* Filtros rápidos — cada chip es a la vez el contador y el filtro;
+          uno solo activo a la vez (no se combinan entre sí, "Mis balances"
+          + "Vencidos" sería ambiguo). El responsable sí se combina con
+          cualquiera de estos (panel de equipo, botón de la derecha). */}
+      <div className="bg-white border-b border-gray-200 px-6 py-3 shrink-0 flex items-center gap-2 flex-wrap">
+        {(
+          [
+            { key: "todos", label: "Todos" },
+            { key: "vencidos", label: "Vencidos" },
+            { key: "vencen30", label: "Vencen en 30 días" },
+            { key: "mis", label: "Mis balances" },
+            { key: "sin_asignar", label: "Sin asignar" },
+            { key: "frenados", label: "Frenados" },
+          ] as { key: FiltroRapido; label: string }[]
+        ).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setFiltroRapido(key)}
+            disabled={key === "mis" && !miId}
+            className={clsx(
+              "flex items-center gap-1.5 text-xs font-medium border rounded-full px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed",
+              filtroRapido === key
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                : "border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-800"
+            )}
+          >
+            {label}
+            <span className={clsx("font-semibold", filtroRapido === key ? "text-emerald-700" : "text-gray-400")}>
+              {conteosFiltro[key]}
+            </span>
+          </button>
+        ))}
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <select
-              value={filterResp}
-              onChange={(e) => setFilterResp(e.target.value)}
-              className="appearance-none text-xs text-gray-600 bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:border-emerald-400 cursor-pointer"
-            >
-              <option value="">Todos los responsables</option>
-              {responsablesPresentes.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </select>
-            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select
-              value={filterEstado}
-              onChange={(e) => setFilterEstado(e.target.value)}
-              className="appearance-none text-xs text-gray-600 bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:border-emerald-400 cursor-pointer"
-            >
-              <option value="">Todos los estados</option>
-              {Object.entries(ESTADO_BALANCE).map(([v, { label }]) => (
-                <option key={v} value={v}>{label}</option>
-              ))}
-            </select>
-            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
+        <div className="relative">
+          <select
+            value={filterResp}
+            onChange={(e) => setFilterResp(e.target.value)}
+            className="appearance-none text-xs text-gray-600 bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:border-emerald-400 cursor-pointer"
+          >
+            <option value="">Todos los responsables</option>
+            {responsablesPresentes.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
       </div>
 
@@ -353,36 +413,60 @@ export function ContableClient({
       <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable] pb-2">
         <table className="w-full text-sm whitespace-nowrap table-fixed">
           <thead className="sticky top-0 z-20">
+            {/* Franja de grupos — una por bloque, nombres y color suave para
+                orientarse rápido en una tabla ancha. */}
+            <tr className="border-b border-gray-200">
+              <th className="bg-gray-50 px-6 py-1.5" />
+              <th colSpan={2} className={clsx(GRUPO.fechas, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
+                Fechas
+              </th>
+              <th colSpan={3} className={clsx(GRUPO.estado, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
+                Estado
+              </th>
+              <th colSpan={3} className={clsx(GRUPO.etapas, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
+                Etapas
+              </th>
+              <th colSpan={4} className={clsx(GRUPO.formularios, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
+                Formularios
+              </th>
+              <th colSpan={2} className={clsx(GRUPO.igj, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
+                IGJ
+              </th>
+              <th className="bg-gray-50 px-3 py-1.5" />
+              <th className="bg-gray-50 px-3 py-1.5" />
+            </tr>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {/* Group 1: cliente + fechas */}
+              {/* Cliente */}
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
+              {/* Fechas */}
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">Cierre</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">VTO Bal.</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">VTO 855</th>
-              {/* Group 2: estado */}
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-28 whitespace-normal leading-tight">Vto balance y Gcias</th>
+              {/* Estado */}
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Estado</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-16">%</th>
-              {/* Group 3: responsables */}
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-16">Avance</th>
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Responsable</th>
-              {/* Group 4: info */}
+              {/* Etapas */}
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Pedido de información</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Recepción de información</th>
-              {/* Group 5: formularios */}
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-40">EECC</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">855</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F899</th>
+              {/* Formularios */}
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">855</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">F899</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F713</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F657</th>
+              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">F657</th>
+              {/* IGJ */}
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">IGJ</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">Tasa</th>
+              {/* Obs + acciones */}
               <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Obs.</th>
+              <th className="px-3 py-3 w-10" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filas.length === 0 && (
               <tr>
-                <td colSpan={17}className="text-center text-gray-400 text-sm py-16">
-                  {filterResp || filterEstado
+                <td colSpan={17} className="text-center text-gray-400 text-sm py-16">
+                  {filterResp || filtroRapido !== "todos"
                     ? "Sin resultados para el filtro aplicado"
                     : `No hay balances cargados para ${anio}`}
                 </td>
@@ -417,48 +501,38 @@ export function ContableClient({
                     <span className="text-[12px] text-gray-600">{fmt(b.fecha_cierre)}</span>
                   </td>
 
-                  {/* VTO Balance */}
+                  {/* Vto balance y Gcias */}
                   <td className="px-3 py-2.5 text-center">
                     <span className="text-[12px] text-gray-500">{fmt(vtoBalance)}</span>
                   </td>
 
-                  {/* VTO 855 */}
-                  <td className="px-3 py-2.5 text-center">
-                    <span className="text-[12px] text-gray-500">{fmt(vto855)}</span>
-                  </td>
-
                   {/* Estado — automático desde EECC/responsable (ítem 34);
-                      Frenado es la única excepción manual. */}
-                  <td className="px-3 py-2.5 text-center">
-                    <div className="flex flex-col items-center gap-1">
-                      <span
-                        className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", estadoInfo.cls)}
-                        title="Se calcula solo según EECC y responsable asignado"
-                      >
-                        {estadoInfo.label}
-                      </span>
-                      {puedeEditar && (
-                        <button
-                          onClick={() => toggleFrenado(b)}
-                          className={clsx(
-                            "text-[10px]",
-                            b.estado === "frenado" ? "text-emerald-600 hover:text-emerald-700" : "text-gray-300 hover:text-red-500"
-                          )}
-                        >
-                          {b.estado === "frenado" ? "Reanudar" : "Frenar"}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Avance — calculado por etapa, ya no se elige a mano */}
+                      Frenado es la única excepción manual, se cambia desde
+                      el menú ⋯ al final de la fila. */}
                   <td className="px-3 py-2.5 text-center">
                     <span
-                      className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", avanceCls(calcularAvance(b)))}
-                      title="Se calcula solo según pedido/recepción de información y estado de EECC"
+                      className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", estadoInfo.cls)}
+                      title="Se calcula solo según EECC y responsable asignado"
                     >
-                      {calcularAvance(b)}%
+                      {estadoInfo.label}
                     </span>
+                  </td>
+
+                  {/* Avance — barra fina + %, calculado por etapa (ya no se
+                      elige a mano) */}
+                  <td
+                    className="px-3 py-2.5"
+                    title="Se calcula solo según pedido/recepción de información y estado de EECC"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-12 h-1.5 bg-gray-100 rounded-full overflow-hidden shrink-0">
+                        <div
+                          className={clsx("h-full rounded-full", avanceBarCls(calcularAvance(b)))}
+                          style={{ width: `${calcularAvance(b)}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] text-gray-500 tabular-nums">{calcularAvance(b)}%</span>
+                    </div>
                   </td>
 
                   {/* Responsables */}
@@ -558,17 +632,18 @@ export function ContableClient({
                     )}
                   </td>
 
-                  {/* 855 · F899 · F713 — binarios: presentado / no presentado */}
-                  <FormCheckCell estado={b.f855_estado} field="f855_estado" balanceId={b.id}
-                    puedeEditar={puedeEditar} onUpdate={update} />
-                  <FormCheckCell estado={b.f899_estado} field="f899_estado" balanceId={b.id}
-                    puedeEditar={puedeEditar} onUpdate={update} />
+                  {/* 855 · F899 · F657 — casilla + fecha de vencimiento al
+                      lado, con semáforo (comparten el mismo vto). Tachado
+                      gris si ya está presentado. El 713 no tiene vencimiento
+                      propio, va solo con casilla. */}
+                  <FormVtoCheckCell estado={b.f855_estado} field="f855_estado" balanceId={b.id}
+                    vto={vto855} puedeEditar={puedeEditar} onUpdate={update} />
+                  <FormVtoCheckCell estado={b.f899_estado} field="f899_estado" balanceId={b.id}
+                    vto={vto855} puedeEditar={puedeEditar} onUpdate={update} />
                   <FormCheckCell estado={b.f713_estado} field="f713_estado" balanceId={b.id}
                     puedeEditar={puedeEditar} onUpdate={update} />
-
-                  {/* F657 — binario (ningún balance tenía N/A cargado) */}
-                  <FormCheckCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
-                    puedeEditar={puedeEditar} onUpdate={update} />
+                  <FormVtoCheckCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
+                    vto={vto855} puedeEditar={puedeEditar} onUpdate={update} />
 
                   {/* IGJ Presentación */}
                   <FormCell estado={b.igj_presentacion} field="igj_presentacion" balanceId={b.id}
@@ -591,6 +666,11 @@ export function ContableClient({
                     ) : (
                       <span className="text-[12px] text-gray-500 truncate block">{b.observaciones ?? "—"}</span>
                     )}
+                  </td>
+
+                  {/* Acciones — por ahora, Frenar/Reanudar (ítem 34). */}
+                  <td className="px-3 py-2.5 text-center">
+                    {puedeEditar && <AccionesMenu balance={b} onToggleFrenado={() => toggleFrenado(b)} />}
                   </td>
                 </tr>
               );
@@ -707,6 +787,99 @@ function FormCheckCell({
         className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
       />
     </td>
+  );
+}
+
+// Formulario con vencimiento propio (855, 899, 657): casilla + fecha al
+// lado, coloreada por semáforo (verde +30 días, amarillo 14-30, rojo -14 o
+// vencido). Tachado y gris si ya está presentado — ahí el semáforo no
+// importa más.
+function FormVtoCheckCell({
+  estado,
+  field,
+  balanceId,
+  vto,
+  puedeEditar,
+  onUpdate,
+}: {
+  estado: string;
+  field: string;
+  balanceId: string;
+  vto: string;
+  puedeEditar: boolean;
+  onUpdate: (id: string, updates: Partial<Balance>) => void;
+}) {
+  const presentado = estado === "presentado";
+  return (
+    <td className="px-3 py-2.5">
+      <div className="inline-flex items-center gap-1.5">
+        <input
+          type="checkbox"
+          checked={presentado}
+          disabled={!puedeEditar}
+          onChange={(e) =>
+            onUpdate(balanceId, { [field]: e.target.checked ? "presentado" : "pendiente" } as Partial<Balance>)
+          }
+          title={presentado ? "Presentado" : "No presentado"}
+          className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer shrink-0"
+        />
+        <span
+          className={clsx(
+            "text-[11px] rounded px-1.5 py-0.5 tabular-nums",
+            presentado ? "text-gray-400 line-through bg-transparent" : vtoSemaforoCls(diasRestantes(vto))
+          )}
+        >
+          {fmt(vto)}
+        </span>
+      </div>
+    </td>
+  );
+}
+
+// Menú de acciones de la fila (⋯) — hoy solo Frenar/Reanudar (ítem 34), deja
+// lugar para sumar más sin volver a amontonar botones en la celda de Estado.
+function AccionesMenu({
+  balance,
+  onToggleFrenado,
+}: {
+  balance: Balance;
+  onToggleFrenado: () => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const frenado = balance.estado === "frenado";
+
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        className="text-gray-300 hover:text-gray-600 p-1 rounded transition-colors"
+        title="Más acciones"
+      >
+        <MoreHorizontal size={16} />
+      </button>
+
+      {abierto && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setAbierto(false)} />
+          <div className="absolute right-0 top-full mt-1 z-20 w-36 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+            <button
+              type="button"
+              onClick={() => {
+                onToggleFrenado();
+                setAbierto(false);
+              }}
+              className={clsx(
+                "w-full text-left text-[12px] px-3 py-1.5 hover:bg-gray-50",
+                frenado ? "text-emerald-600" : "text-red-600"
+              )}
+            >
+              {frenado ? "Reanudar" : "Frenar"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

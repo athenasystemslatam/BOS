@@ -92,6 +92,7 @@ export default async function ContablePage({
       clientesConServicio={clientesConServicio as any[]}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
+      miId={yo?.id ?? null}
       puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("contable"))}
       equipo={equipo}
       equipoModulos={equipoModulosTodos ?? []}
