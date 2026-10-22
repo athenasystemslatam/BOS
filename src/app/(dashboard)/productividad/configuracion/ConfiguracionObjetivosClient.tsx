@@ -127,7 +127,7 @@ export function ConfiguracionObjetivosClient({
         </div>
         <p className="text-[12px] text-gray-400 mb-4">
           Aplica a todos los clientes. La excepción acá no es por cliente — es la marca &quot;Preliquidado –
-          esperando novedades&quot; por período (ítem 97), que solo mueve el objetivo de Recibos.
+          esperando novedades&quot; por período, que solo mueve el objetivo de Recibos.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Campo
@@ -161,8 +161,8 @@ export function ConfiguracionObjetivosClient({
           <GuardarBadge guardado={guardadoContable} />
         </div>
         <p className="text-[12px] text-gray-400 mb-4">
-          Piso legal ya cargado. Los dos objetivos internos quedan sin definir a propósito hasta medir el ciclo de
-          cierres al 31/12/2026 (vencimiento 15/05/2027) — dejalos vacíos.
+          Piso legal ya cargado. Los dos objetivos internos quedan sin definir hasta medir el ciclo de cierres al
+          31/12/2026 (vencimiento 15/05/2027).
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Campo

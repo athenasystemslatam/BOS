@@ -37,7 +37,7 @@ export default async function ConfiguracionObjetivosPage() {
         <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">Productividad</p>
         <h1 className="text-2xl font-semibold text-gray-900 mt-1">Configuración de objetivos</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Ítem 67 — objetivo general por área, con excepción opcional por cliente en Contable
+          Objetivo general por área, con excepción opcional por cliente en Contable
         </p>
       </div>
 

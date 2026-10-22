@@ -150,9 +150,6 @@ export default async function ContableDashboardPage() {
           <h1 className="text-[20px] font-semibold text-gray-900">
             Dashboard {anios[0]}–{anios[1]}
           </h1>
-          <p className="text-[12px] text-gray-400 mt-1">
-            Ventana de dos años fiscales: un balance que cierra en {anios[0]} puede vencer recién en {anios[1]}.
-          </p>
         </div>
         {yo?.isAdmin && <BackupButton modulo="contable" />}
       </div>
