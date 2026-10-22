@@ -417,6 +417,31 @@ export function ContableClient({
           "pegarse". */}
       <div className="flex-1 min-h-0 min-w-0 overflow-auto [scrollbar-gutter:stable] pb-2">
         <table className="w-full text-sm whitespace-nowrap table-fixed">
+          {/* table-fixed reparte el ancho de columnas según la PRIMERA fila
+              del thead — acá esa fila es la franja de colores con colSpan,
+              que no define ancho por columna. Sin colgroup, los w-* de la
+              segunda fila (Cierre, Vto, Estado, etc.) se ignoran y la tabla
+              nunca supera el ancho del contenedor: por eso no aparecía el
+              scroll horizontal. */}
+          <colgroup>
+            <col className="w-56" />
+            <col className="w-24" />
+            <col className="w-28" />
+            <col className="w-36" />
+            <col className="w-16" />
+            <col className="w-36" />
+            <col className="w-32" />
+            <col className="w-32" />
+            <col className="w-40" />
+            <col className="w-24" />
+            <col className="w-24" />
+            <col className="w-14" />
+            <col className="w-24" />
+            <col className="w-14" />
+            <col className="w-14" />
+            <col className="w-44" />
+            <col className="w-10" />
+          </colgroup>
           <thead className="sticky top-0 z-20">
             {/* Franja de grupos — una por bloque, nombres y color suave para
                 orientarse rápido en una tabla ancha. */}
