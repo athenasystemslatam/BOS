@@ -131,6 +131,25 @@ export async function editarLiquidadora(formData: FormData) {
 
   if (!id || !nombre || !rol) return { error: "El nombre es obligatorio." };
 
+  // Si este cambio deja de contar a la persona como admin activo (le sacan
+  // el rol, o la dan de baja), hay que asegurarse de que quede al menos
+  // otro admin activo — si no, nadie podría volver a entrar a Equipo a
+  // revertirlo.
+  if (rol !== "admin" || !activa) {
+    const { count } = await supabase
+      .from("liquidadoras")
+      .select("id", { count: "exact", head: true })
+      .eq("rol", "admin")
+      .eq("activa", true)
+      .neq("id", id);
+
+    if (!count) {
+      return {
+        error: "No se puede sacar el rol admin (ni dar de baja) a la única persona admin activa del sistema.",
+      };
+    }
+  }
+
   const update: Record<string, unknown> = {
     nombre,
     email,
