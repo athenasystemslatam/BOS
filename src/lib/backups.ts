@@ -15,7 +15,9 @@ export type BackupModulo =
 export const BACKUPS: Record<BackupModulo, { label: string; tablas: string[] }> = {
   "panel-general": {
     label: "Panel General",
-    tablas: ["clientes", "servicios_cliente", "asignaciones_servicio", "equipo", "equipo_modulos", "liquidadoras"],
+    // "equipo" se unificó en "liquidadoras" (ver supabase/unificar_equipo.sql)
+    // — no existe como tabla propia en la base.
+    tablas: ["clientes", "servicios_cliente", "asignaciones_servicio", "equipo_modulos", "liquidadoras"],
   },
   sueldos: {
     label: "Sueldos",
