@@ -416,7 +416,7 @@ export function ContableClient({
             {/* Franja de grupos — una por bloque, nombres y color suave para
                 orientarse rápido en una tabla ancha. */}
             <tr className="border-b border-gray-200">
-              <th className="bg-gray-50 px-6 py-1.5" />
+              <th className="sticky left-0 z-30 bg-gray-50 px-6 py-1.5" />
               <th colSpan={2} className={clsx(GRUPO.fechas, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
                 Fechas
               </th>
@@ -436,8 +436,8 @@ export function ContableClient({
               <th className="bg-gray-50 px-3 py-1.5" />
             </tr>
             <tr className="bg-gray-50 border-b border-gray-200">
-              {/* Cliente */}
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
+              {/* Cliente — columna fijada, scrollea horizontal con el resto */}
+              <th className="sticky left-0 z-30 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
               {/* Fechas */}
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">Cierre</th>
               <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-28 whitespace-normal leading-tight">Vto balance y Gcias</th>
@@ -480,8 +480,8 @@ export function ContableClient({
 
               return (
                 <tr key={b.id} className="hover:bg-emerald-50/30 transition-colors group">
-                  {/* Cliente */}
-                  <td className="px-6 py-2.5">
+                  {/* Cliente — columna fijada a la izquierda */}
+                  <td className="sticky left-0 z-10 bg-white group-hover:bg-emerald-50/50 px-6 py-2.5">
                     <div className="flex items-center gap-1.5">
                       <p className="text-[13px] font-medium text-gray-800 truncate max-w-[200px]">
                         {b.clientes?.nombre ?? "—"}
