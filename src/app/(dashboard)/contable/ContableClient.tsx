@@ -442,10 +442,16 @@ export function ContableClient({
             <col className="w-44" />
             <col className="w-10" />
           </colgroup>
-          <thead className="sticky top-0 z-20">
+          {/* Cada fila del encabezado es sticky por sí misma (no alcanza con
+              sticky solo en el thead): si no, en algunos navegadores la
+              segunda fila no queda realmente pegada a la primera y se ve el
+              cuerpo de la tabla moviéndose entre ambas al scrollear. h-7 en
+              la primera fila + top-7 en la segunda: la segunda arranca
+              justo donde termina la primera, sin superposición ni hueco. */}
+          <thead>
             {/* Franja de grupos — una por bloque, nombres y color suave para
                 orientarse rápido en una tabla ancha. */}
-            <tr className="border-b border-gray-200">
+            <tr className="sticky top-0 z-20 h-7 border-b border-gray-200">
               <th className="sticky left-0 z-30 bg-gray-50 px-6 py-1.5" />
               <th colSpan={2} className={clsx(GRUPO.fechas, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
                 Fechas
@@ -469,7 +475,7 @@ export function ContableClient({
                 encabezado sticky, el fondo del tr no siempre "viaja" bien
                 con las celdas y dejaba ver las filas del cuerpo pasando por
                 detrás de esta fila al scrollear. */}
-            <tr className="border-b border-gray-200">
+            <tr className="sticky top-7 z-20 border-b border-gray-200">
               {/* Cliente — columna fijada, scrollea horizontal con el resto */}
               <th className="sticky left-0 z-30 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
               {/* Fechas */}
