@@ -11,6 +11,7 @@ import { guardarOrdenDashboard } from "../actions";
 import { CHIP, ENCABEZADO, MONO, NUM, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO, SEMAFORO, TH, TITULO } from "../ui";
 import type { ObjetivoConAvance } from "@/lib/librosObjetivosMetricas";
 import { ObjetivosDashboard } from "./Objetivos";
+import { BackupButton } from "@/components/BackupButton";
 
 type MandatoFila = { clienteId: string; nombre: string; vence: string; dias: number };
 
@@ -629,6 +630,11 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
         <span className={RAYA_MODULO} />
         <h1 className={TITULO}>Dashboard</h1>
         <span className={clsx(MONO, "text-[12px] text-ink-subtle")}>al {fmtFecha(datos.hoy)}</span>
+        {datos.esAdmin && (
+          <div className="ml-auto">
+            <BackupButton modulo="libros" />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-8">

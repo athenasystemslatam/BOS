@@ -3,6 +3,8 @@ import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { CheckCircle2, Circle, TrendingUp } from "lucide-react";
 import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
+import { getCurrentLiquidadora } from "@/lib/auth";
+import { BackupButton } from "@/components/BackupButton";
 
 const SUBTIPOS = [
   { key: "iva", label: "IVA" },
@@ -33,7 +35,7 @@ export default async function ImpuestosDashboardPage({
 
   const admin = createAdminClient();
 
-  const [{ data: serviciosRaw }, { data: tareasRaw }, { data: equipoRaw }] = await Promise.all([
+  const [{ data: serviciosRaw }, { data: tareasRaw }, { data: equipoRaw }, yo] = await Promise.all([
     admin
       .from("servicios_cliente")
       .select("cliente_id, subtipo, responsable_id")
@@ -41,6 +43,7 @@ export default async function ImpuestosDashboardPage({
       .eq("estado", true),
     admin.from("impuestos_tareas").select("*").eq("anio", anio).eq("mes", mes),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true),
+    getCurrentLiquidadora(),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,7 +91,10 @@ export default async function ImpuestosDashboardPage({
             Dashboard — {MESES_NOMBRES[mes]} {anio}
           </h1>
         </div>
-        <MesSelector basePath="/impuestos/dashboard" options={opciones} currentMes={mes} currentAnio={anio} />
+        <div className="flex items-center gap-3">
+          <MesSelector basePath="/impuestos/dashboard" options={opciones} currentMes={mes} currentAnio={anio} />
+          {yo?.isAdmin && <BackupButton modulo="impuestos" />}
+        </div>
       </div>
 
       {/* Stats por sub-tipo */}

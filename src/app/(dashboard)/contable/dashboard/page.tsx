@@ -4,6 +4,8 @@ import clsx from "clsx";
 import { ESTADO_BALANCE, calcularAvance, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
 import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
 import { MapaCargaClient } from "./MapaCargaClient";
+import { getCurrentLiquidadora } from "@/lib/auth";
+import { BackupButton } from "@/components/BackupButton";
 
 function addDays(dateStr: string, days: number) {
   const d = new Date(dateStr + "T00:00:00");
@@ -28,7 +30,7 @@ export default async function ContableDashboardPage() {
   const anios = [anioActual - 1, anioActual];
   const admin = createAdminClient();
 
-  const [{ data: balancesRaw }, { data: equipoRaw }, { data: modulosRaw }, objetivoGeneral, excepciones] = await Promise.all([
+  const [{ data: balancesRaw }, { data: equipoRaw }, { data: modulosRaw }, objetivoGeneral, excepciones, yo] = await Promise.all([
     admin
       .from("balances")
       .select(
@@ -43,6 +45,7 @@ export default async function ContableDashboardPage() {
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
     getObjetivoContable(),
     getExcepcionesCliente("contable"),
+    getCurrentLiquidadora(),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -141,14 +144,17 @@ export default async function ContableDashboardPage() {
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
       {/* Header */}
-      <div className="mb-6">
-        <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable · Resumen</p>
-        <h1 className="text-[20px] font-semibold text-gray-900">
-          Dashboard {anios[0]}–{anios[1]}
-        </h1>
-        <p className="text-[12px] text-gray-400 mt-1">
-          Ventana de dos años fiscales: un balance que cierra en {anios[0]} puede vencer recién en {anios[1]}.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable · Resumen</p>
+          <h1 className="text-[20px] font-semibold text-gray-900">
+            Dashboard {anios[0]}–{anios[1]}
+          </h1>
+          <p className="text-[12px] text-gray-400 mt-1">
+            Ventana de dos años fiscales: un balance que cierra en {anios[0]} puede vencer recién en {anios[1]}.
+          </p>
+        </div>
+        {yo?.isAdmin && <BackupButton modulo="contable" />}
       </div>
 
       {/* Objetivo del área (ítems 67/68/70) — mínimo legal: 100% en término.

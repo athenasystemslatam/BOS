@@ -3,6 +3,8 @@ import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { TrendingUp, CheckCircle2, Circle } from "lucide-react";
 import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
+import { getCurrentLiquidadora } from "@/lib/auth";
+import { BackupButton } from "@/components/BackupButton";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 
@@ -30,7 +32,7 @@ export default async function MonotributoDashboardPage({
   const admin = createAdminClient();
   const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
-  const [{ data: serviciosRaw }, { data: tareasRaw }, { data: equipoRaw }] = await Promise.all([
+  const [{ data: serviciosRaw }, { data: tareasRaw }, { data: equipoRaw }, yo] = await Promise.all([
     admin
       .from("servicios_cliente")
       .select("cliente_id, responsable_id")
@@ -42,6 +44,7 @@ export default async function MonotributoDashboardPage({
       .eq("anio", anio)
       .eq("mes", mes),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true),
+    getCurrentLiquidadora(),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,13 +106,16 @@ export default async function MonotributoDashboardPage({
             </span>
           )}
         </div>
-        <MesSelector
-          basePath="/monotributo/dashboard"
-          options={opciones}
-          currentMes={mes}
-          currentAnio={anio}
-          className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
-        />
+        <div className="flex items-center gap-3">
+          <MesSelector
+            basePath="/monotributo/dashboard"
+            options={opciones}
+            currentMes={mes}
+            currentAnio={anio}
+            className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
+          />
+          {yo?.isAdmin && <BackupButton modulo="monotributo" />}
+        </div>
       </div>
 
       {/* Stats */}

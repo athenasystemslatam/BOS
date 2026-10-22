@@ -9,6 +9,7 @@ import { EditarClienteModal } from "./EditarClienteModal";
 import { darDeBajaServicio, darDeBajaCliente, reactivarCliente, getFichaCliente } from "./actions";
 import { useBackdropClose } from "@/lib/useBackdropClose";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
+import { BackupButton } from "@/components/BackupButton";
 
 // Rediseño Panel General (handoff sep-2026): Libros queda fuera de esta
 // pantalla por decisión del usuario — es otro módulo y se gestiona aparte.
@@ -463,6 +464,7 @@ export function PanelGeneralClient({
               Exportar
             </a>
           )}
+          {isAdmin && <BackupButton modulo="panel-general" />}
 
           {soloSinResponsable && (
             <button

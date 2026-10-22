@@ -7,6 +7,8 @@ import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle
 import clsx from "clsx";
 import { MonthSelector } from "./MonthSelector";
 import { fetchPeriodo } from "../seguimiento/actions";
+import { getCurrentLiquidadora } from "@/lib/auth";
+import { BackupButton } from "@/components/BackupButton";
 
 const CAMPO_LABELS: Record<string, string> = {
   f931: "F.931", recibos: "Recibos", rec_q1: "Recibos Q1",
@@ -53,7 +55,7 @@ export default async function DashboardPage({
   // los legajos del mes anterior; si alguien entraba acá primero en un mes
   // nuevo, esa copia no pasaba y quedaba en 0 hasta que alguien lo cargara
   // a mano en Seguimiento. Todo lo que no depende del período va en paralelo.
-  const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }, periodoActual, { data: alertasPostcierre }, objetivoGeneral] = await Promise.all([
+  const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }, periodoActual, { data: alertasPostcierre }, objetivoGeneral, yo] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
     supabase.from("clientes").select("*, liquidadora:liquidadoras!liquidador_id(*)").eq("estado", "activo"),
     supabase
@@ -70,6 +72,7 @@ export default async function DashboardPage({
       .order("modificado_at", { ascending: false })
       .limit(50),
     getObjetivoSueldos(),
+    getCurrentLiquidadora(),
   ]);
 
   // "clientes" trae toda empresa activa, tenga o no Sueldos contratado (ej:
@@ -178,11 +181,14 @@ export default async function DashboardPage({
             <MonthSelector options={monthOptions} currentMes={mesActual} currentAnio={anioActual} />
           </div>
         </div>
-        {!esMesActual && (
-          <a href="/dashboard" className="text-[12px] text-bordo font-medium hover:underline shrink-0">
-            Mes actual
-          </a>
-        )}
+        <div className="flex items-center gap-3 shrink-0">
+          {!esMesActual && (
+            <a href="/dashboard" className="text-[12px] text-bordo font-medium hover:underline">
+              Mes actual
+            </a>
+          )}
+          {yo?.isAdmin && <BackupButton modulo="sueldos" />}
+        </div>
       </div>
 
       {/* Objetivo del área (ítem 69) — días configurables desde
