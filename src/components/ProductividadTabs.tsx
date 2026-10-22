@@ -1,19 +1,27 @@
 import clsx from "clsx";
 
-const TABS = [
+// Un módulo = una pestaña, pero Productividad ya no cruza entre módulos: a
+// cada uno se entra desde su propio ítem "Productividad" en el sidebar (ver
+// Sidebar.tsx), así que acá solo se muestra el módulo actual (no los otros
+// tres) más Configuración, que no es un módulo sino el ajuste de objetivos
+// compartido entre varios.
+const MODULOS = [
   { href: "/productividad", label: "Sueldos", color: "text-bordo border-bordo" },
   { href: "/productividad/impuestos", label: "Impuestos", color: "text-blue-600 border-blue-600" },
   { href: "/productividad/contable", label: "Contable", color: "text-emerald-600 border-emerald-600" },
   { href: "/productividad/monotributo", label: "Monotributo", color: "text-amber-600 border-amber-600" },
-  { href: "/productividad/configuracion", label: "Configuración", color: "text-gray-700 border-gray-700" },
 ] as const;
+const CONFIGURACION = { href: "/productividad/configuracion", label: "Configuración", color: "text-gray-700 border-gray-700" } as const;
+type Href = (typeof MODULOS)[number]["href"] | (typeof CONFIGURACION)["href"];
 
-export function ProductividadTabs({ current }: { current: (typeof TABS)[number]["href"] }) {
+export function ProductividadTabs({ current }: { current: Href }) {
+  const propio = MODULOS.find((m) => m.href === current);
+  const visibles = propio ? [propio, CONFIGURACION] : [CONFIGURACION];
   return (
     <div className="flex gap-1 border-b border-gray-100 mb-6 -mt-1">
       {/* <a> normal, no <Link>: mismo motivo que en Sidebar — garantiza
           datos frescos del servidor en cada clic. */}
-      {TABS.map((tab) => (
+      {visibles.map((tab) => (
         <a
           key={tab.href}
           href={tab.href}
