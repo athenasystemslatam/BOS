@@ -115,14 +115,7 @@ async function cargarBase() {
     servicios.map((s) => `${s.cliente_id}|${s.servicio}|${s.subtipo}`)
   );
 
-  const clientePorNombreNorm = new Map();
-  for (const c of clientes) {
-    const key = normNombre(c.nombre);
-    if (!clientePorNombreNorm.has(key)) clientePorNombreNorm.set(key, c);
-    else clientePorNombreNorm.set(key, "AMBIGUO");
-  }
-
-  return { clientes, liquidadoras, servicios, clientePorCuit, liqPorNombreNorm, servicioSet, clientePorNombreNorm };
+  return { clientes, liquidadoras, servicios, clientePorCuit, liqPorNombreNorm, servicioSet };
 }
 
 function matchResponsable(nombreExcel, liqPorNombreNorm) {
@@ -173,6 +166,19 @@ async function leerImpuestos(base) {
     });
   });
 
+  // SEG E HIG no trae columna de CUIT propia. Antes se intentaba resolver
+  // comparando el nombre contra la base de BOS (nombres cortos tipo
+  // "Rodal") — eso casi nunca matcheaba contra la razón social de ESTATUS
+  // ("Instituto de Enseñanza Gastronómica Rodal SA") y terminaba marcando
+  // clientes existentes como alta nueva. En cambio, acá adentro (IVA/IIBB
+  // del mismo archivo) el nombre SÍ es consistente porque es la misma
+  // fuente — se arma un mapa nombre→CUIT con esas dos hojas y se usa para
+  // completar el CUIT de SEG E HIG antes de cruzar contra BOS.
+  const cuitPorNombreEstatus = new Map();
+  for (const f of filas) {
+    if (f.cuit) cuitPorNombreEstatus.set(normNombre(f.nombre), f.cuit);
+  }
+
   // SEG E HIG: CLIENTE(1) MUNICIPIO(2) USUARIO(3) CLAVE(4) IMPUESTO(5) RESPONSABLE(6) ...
   const sehSheet = wb.getWorksheet("SEG E HIG");
   let sospechosasSeh = 0;
@@ -186,7 +192,7 @@ async function leerImpuestos(base) {
     if (esSospechosa) sospechosasSeh++;
     filas.push({
       servicio: "impuestos", subtipo: "seh",
-      nombre, tipo: "", cuit: "",
+      nombre, tipo: "", cuit: cuitPorNombreEstatus.get(normNombre(nombre)) ?? "",
       responsable: cellStr(row, 6), rowNum, hoja: "SEG E HIG",
       sospechosa: esSospechosa,
     });
@@ -236,21 +242,19 @@ async function leerMonotributo() {
 
 // ── 3. Cruce contra la base ─────────────────────────────────────────────
 
+// Clave: CUIT, nunca nombre. BOS guarda nombres cortos ("Rodal") y ESTATUS
+// la razón social completa ("Instituto de Enseñanza Gastronómica Rodal
+// SA") — comparar nombres contra la base real nunca matchea bien y antes
+// terminaba marcando clientes que ya existen como alta nueva (o, al revés,
+// confundiendo dos clientes distintos con nombre parecido). Sin CUIT
+// utilizable, la fila queda para revisar a mano, no se adivina.
 function evaluarFila(f, base) {
-  let clienteExistente = f.cuit ? base.clientePorCuit.get(f.cuit) : null;
-  let matchPorNombre = false;
-  if (!clienteExistente) {
-    const porNombre = base.clientePorNombreNorm.get(normNombre(f.nombre));
-    if (porNombre && porNombre !== "AMBIGUO") {
-      clienteExistente = porNombre;
-      matchPorNombre = true;
-    }
-  }
+  const clienteExistente = f.cuit ? base.clientePorCuit.get(f.cuit) : null;
   const { match: responsableMatch, motivo: motivoResp } = matchResponsable(f.responsable, base.liqPorNombreNorm);
 
   let estadoCliente;
-  if (clienteExistente) estadoCliente = matchPorNombre ? "existe (por nombre, sin CUIT)" : "existe";
-  else if (!f.cuit) estadoCliente = "SIN CUIT — sin match por nombre";
+  if (clienteExistente) estadoCliente = "existe";
+  else if (!f.cuit) estadoCliente = "SIN CUIT — revisar a mano";
   else estadoCliente = "ALTA NUEVA";
 
   let yaEtiquetado = false;
@@ -327,7 +331,7 @@ async function main() {
   ];
 
   for (const [nombreHoja, filas] of [
-    ["A revisar", evaluadas.filter((f) => f.tipoFaltante || !f.responsableMatch || f.estadoCliente === "SIN CUIT")],
+    ["A revisar", evaluadas.filter((f) => f.tipoFaltante || !f.responsableMatch || f.estadoCliente.startsWith("SIN CUIT"))],
     ["Altas nuevas", altaNueva],
     ["Para etiquetar (ya existen)", paraEtiquetar],
     ["Ya etiquetados", yaEtiquetadas],
