@@ -465,31 +465,35 @@ export function ContableClient({
               <th className="bg-gray-50 px-3 py-1.5" />
               <th className="bg-gray-50 px-3 py-1.5" />
             </tr>
-            <tr className="bg-gray-50 border-b border-gray-200">
+            {/* Fondo gris puesto en cada <th>, no solo en el <tr>: con el
+                encabezado sticky, el fondo del tr no siempre "viaja" bien
+                con las celdas y dejaba ver las filas del cuerpo pasando por
+                detrás de esta fila al scrollear. */}
+            <tr className="border-b border-gray-200">
               {/* Cliente — columna fijada, scrollea horizontal con el resto */}
               <th className="sticky left-0 z-30 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
               {/* Fechas */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">Cierre</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-28 whitespace-normal leading-tight">Vto balance y Gcias</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">Cierre</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-28 whitespace-normal leading-tight">Vto balance y Gcias</th>
               {/* Estado */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Estado</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-16">Avance</th>
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Responsable</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Estado</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-16">Avance</th>
+              <th className="bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Responsable</th>
               {/* Etapas */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Pedido de información</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Recepción de información</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-40">EECC</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Pedido de información</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Recepción de información</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-40">EECC</th>
               {/* Formularios */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">855</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">F899</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F713</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">F657</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">855</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">F899</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">F713</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">F657</th>
               {/* IGJ */}
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">IGJ</th>
-              <th className="text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">Tasa</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">IGJ</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">Tasa</th>
               {/* Obs + acciones */}
-              <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Obs.</th>
-              <th className="px-3 py-3 w-10" />
+              <th className="bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Obs.</th>
+              <th className="bg-gray-50 px-3 py-3 w-10" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
