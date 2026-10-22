@@ -410,7 +410,12 @@ export function ContableClient({
       </div>
 
       {/* Table */}
-      <div className="flex-1 min-h-0 overflow-auto [scrollbar-gutter:stable] pb-2">
+      {/* min-w-0: sin esto, al ser hijo de un flex-col no se achica por
+          debajo del ancho de la tabla (default min-width:auto de flexbox) —
+          nunca llega a recortarla ni a activar su propio scroll, y por eso
+          tampoco el sticky (header ni columna Cliente) tenía de qué
+          "pegarse". */}
+      <div className="flex-1 min-h-0 min-w-0 overflow-auto [scrollbar-gutter:stable] pb-2">
         <table className="w-full text-sm whitespace-nowrap table-fixed">
           <thead className="sticky top-0 z-20">
             {/* Franja de grupos — una por bloque, nombres y color suave para
