@@ -12,6 +12,7 @@ import { CHIP, ENCABEZADO, MONO, NUM, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO
 import type { ObjetivoConAvance } from "@/lib/librosObjetivosMetricas";
 import { ObjetivosDashboard } from "./Objetivos";
 import { BackupButton } from "@/components/BackupButton";
+import { DescargarExcelButton } from "@/components/DescargarExcelButton";
 
 type MandatoFila = { clienteId: string; nombre: string; vence: string; dias: number };
 
@@ -367,7 +368,7 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
             <details className={DETALLE}>
               <summary>Ver los más atrasados</summary>
               <ul className="mt-2 divide-y divide-line-row">
-                {datos.masAtrasados.map((l) => (
+                {datos.masAtrasados.slice(0, 12).map((l) => (
                   <li key={l.libroId} className="flex items-baseline justify-between gap-3 py-1.5">
                     <Link href={`/libros/clientes/${l.clienteId}`} className="text-ink hover:text-bordo truncate">
                       {l.clienteNombre} · {l.libroNombre}
@@ -631,7 +632,11 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
         <h1 className={TITULO}>Dashboard</h1>
         <span className={clsx(MONO, "text-[12px] text-ink-subtle")}>al {fmtFecha(datos.hoy)}</span>
         {datos.esAdmin && (
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <DescargarExcelButton
+              href="/api/exportar/libros/dashboard"
+              title="Descargar este tablero (atrasados, mandatos, envíos) a Excel"
+            />
             <BackupButton modulo="libros" />
           </div>
         )}

@@ -16,6 +16,7 @@ import type { LibroEstado, LibroTarea, PrioridadLibro, TipoSocietario } from "@/
 import { actualizarTarea, reordenarBloques } from "./actions";
 import { NuevaTareaModal, type Persona } from "./NuevaTareaModal";
 import { AgregarTareaModal } from "./AgregarTareaModal";
+import { DescargarExcelButton } from "@/components/DescargarExcelButton";
 import { EnviarACopiarModal, PrioridadModal, RegistrarCopiadoModal } from "./SeguimientoModales";
 import {
   AVISO,
@@ -1000,6 +1001,7 @@ export function SeguimientoLibrosClient({
   estados,
   equipo,
   puedeEditar,
+  esAdmin,
 }: {
   tareas: TareaVista[];
   clientes: ClienteCola[];
@@ -1010,6 +1012,7 @@ export function SeguimientoLibrosClient({
   estados: LibroEstado[];
   equipo: Persona[];
   puedeEditar: boolean;
+  esAdmin: boolean;
 }) {
   const [pestaña, setPestaña] = useState<"cola" | "puesta" | "historial">("cola");
   const [busqueda, setBusqueda] = useState("");
@@ -1033,6 +1036,12 @@ export function SeguimientoLibrosClient({
             equipo.
           </Ayuda>
           <div className="flex-1" />
+          {esAdmin && (
+            <DescargarExcelButton
+              href="/api/exportar/libros/seguimiento"
+              title="Descargar la cola y la puesta al día a Excel"
+            />
+          )}
           {puedeEditar && (
             <button onClick={() => setAgregando(true)} className={BOTON_SECUNDARIO}>
               <Plus size={14} /> Agregar
