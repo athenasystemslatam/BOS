@@ -62,7 +62,7 @@ export default async function ContableVencimientosPage({
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable</p>
           <h1 className="text-[20px] font-semibold text-gray-900">Vencimientos {anio}</h1>
           <p className="text-[13px] text-gray-400 mt-1">
-            VTO Balance y Ganancias = cierre + {objetivoGeneral.balance_dias_vto} días · VTO F.855/F899 = cierre + {objetivoGeneral.balance_dias_vto + objetivoGeneral.f855_dias_vto_extra} días (general — algún cliente puede tener excepción)
+            VTO Balance y Ganancias = cierre + {objetivoGeneral.balance_dias_vto} días · VTO F.855/F899/F657 = cierre + {objetivoGeneral.balance_dias_vto + objetivoGeneral.f855_dias_vto_extra} días (general — algún cliente puede tener excepción)
           </p>
         </div>
         <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
