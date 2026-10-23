@@ -38,7 +38,7 @@ export default async function ContableDashboardPage({
         // envio1/info_recibida/estado_eecc: los usa calcularAvance para separar
         // "En proceso" de "Sin empezar" (sin ellos todo daba 0%, ítem 122).
         "id, cliente_id, anio_fiscal, fecha_cierre, estado, f855_estado, presentado_fecha, f855_fecha, " +
-        "envio1, info_recibida, estado_eecc, " +
+        "envio1, info_recibida, estado_eecc, presentado_fecha_real, f855_fecha_real, " +
         "clientes(nombre), " +
         "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
         "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
@@ -84,11 +84,18 @@ export default async function ContableDashboardPage({
   // Objetivo del área (ítems 67/70): el mínimo legal es 100% en término.
   // Solo cuenta lo que ya venció (no tiene sentido evaluar "en término" algo
   // que todavía tiene plazo) y nunca a los frenados.
-  const vencidosBalance = conVto.filter((b) => b.estado !== "frenado" && b.vtoBalance < hoy);
+  // Ítem 124: los presentados sin fecha real (la migración del 20-oct cargó
+  // como fecha la última modificación del registro) no cuentan ni a favor ni
+  // en contra: se muestran aparte como "sin fecha real" hasta que se cargue.
+  const vencidosBalanceTodos = conVto.filter((b) => b.estado !== "frenado" && b.vtoBalance < hoy);
+  const sinFechaBalance = vencidosBalanceTodos.filter((b) => b.estado === "finalizado" && !b.presentado_fecha_real).length;
+  const vencidosBalance = vencidosBalanceTodos.filter((b) => !(b.estado === "finalizado" && !b.presentado_fecha_real));
   const enTerminoBalance = vencidosBalance.filter(
     (b) => b.estado === "finalizado" && b.presentado_fecha && new Date(b.presentado_fecha) <= b.vtoBalance
   ).length;
-  const vencidosF855 = conVto.filter((b) => b.estado !== "frenado" && b.vto855 < hoy);
+  const vencidosF855Todos = conVto.filter((b) => b.estado !== "frenado" && b.vto855 < hoy);
+  const sinFechaF855 = vencidosF855Todos.filter((b) => b.f855_estado === "presentado" && !b.f855_fecha_real).length;
+  const vencidosF855 = vencidosF855Todos.filter((b) => !(b.f855_estado === "presentado" && !b.f855_fecha_real));
   const enTerminoF855 = vencidosF855.filter(
     (b) => b.f855_estado === "presentado" && b.f855_fecha && new Date(b.f855_fecha) <= b.vto855
   ).length;
@@ -217,8 +224,8 @@ export default async function ContableDashboardPage({
           <span className="text-[13px] font-semibold text-gray-900">Objetivo: {OBJETIVO_CONTABLE_TEXTO}</span>
         </div>
         <div className="flex items-center gap-5 ml-auto text-[12px]">
-          <ObjetivoRatio label="Balances" ok={enTerminoBalance} total={vencidosBalance.length} />
-          <ObjetivoRatio label="F.855" ok={enTerminoF855} total={vencidosF855.length} />
+          <ObjetivoRatio label="Balances" ok={enTerminoBalance} total={vencidosBalance.length} sinFecha={sinFechaBalance} />
+          <ObjetivoRatio label="F.855" ok={enTerminoF855} total={vencidosF855.length} sinFecha={sinFechaF855} />
         </div>
       </div>
 
@@ -473,18 +480,26 @@ function BarraEstadoAnio({ anio, balances }: { anio: number; balances: { estado:
   );
 }
 
-function ObjetivoRatio({ label, ok, total }: { label: string; ok: number; total: number }) {
+function ObjetivoRatio({ label, ok, total, sinFecha }: { label: string; ok: number; total: number; sinFecha: number }) {
+  const extra = sinFecha > 0 && (
+    <span
+      className="text-amber-600 ml-1"
+      title="Presentados antes de que BOS registrara la fecha real (migración del 20-oct-2026). Se carga desde Seguimiento → ⋯ → Fechas de presentación."
+    >
+      · {sinFecha} sin fecha real
+    </span>
+  );
   if (total === 0) {
     return (
       <span className="text-gray-400">
-        <span className="font-medium text-gray-500">{label}:</span> sin vencidos todavía
+        <span className="font-medium text-gray-500">{label}:</span> sin vencidos todavía{extra}
       </span>
     );
   }
   const completo = ok === total;
   return (
     <span className={completo ? "text-emerald-600" : "text-red-600"}>
-      <span className="font-medium">{label}:</span> {ok} de {total} en término
+      <span className="font-medium">{label}:</span> {ok} de {total} en término{extra}
     </span>
   );
 }

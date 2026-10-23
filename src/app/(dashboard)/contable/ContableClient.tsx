@@ -4,7 +4,7 @@ import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, Check, Minus, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
-import { updateBalance, getFichaCliente } from "./actions";
+import { updateBalance, getFichaCliente, actualizarFechasPresentacion } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { GenerarBalancesModal } from "./GenerarBalancesModal";
 import { MarcaVto } from "./MarcaVto";
@@ -76,6 +76,11 @@ type Balance = {
   no_corresponde_motivo: string | null;
   // Ítem 109: texto del aviso si la fecha de cierre no coincide con la fija del cliente.
   cierre_distinto: string | null;
+  // Ítem 124: false = fecha aproximada de la migración, no cuenta en el objetivo.
+  presentado_fecha: string | null;
+  presentado_fecha_real: boolean | null;
+  f855_fecha: string | null;
+  f855_fecha_real: boolean | null;
   // Ítem 91: ya vienen resueltos desde el servidor (regla, prórroga o fecha
   // manual) — este componente no sabe nada de reglas, solo los muestra.
   vtos: VtosBalance;
@@ -145,6 +150,7 @@ export function ContableClient({
   // sin guardar nada hasta que se elija a alguien (antes guardaba "" y el
   // desplegable nunca aparecía).
   const [conResp2, setConResp2] = useState<Set<string>>(new Set());
+  const [fechasDe, setFechasDe] = useState<Balance | null>(null);
 
   const [balancesMap, setBalancesMap] = useState<Map<string, Balance>>(() => {
     const m = new Map<string, Balance>();
@@ -728,6 +734,14 @@ export function ContableClient({
                         {eeccInfo.label}
                       </span>
                     )}
+                    {b.estado_eecc === "presentado_arca" && !b.presentado_fecha_real && (
+                      <span
+                        title="Sin fecha real de presentación (cargada en la migración del 20-oct-2026): no cuenta en el objetivo. Se carga desde ⋯ → Fechas de presentación."
+                        className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[9px] font-bold text-white bg-amber-500 ml-1 align-middle cursor-help"
+                      >
+                        !
+                      </span>
+                    )}
                   </td>
 
                   {/* 855 · F899 · F657 — casilla + fecha de vencimiento al
@@ -773,6 +787,7 @@ export function ContableClient({
                         onToggleFrenado={() => toggleFrenado(b)}
                         onNoCorresponde={() => setNoCorrespondeDe(b)}
                         onVolverACorresponder={() => volverACorresponder(b)}
+                        onFechasPresentacion={() => setFechasDe(b)}
                       />
                     )}
                   </td>
@@ -801,6 +816,21 @@ export function ContableClient({
           onSelect={(nombre) => setFilterResp((prev) => (prev === nombre ? "" : nombre))}
           onClose={() => setMostrarEquipo(false)}
           accent={ACCENT_CONTABLE}
+        />
+      )}
+      {fechasDe && (
+        <FechasPresentacionModal
+          balance={fechasDe}
+          onClose={() => setFechasDe(null)}
+          onGuardar={(fechas) => {
+            const b = fechasDe;
+            const cambios: Partial<Balance> = {};
+            if (fechas.presentado) Object.assign(cambios, { presentado_fecha: `${fechas.presentado}T12:00:00-03:00`, presentado_fecha_real: true });
+            if (fechas.f855) Object.assign(cambios, { f855_fecha: `${fechas.f855}T12:00:00-03:00`, f855_fecha_real: true });
+            patch(b.id, cambios);
+            guardarBalance(b.id, () => actualizarFechasPresentacion(b.id, fechas));
+            setFechasDe(null);
+          }}
         />
       )}
       {noCorrespondeDe && (
@@ -994,11 +1024,13 @@ function AccionesMenu({
   onToggleFrenado,
   onNoCorresponde,
   onVolverACorresponder,
+  onFechasPresentacion,
 }: {
   balance: Balance;
   onToggleFrenado: () => void;
   onNoCorresponde: () => void;
   onVolverACorresponder: () => void;
+  onFechasPresentacion: () => void;
 }) {
   const [abierto, setAbierto] = useState(false);
   const frenado = balance.estado === "frenado";
@@ -1055,6 +1087,18 @@ function AccionesMenu({
                 >
                   No corresponde…
                 </button>
+                {(balance.estado_eecc === "presentado_arca" || balance.f855_estado === "presentado") && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onFechasPresentacion();
+                      setAbierto(false);
+                    }}
+                    className="w-full text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 text-gray-600"
+                  >
+                    Fechas de presentación…
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -1163,6 +1207,79 @@ function NoCorrespondeModal({
               className="px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-800 rounded-lg disabled:opacity-40"
             >
               Marcar como no corresponde
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Ítem 124: fecha real de presentación (En ARCA y F.855) para lo que se
+// presentó antes de que BOS la registrara sola. Solo aparecen los campos que
+// aplican al balance.
+function FechasPresentacionModal({
+  balance,
+  onClose,
+  onGuardar,
+}: {
+  balance: Balance;
+  onClose: () => void;
+  onGuardar: (fechas: { presentado?: string; f855?: string }) => void;
+}) {
+  const backdrop = useBackdropClose(onClose);
+  const conArca = balance.estado_eecc === "presentado_arca";
+  const con855 = balance.f855_estado === "presentado";
+  const [presentado, setPresentado] = useState(balance.presentado_fecha?.slice(0, 10) ?? "");
+  const [f855, setF855] = useState(balance.f855_fecha?.slice(0, 10) ?? "");
+
+  function guardar() {
+    const fechas: { presentado?: string; f855?: string } = {};
+    if (conArca && presentado) fechas.presentado = presentado;
+    if (con855 && f855) fechas.f855 = f855;
+    onGuardar(fechas);
+  }
+
+  const campo = (label: string, valor: string, setValor: (v: string) => void, real: boolean | null) => (
+    <label className="block">
+      <span className="text-xs font-medium text-gray-500 block mb-1">{label}</span>
+      <input
+        type="date"
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+      />
+      {!real && (
+        <span className="text-[11px] text-amber-700 mt-1 block">
+          La fecha actual es aproximada (migración del 20-oct-2026) y no cuenta en el objetivo. Cargá la real.
+        </span>
+      )}
+    </label>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" {...backdrop}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-[15px] font-semibold text-gray-900">Fechas de presentación</h2>
+          <p className="text-[12px] text-gray-400 mt-0.5">
+            {balance.clientes?.nombre ?? "—"} — {balance.anio_fiscal}
+          </p>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          {conArca && campo("Presentado en ARCA el", presentado, setPresentado, balance.presentado_fecha_real)}
+          {con855 && campo("F.855 presentado el", f855, setF855, balance.f855_fecha_real)}
+          <div className="flex justify-end gap-2 pt-1">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={guardar}
+              disabled={!((conArca && presentado) || (con855 && f855))}
+              className="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg disabled:opacity-50"
+            >
+              Guardar
             </button>
           </div>
         </div>

@@ -4,7 +4,14 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql` y `add_clientes_cierre_cambios.sql` corridas por Matías el 23-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct).
+
+### Objetivo "0 en término" — ítem 124 (23-oct, Matías)
+
+- Causa: `add_balances_fechas_automaticas.sql` (20-oct) cargó en lo ya presentado `presentado_fecha`/`f855_fecha` = `updated_at` (fecha de la migración), así que todo daba tarde.
+- `presentado_fecha_real` / `f855_fecha_real`: true en lo que BOS registra solo desde el 21-oct y en lo cargado a mano (Seguimiento → ⋯ → "Fechas de presentación…"). Lo aproximado no cuenta ni en término ni tarde: Dashboard muestra "· N sin fecha real" y Seguimiento marca "!" junto a "En ARCA".
+- F.855 en la línea del objetivo es a propósito (ítem 70: piso = balance y 855 en término).
+- Las fechas reales históricas probablemente estén en el ESTATUS de balances: importarlas es parte del ítem 130 (definir antes qué fuente manda, ítem 134).
 
 ### Fecha de cierre fija que genera el balance de cada año — ítem 109 (23-oct, Matías)
 

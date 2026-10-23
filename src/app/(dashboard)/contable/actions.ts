@@ -127,6 +127,7 @@ export async function updateBalance(
       }
       if (nuevoEstado === "finalizado" && !actual.presentado_fecha) {
         fechasUpdate.presentado_fecha = new Date().toISOString();
+        fechasUpdate.presentado_fecha_real = true;
       }
     }
 
@@ -135,8 +136,10 @@ export async function updateBalance(
     if (tocaF855) {
       if (updates.f855_estado === "presentado" && !actual?.f855_fecha) {
         fechasUpdate.f855_fecha = new Date().toISOString();
+        fechasUpdate.f855_fecha_real = true;
       } else if (updates.f855_estado === "pendiente") {
         fechasUpdate.f855_fecha = null;
+        fechasUpdate.f855_fecha_real = false;
       }
     }
   }
@@ -171,6 +174,39 @@ export async function updateBalance(
   if (error) return { error: error.message };
   // Igual que en Equipo: revalidar todo el sitio de una, no solo /contable
   // (dejaba afuera /contable/dashboard, /contable/vencimientos, etc.).
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// Ítem 124: carga a mano de la fecha real de presentación (En ARCA y F.855),
+// para lo presentado antes de que BOS la registrara sola (la migración del
+// 20-oct-2026 puso la última modificación del registro). Fecha "YYYY-MM-DD".
+export async function actualizarFechasPresentacion(
+  id: string,
+  fechas: { presentado?: string; f855?: string }
+) {
+  try {
+    await requireAreaOrAdmin("contable");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+  const esFecha = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const update: Record<string, unknown> = {};
+  if (fechas.presentado !== undefined) {
+    if (!esFecha(fechas.presentado)) return { error: "Fecha de En ARCA inválida." };
+    update.presentado_fecha = `${fechas.presentado}T12:00:00-03:00`;
+    update.presentado_fecha_real = true;
+  }
+  if (fechas.f855 !== undefined) {
+    if (!esFecha(fechas.f855)) return { error: "Fecha del F.855 inválida." };
+    update.f855_fecha = `${fechas.f855}T12:00:00-03:00`;
+    update.f855_fecha_real = true;
+  }
+  if (Object.keys(update).length === 0) return { ok: true };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("balances").update(update).eq("id", id);
+  if (error) return { error: error.message };
   revalidatePath("/", "layout");
   return { ok: true };
 }

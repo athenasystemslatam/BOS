@@ -38,7 +38,8 @@ export default async function ProductividadContablePage() {
       .select(
         "id, cliente_id, anio_fiscal, fecha_cierre, estado, responsable_id, responsable2_id, " +
         "envio1_fecha, info_recibida_fecha, legalizado_fecha, presentado_fecha, " +
-        "f855_estado, f899_estado, f713_estado, f657_estado, igj_presentacion, igj_tasa, f855_fecha"
+        "f855_estado, f899_estado, f713_estado, f657_estado, igj_presentacion, igj_tasa, f855_fecha, " +
+        "presentado_fecha_real, f855_fecha_real"
       ),
     // Ítem 118: todas las personas, no solo las activas — los dados de baja
     // siguen apareciendo con sus balances históricos, marcados "(inactivo)".
@@ -106,7 +107,8 @@ export default async function ProductividadContablePage() {
       const margenes: number[] = [];
       let terminadosEnTermino = 0;
       for (const b of terminados) {
-        if (!b.presentado_fecha) continue;
+        // Ítem 124: sin fecha real (migración del 20-oct) no se mide.
+        if (!b.presentado_fecha || !b.presentado_fecha_real) continue;
         const vto = aFecha(vencimientos.resolver(b).balance.fecha);
         const margen = diffDias(new Date(b.presentado_fecha), vto);
         margenes.push(margen);
@@ -150,6 +152,7 @@ export default async function ProductividadContablePage() {
         aFecha(vencimientos.resolver(b).f855.fecha);
       const f855Vencidos = items.filter((b) => {
         if (b.f855_estado === "no_corresponde") return false;
+        if (b.f855_estado === "presentado" && !b.f855_fecha_real) return false;
         return hoy > vtoF855(b);
       });
       const f855EnTermino = f855Vencidos.filter((b) => {
