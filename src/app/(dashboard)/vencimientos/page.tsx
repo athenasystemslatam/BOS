@@ -48,7 +48,7 @@ export default async function VencimientosPage({ searchParams }: { searchParams:
           </div>
         </div>
         <p className="text-sm text-gray-400 mt-2">
-          Fechas oficiales para la presentación del Formulario 931 por grupo de CUIT.
+          Fechas {oficial ? "oficiales" : "estimadas"} para la presentación del Formulario 931 por grupo de CUIT.
         </p>
       </div>
 
