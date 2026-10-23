@@ -125,7 +125,8 @@ export default async function ContableDashboardPage({
       if (!r?.id) continue;
       if (!respMap.has(r.id)) {
         respMap.set(r.id, {
-          nombre: r.nombre,
+          // Ítem 118: mismo criterio que Seguimiento y Productividad.
+          nombre: equipoContable.some((e) => e.id === r.id) ? r.nombre : `${r.nombre} (inactivo)`,
           total: 0,
           totalPorAnio: {},
           terminados: 0,

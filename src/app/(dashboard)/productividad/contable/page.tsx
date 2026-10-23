@@ -40,9 +40,13 @@ export default async function ProductividadContablePage() {
         "envio1_fecha, info_recibida_fecha, legalizado_fecha, presentado_fecha, " +
         "f855_estado, f899_estado, f713_estado, f657_estado, igj_presentacion, igj_tasa, f855_fecha"
       ),
-    admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+    // Ítem 118: todas las personas, no solo las activas — los dados de baja
+    // siguen apareciendo con sus balances históricos, marcados "(inactivo)".
+    admin.from("liquidadoras").select("id, nombre, activa").order("nombre"),
     getContextoVencimientos(),
   ]);
+  const { data: modulosContable } = await admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable");
+  const idsContable = new Set((modulosContable ?? []).map((m) => m.equipo_id));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const balances = (balancesRaw as any[] | null)?.filter(cuentaBalance) ?? null;
@@ -75,7 +79,10 @@ export default async function ProductividadContablePage() {
   const anios = Array.from(new Set(balances.map((b) => b.anio_fiscal))).sort((a, b) => a - b);
 
   const filaMap = new Map<string, FilaResponsableContable>();
-  for (const l of liquidadoras) filaMap.set(l.id, { id: l.id, nombre: l.nombre, anios: [] });
+  for (const l of liquidadoras) {
+    const activo = l.activa && idsContable.has(l.id);
+    filaMap.set(l.id, { id: l.id, nombre: activo ? l.nombre : `${l.nombre} (inactivo)`, anios: [] });
+  }
 
   for (const anio of anios) {
     const delAnio = balances.filter((b) => b.anio_fiscal === anio);

@@ -633,6 +633,7 @@ export function ContableClient({
                             className="appearance-none text-[12px] text-gray-700 bg-transparent border-0 focus:outline-none pr-4 cursor-pointer"
                           >
                             <option value="">—</option>
+                            <OpcionInactivo id={b.responsable_id} persona={b.responsable} equipo={equipoContable} />
                             {equipoContable.map((e) => (
                               <option key={e.id} value={e.id}>{e.nombre}</option>
                             ))}
@@ -647,6 +648,7 @@ export function ContableClient({
                               className="appearance-none text-[11px] text-gray-400 bg-transparent border-0 focus:outline-none pr-4 cursor-pointer"
                             >
                               <option value="">—</option>
+                              <OpcionInactivo id={b.responsable2_id} persona={b.responsable2} equipo={equipoContable} />
                               {equipoContable.map((e) => (
                                 <option key={e.id} value={e.id}>{e.nombre}</option>
                               ))}
@@ -939,6 +941,27 @@ function FormVtoCheckCell({
         <MarcaVto vto={vto} />
       </div>
     </td>
+  );
+}
+
+// Ítem 118: si el responsable de un balance ya no es del equipo contable
+// activo (dado de baja o sacado del área), se sigue viendo su nombre en ese
+// balance — antes aparecía "—" — pero deshabilitado: no se puede elegir para
+// otro balance ni volver a elegir una vez cambiado.
+function OpcionInactivo({
+  id,
+  persona,
+  equipo,
+}: {
+  id: string | null;
+  persona: { id: string; nombre: string } | null;
+  equipo: { id: string }[];
+}) {
+  if (!id || equipo.some((e) => e.id === id)) return null;
+  return (
+    <option value={id} disabled>
+      {persona?.nombre ?? "Responsable"} (inactivo)
+    </option>
   );
 }
 

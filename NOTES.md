@@ -12,6 +12,12 @@ Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.s
 - Nuevo: botón "Generar balances {año}" en Seguimiento Contable (`generarBalancesDelAnio`): un balance "Sin asignar" por cliente activo con Contable y cierre fijo que no lo tenga; muestra antes la lista y los clientes sin cierre fijo. No toca los existentes.
 - Nuevo: cambiar un cierre ya cargado pide motivo y queda en `clientes_cierre_cambios`. El balance cuya fecha no coincide con la fija se marca con "!" en la columna Cierre.
 
+### Responsables inactivos en Contable — ítem 118 (23-oct, Matías)
+
+- "Inactivo" para Contable = `activa: false` o sin el área `contable` en `equipo_modulos`. Sigue visible con su nombre + "(inactivo)" en los balances donde ya está (Seguimiento: opción deshabilitada en el desplegable, no se puede asignar a otro), en el resumen por contador del Dashboard y en Productividad Contable (ahora trae también a los dados de baja).
+- **Janina** no se saca por código: tiene marcada el área Contable en `/equipo`. Hay que destildársela ahí (lo hace un admin).
+- Ojo ítem 119 del estatus: figura "Hecho" pero no existe ningún rol "administrativo" en el código.
+
 ### Cruce del estatus del 23-oct (Matías)
 
 Figuran pendientes en el Sheet pero ya están hechos: 79 y 127 (`6c3c41b`), 91 (con el 107), 120 (`94bd7a3`), 121 y 123 (`d33861c`), 64 (`84b6665`/`afcaf55`), 76/77/78 (20-oct, ver arriba), 109 (este), 114 (fecha de recepción ya se guarda, `156f2d0`), 93 (F657 pasó a casilla, `720c151`). 122 (avance en 0 en el Dashboard: la consulta no traía envio1/info_recibida/estado_eecc) corregido el mismo día, junto con las columnas "Total {año}" del resumen por contador.
