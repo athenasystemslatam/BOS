@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAreaOrAdmin } from "@/lib/auth";
-import { calcularAvance, calcularEstado } from "./semaforo";
+import { calcularAvance, calcularEstado, ESTADOS_MANUALES } from "./semaforo";
 import type { Cliente } from "@/types";
 
 const CAMPOS_AVANCE = ["envio1", "info_recibida", "estado_eecc"] as const;
@@ -48,6 +48,17 @@ export async function updateBalance(
   // Ese valor nunca llega a la base — se saca de "updates" antes de nada.
   const reanudando = updates.estado === "auto";
   if (reanudando) delete updates.estado;
+
+  if (updates.estado === "no_corresponde") {
+    const motivo = typeof updates.no_corresponde_motivo === "string" ? updates.no_corresponde_motivo.trim() : "";
+    if (!motivo) return { error: "El motivo es obligatorio." };
+    updates.no_corresponde_motivo = motivo;
+    updates.no_corresponde_desde = new Date().toISOString();
+  } else if ("no_corresponde_motivo" in updates || "no_corresponde_desde" in updates) {
+    // Solo se cargan junto con el estado: nunca sueltos desde el frontend.
+    delete updates.no_corresponde_motivo;
+    delete updates.no_corresponde_desde;
+  }
 
   const tocaAvance = CAMPOS_AVANCE.some((campo) => campo in updates);
   const tocaEstado = reanudando || CAMPOS_ESTADO.some((campo) => campo in updates);
@@ -102,10 +113,10 @@ export async function updateBalance(
       }
     }
 
-    // El Estado se deriva solo de EECC/responsable — Frenado es la única
-    // excepción manual, y una vez frenado se queda así hasta que alguien
-    // lo reanude a propósito (updates.estado === "auto").
-    if (tocaEstado && actual && !(actual.estado === "frenado" && !reanudando)) {
+    // El Estado se deriva solo de EECC/responsable — Frenado y No corresponde
+    // son las excepciones manuales, y se quedan así hasta que alguien las
+    // saque a propósito (updates.estado === "auto").
+    if (tocaEstado && actual && !(ESTADOS_MANUALES.includes(actual.estado) && !reanudando)) {
       const nuevoEstado = calcularEstado(merged);
       estadoUpdate = { estado: nuevoEstado };
       if (nuevoEstado === "asignado" && !actual.asignado_fecha) {
@@ -130,7 +141,8 @@ export async function updateBalance(
     }
   }
 
-  // Frenar/reanudar manual: la única forma de tocar el Estado a mano.
+  // Frenar/reanudar manual (y No corresponde, más arriba): las únicas
+  // formas de tocar el Estado a mano.
   // balance_frenados guarda el historial completo (puede frenarse y
   // destrabarse varias veces) — frenado_desde en balances es solo el
   // "caché" del ciclo abierto, para no tener que hacer join en la UI.
@@ -138,13 +150,18 @@ export async function updateBalance(
     const ahora = new Date().toISOString();
     fechasUpdate.frenado_desde = ahora;
     await admin.from("balance_frenados").insert({ balance_id: id, desde: ahora });
-  } else if (reanudando) {
+  } else if (reanudando || updates.estado === "no_corresponde") {
+    // Pasar de Frenado a No corresponde también cierra el ciclo de freno.
     fechasUpdate.frenado_desde = null;
     await admin
       .from("balance_frenados")
       .update({ hasta: new Date().toISOString() })
       .eq("balance_id", id)
       .is("hasta", null);
+  }
+  if (reanudando) {
+    fechasUpdate.no_corresponde_motivo = null;
+    fechasUpdate.no_corresponde_desde = null;
   }
 
   const { error } = await admin

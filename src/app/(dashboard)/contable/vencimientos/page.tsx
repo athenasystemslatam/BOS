@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
-import { ESTADO_BALANCE, calcularAvance } from "../semaforo";
+import { ESTADO_BALANCE, calcularAvance, cuentaBalance } from "../semaforo";
 import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
 import { aFecha, describirRegla, LABEL_VTO, TIPOS_VTO } from "@/lib/vencimientosContables";
 import { MarcaVto } from "../MarcaVto";
@@ -35,7 +35,7 @@ export default async function ContableVencimientosPage({
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const balances = (balancesRaw as any[]) ?? [];
+  const balances = ((balancesRaw as any[]) ?? []).filter(cuentaBalance);
   const hoy = new Date();
 
   const filas = balances.map((b) => {

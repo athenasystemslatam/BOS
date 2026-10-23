@@ -3,6 +3,7 @@ import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
 import { aFecha } from "@/lib/vencimientosContables";
+import { cuentaBalance } from "../../contable/semaforo";
 import { ContableProductividadClient, FilaResponsableContable } from "./ContableProductividadClient";
 
 function diffDias(desde: Date, hasta: Date): number {
@@ -44,7 +45,7 @@ export default async function ProductividadContablePage() {
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const balances = balancesRaw as any[] | null;
+  const balances = (balancesRaw as any[] | null)?.filter(cuentaBalance) ?? null;
 
   if (!balances || !liquidadoras) {
     return <div className="p-8 text-gray-400 text-sm">Sin datos suficientes.</div>;

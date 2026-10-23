@@ -7,11 +7,13 @@ import clsx from "clsx";
 import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { MarcaVto } from "./MarcaVto";
+import { useBackdropClose } from "@/lib/useBackdropClose";
 import type { Vto, VtosBalance } from "@/lib/vencimientosContables";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import {
   ESTADO_BALANCE, ESTADO_EECC, avanceBarCls, calcularAvance, calcularEstado,
+  ESTADOS_MANUALES, MOTIVOS_NO_CORRESPONDE, cuentaBalance,
   diasDemoraPedido, colorAlertaDemora,
 } from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
@@ -44,7 +46,7 @@ function vtoSemaforoCls(dias: number): string {
   return "bg-green-100 text-green-700";
 }
 
-type FiltroRapido = "todos" | "vencidos" | "vencen30" | "mis" | "sin_asignar" | "frenados";
+type FiltroRapido = "todos" | "vencidos" | "vencen30" | "mis" | "sin_asignar" | "frenados" | "no_corresponde";
 
 const ACCENT_CONTABLE = { dot: "bg-emerald-500", bg: "bg-emerald-50", text: "text-emerald-700" };
 
@@ -69,6 +71,7 @@ type Balance = {
   igj_presentacion: string;
   igj_tasa: string;
   observaciones: string | null;
+  no_corresponde_motivo: string | null;
   // Ítem 91: ya vienen resueltos desde el servidor (regla, prórroga o fecha
   // manual) — este componente no sabe nada de reglas, solo los muestra.
   vtos: VtosBalance;
@@ -130,6 +133,7 @@ export function ContableClient({
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapido>("todos");
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
   const [editandoClienteId, setEditandoClienteId] = useState<string | null>(null);
+  const [noCorrespondeDe, setNoCorrespondeDe] = useState<Balance | null>(null);
 
   const [balancesMap, setBalancesMap] = useState<Map<string, Balance>>(() => {
     const m = new Map<string, Balance>();
@@ -157,7 +161,7 @@ export function ContableClient({
     let finalUpdates: Partial<Balance> = updates;
     if (
       actual &&
-      actual.estado !== "frenado" &&
+      !ESTADOS_MANUALES.includes(actual.estado) &&
       ("estado_eecc" in updates || "responsable_id" in updates || "responsable2_id" in updates)
     ) {
       finalUpdates = { ...updates, estado: calcularEstado({ ...actual, ...updates }) };
@@ -183,6 +187,22 @@ export function ContableClient({
         await updateBalance(b.id, { estado: "frenado" });
       });
     }
+  }
+
+  // No corresponde: igual que Frenado, manual y con motivo obligatorio. Al
+  // volver se recalcula desde EECC/responsable (centinela "auto").
+  function marcarNoCorresponde(b: Balance, motivo: string) {
+    patch(b.id, { estado: "no_corresponde", no_corresponde_motivo: motivo });
+    startTransition(async () => {
+      await updateBalance(b.id, { estado: "no_corresponde", no_corresponde_motivo: motivo });
+    });
+  }
+
+  function volverACorresponder(b: Balance) {
+    patch(b.id, { estado: calcularEstado(b), no_corresponde_motivo: null });
+    startTransition(async () => {
+      await updateBalance(b.id, { estado: "auto" });
+    });
   }
 
   // Pedido/Recepción de información: fecha y hora igual que F.931/recibos
@@ -229,6 +249,7 @@ export function ContableClient({
   const conteosResp = useMemo(() => {
     const m: Record<string, number> = {};
     for (const b of balances) {
+      if (!cuentaBalance(b)) continue;
       if (b.responsable?.nombre) m[b.responsable.nombre] = (m[b.responsable.nombre] ?? 0) + 1;
       if (b.responsable2?.nombre) m[b.responsable2.nombre] = (m[b.responsable2.nombre] ?? 0) + 1;
     }
@@ -246,7 +267,10 @@ export function ContableClient({
 
   // Predicado de cada filtro rápido — "Vencidos"/"Vencen en 30 días" nunca
   // cuentan lo ya finalizado ni lo frenado (no tiene sentido evaluarlos).
+  // Los "No corresponde" solo aparecen en su propio filtro.
   function cumpleFiltro(b: Balance, filtro: FiltroRapido): boolean {
+    if (filtro === "no_corresponde") return !cuentaBalance(b);
+    if (!cuentaBalance(b)) return false;
     switch (filtro) {
       case "todos":
         return true;
@@ -279,6 +303,7 @@ export function ContableClient({
       mis: porResp.filter((b) => cumpleFiltro(b, "mis")).length,
       sin_asignar: porResp.filter((b) => cumpleFiltro(b, "sin_asignar")).length,
       frenados: porResp.filter((b) => cumpleFiltro(b, "frenados")).length,
+      no_corresponde: porResp.filter((b) => cumpleFiltro(b, "no_corresponde")).length,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [porResp, miId]
@@ -365,6 +390,7 @@ export function ContableClient({
             { key: "mis", label: "Mis balances" },
             { key: "sin_asignar", label: "Sin asignar" },
             { key: "frenados", label: "Frenados" },
+            { key: "no_corresponde", label: "No corresponde" },
           ] as { key: FiltroRapido; label: string }[]
         ).map(({ key, label }) => (
           <button
@@ -545,7 +571,11 @@ export function ContableClient({
                   <td className="px-3 py-2.5 text-center">
                     <span
                       className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", estadoInfo.cls)}
-                      title="Se calcula solo según EECC y responsable asignado"
+                      title={
+                        b.estado === "no_corresponde"
+                          ? `No corresponde: ${b.no_corresponde_motivo ?? "sin motivo"}`
+                          : "Se calcula solo según EECC y responsable asignado"
+                      }
                     >
                       {estadoInfo.label}
                     </span>
@@ -702,7 +732,14 @@ export function ContableClient({
 
                   {/* Acciones — por ahora, Frenar/Reanudar (ítem 34). */}
                   <td className="px-3 py-2.5 text-center">
-                    {puedeEditar && <AccionesMenu balance={b} onToggleFrenado={() => toggleFrenado(b)} />}
+                    {puedeEditar && (
+                      <AccionesMenu
+                        balance={b}
+                        onToggleFrenado={() => toggleFrenado(b)}
+                        onNoCorresponde={() => setNoCorrespondeDe(b)}
+                        onVolverACorresponder={() => volverACorresponder(b)}
+                      />
+                    )}
                   </td>
                 </tr>
               );
@@ -728,6 +765,17 @@ export function ContableClient({
           onSelect={(nombre) => setFilterResp((prev) => (prev === nombre ? "" : nombre))}
           onClose={() => setMostrarEquipo(false)}
           accent={ACCENT_CONTABLE}
+        />
+      )}
+      {noCorrespondeDe && (
+        <NoCorrespondeModal
+          cliente={noCorrespondeDe.clientes?.nombre ?? "—"}
+          anio={noCorrespondeDe.anio_fiscal}
+          onClose={() => setNoCorrespondeDe(null)}
+          onConfirmar={(motivo) => {
+            marcarNoCorresponde(noCorrespondeDe, motivo);
+            setNoCorrespondeDe(null);
+          }}
         />
       )}
       {editandoClienteId && (
@@ -887,12 +935,17 @@ function VtoCell({ vto }: { vto: Vto }) {
 function AccionesMenu({
   balance,
   onToggleFrenado,
+  onNoCorresponde,
+  onVolverACorresponder,
 }: {
   balance: Balance;
   onToggleFrenado: () => void;
+  onNoCorresponde: () => void;
+  onVolverACorresponder: () => void;
 }) {
   const [abierto, setAbierto] = useState(false);
   const frenado = balance.estado === "frenado";
+  const noCorresponde = balance.estado === "no_corresponde";
 
   return (
     <div className="relative inline-block">
@@ -908,20 +961,45 @@ function AccionesMenu({
       {abierto && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setAbierto(false)} />
-          <div className="absolute right-0 top-full mt-1 z-20 w-36 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
-            <button
-              type="button"
-              onClick={() => {
-                onToggleFrenado();
-                setAbierto(false);
-              }}
-              className={clsx(
-                "w-full text-left text-[12px] px-3 py-1.5 hover:bg-gray-50",
-                frenado ? "text-emerald-600" : "text-red-600"
-              )}
-            >
-              {frenado ? "Reanudar" : "Frenar"}
-            </button>
+          <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+            {noCorresponde ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onVolverACorresponder();
+                  setAbierto(false);
+                }}
+                className="w-full text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 text-emerald-600"
+              >
+                Vuelve a corresponder
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleFrenado();
+                    setAbierto(false);
+                  }}
+                  className={clsx(
+                    "w-full text-left text-[12px] px-3 py-1.5 hover:bg-gray-50",
+                    frenado ? "text-emerald-600" : "text-red-600"
+                  )}
+                >
+                  {frenado ? "Reanudar" : "Frenar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onNoCorresponde();
+                    setAbierto(false);
+                  }}
+                  className="w-full text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 text-gray-600"
+                >
+                  No corresponde…
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -967,5 +1045,71 @@ function FormCell({
         <FormBadge estado={estado} options={options} />
       </div>
     </td>
+  );
+}
+
+// Motivo obligatorio para "No corresponde": uno de los habituales u "Otro"
+// con texto libre.
+function NoCorrespondeModal({
+  cliente,
+  anio,
+  onClose,
+  onConfirmar,
+}: {
+  cliente: string;
+  anio: number;
+  onClose: () => void;
+  onConfirmar: (motivo: string) => void;
+}) {
+  const [opcion, setOpcion] = useState<string>(MOTIVOS_NO_CORRESPONDE[0]);
+  const [otro, setOtro] = useState("");
+  const backdrop = useBackdropClose(onClose);
+  const motivo = opcion === "otro" ? otro.trim() : opcion;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" {...backdrop}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="px-6 py-4 border-b border-gray-100">
+          <h2 className="text-[15px] font-semibold text-gray-900">No corresponde</h2>
+          <p className="text-[12px] text-gray-400 mt-0.5">{cliente} — {anio}</p>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <p className="text-[12px] text-gray-500">
+            El balance deja de contar en totales, pendientes, vencidos, objetivos y productividad. Se sigue viendo con el
+            filtro &quot;No corresponde&quot; y se puede volver atrás desde el menú ⋯.
+          </p>
+          <div className="space-y-1.5">
+            {[...MOTIVOS_NO_CORRESPONDE, "otro"].map((m) => (
+              <label key={m} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input type="radio" checked={opcion === m} onChange={() => setOpcion(m)} className="accent-emerald-600" />
+                {m === "otro" ? "Otro motivo" : m}
+              </label>
+            ))}
+          </div>
+          {opcion === "otro" && (
+            <input
+              autoFocus
+              value={otro}
+              onChange={(e) => setOtro(e.target.value)}
+              placeholder="Escribí el motivo"
+              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+            />
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={!motivo}
+              onClick={() => onConfirmar(motivo)}
+              className="px-4 py-2 text-sm font-semibold text-white bg-gray-700 hover:bg-gray-800 rounded-lg disabled:opacity-40"
+            >
+              Marcar como no corresponde
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

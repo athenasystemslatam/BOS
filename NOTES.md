@@ -4,7 +4,12 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql` y `add_contable_reglas_vencimientos.sql` corridas por Matías el 23-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql` y `add_balances_no_corresponde.sql` corridas por Matías el 23-oct).
+
+### Estado "No corresponde" en Contable (23-oct, Matías)
+
+- Manual como Frenado (menú ⋯ → "No corresponde…", motivo obligatorio: otro estudio / entró con el ejercicio iniciado / baja / otro). Se vuelve con "Vuelve a corresponder" (recalcula desde EECC).
+- `cuentaBalance()` en `contable/semaforo.ts`: filtro único para no contarlos. Aplicado en Seguimiento (chips y conteo por responsable; solo se ven en el chip "No corresponde"), Dashboard, Vencimientos, Equipo y Productividad Contable. Cualquier pantalla nueva que cuente balances tiene que pasar por ahí.
 
 ### Reglas de vencimiento configurables — ítem 91 (23-oct, Matías)
 

@@ -20,7 +20,25 @@ export const ESTADO_BALANCE: Record<string, SemaforoInfo> = {
   legalizado:  { label: "Legalizado",  ...VERDE_CLARO },
   finalizado:  { label: "Finalizado",  ...VERDE_INTENSO },
   frenado:     { label: "Frenado",     ...ROJO_SOLIDO },
+  no_corresponde: { label: "No corresponde", cls: "bg-gray-100 text-gray-500", bar: "bg-gray-300" },
 };
+
+// Estados que se ponen a mano y no se recalculan desde EECC/responsable.
+export const ESTADOS_MANUALES = ["frenado", "no_corresponde"];
+
+// "No corresponde": balances que no hace el estudio (lo cierra otro estudio,
+// el cliente entró con el ejercicio ya iniciado, baja del cliente). No
+// cuentan en totales, pendientes, vencidos, objetivos ni productividad —
+// usar esto antes de contar cualquier cosa de balances.
+export function cuentaBalance(b: { estado?: string }): boolean {
+  return b.estado !== "no_corresponde";
+}
+
+export const MOTIVOS_NO_CORRESPONDE = [
+  "Lo cierra otro estudio",
+  "El cliente entró con el ejercicio ya iniciado",
+  "Baja del cliente",
+];
 
 export const ESTADO_EECC: Record<string, SemaforoInfo> = {
   pendiente:       { label: "Pendiente",         ...ROJO },

@@ -154,7 +154,7 @@ Alta de una persona sin email: queda como etiqueta seleccionable (aparece en los
   - UNIQUE (cliente_id, anio_fiscal)
   - **Vencimientos (ítem 91): una sola fórmula** en `src/lib/vencimientosContables.ts` / `vencimientosContablesServer.ts` — nunca calcular `cierre + N` en una pantalla. Por defecto: Balance = cierre + 135 · Ganancias = Balance · F.855 = Balance + 25 · F899 = F.855 · F657 = Balance + 25. Tres niveles configurables en Productividad → Configuración (admin): regla general (`objetivos_area.config.reglas_vto`, + ajuste en días por cliente del ítem 67) → prórroga por rango de cierre (`contable_vto_prorrogas`) → fecha manual del balance con motivo (`contable_vto_manual`). Marcas P/M en Seguimiento y Vencimientos.
   - `avance` guardado puede estar desactualizado: las pantallas lo calculan con `calcularAvance()` (`contable/semaforo.ts`) desde envio1/info_recibida/estado_eecc.
-  - Estados: `sin_asignar` | `asignado` | `en_proceso` | `finalizado` | `frenado`
+  - Estados: `sin_asignar` | `asignado` | `legalizado` | `finalizado` | `frenado` | `no_corresponde`. Automático desde EECC/responsable salvo los manuales (`ESTADOS_MANUALES`: Frenado y No corresponde). **No corresponde** (balance que no hace el estudio, con `no_corresponde_motivo`) no cuenta en ningún total: filtrar siempre con `cuentaBalance()` de `contable/semaforo.ts`.
   - Datos importados: 102 balances 2025, 100 balances 2026 (desde Excel ESTATUS BALANCES.xlsx)
   - Contable no usa `asignaciones_servicio` — cada fila de `balances` ya tiene `responsable_id`/`responsable2_id` editable directo
 
@@ -383,6 +383,7 @@ Aplicadas en producción:
 - `add_servicios_cliente_fecha_baja.sql` — columna `fecha_baja`, para el mail y el registro de baja de servicio.
 - `add_balances_vto_ganancias.sql` — columna `balances.vto_ganancias` (prórroga de Ganancias). Corrida por Matías el 23-oct-2026. Sin uso desde el siguiente.
 - `add_contable_reglas_vencimientos.sql` — tablas `contable_vto_prorrogas` y `contable_vto_manual` (ítem 91); migra y vacía `vto_ganancias`. Corrida por Matías el 23-oct-2026.
+- `add_balances_no_corresponde.sql` — amplía `balances_estado_check` con `no_corresponde`; columnas `no_corresponde_motivo` y `no_corresponde_desde`. Corrida por Matías el 23-oct-2026.
 
 **Correcciones puntuales de datos corridas directo en Supabase SQL Editor (octubre 2026, no quedaron como archivo `.sql` porque son fixes de una fila, no migraciones de esquema):**
 - `liquidadoras.user_id` de Andrea Dilonardo (ficha de Cobranzas sin vincular a su login).

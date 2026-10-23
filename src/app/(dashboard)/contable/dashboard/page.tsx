@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Building2, CheckCircle2, Clock, AlertTriangle, Ban, UserX, Target } from "lucide-react";
 import clsx from "clsx";
-import { ESTADO_BALANCE, calcularAvance, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
+import { ESTADO_BALANCE, calcularAvance, cuentaBalance, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
 import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
 import { aFecha } from "@/lib/vencimientosContables";
 import { MapaCargaClient } from "./MapaCargaClient";
@@ -48,8 +48,9 @@ export default async function ContableDashboardPage({
     getCurrentLiquidadora(),
   ]);
 
+  // "No corresponde" no cuenta en ningún número del dashboard.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const balancesTodos = (balancesRaw as any[]) ?? [];
+  const balancesTodos = ((balancesRaw as any[]) ?? []).filter(cuentaBalance);
   const hoy = new Date();
 
   const equipoIdsContable = new Set((modulosRaw ?? []).map((m) => m.equipo_id));

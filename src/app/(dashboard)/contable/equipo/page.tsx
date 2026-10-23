@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import clsx from "clsx";
-import { calcularAvance } from "../semaforo";
+import { calcularAvance, cuentaBalance } from "../semaforo";
 
 const ANIOS = [2026, 2025];
 
@@ -28,7 +28,7 @@ export default async function ContableEquipoPage({
   const equipoIdsContable = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipo = (equipoRaw ?? []).filter((e) => equipoIdsContable.has(e.id));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const balances = (balancesRaw as any[]) ?? [];
+  const balances = ((balancesRaw as any[]) ?? []).filter(cuentaBalance);
 
   const stats = equipo.map((e) => {
     const asignados = balances.filter(
