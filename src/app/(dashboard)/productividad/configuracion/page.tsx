@@ -4,19 +4,37 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getObjetivoContable, getObjetivoSueldos, getExcepcionesCliente } from "@/lib/objetivos";
 import { ProductividadTabs } from "@/components/ProductividadTabs";
 import { ConfiguracionObjetivosClient } from "./ConfiguracionObjetivosClient";
+import { ReglasVencimientosClient, type ManualListado } from "./ReglasVencimientosClient";
+import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
 
 export default async function ConfiguracionObjetivosPage() {
   const yo = await getCurrentLiquidadora();
   if (!yo?.isAdmin) redirect("/productividad");
 
-  const [objetivoSueldos, objetivoContable, excepcionesMap] = await Promise.all([
+  const admin = createAdminClient();
+  const [objetivoSueldos, objetivoContable, excepcionesMap, vencimientos, { data: manualesRaw }] = await Promise.all([
     getObjetivoSueldos(),
     getObjetivoContable(),
     getExcepcionesCliente("contable"),
+    getContextoVencimientos(),
+    admin
+      .from("contable_vto_manual")
+      .select("id, tipo, fecha, motivo, balances(anio_fiscal, clientes(nombre))")
+      .order("creado_en", { ascending: false }),
   ]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const manuales: ManualListado[] = ((manualesRaw as any[]) ?? []).map((m) => ({
+    id: m.id,
+    tipo: m.tipo,
+    fecha: m.fecha,
+    motivo: m.motivo,
+    cliente: m.balances?.clientes?.nombre ?? "—",
+    anio_fiscal: m.balances?.anio_fiscal ?? 0,
+  }));
+  const prorrogas = [...vencimientos.prorrogas].sort((a, b) => b.creado_en.localeCompare(a.creado_en));
+
   const clienteIds = Array.from(excepcionesMap.keys());
-  const admin = createAdminClient();
   const clientesRaw = clienteIds.length > 0
     ? (await admin.from("clientes").select("id, nombre").in("id", clienteIds)).data
     : [];
@@ -46,6 +64,14 @@ export default async function ConfiguracionObjetivosPage() {
         objetivoContable={objetivoContable}
         excepcionesIniciales={excepciones}
       />
+
+      <div className="mt-6">
+        <ReglasVencimientosClient
+          reglasIniciales={vencimientos.reglasGenerales}
+          prorrogasIniciales={prorrogas}
+          manualesIniciales={manuales}
+        />
+      </div>
     </div>
   );
 }

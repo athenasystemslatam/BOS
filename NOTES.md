@@ -4,7 +4,14 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql` corrida por Matías el 23-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql` y `add_contable_reglas_vencimientos.sql` corridas por Matías el 23-oct).
+
+### Reglas de vencimiento configurables — ítem 91 (23-oct, Matías)
+
+- Una sola fórmula: `src/lib/vencimientosContables.ts` (pura, la usa también ContableClient) + `vencimientosContablesServer.ts` (`getContextoVencimientos().resolver(balance)`). La usan Seguimiento, Dashboard, Vencimientos y Productividad Contable; no volver a escribir `cierre + N` en una pantalla.
+- Niveles: (1) regla por vencimiento base + días en `objetivos_area.config.reglas_vto` (espejo en `balance_dias_vto`/`f855_dias_vto_extra`), más el ajuste en días por cliente del ítem 67; (2) prórroga por rango de cierre; (3) fecha manual por balance con motivo. Todo desde Productividad → Configuración (solo admin). Marcas P/M en Seguimiento y Vencimientos, con el motivo en el globito.
+- Reemplaza lo del mismo día: se sacaron el botón "Prórroga Ganancias" y la edición de la fecha de Ganancias en Seguimiento.
+- Quedó afuera (ítem aparte): correr fechas por fin de semana o por terminación de CUIT.
 
 ### Vencimiento de Ganancias como fecha propia (23-oct, Matías)
 

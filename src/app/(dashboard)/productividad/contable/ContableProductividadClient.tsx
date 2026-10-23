@@ -154,9 +154,9 @@ export function ContableProductividadClient({ filas }: { filas: FilaResponsableC
             </table>
           </div>
           <div className="px-5 py-3 border-t border-gray-50 text-[11px] text-gray-400 space-y-0.5">
-            <p>&quot;Balances&quot; y &quot;En término&quot; no cuentan los frenados. &quot;En término&quot; = llegó a En ARCA antes del vencimiento (cierre + 135 días).</p>
+            <p>&quot;Balances&quot; y &quot;En término&quot; no cuentan los frenados. &quot;En término&quot; = llegó a En ARCA antes de su vencimiento (regla, prórroga o fecha manual de Productividad → Configuración).</p>
             <p>&quot;Demora cliente&quot; = días entre pedido y recepción de información. &quot;Tiempo interno&quot; = días entre recepción y Legalizado.</p>
-            <p>&quot;Formularios&quot; = % presentados de 855/899/713/657/IGJ/tasa, sin contar los que no aplican. &quot;F.855 en término&quot; se mide aparte, contra su propio vencimiento (cierre + 160 días).</p>
+            <p>&quot;Formularios&quot; = % presentados de 855/899/713/657/IGJ/tasa, sin contar los que no aplican. &quot;F.855 en término&quot; se mide aparte, contra su propio vencimiento.</p>
           </div>
         </div>
       )}

@@ -19,7 +19,7 @@ type Excepcion = { clienteId: string; nombre: string; config: Record<string, num
 // para un cliente específico.
 const CAMPOS_CONTABLE: { campo: keyof ObjetivoContable; label: string }[] = [
   { campo: "balance_dias_vto", label: "Días cierre -> VTO balance" },
-  { campo: "f855_dias_vto_extra", label: "Días extra VTO balance -> VTO F.855" },
+  { campo: "f855_dias_vto_extra", label: "Días extra VTO balance -> F.855 y F657" },
   { campo: "dias_pedir_info_desde_cierre", label: "Días para pedir info (interno)" },
   { campo: "dias_recepcion_a_legalizado", label: "Días recepción -> Legalizado (interno)" },
 ];
@@ -63,8 +63,11 @@ export function ConfiguracionObjetivosClient({
   }
 
   function guardarContableGeneral() {
+    // Los días de vencimiento se guardan desde "Regla general de
+    // vencimientos" (ítem 91): acá solo van los objetivos internos.
+    const { dias_pedir_info_desde_cierre, dias_recepcion_a_legalizado } = contable;
     startTransition(async () => {
-      await guardarObjetivoArea("contable", contable);
+      await guardarObjetivoArea("contable", { dias_pedir_info_desde_cierre, dias_recepcion_a_legalizado });
       setGuardadoContable(true);
       setTimeout(() => setGuardadoContable(false), 2000);
     });
@@ -161,20 +164,10 @@ export function ConfiguracionObjetivosClient({
           <GuardarBadge guardado={guardadoContable} />
         </div>
         <p className="text-[12px] text-gray-400 mb-4">
-          Piso legal ya cargado. Los dos objetivos internos quedan sin definir hasta medir el ciclo de cierres al
-          31/12/2026 (vencimiento 15/05/2027).
+          Los vencimientos legales se configuran más abajo, en &quot;Regla general de vencimientos&quot;. Los dos
+          objetivos internos quedan sin definir hasta medir el ciclo de cierres al 31/12/2026 (vencimiento 15/05/2027).
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Campo
-            label="Días cierre -> VTO balance (En ARCA)"
-            value={contable.balance_dias_vto}
-            onChange={(v) => setContable((c) => ({ ...c, balance_dias_vto: v ?? 0 }))}
-          />
-          <Campo
-            label="Días extra VTO balance -> VTO F.855"
-            value={contable.f855_dias_vto_extra}
-            onChange={(v) => setContable((c) => ({ ...c, f855_dias_vto_extra: v ?? 0 }))}
-          />
           <Campo
             label="Días para pedir info desde el cierre (interno)"
             value={contable.dias_pedir_info_desde_cierre}
