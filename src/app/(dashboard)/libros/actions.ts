@@ -17,6 +17,7 @@ import {
 import { configLibros } from "@/lib/librosAutomaticos";
 import { METRICAS, type MetricaObjetivo } from "@/lib/librosObjetivosMetricas";
 import type {
+  AutoridadCliente,
   ClienteSocietario,
   CopiadoFactura,
   DestinoMovimiento,
@@ -31,6 +32,8 @@ import type {
   TipoMovimiento,
   TipoPedido,
 } from "@/types";
+
+type DatosAutoridad = { cargo: string; nombre: string; dni_cuit?: string; fecha_desde?: string; observaciones?: string };
 
 type Resultado = { error?: string };
 
@@ -141,6 +144,52 @@ async function cerrarRenovacionSiVigente(admin: Admin, clienteId: string, yoId: 
       .update({ estado: "cerrado", proximo_seguimiento: null, actualizado_en: ahora })
       .eq("id", p.id);
   }
+}
+
+export async function getAutoridades(clienteId: string): Promise<AutoridadCliente[]> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("clientes_autoridades")
+    .select("*")
+    .eq("cliente_id", clienteId)
+    .order("vigente", { ascending: false })
+    .order("cargo");
+  return (data ?? []) as AutoridadCliente[];
+}
+
+export async function guardarAutoridades(
+  clienteId: string,
+  nuevas: DatosAutoridad[],
+  pedidoId: string | null = null,
+  fechaHasta: string | null = null
+): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const ahora = new Date().toISOString();
+  const hoy = ahora.slice(0, 10);
+  await admin
+    .from("clientes_autoridades")
+    .update({ vigente: false, fecha_hasta: fechaHasta ?? hoy, actualizado_en: ahora })
+    .eq("cliente_id", clienteId)
+    .eq("vigente", true);
+  if (nuevas.length > 0) {
+    const { error } = await admin.from("clientes_autoridades").insert(
+      nuevas.map((a) => ({
+        cliente_id: clienteId,
+        cargo: a.cargo,
+        nombre: a.nombre,
+        dni_cuit: a.dni_cuit?.trim() || null,
+        fecha_desde: a.fecha_desde || hoy,
+        observaciones: a.observaciones?.trim() || null,
+        renovacion_id: pedidoId,
+        vigente: true,
+      }))
+    );
+    if (error) return { error: error.message };
+  }
+  refrescarLibros();
+  return {};
 }
 
 export type DatosLibro = Omit<Libro, "id" | "cliente_id" | "catalogo_id">;
@@ -896,7 +945,8 @@ export async function cerrarRenovacion(
   pedidoId: string,
   designacion: string,
   anios: number,
-  vencePreciso: string | null = null
+  vencePreciso: string | null = null,
+  nuevasAutoridades: DatosAutoridad[] | null = null
 ): Promise<Resultado> {
   const yo = await autorizar();
   if ("error" in yo) return yo;
@@ -954,6 +1004,9 @@ export async function cerrarRenovacion(
     .update({ estado: "cerrado", proximo_seguimiento: null, actualizado_en: ahora })
     .eq("id", pedidoId);
   if (error) return { error: error.message };
+  if (nuevasAutoridades !== null) {
+    await guardarAutoridades(pedido.cliente_id as string, nuevasAutoridades, pedidoId, designacion);
+  }
   refrescarLibros();
   return {};
 }

@@ -272,6 +272,21 @@ export interface FichaLibrosSocietario {
   balance_anio: number | null;
 }
 
+export interface AutoridadCliente {
+  id: string;
+  cliente_id: string;
+  cargo: string;
+  nombre: string;
+  dni_cuit: string | null;
+  fecha_desde: string | null;
+  fecha_hasta: string | null;
+  vigente: boolean;
+  renovacion_id: string | null;
+  observaciones: string | null;
+  creado_en: string;
+  actualizado_en: string;
+}
+
 export interface ClienteSocietario {
   cliente_id: string;
   tipo_societario: TipoSocietario | null;

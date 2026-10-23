@@ -79,6 +79,7 @@ export async function obtenerDatosTablero(): Promise<DatosTablero> {
     { data: librosRaw },
     { data: catalogoRaw },
     { data: prefRaw },
+    { data: autoridadesRaw },
   ] = await Promise.all([
     tablaSnapshots
       ? admin.from("libros_snapshot").select("*").order("fecha")
@@ -99,6 +100,7 @@ export async function obtenerDatosTablero(): Promise<DatosTablero> {
     user?.email
       ? admin.from("libros_preferencias").select("dashboard_orden").eq("email", user.email.toLowerCase()).maybeSingle()
       : Promise.resolve({ data: null }),
+    admin.from("clientes_autoridades").select("cliente_id").eq("vigente", true),
   ]);
 
   const libroCliente = new Map((librosRaw ?? []).map((l) => [l.id as string, l.cliente_id as string]));
@@ -235,7 +237,18 @@ export async function obtenerDatosTablero(): Promise<DatosTablero> {
       .map((s) => [s.cliente_id, s.clientes!.nombre])
   );
   const primerAviso = config.avisosMandato[0] ?? 90;
-  const mandatos: DatosTablero["mandatos"] = { vigentes: 0, porVencer: [], vencidos: [], sinCargar: [] };
+  const clientesConAutoridades = new Set(
+    ((autoridadesRaw ?? []) as { cliente_id: string }[])
+      .filter((a) => nombres.has(a.cliente_id))
+      .map((a) => a.cliente_id)
+  );
+  const mandatos: DatosTablero["mandatos"] = {
+    vigentes: 0,
+    porVencer: [],
+    vencidos: [],
+    sinCargar: [],
+    autoridades: { conAutoridades: clientesConAutoridades.size, total: nombres.size },
+  };
   for (const s of (societariosRaw ?? []) as {
     cliente_id: string;
     tipo_societario: string | null;

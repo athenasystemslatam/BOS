@@ -34,6 +34,14 @@ export const ORGANISMOS: { value: OrganismoSocietario; label: string }[] = [
   { value: "OTRO", label: "Otro" },
 ];
 
+export const CARGOS_POR_TIPO: Partial<Record<TipoSocietario, string[]>> = {
+  SA:        ["Presidente", "Vicepresidente", "Director titular", "Director suplente", "Síndico titular", "Síndico suplente"],
+  SRL:       ["Gerente", "Gerente suplente"],
+  SAS:       ["Administrador titular", "Administrador suplente", "Representante legal"],
+  FUNDACION: ["Presidente", "Secretario", "Tesorero", "Vocal titular", "Vocal suplente"],
+  ASOCIACION:["Presidente", "Secretario", "Tesorero", "Vocal titular", "Vocal suplente"],
+};
+
 export const PERIODICIDAD_LABEL: Record<PeriodicidadLibro, string> = {
   balance: "Anual (con el balance)",
   trimestral: "Trimestral",

@@ -3,8 +3,9 @@
 import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { ArrowLeft, Pencil, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, X } from "lucide-react";
 import {
+  CARGOS_POR_TIPO,
   ESTADO_LIBRO,
   ORGANISMOS,
   PERIODICIDAD_LABEL,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/libros";
 import { MandatoCampos, aDatosMandato, valoresIniciales } from "../../MandatoCampos";
 import type {
+  AutoridadCliente,
   ClienteSocietario,
   Libro,
   LibroCatalogo,
@@ -30,8 +32,8 @@ import type {
   TipoSocietario,
 } from "@/types";
 import { ESTADO_BALANCE } from "../../../contable/semaforo";
-import { guardarSocietario } from "../../actions";
-import { INPUT, LABEL } from "../../ModalBase";
+import { getAutoridades, guardarAutoridades, guardarSocietario } from "../../actions";
+import { Modal, Pie, INPUT, LABEL } from "../../ModalBase";
 import {
   AVISO,
   BOTON_PRIMARIO,
@@ -423,6 +425,97 @@ function Dato({ titulo, children, ultimo }: { titulo: string; children: React.Re
 
 const CIFRA = "font-archivo text-[20px] font-extrabold tabular-nums leading-none";
 
+type FilaAutoridadEdit = { cargo: string; nombre: string; dni_cuit: string };
+
+function AutoridadesModal({
+  clienteId,
+  tipo,
+  autoridadesVigentes,
+  onClose,
+  onGuardado,
+}: {
+  clienteId: string;
+  tipo: TipoSocietario | null;
+  autoridadesVigentes: AutoridadCliente[];
+  onClose: () => void;
+  onGuardado: (nuevas: AutoridadCliente[]) => void;
+}) {
+  const cargosPorTipo = tipo ? [...(CARGOS_POR_TIPO[tipo] ?? []), "Otro"] : ["Otro"];
+  const [filas, setFilas] = useState<FilaAutoridadEdit[]>(() =>
+    autoridadesVigentes.length > 0
+      ? autoridadesVigentes.map((a) => ({ cargo: a.cargo, nombre: a.nombre, dni_cuit: a.dni_cuit ?? "" }))
+      : (cargosPorTipo.length > 1 ? cargosPorTipo.slice(0, -1) : cargosPorTipo).map((c) => ({
+          cargo: c,
+          nombre: "",
+          dni_cuit: "",
+        }))
+  );
+  const [pendiente, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function setFila(i: number, cambios: Partial<FilaAutoridadEdit>) {
+    setFilas((prev) => prev.map((f, j) => (j === i ? { ...f, ...cambios } : f)));
+  }
+
+  function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const validas = filas.filter((f) => f.nombre.trim());
+    if (validas.length === 0) return setError("Agregá al menos una autoridad con nombre.");
+    startTransition(async () => {
+      const res = await guardarAutoridades(
+        clienteId,
+        validas.map((f) => ({ cargo: f.cargo, nombre: f.nombre.trim(), dni_cuit: f.dni_cuit.trim() || undefined }))
+      );
+      if (res.error) return setError(res.error);
+      const nuevas = await getAutoridades(clienteId);
+      onGuardado(nuevas);
+      onClose();
+    });
+  }
+
+  return (
+    <Modal titulo="Autoridades vigentes" subtitulo="Libros · Societario" onClose={onClose} ancho="max-w-xl">
+      <form onSubmit={guardar} className="flex flex-col min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-3">
+          <p className="text-[12.5px] text-ink-muted">
+            Al guardar se registran las nuevas autoridades y se cierra el historial anterior.
+          </p>
+          {filas.map((f, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+              <div>
+                <label className={LABEL}>Cargo</label>
+                {cargosPorTipo.length > 1 ? (
+                  <select
+                    className={INPUT}
+                    value={cargosPorTipo.includes(f.cargo) ? f.cargo : "Otro"}
+                    onChange={(e) => setFila(i, { cargo: e.target.value })}
+                  >
+                    {cargosPorTipo.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                ) : (
+                  <input className={INPUT} value={f.cargo} onChange={(e) => setFila(i, { cargo: e.target.value })} placeholder="Cargo" />
+                )}
+              </div>
+              <div>
+                <label className={LABEL}>Nombre</label>
+                <input className={INPUT} value={f.nombre} onChange={(e) => setFila(i, { nombre: e.target.value })} />
+              </div>
+              <button type="button" onClick={() => setFilas((prev) => prev.filter((_, j) => j !== i))} className="mb-[2px] p-1.5 text-ink-ghost hover:text-red-700" title="Quitar">
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={() => setFilas((prev) => [...prev, { cargo: cargosPorTipo[0], nombre: "", dni_cuit: "" }])} className={BOTON_TEXTO}>
+            <Plus size={13} /> Agregar cargo
+          </button>
+        </div>
+        <Pie error={error} pendiente={pendiente} onClose={onClose} textoGuardar="Guardar autoridades" />
+      </form>
+    </Modal>
+  );
+}
+
 export function FichaSocietarioClient({
   cliente,
   responsable,
@@ -435,6 +528,7 @@ export function FichaSocietarioClient({
   enCola,
   equipo,
   balance,
+  autoridades,
   umbralFolios,
   primerAvisoMandato,
 }: {
@@ -449,10 +543,13 @@ export function FichaSocietarioClient({
   enCola: string[];
   equipo: Persona[];
   balance: { anio_fiscal: number; estado: string } | null;
+  autoridades: AutoridadCliente[];
   umbralFolios: number;
   primerAvisoMandato: number;
 }) {
   const [editandoDatos, setEditandoDatos] = useState(false);
+  const [editandoAutoridades, setEditandoAutoridades] = useState(false);
+  const [autoridadesState, setAutoridadesState] = useState<AutoridadCliente[]>(autoridades);
   const [cargando, setCargando] = useState<LibroCatalogo | null>(null);
   const [editando, setEditando] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
   const [nuevoTomo, setNuevoTomo] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
@@ -670,6 +767,63 @@ export function FichaSocietarioClient({
             setEditando={setEditandoDatos}
           />
 
+          {tipo && (
+            <section className={PANEL}>
+              <div className={clsx("flex flex-wrap items-center justify-between gap-2 px-4 py-2.5", PANEL_CABECERA)}>
+                <h2 className="font-archivo text-[14px] font-bold text-ink">Autoridades vigentes</h2>
+                {puedeEditar && (
+                  <button onClick={() => setEditandoAutoridades(true)} className={BOTON_SECUNDARIO}>
+                    <Pencil size={13} /> Editar
+                  </button>
+                )}
+              </div>
+              <div className="px-4 py-4">
+                {autoridadesState.filter((a) => a.vigente).length === 0 ? (
+                  <p className="text-[13px] text-ink-subtle">Sin autoridades cargadas.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6">
+                    {autoridadesState.filter((a) => a.vigente).map((a) => (
+                      <div key={a.id}>
+                        <p className="text-[11px] font-semibold text-ink-subtle uppercase tracking-[0.07em]">{a.cargo}</p>
+                        <p className="text-[13px] text-ink">
+                          {a.nombre}
+                          {a.dni_cuit && <span className={clsx("ml-2 text-[12px] text-ink-muted", MONO)}>{a.dni_cuit}</span>}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {autoridadesState.filter((a) => !a.vigente).length > 0 && (
+                  <details className="mt-3 text-[12px] text-ink-muted [&>summary]:cursor-pointer [&>summary]:select-none [&>summary]:font-semibold">
+                    <summary>Historial</summary>
+                    <div className="mt-2 space-y-3">
+                      {Object.entries(
+                        autoridadesState
+                          .filter((a) => !a.vigente)
+                          .reduce<Record<string, AutoridadCliente[]>>((acc, a) => {
+                            const k = a.fecha_hasta ?? "–";
+                            acc[k] = [...(acc[k] ?? []), a];
+                            return acc;
+                          }, {})
+                      )
+                        .sort(([a], [b]) => b.localeCompare(a))
+                        .map(([fechaHasta, grupo]) => (
+                          <div key={fechaHasta}>
+                            <p className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wide mb-1">
+                              Hasta {fmtFecha(fechaHasta !== "–" ? fechaHasta : null)}
+                            </p>
+                            {grupo.map((a) => (
+                              <p key={a.id}>{a.cargo}: {a.nombre}</p>
+                            ))}
+                          </div>
+                        ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            </section>
+          )}
+
           {!tipo ? (
             !editandoDatos && (
               <div className={clsx(PANEL, VACIO)}>
@@ -740,6 +894,15 @@ export function FichaSocietarioClient({
           responsableDefault={responsableId}
           equipo={equipo}
           onClose={() => setTareaPara(null)}
+        />
+      )}
+      {editandoAutoridades && (
+        <AutoridadesModal
+          clienteId={cliente.id}
+          tipo={tipo}
+          autoridadesVigentes={autoridadesState.filter((a) => a.vigente)}
+          onClose={() => setEditandoAutoridades(false)}
+          onGuardado={(nuevas) => setAutoridadesState(nuevas)}
         />
       )}
     </div>

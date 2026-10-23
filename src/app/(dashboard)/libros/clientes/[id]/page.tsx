@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { configLibros } from "@/lib/librosAutomaticos";
-import type { ClienteSocietario, Libro, LibroCatalogo } from "@/types";
+import type { AutoridadCliente, ClienteSocietario, Libro, LibroCatalogo } from "@/types";
 import { FichaSocietarioClient } from "./FichaSocietarioClient";
 
 export default async function FichaLibrosPage({ params }: { params: { id: string } }) {
@@ -22,6 +22,7 @@ export default async function FichaLibrosPage({ params }: { params: { id: string
     { data: modulosRaw },
     { data: balance },
     config,
+    { data: autoridadesRaw },
   ] = await Promise.all([
     admin
       .from("clientes")
@@ -50,6 +51,12 @@ export default async function FichaLibrosPage({ params }: { params: { id: string
       .limit(1)
       .maybeSingle(),
     configLibros(admin),
+    admin
+      .from("clientes_autoridades")
+      .select("*")
+      .eq("cliente_id", params.id)
+      .order("vigente", { ascending: false })
+      .order("cargo"),
   ]);
 
   if (!cliente) notFound();
@@ -73,6 +80,7 @@ export default async function FichaLibrosPage({ params }: { params: { id: string
       enCola={enCola}
       equipo={equipo}
       balance={(balance as { anio_fiscal: number; estado: string } | null) ?? null}
+      autoridades={(autoridadesRaw ?? []) as AutoridadCliente[]}
       umbralFolios={config.umbralFolios}
       primerAvisoMandato={config.avisosMandato[0] ?? 90}
       puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}

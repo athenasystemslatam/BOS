@@ -521,6 +521,7 @@ export function FacturasClient({
                 <th className={clsx(TH, "text-right")}>Fecha</th>
                 <th className={clsx(TH, "text-right")}>Monto</th>
                 <th className={TH}>Circuito</th>
+                <th className={TH}>Observación</th>
                 <th className={clsx(TH, "text-right hidden lg:table-cell")}>Período</th>
                 {puedeEditar && <th className={TH}><span className="sr-only">Acciones</span></th>}
               </tr>
@@ -528,7 +529,7 @@ export function FacturasClient({
             <tbody>
               {filtradas.length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <div className={VACIO}>
                       <p className={VACIO_TEXTO}>
                         {facturas.length === 0
@@ -581,6 +582,11 @@ export function FacturasClient({
                             />
                           ))}
                         </div>
+                      </td>
+                      <td className={clsx(TD, "max-w-[180px]")}>
+                        {tieneLibrosTexto && f.observaciones
+                          ? <span className="line-clamp-1 block" title={f.observaciones}>{f.observaciones}</span>
+                          : <span className="text-ink-ghost">—</span>}
                       </td>
                       <td className={clsx(TD, NUM, "hidden lg:table-cell whitespace-nowrap")}>
                         {f.mes ? fmtMes(f.mes) : <span className="text-ink-ghost">—</span>}

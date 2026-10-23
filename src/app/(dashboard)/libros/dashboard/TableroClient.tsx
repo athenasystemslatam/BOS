@@ -60,6 +60,7 @@ export type DatosTablero = {
     porVencer: MandatoFila[];
     vencidos: MandatoFila[];
     sinCargar: { clienteId: string; nombre: string }[];
+    autoridades: { conAutoridades: number; total: number };
   };
   porResponsable:
     | {
@@ -519,6 +520,9 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
             </Link>
             <span className={clsx(CHIP, SEMAFORO.verdeClaro)}>
               {envios.pendientes.filter((e) => e.legalizado).length} actas pendientes
+            </span>
+            <span className={clsx(CHIP, SEMAFORO.sinDato)}>
+              {mandatos.autoridades.conAutoridades} / {mandatos.autoridades.total} con autoridades
             </span>
           </div>
           <details className={DETALLE}>

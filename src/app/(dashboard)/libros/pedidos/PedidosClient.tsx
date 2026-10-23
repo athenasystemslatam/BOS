@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import clsx from "clsx";
 import { Plus, ChevronDown, ChevronUp, MessageSquare, X } from "lucide-react";
 import {
@@ -17,7 +17,7 @@ import {
   fmtFecha,
 } from "@/lib/libros";
 import type { EstadoRenovacion } from "@/lib/libros";
-import type { EstadoPedido, ItemChecklist, LibroPedido, LibroPedidoSeguimiento, TipoPedido } from "@/types";
+import type { AutoridadCliente, EstadoPedido, ItemChecklist, LibroPedido, LibroPedidoSeguimiento, TipoPedido } from "@/types";
 import {
   abrirTomoDesdePedido,
   actualizarChecklist,
@@ -26,6 +26,7 @@ import {
   aprobarPedido,
   cerrarRenovacion,
   crearPedido,
+  getAutoridades,
 } from "../actions";
 import { Modal, Pie, LABEL, INPUT } from "../ModalBase";
 import {
@@ -408,12 +409,28 @@ function AprobarModal({
 
 // ── Renovación de autoridades ────────────────────────────────────────────────
 
+type FilaAutoridadRenov = { cargo: string; nombre: string };
+
 function CerrarRenovacionModal({ pedido, onClose }: { pedido: PedidoVista; onClose: () => void }) {
   const [pendiente, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [designacion, setDesignacion] = useState("");
   const [anios, setAnios] = useState("3");
+  const [filas, setFilas] = useState<FilaAutoridadRenov[]>([]);
+  const [cargandoAut, setCargandoAut] = useState(true);
   const faltan = pedido.checklist.filter((i) => !i.hecho).length;
+
+  useEffect(() => {
+    getAutoridades(pedido.cliente_id).then((data: AutoridadCliente[]) => {
+      const vigentes = data.filter((a) => a.vigente);
+      setFilas(vigentes.length > 0 ? vigentes.map((a) => ({ cargo: a.cargo, nombre: a.nombre })) : [{ cargo: "", nombre: "" }]);
+      setCargandoAut(false);
+    });
+  }, [pedido.cliente_id]);
+
+  function setFila(i: number, cambios: Partial<FilaAutoridadRenov>) {
+    setFilas((prev) => prev.map((f, j) => (j === i ? { ...f, ...cambios } : f)));
+  }
 
   function guardar(e: React.FormEvent) {
     e.preventDefault();
@@ -421,15 +438,22 @@ function CerrarRenovacionModal({ pedido, onClose }: { pedido: PedidoVista; onClo
     const n = Number(anios);
     if (!designacion) return setError("Indicá la fecha de designación del mandato nuevo.");
     if (!Number.isInteger(n) || n < 1) return setError("La duración tiene que ser un número entero de años.");
+    const autoridadesValidas = filas.filter((f) => f.nombre.trim() && f.cargo.trim());
     startTransition(async () => {
-      const res = await cerrarRenovacion(pedido.id, designacion, n);
+      const res = await cerrarRenovacion(
+        pedido.id,
+        designacion,
+        n,
+        null,
+        autoridadesValidas.length > 0 ? autoridadesValidas.map((f) => ({ cargo: f.cargo, nombre: f.nombre.trim() })) : null
+      );
       if (res.error) return setError(res.error);
       onClose();
     });
   }
 
   return (
-    <Modal titulo="Cerrar renovación de autoridades" subtitulo="Libros · Pedidos" onClose={onClose}>
+    <Modal titulo="Cerrar renovación de autoridades" subtitulo="Libros · Pedidos" onClose={onClose} ancho="max-w-xl">
       <form onSubmit={guardar} className="flex flex-col min-h-0">
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
           {faltan > 0 && (
@@ -450,6 +474,33 @@ function CerrarRenovacionModal({ pedido, onClose }: { pedido: PedidoVista; onClo
               <label className={LABEL}>Duración (años)</label>
               <input type="number" min={1} step={1} className={INPUT} value={anios} onChange={(e) => setAnios(e.target.value)} />
             </div>
+          </div>
+          <div>
+            <p className="text-[12px] font-semibold text-ink-subtle uppercase tracking-[0.08em] mb-2">Autoridades del nuevo mandato</p>
+            {cargandoAut ? (
+              <p className="text-[12.5px] text-ink-subtle">Cargando…</p>
+            ) : (
+              <div className="space-y-2">
+                {filas.map((f, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                    <div>
+                      <label className={LABEL}>Cargo</label>
+                      <input className={INPUT} value={f.cargo} onChange={(e) => setFila(i, { cargo: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className={LABEL}>Nombre</label>
+                      <input className={INPUT} value={f.nombre} onChange={(e) => setFila(i, { nombre: e.target.value })} />
+                    </div>
+                    <button type="button" onClick={() => setFilas((prev) => prev.filter((_, j) => j !== i))} className="mb-[2px] p-1.5 text-ink-ghost hover:text-red-700" title="Quitar">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setFilas((prev) => [...prev, { cargo: "", nombre: "" }])} className={BOTON_TEXTO}>
+                  <Plus size={13} /> Agregar cargo
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <Pie error={error} pendiente={pendiente} onClose={onClose} textoGuardar="Cerrar renovación" />
