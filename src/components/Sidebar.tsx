@@ -47,6 +47,9 @@ const SECTIONS: {
       // exclusivas de admin (crear/editar persona, transferir cartera,
       // bloqueos) se ocultan adentro de la página igual.
       { href: "/equipo",        label: "Equipo",        icon: Users,      adminOnly: false, areaOnly: "sueldos" },
+      // Ítem 129: objetivos de Sueldos/Contable y reglas de vencimiento — antes
+      // solo se llegaba por una pestaña dentro de Productividad.
+      { href: "/productividad/configuracion", label: "Configuración", icon: Settings, adminOnly: true },
     ],
   },
   {
