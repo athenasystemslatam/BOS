@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
-import { ESTADO_BALANCE } from "../semaforo";
+import { ESTADO_BALANCE, calcularAvance } from "../semaforo";
 import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
 
 const ANIOS = [2026, 2025];
@@ -28,7 +28,7 @@ export default async function ContableVencimientosPage({
     admin
       .from("balances")
       .select(
-        "id, cliente_id, fecha_cierre, estado, avance, vto_ganancias, " +
+        "id, cliente_id, fecha_cierre, estado, envio1, info_recibida, estado_eecc, vto_ganancias, " +
         "clientes(nombre), " +
         "responsable:liquidadoras!balances_responsable_id_fkey(nombre), " +
         "responsable2:liquidadoras!balances_responsable2_id_fkey(nombre)"
@@ -50,7 +50,10 @@ export default async function ContableVencimientosPage({
     const diasVto = Math.ceil((vtoBalance.getTime() - hoy.getTime()) / 86400000);
     const vtoGanancias = b.vto_ganancias ? new Date(b.vto_ganancias + "T00:00:00") : vtoBalance;
     const prorrogado = !!b.vto_ganancias && vtoGanancias.getTime() !== vtoBalance.getTime();
-    return { ...b, vtoBalance, vto855, diasVto, vtoGanancias, prorrogado };
+    // Mismo cálculo por etapas que Seguimiento: la columna balances.avance
+    // guardada puede estar desactualizada.
+    const avance = calcularAvance(b);
+    return { ...b, vtoBalance, vto855, diasVto, vtoGanancias, prorrogado, avance };
   });
 
   const pendientes = filas.filter((b) => b.estado !== "finalizado");
@@ -161,7 +164,7 @@ export default async function ContableVencimientosPage({
                           "text-[12px] font-semibold",
                           b.avance >= 80 ? "text-emerald-600" : b.avance >= 40 ? "text-amber-600" : "text-gray-400"
                         )}>
-                          {b.avance ?? 0}%
+                          {b.avance}%
                         </span>
                       </td>
                     </tr>

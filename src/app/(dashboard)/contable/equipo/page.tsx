@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import clsx from "clsx";
+import { calcularAvance } from "../semaforo";
 
 const ANIOS = [2026, 2025];
 
@@ -20,7 +21,7 @@ export default async function ContableEquipoPage({
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
     admin
       .from("balances")
-      .select("responsable_id, responsable2_id, estado, avance")
+      .select("responsable_id, responsable2_id, estado, envio1, info_recibida, estado_eecc")
       .eq("anio_fiscal", anio),
   ]);
 
@@ -39,7 +40,7 @@ export default async function ContableEquipoPage({
     ).length;
     const avanceProm =
       asignados.length > 0
-        ? Math.round(asignados.reduce((s: number, b: { avance: number }) => s + (b.avance ?? 0), 0) / asignados.length)
+        ? Math.round(asignados.reduce((s: number, b) => s + calcularAvance(b), 0) / asignados.length)
         : 0;
     return { ...e, total: asignados.length, finalizados, enProceso, avanceProm };
   });
