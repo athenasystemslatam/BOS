@@ -1,8 +1,8 @@
+import { getAniosContables } from "@/lib/aniosContables";
 import { createAdminClient } from "@/lib/supabase/admin";
 import clsx from "clsx";
 import { calcularAvance, cuentaBalance } from "../semaforo";
 
-const ANIOS = [2026, 2025];
 
 export default async function ContableEquipoPage({
   searchParams,
@@ -11,6 +11,7 @@ export default async function ContableEquipoPage({
 }) {
   const anio = Number(searchParams.anio) || new Date().getFullYear();
   const admin = createAdminClient();
+  const anios = await getAniosContables();
 
   const [
     { data: equipoRaw },
@@ -55,7 +56,7 @@ export default async function ContableEquipoPage({
           <p className="text-[13px] text-gray-400 mt-1">{equipo.length} miembros en el módulo contable</p>
         </div>
         <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
-          {ANIOS.map((a) => (
+          {anios.map((a) => (
             <a
               key={a}
               href={`/contable/equipo?anio=${a}`}

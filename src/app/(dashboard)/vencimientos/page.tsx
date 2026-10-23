@@ -1,14 +1,19 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente } from "@/types";
-import { CALENDAR_2026, getMesTrabajoActual } from "@/lib/vencimientos";
-import { CalendarDays } from "lucide-react";
+import { getCalendarioF931, getMesTrabajoActual, tieneFechasOficialesF931 } from "@/lib/vencimientos";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import clsx from "clsx";
 import { ScrollToMesActual } from "./ScrollToMesActual";
 
-export default async function VencimientosPage() {
+export default async function VencimientosPage({ searchParams }: { searchParams: { anio?: string } }) {
   const supabase = createAdminClient();
   const hoy = new Date();
-  const { mes: mesActual } = getMesTrabajoActual();
+  const trabajo = getMesTrabajoActual();
+  // Ítem 85: el año ya no es fijo — por defecto el del mes de trabajo, con
+  // flechas para ver el anterior o el siguiente.
+  const anio = Number(searchParams.anio) || trabajo.anio;
+  const oficial = tieneFechasOficialesF931(anio);
+  const calendario = getCalendarioF931(anio);
 
   const { data: clientes } = await supabase
     .from("clientes")
@@ -31,9 +36,17 @@ export default async function VencimientosPage() {
     <div className="flex flex-col h-full p-4 md:p-8">
       <div className="mb-6 md:mb-8 shrink-0">
         <p className="text-sm text-gray-400 font-medium uppercase tracking-wide">Sueldos · F.931 — ARCA</p>
-        <h1 className="text-2xl font-semibold text-gray-900 mt-1">
-          Calendario de vencimientos 2026
-        </h1>
+        <div className="flex items-center gap-3 mt-1">
+          <h1 className="text-2xl font-semibold text-gray-900">Calendario de vencimientos {anio}</h1>
+          <div className="flex gap-1">
+            <a href={`/vencimientos?anio=${anio - 1}`} className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100" title={`Ver ${anio - 1}`}>
+              <ChevronLeft size={16} />
+            </a>
+            <a href={`/vencimientos?anio=${anio + 1}`} className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100" title={`Ver ${anio + 1}`}>
+              <ChevronRight size={16} />
+            </a>
+          </div>
+        </div>
         <p className="text-sm text-gray-400 mt-2">
           Fechas oficiales para la presentación del Formulario 931 por grupo de CUIT.
         </p>
@@ -59,9 +72,11 @@ export default async function VencimientosPage() {
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 mb-4 flex items-center gap-1.5 shrink-0">
+      <p className={clsx("text-xs mb-4 flex items-center gap-1.5 shrink-0", oficial ? "text-gray-400" : "text-amber-700")}>
         <CalendarDays size={12} />
-        Fechas según resolución ARCA 2026. Para años futuros se usan fechas genéricas (9/10/11 del mes siguiente).
+        {oficial
+          ? `Fechas según resolución ARCA ${anio}.`
+          : `El calendario oficial de ARCA ${anio} todavía no está cargado: fechas estimadas (día 9/10/11 del mes siguiente, corridas al día hábil; no contempla feriados).`}
       </p>
 
       {/* Tabla */}
@@ -86,9 +101,9 @@ export default async function VencimientosPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {CALENDAR_2026.map(({ mes, nombre, grupos }) => {
-              const esPasado = mes < mesActual;
-              const esActual = mes === mesActual;
+            {calendario.map(({ mes, nombre, grupos }) => {
+              const esPasado = anio < trabajo.anio || (anio === trabajo.anio && mes < trabajo.mes);
+              const esActual = anio === trabajo.anio && mes === trabajo.mes;
               return (
                 <tr
                   key={mes}

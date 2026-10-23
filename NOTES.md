@@ -12,6 +12,14 @@ Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.s
 - Nuevo: botón "Generar balances {año}" en Seguimiento Contable (`generarBalancesDelAnio`): un balance "Sin asignar" por cliente activo con Contable y cierre fijo que no lo tenga; muestra antes la lista y los clientes sin cierre fijo. No toca los existentes.
 - Nuevo: cambiar un cierre ya cargado pide motivo y queda en `clientes_cierre_cambios`. El balance cuya fecha no coincide con la fija se marca con "!" en la columna Cierre.
 
+### Años fijos y 2027 — ítem 85 (23-oct, Matías)
+
+- Contable: el selector de años sale de `getAniosContables()` (`src/lib/aniosContables.ts`): años con balances desde 2025 + el año en curso. 2027 aparece solo en enero.
+- F.931: `FECHAS_OFICIALES` en `src/lib/vencimientos.ts`, por año. **Pendiente: cargar 2027 cuando ARCA publique el calendario** (suele ser en diciembre), mismo formato que 2026. Hasta entonces 2027 usa estimado (9/10/11 del mes siguiente corrido a día hábil, sin feriados) y `/vencimientos` lo avisa en naranja.
+- `/vencimientos` ya no dice 2026 fijo: año del mes de trabajo, con flechas para cambiar; el link del Dashboard de Sueldos lleva al año del período.
+- Aviso de vencimientos del período diciembre (SeguimientoClient) se calculaba con el año siguiente → corregido.
+- **A verificar:** el dato oficial cargado para F.931 de diciembre 2026, CUITs 0-3, es 09/01/2027, que cae sábado. Confirmar contra la resolución de ARCA (probablemente sea lunes 11/01).
+
 ### Responsables inactivos en Contable — ítem 118 (23-oct, Matías)
 
 - "Inactivo" para Contable = `activa: false` o sin el área `contable` en `equipo_modulos`. Sigue visible con su nombre + "(inactivo)" en los balances donde ya está (Seguimiento: opción deshabilitada en el desplegable, no se puede asignar a otro), en el resumen por contador del Dashboard y en Productividad Contable (ahora trae también a los dados de baja).

@@ -426,11 +426,11 @@ export default async function DashboardPage({
 
           <div className="px-5 py-3 border-t border-gray-100">
             <a
-              href="/vencimientos"
+              href={`/vencimientos?anio=${anioActual}`}
               className="text-[11px] font-medium text-bordo hover:text-bordo-dark flex items-center gap-1.5 transition-colors"
             >
               <CalendarDays size={12} />
-              Ver calendario completo 2026
+              Ver calendario completo {anioActual}
             </a>
           </div>
         </div>

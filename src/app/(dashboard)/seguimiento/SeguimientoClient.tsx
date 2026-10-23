@@ -764,7 +764,9 @@ export function SeguimientoClient({
     if (!currentPeriodo) return null;
     const mesNext = currentPeriodo.mes === 12 ? 1 : currentPeriodo.mes + 1;
     const anioNext = currentPeriodo.mes === 12 ? currentPeriodo.anio + 1 : currentPeriodo.anio;
-    const grupos = getVencimientosGrupos(anioNext, currentPeriodo.mes);
+    // getVencimientosGrupos recibe el período liquidado (no el mes en que vence):
+    // con anioNext, diciembre 2026 se calculaba como diciembre 2027 (ítem 85).
+    const grupos = getVencimientosGrupos(currentPeriodo.anio, currentPeriodo.mes);
     const hoy = new Date();
     const proximosDias = grupos
       .map((g) => {

@@ -1,3 +1,4 @@
+import { getAniosContables } from "@/lib/aniosContables";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
@@ -6,7 +7,6 @@ import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
 import { aFecha, describirRegla, LABEL_VTO, TIPOS_VTO } from "@/lib/vencimientosContables";
 import { MarcaVto } from "../MarcaVto";
 
-const ANIOS = [2026, 2025];
 
 function fmt(d: Date) {
   return d.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
@@ -19,6 +19,7 @@ export default async function ContableVencimientosPage({
 }) {
   const anio = Number(searchParams.anio) || new Date().getFullYear();
   const admin = createAdminClient();
+  const anios = await getAniosContables();
 
   const [{ data: balancesRaw }, vencimientos] = await Promise.all([
     admin
@@ -64,7 +65,7 @@ export default async function ContableVencimientosPage({
           </p>
         </div>
         <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
-          {ANIOS.map((a) => (
+          {anios.map((a) => (
             <a
               key={a}
               href={`/contable/vencimientos?anio=${a}`}

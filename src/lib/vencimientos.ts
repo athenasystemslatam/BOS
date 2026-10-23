@@ -1,6 +1,8 @@
-// Fechas oficiales ARCA F.931 2026
+type FechasAnio = Record<number, readonly [string, string, string]>;
+
+// Fechas oficiales ARCA F.931
 // Índice = mes de la liquidación. Valores = [CUITs 0-3, CUITs 4-6, CUITs 7-9]
-const FECHAS_2026: Record<number, readonly [string, string, string]> = {
+const FECHAS_2026: FechasAnio = {
   1:  ["2026-02-09", "2026-02-10", "2026-02-11"],
   2:  ["2026-03-09", "2026-03-10", "2026-03-11"],
   3:  ["2026-04-09", "2026-04-10", "2026-04-13"],
@@ -15,16 +17,31 @@ const FECHAS_2026: Record<number, readonly [string, string, string]> = {
   12: ["2027-01-09", "2027-01-12", "2027-01-13"],
 };
 
+// Para sumar un año: cuando ARCA publique el calendario (suele ser en
+// diciembre), agregar acá `2027: { 1: [...], ..., 12: [...] }` con el mismo
+// formato que 2026. Mientras falte, ese año usa fechas estimadas.
+const FECHAS_OFICIALES: Record<number, FechasAnio> = {
+  2026: FECHAS_2026,
+};
+
+export function tieneFechasOficialesF931(anio: number): boolean {
+  return !!FECHAS_OFICIALES[anio];
+}
+
 export function getVencimientoF931(terminacion: number, anio: number, mes: number): Date {
   const idx = terminacion <= 3 ? 0 : terminacion <= 6 ? 1 : 2;
-  if (anio === 2026 && FECHAS_2026[mes]) {
-    return new Date(FECHAS_2026[mes][idx] + "T12:00:00");
+  const oficial = FECHAS_OFICIALES[anio]?.[mes];
+  if (oficial) {
+    return new Date(oficial[idx] + "T12:00:00");
   }
-  // Fallback genérico para años no configurados
+  // Estimado para años sin calendario cargado: día 9/10/11 del mes siguiente,
+  // corrido al día hábil siguiente si cae en fin de semana (no contempla feriados).
   const dia = [9, 10, 11][idx];
   const mesV = mes === 12 ? 1 : mes + 1;
   const anioV = mes === 12 ? anio + 1 : anio;
-  return new Date(anioV, mesV - 1, dia, 12, 0, 0);
+  const fecha = new Date(anioV, mesV - 1, dia, 12, 0, 0);
+  while (!esDiaHabil(fecha)) fecha.setDate(fecha.getDate() + 1);
+  return fecha;
 }
 
 export function esDiaHabil(d: Date): boolean {
@@ -110,15 +127,18 @@ export function getMesTrabajoActual(): { mes: number; anio: number } {
     : { mes: mesHoy, anio: anioHoy };
 }
 
-export const CALENDAR_2026 = Object.entries(FECHAS_2026).map(([mesStr, fechas]) => {
-  const mes = parseInt(mesStr);
-  return {
-    mes,
-    nombre: MESES_NOMBRES[mes],
-    grupos: [
-      { label: "0–3", fecha: new Date(fechas[0] + "T12:00:00") },
-      { label: "4–6", fecha: new Date(fechas[1] + "T12:00:00") },
-      { label: "7–9", fecha: new Date(fechas[2] + "T12:00:00") },
-    ],
-  };
-});
+/** Calendario F.931 de un año de liquidación (oficial si está cargado, si no estimado). */
+export function getCalendarioF931(anio: number) {
+  return Array.from({ length: 12 }, (_, i) => {
+    const mes = i + 1;
+    return {
+      mes,
+      nombre: MESES_NOMBRES[mes],
+      grupos: [
+        { label: "0–3", fecha: getVencimientoF931(0, anio, mes) },
+        { label: "4–6", fecha: getVencimientoF931(4, anio, mes) },
+        { label: "7–9", fecha: getVencimientoF931(7, anio, mes) },
+      ],
+    };
+  });
+}

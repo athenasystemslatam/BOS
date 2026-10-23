@@ -83,7 +83,6 @@ type Balance = {
   responsable2: { id: string; nombre: string } | null;
 };
 
-const ANIOS = [2026, 2025];
 
 function fmt(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
@@ -107,6 +106,7 @@ export function ContableClient({
   equipoContable,
   clientesConServicio,
   anio,
+  anios,
   isAdmin,
   miId,
   puedeEditar,
@@ -123,6 +123,7 @@ export function ContableClient({
     cierre_ejercicio_dia: number | null;
   }[];
   anio: number;
+  anios: number[];
   isAdmin: boolean;
   miId: string | null;
   puedeEditar: boolean;
@@ -352,7 +353,7 @@ export function ContableClient({
             />
             {/* Year selector */}
             <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
-              {ANIOS.map((a) => (
+              {anios.map((a) => (
                 <button
                   key={a}
                   onClick={() => router.push(`/contable?anio=${a}`)}

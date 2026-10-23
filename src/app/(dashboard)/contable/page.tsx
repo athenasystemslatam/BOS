@@ -1,3 +1,4 @@
+import { getAniosContables } from "@/lib/aniosContables";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
@@ -18,6 +19,7 @@ export default async function ContablePage({
     { data: equipoTodos },
     { data: equipoModulosTodos },
     vencimientos,
+    anios,
   ] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
@@ -41,6 +43,7 @@ export default async function ContablePage({
     admin.from("liquidadoras").select("id, nombre, activa, rol").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id, modulo"),
     getContextoVencimientos(),
+    getAniosContables(),
   ]);
 
   // Ítem 109: último cambio registrado de la fecha de cierre fija de cada
@@ -100,6 +103,7 @@ export default async function ContablePage({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       clientesConServicio={clientesConServicio as any[]}
       anio={anio}
+      anios={anios}
       isAdmin={yo?.isAdmin ?? false}
       miId={yo?.id ?? null}
       puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("contable"))}
