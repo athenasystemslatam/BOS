@@ -158,37 +158,6 @@ export async function updateBalance(
   return { ok: true };
 }
 
-// Prórroga de Ganancias en lote: ARCA las saca por mes de cierre, así que se
-// aplica a todos los balances del año fiscal que cierran ese mes (pisa
-// también los ajustados a mano). fecha null = volver a la regla general.
-export async function aplicarProrrogaGanancias(anio: number, mesCierre: number, fecha: string | null) {
-  try {
-    await requireAreaOrAdmin("contable");
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "No autorizado." };
-  }
-
-  const admin = createAdminClient();
-  const { data: delAnio, error: errLectura } = await admin
-    .from("balances")
-    .select("id, fecha_cierre")
-    .eq("anio_fiscal", anio);
-  if (errLectura) return { error: errLectura.message };
-
-  const ids = (delAnio ?? [])
-    .filter((b) => Number(b.fecha_cierre.slice(5, 7)) === mesCierre)
-    .map((b) => b.id);
-  if (ids.length === 0) return { ok: true, ids: [] as string[] };
-
-  const { error } = await admin
-    .from("balances")
-    .update({ vto_ganancias: fecha, updated_at: new Date().toISOString() })
-    .in("id", ids);
-  if (error) return { error: error.message };
-  revalidatePath("/", "layout");
-  return { ok: true, ids };
-}
-
 export async function crearBalance(data: {
   cliente_id: string;
   anio_fiscal: number;

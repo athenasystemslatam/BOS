@@ -1,14 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
+import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
+import { aFecha } from "@/lib/vencimientosContables";
 import { ContableProductividadClient, FilaResponsableContable } from "./ContableProductividadClient";
-
-function addDays(dateStr: string, days: number): Date {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d;
-}
 
 function diffDias(desde: Date, hasta: Date): number {
   return Math.round((hasta.getTime() - desde.getTime()) / 86400000);
@@ -36,7 +31,7 @@ export default async function ProductividadContablePage() {
 
   const admin = createAdminClient();
 
-  const [{ data: balancesRaw }, { data: liquidadoras }, objetivoGeneral, excepciones] = await Promise.all([
+  const [{ data: balancesRaw }, { data: liquidadoras }, vencimientos] = await Promise.all([
     admin
       .from("balances")
       .select(
@@ -45,8 +40,7 @@ export default async function ProductividadContablePage() {
         "f855_estado, f899_estado, f713_estado, f657_estado, igj_presentacion, igj_tasa, f855_fecha"
       ),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
-    getObjetivoContable(),
-    getExcepcionesCliente("contable"),
+    getContextoVencimientos(),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,8 +99,7 @@ export default async function ProductividadContablePage() {
       let terminadosEnTermino = 0;
       for (const b of terminados) {
         if (!b.presentado_fecha) continue;
-        const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
-        const vto = addDays(b.fecha_cierre, objetivo.balance_dias_vto);
+        const vto = aFecha(vencimientos.resolver(b).balance.fecha);
         const margen = diffDias(new Date(b.presentado_fecha), vto);
         margenes.push(margen);
         if (margen >= 0) terminadosEnTermino++;
@@ -145,10 +138,8 @@ export default async function ProductividadContablePage() {
 
       // F.855 en término, aparte (mismo criterio que la tarjeta de objetivo
       // del dashboard pero acotado a este contador/año).
-      const vtoF855 = (b: { fecha_cierre: string; cliente_id: string }) => {
-        const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
-        return addDays(b.fecha_cierre, objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra);
-      };
+      const vtoF855 = (b: { id: string; fecha_cierre: string; cliente_id: string }) =>
+        aFecha(vencimientos.resolver(b).f855.fecha);
       const f855Vencidos = items.filter((b) => {
         if (b.f855_estado === "no_corresponde") return false;
         return hoy > vtoF855(b);

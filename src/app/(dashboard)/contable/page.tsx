@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
-import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
+import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
 import { ContableClient } from "./ContableClient";
 
 export default async function ContablePage({
@@ -17,8 +17,7 @@ export default async function ContablePage({
     { data: clientesContable },
     { data: equipoTodos },
     { data: equipoModulosTodos },
-    objetivoGeneral,
-    excepciones,
+    vencimientos,
   ] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
@@ -41,23 +40,16 @@ export default async function ContablePage({
     // solo el de Contable, ya que edita servicios de todos los módulos.
     admin.from("liquidadoras").select("id, nombre, activa, rol").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id, modulo"),
-    getObjetivoContable(),
-    getExcepcionesCliente("contable"),
+    getContextoVencimientos(),
   ]);
 
-  // Ítem 67: cada balance lleva pegados los días de vencimiento que le
-  // corresponden (general, o la excepción de su cliente si tiene) — así
-  // ContableClient (componente de cliente) no necesita saber nada de
-  // objetivos ni excepciones, solo usa lo que ya viene resuelto.
+  // Cada balance lleva sus vencimientos ya resueltos (regla, prórroga o
+  // manual, ítem 91): ContableClient no sabe nada de reglas, solo los muestra.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const balancesConObjetivo = ((balancesRaw as any[]) ?? []).map((b) => {
-    const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id as string);
-    return {
-      ...b,
-      dias_vto_balance: objetivo.balance_dias_vto,
-      dias_vto_f855: objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra,
-    };
-  });
+  const balancesConObjetivo = ((balancesRaw as any[]) ?? []).map((b) => ({
+    ...b,
+    vtos: vencimientos.resolver(b),
+  }));
 
   const equipoIdsContable = new Set(
     (equipoModulosTodos ?? []).filter((m) => m.modulo === "contable").map((m) => m.equipo_id)

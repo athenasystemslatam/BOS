@@ -2,16 +2,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Building2, CheckCircle2, Clock, AlertTriangle, Ban, UserX, Target } from "lucide-react";
 import clsx from "clsx";
 import { ESTADO_BALANCE, calcularAvance, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
-import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
+import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
+import { aFecha } from "@/lib/vencimientosContables";
 import { MapaCargaClient } from "./MapaCargaClient";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
-
-function addDays(dateStr: string, days: number) {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d;
-}
 
 function fmt(d: Date) {
   return d.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
@@ -36,7 +31,7 @@ export default async function ContableDashboardPage({
   const filtroAnio = anios.includes(Number(searchParams.anio)) ? Number(searchParams.anio) : null;
   const admin = createAdminClient();
 
-  const [{ data: balancesRaw }, { data: equipoRaw }, { data: modulosRaw }, objetivoGeneral, excepciones, yo] = await Promise.all([
+  const [{ data: balancesRaw }, { data: equipoRaw }, { data: modulosRaw }, vencimientos, yo] = await Promise.all([
     admin
       .from("balances")
       .select(
@@ -49,8 +44,7 @@ export default async function ContableDashboardPage({
       .order("fecha_cierre"),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "contable"),
-    getObjetivoContable(),
-    getExcepcionesCliente("contable"),
+    getContextoVencimientos(),
     getCurrentLiquidadora(),
   ]);
 
@@ -62,11 +56,11 @@ export default async function ContableDashboardPage({
   const equipoContable = (equipoRaw ?? []).filter((e) => equipoIdsContable.has(e.id));
 
   const conVtoTodos = balancesTodos.map((b) => {
-    const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
+    const vtos = vencimientos.resolver(b);
     return {
       ...b,
-      vtoBalance: addDays(b.fecha_cierre, objetivo.balance_dias_vto),
-      vto855: addDays(b.fecha_cierre, objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra),
+      vtoBalance: aFecha(vtos.balance.fecha),
+      vto855: aFecha(vtos.f855.fecha),
     };
   });
   // Todo lo que sigue se calcula sobre esto — ya sea la ventana completa

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, Check, Minus, MoreHorizontal, CalendarClock, RotateCcw } from "lucide-react";
+import { Plus, ChevronDown, Check, Minus, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
 import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
-import { ProrrogaGananciasModal } from "./ProrrogaGananciasModal";
+import { MarcaVto } from "./MarcaVto";
+import type { Vto, VtosBalance } from "@/lib/vencimientosContables";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import {
@@ -68,26 +69,15 @@ type Balance = {
   igj_presentacion: string;
   igj_tasa: string;
   observaciones: string | null;
-  // null = Ganancias vence junto con el balance; con fecha = prórroga.
-  vto_ganancias: string | null;
-  // Ítem 67: ya vienen resueltos desde el servidor (general del área, o la
-  // excepción del cliente si tiene una cargada) — este componente no sabe
-  // nada de objetivos/excepciones, solo usa lo que le llega.
-  dias_vto_balance: number;
-  dias_vto_f855: number;
+  // Ítem 91: ya vienen resueltos desde el servidor (regla, prórroga o fecha
+  // manual) — este componente no sabe nada de reglas, solo los muestra.
+  vtos: VtosBalance;
   clientes: { nombre: string; cuit: string; claves_acceso: ClaveAcceso[] | null } | null;
   responsable: { id: string; nombre: string } | null;
   responsable2: { id: string; nombre: string } | null;
 };
 
 const ANIOS = [2026, 2025];
-
-// Returns ISO date string or null
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 function fmt(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
@@ -136,7 +126,6 @@ export function ContableClient({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [showModal, setShowModal] = useState(false);
-  const [showProrroga, setShowProrroga] = useState(false);
   const [filterResp, setFilterResp] = useState("");
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapido>("todos");
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
@@ -263,11 +252,11 @@ export function ContableClient({
         return true;
       case "vencidos": {
         if (b.estado === "finalizado" || b.estado === "frenado") return false;
-        return diasRestantes(addDays(b.fecha_cierre, b.dias_vto_balance)) < 0;
+        return diasRestantes(b.vtos.balance.fecha) < 0;
       }
       case "vencen30": {
         if (b.estado === "finalizado" || b.estado === "frenado") return false;
-        const d = diasRestantes(addDays(b.fecha_cierre, b.dias_vto_balance));
+        const d = diasRestantes(b.vtos.balance.fecha);
         return d >= 0 && d <= 30;
       }
       case "mis":
@@ -352,17 +341,6 @@ export function ContableClient({
 
             {puedeEditar && (
               <button
-                onClick={() => setShowProrroga(true)}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-50 rounded-lg transition-colors"
-                title="Cambiar el vencimiento de Ganancias de todos los balances de un mes de cierre"
-              >
-                <CalendarClock size={14} />
-                Prórroga Ganancias
-              </button>
-            )}
-
-            {puedeEditar && (
-              <button
                 onClick={() => setShowModal(true)}
                 className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
               >
@@ -441,18 +419,18 @@ export function ContableClient({
           <colgroup>
             <col className="w-56" />
             <col className="w-24" />
-            <col className="w-24" />
-            <col className="w-32" />
+            <col className="w-28" />
+            <col className="w-28" />
             <col className="w-36" />
             <col className="w-16" />
             <col className="w-36" />
             <col className="w-32" />
             <col className="w-32" />
             <col className="w-40" />
-            <col className="w-24" />
-            <col className="w-24" />
+            <col className="w-28" />
+            <col className="w-28" />
             <col className="w-14" />
-            <col className="w-24" />
+            <col className="w-28" />
             <col className="w-14" />
             <col className="w-14" />
             <col className="w-44" />
@@ -530,8 +508,6 @@ export function ContableClient({
               </tr>
             )}
             {filas.map((b) => {
-              const vtoBalance = addDays(b.fecha_cierre, b.dias_vto_balance);
-              const vto855 = addDays(b.fecha_cierre, b.dias_vto_f855);
               const estadoInfo = ESTADO_BALANCE[b.estado] ?? ESTADO_BALANCE.sin_asignar;
               const eeccInfo = ESTADO_EECC[b.estado_eecc] ?? ESTADO_EECC.pendiente;
 
@@ -558,17 +534,10 @@ export function ContableClient({
                     <span className="text-[12px] text-gray-600">{fmt(b.fecha_cierre)}</span>
                   </td>
 
-                  {/* Vto balance */}
-                  <td className="px-3 py-2.5 text-center">
-                    <span className="text-[12px] text-gray-500">{fmt(vtoBalance)}</span>
-                  </td>
-
-                  <VtoGananciasCell
-                    vtoGanancias={b.vto_ganancias}
-                    vtoBalance={vtoBalance}
-                    puedeEditar={puedeEditar}
-                    onChange={(fecha) => update(b.id, { vto_ganancias: fecha })}
-                  />
+                  {/* Vto balance · Vto Gcias — se editan desde
+                      Productividad → Configuración (ítem 91) */}
+                  <VtoCell vto={b.vtos.balance} />
+                  <VtoCell vto={b.vtos.ganancias} />
 
                   {/* Estado — automático desde EECC/responsable (ítem 34);
                       Frenado es la única excepción manual, se cambia desde
@@ -697,17 +666,16 @@ export function ContableClient({
                   </td>
 
                   {/* 855 · F899 · F657 — casilla + fecha de vencimiento al
-                      lado, con semáforo (comparten el mismo vto). Tachado
-                      gris si ya está presentado. El 713 no tiene vencimiento
-                      propio, va solo con casilla. */}
+                      lado, con semáforo. Tachado gris si ya está presentado.
+                      El 713 no tiene vencimiento propio, va solo con casilla. */}
                   <FormVtoCheckCell estado={b.f855_estado} field="f855_estado" balanceId={b.id}
-                    vto={vto855} puedeEditar={puedeEditar} onUpdate={update} />
+                    vto={b.vtos.f855} puedeEditar={puedeEditar} onUpdate={update} />
                   <FormVtoCheckCell estado={b.f899_estado} field="f899_estado" balanceId={b.id}
-                    vto={vto855} puedeEditar={puedeEditar} onUpdate={update} />
+                    vto={b.vtos.f899} puedeEditar={puedeEditar} onUpdate={update} />
                   <FormCheckCell estado={b.f713_estado} field="f713_estado" balanceId={b.id}
                     puedeEditar={puedeEditar} onUpdate={update} />
                   <FormVtoCheckCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
-                    vto={vto855} puedeEditar={puedeEditar} onUpdate={update} />
+                    vto={b.vtos.f657} puedeEditar={puedeEditar} onUpdate={update} />
 
                   {/* IGJ Presentación */}
                   <FormCell estado={b.igj_presentacion} field="igj_presentacion" balanceId={b.id}
@@ -749,16 +717,6 @@ export function ContableClient({
           clientesDisponibles={clientesDisponibles}
           equipoContable={equipoContable}
           onClose={() => setShowModal(false)}
-        />
-      )}
-      {showProrroga && (
-        <ProrrogaGananciasModal
-          anio={anio}
-          balances={balances}
-          onClose={() => setShowProrroga(false)}
-          onAplicado={(ids, fecha) => {
-            for (const id of ids) patch(id, { vto_ganancias: fecha });
-          }}
         />
       )}
       {mostrarEquipo && (
@@ -879,7 +837,7 @@ function FormVtoCheckCell({
   estado: string;
   field: string;
   balanceId: string;
-  vto: string;
+  vto: Vto;
   puedeEditar: boolean;
   onUpdate: (id: string, updates: Partial<Balance>) => void;
 }) {
@@ -900,82 +858,26 @@ function FormVtoCheckCell({
         <span
           className={clsx(
             "text-[11px] rounded px-1.5 py-0.5 tabular-nums",
-            presentado ? "text-gray-400 line-through bg-transparent" : vtoSemaforoCls(diasRestantes(vto))
+            presentado ? "text-gray-400 line-through bg-transparent" : vtoSemaforoCls(diasRestantes(vto.fecha))
           )}
         >
-          {fmt(vto)}
+          {fmt(vto.fecha)}
         </span>
+        <MarcaVto vto={vto} />
       </div>
     </td>
   );
 }
 
-// Vto de Ganancias: por regla es el mismo día que el VTO balance; si se
-// prorrogó, se muestra resaltado. Elegir la misma fecha que el balance
-// equivale a volver a la regla (se guarda null).
-function VtoGananciasCell({
-  vtoGanancias,
-  vtoBalance,
-  puedeEditar,
-  onChange,
-}: {
-  vtoGanancias: string | null;
-  vtoBalance: string;
-  puedeEditar: boolean;
-  onChange: (fecha: string | null) => void;
-}) {
-  const prorrogado = !!vtoGanancias && vtoGanancias !== vtoBalance;
-  const vto = vtoGanancias ?? vtoBalance;
-  // Estado local para que el input se pueda tipear libremente; se resincroniza
-  // si la fecha cambia desde afuera (prórroga en lote, volver a la regla).
-  const [valor, setValor] = useState(vto);
-  useEffect(() => setValor(vto), [vto]);
-  const titulo = prorrogado ? `Prorrogado — por regla vencía el ${fmt(vtoBalance)}` : "Mismo vencimiento que el balance";
-  const cls = clsx(
-    "text-[12px] tabular-nums rounded px-1.5 py-0.5",
-    prorrogado ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-500"
-  );
-
-  if (!puedeEditar) {
-    return (
-      <td className="px-3 py-2.5 text-center" title={titulo}>
-        <span className={cls}>{fmt(vto)}</span>
-      </td>
-    );
-  }
-
+// Vto balance / Ganancias: solo lectura, con la marca P/M si no sale de la
+// regla general.
+function VtoCell({ vto }: { vto: Vto }) {
   return (
-    <td className="px-3 py-2.5 text-center" title={titulo}>
-      <div className="inline-flex items-center gap-1">
-        <input
-          type="date"
-          value={valor}
-          onChange={(e) => {
-            const nueva = e.target.value;
-            if (!nueva) {
-              setValor(vtoBalance);
-              onChange(null);
-              return;
-            }
-            setValor(nueva);
-            // Al tipear el año dígito por dígito el input ya dispara con
-            // "0002", "0020"…: no guardar hasta que el año sea real.
-            if (Number(nueva.slice(0, 4)) < 2000) return;
-            onChange(nueva === vtoBalance ? null : nueva);
-          }}
-          className={clsx(cls, "border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-300 cursor-pointer w-[104px]")}
-        />
-        {prorrogado && (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="text-gray-300 hover:text-gray-600"
-            title="Volver a la regla (mismo vencimiento que el balance)"
-          >
-            <RotateCcw size={11} />
-          </button>
-        )}
-      </div>
+    <td className="px-3 py-2.5 text-center">
+      <span className="inline-flex items-center text-[12px] text-gray-500 tabular-nums">
+        {fmt(vto.fecha)}
+        <MarcaVto vto={vto} />
+      </span>
     </td>
   );
 }

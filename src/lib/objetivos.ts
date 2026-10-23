@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { ReglaVto, TipoVto } from "@/lib/vencimientosContables";
 
 // Ítem 67: objetivo general por área + excepción por cliente, en vez de
 // constantes fijas en el código. Sueldos no usa excepción por cliente acá
@@ -7,6 +8,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export type ObjetivoContable = {
   balance_dias_vto: number;
   f855_dias_vto_extra: number;
+  // Ítem 91: regla por vencimiento (base + días). Si falta, se arma desde
+  // los dos números de arriba (ver resolverReglas).
+  reglas_vto?: Partial<Record<TipoVto, ReglaVto>>;
   // Ítem 70: a propósito en null hasta que dirección los defina con datos
   // reales del ciclo de cierres al 31/12/2026.
   dias_pedir_info_desde_cierre: number | null;

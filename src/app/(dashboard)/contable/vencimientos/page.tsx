@@ -2,15 +2,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { CalendarDays } from "lucide-react";
 import clsx from "clsx";
 import { ESTADO_BALANCE, calcularAvance } from "../semaforo";
-import { getObjetivoContable, getExcepcionesCliente, resolverObjetivoContable } from "@/lib/objetivos";
+import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
+import { aFecha, describirRegla, LABEL_VTO, TIPOS_VTO } from "@/lib/vencimientosContables";
+import { MarcaVto } from "../MarcaVto";
 
 const ANIOS = [2026, 2025];
-
-function addDays(dateStr: string, days: number) {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d;
-}
 
 function fmt(d: Date) {
   return d.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
@@ -24,7 +20,7 @@ export default async function ContableVencimientosPage({
   const anio = Number(searchParams.anio) || new Date().getFullYear();
   const admin = createAdminClient();
 
-  const [{ data: balancesRaw }, objetivoGeneral, excepciones] = await Promise.all([
+  const [{ data: balancesRaw }, vencimientos] = await Promise.all([
     admin
       .from("balances")
       .select(
@@ -35,8 +31,7 @@ export default async function ContableVencimientosPage({
       )
       .eq("anio_fiscal", anio)
       .order("fecha_cierre"),
-    getObjetivoContable(),
-    getExcepcionesCliente("contable"),
+    getContextoVencimientos(),
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,16 +39,13 @@ export default async function ContableVencimientosPage({
   const hoy = new Date();
 
   const filas = balances.map((b) => {
-    const objetivo = resolverObjetivoContable(objetivoGeneral, excepciones, b.cliente_id);
-    const vtoBalance = addDays(b.fecha_cierre, objetivo.balance_dias_vto);
-    const vto855 = addDays(b.fecha_cierre, objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra);
+    const vtos = vencimientos.resolver(b);
+    const vtoBalance = aFecha(vtos.balance.fecha);
     const diasVto = Math.ceil((vtoBalance.getTime() - hoy.getTime()) / 86400000);
-    const vtoGanancias = b.vto_ganancias ? new Date(b.vto_ganancias + "T00:00:00") : vtoBalance;
-    const prorrogado = !!b.vto_ganancias && vtoGanancias.getTime() !== vtoBalance.getTime();
     // Mismo cálculo por etapas que Seguimiento: la columna balances.avance
     // guardada puede estar desactualizada.
     const avance = calcularAvance(b);
-    return { ...b, vtoBalance, vto855, diasVto, vtoGanancias, prorrogado, avance };
+    return { ...b, vtos, vtoBalance, diasVto, avance };
   });
 
   const pendientes = filas.filter((b) => b.estado !== "finalizado");
@@ -67,7 +59,8 @@ export default async function ContableVencimientosPage({
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable</p>
           <h1 className="text-[20px] font-semibold text-gray-900">Vencimientos {anio}</h1>
           <p className="text-[13px] text-gray-400 mt-1">
-            VTO Balance = cierre + {objetivoGeneral.balance_dias_vto} días · VTO Ganancias = VTO Balance, salvo prórroga (en azul) · VTO F.855/F899/F657 = cierre + {objetivoGeneral.balance_dias_vto + objetivoGeneral.f855_dias_vto_extra} días (general — algún cliente puede tener excepción)
+            {TIPOS_VTO.map((t) => `VTO ${LABEL_VTO[t]} ${describirRegla(vencimientos.reglasGenerales[t])}`).join(" · ")}
+            {" "}(regla general — <b className="text-blue-500">P</b> prórroga, <b className="text-fuchsia-500">M</b> fecha manual; el motivo se ve al pasar el mouse)
           </p>
         </div>
         <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
@@ -143,19 +136,18 @@ export default async function ContableVencimientosPage({
                           "inline-flex flex-col gap-0.5 px-2.5 py-1.5 rounded-lg text-[11px]",
                           vencido || urgente ? "bg-red-50 text-red-700" : proximo ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
                         )}>
-                          <span className="font-semibold">{fmt(b.vtoBalance)}</span>
+                          <span className="font-semibold">{fmt(b.vtoBalance)}<MarcaVto vto={b.vtos.balance} /></span>
                           <span className="opacity-75">
                             {vencido ? "vencido" : b.diasVto === 0 ? "hoy" : `${b.diasVto}d`}
                           </span>
                         </div>
                       </td>
-                      <td className={clsx("px-4 py-3", b.prorrogado ? "text-blue-700 font-medium" : "text-gray-500")}>
-                        {fmt(b.vtoGanancias)}
-                        {b.prorrogado && <span className="ml-1 text-[10px] text-blue-500">prorrogado</span>}
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
-                      <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
-                      <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
+                      {(["ganancias", "f855", "f899", "f657"] as const).map((t) => (
+                        <td key={t} className="px-4 py-3 text-gray-500">
+                          {fmt(aFecha(b.vtos[t].fecha))}
+                          <MarcaVto vto={b.vtos[t]} />
+                        </td>
+                      ))}
                       <td className="px-4 py-3">
                         <span className={clsx("text-[11px] font-medium rounded-full px-2.5 py-1", cls)}>{label}</span>
                       </td>
@@ -205,11 +197,12 @@ export default async function ContableVencimientosPage({
                     <td className="px-4 py-3 text-gray-400">
                       {new Date(b.fecha_cierre + "T00:00:00").toLocaleDateString("es-AR")}
                     </td>
-                    <td className="px-4 py-3 text-gray-400">{fmt(b.vtoBalance)}</td>
-                    <td className="px-4 py-3 text-gray-400">{fmt(b.vtoGanancias)}</td>
-                    <td className="px-4 py-3 text-gray-400">{fmt(b.vto855)}</td>
-                    <td className="px-4 py-3 text-gray-400">{fmt(b.vto855)}</td>
-                    <td className="px-4 py-3 text-gray-400">{fmt(b.vto855)}</td>
+                    {TIPOS_VTO.map((t) => (
+                      <td key={t} className="px-4 py-3 text-gray-400">
+                        {fmt(aFecha(b.vtos[t].fecha))}
+                        <MarcaVto vto={b.vtos[t]} />
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
