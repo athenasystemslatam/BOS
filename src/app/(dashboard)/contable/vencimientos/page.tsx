@@ -28,7 +28,7 @@ export default async function ContableVencimientosPage({
     admin
       .from("balances")
       .select(
-        "id, cliente_id, fecha_cierre, estado, avance, " +
+        "id, cliente_id, fecha_cierre, estado, avance, vto_ganancias, " +
         "clientes(nombre), " +
         "responsable:liquidadoras!balances_responsable_id_fkey(nombre), " +
         "responsable2:liquidadoras!balances_responsable2_id_fkey(nombre)"
@@ -48,7 +48,9 @@ export default async function ContableVencimientosPage({
     const vtoBalance = addDays(b.fecha_cierre, objetivo.balance_dias_vto);
     const vto855 = addDays(b.fecha_cierre, objetivo.balance_dias_vto + objetivo.f855_dias_vto_extra);
     const diasVto = Math.ceil((vtoBalance.getTime() - hoy.getTime()) / 86400000);
-    return { ...b, vtoBalance, vto855, diasVto };
+    const vtoGanancias = b.vto_ganancias ? new Date(b.vto_ganancias + "T00:00:00") : vtoBalance;
+    const prorrogado = !!b.vto_ganancias && vtoGanancias.getTime() !== vtoBalance.getTime();
+    return { ...b, vtoBalance, vto855, diasVto, vtoGanancias, prorrogado };
   });
 
   const pendientes = filas.filter((b) => b.estado !== "finalizado");
@@ -62,7 +64,7 @@ export default async function ContableVencimientosPage({
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Contable</p>
           <h1 className="text-[20px] font-semibold text-gray-900">Vencimientos {anio}</h1>
           <p className="text-[13px] text-gray-400 mt-1">
-            VTO Balance y Ganancias = cierre + {objetivoGeneral.balance_dias_vto} días · VTO F.855/F899/F657 = cierre + {objetivoGeneral.balance_dias_vto + objetivoGeneral.f855_dias_vto_extra} días (general — algún cliente puede tener excepción)
+            VTO Balance = cierre + {objetivoGeneral.balance_dias_vto} días · VTO Ganancias = VTO Balance, salvo prórroga (en azul) · VTO F.855/F899/F657 = cierre + {objetivoGeneral.balance_dias_vto + objetivoGeneral.f855_dias_vto_extra} días (general — algún cliente puede tener excepción)
           </p>
         </div>
         <div className="flex gap-0.5 bg-gray-100 p-0.5 rounded-lg">
@@ -107,6 +109,7 @@ export default async function ContableVencimientosPage({
                   <th className="px-4 py-3 text-left">Responsable</th>
                   <th className="px-4 py-3 text-left">Cierre</th>
                   <th className="px-4 py-3 text-left">VTO Balance</th>
+                  <th className="px-4 py-3 text-left">VTO Ganancias</th>
                   <th className="px-4 py-3 text-left">VTO F.855</th>
                   <th className="px-4 py-3 text-left">VTO F.899</th>
                   <th className="px-4 py-3 text-left">VTO F.657</th>
@@ -142,6 +145,10 @@ export default async function ContableVencimientosPage({
                             {vencido ? "vencido" : b.diasVto === 0 ? "hoy" : `${b.diasVto}d`}
                           </span>
                         </div>
+                      </td>
+                      <td className={clsx("px-4 py-3", b.prorrogado ? "text-blue-700 font-medium" : "text-gray-500")}>
+                        {fmt(b.vtoGanancias)}
+                        {b.prorrogado && <span className="ml-1 text-[10px] text-blue-500">prorrogado</span>}
                       </td>
                       <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
                       <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
@@ -181,6 +188,7 @@ export default async function ContableVencimientosPage({
                   <th className="px-4 py-3 text-left">Responsable</th>
                   <th className="px-4 py-3 text-left">Cierre</th>
                   <th className="px-4 py-3 text-left">VTO Balance</th>
+                  <th className="px-4 py-3 text-left">VTO Ganancias</th>
                   <th className="px-4 py-3 text-left">VTO F.855</th>
                   <th className="px-4 py-3 text-left">VTO F.899</th>
                   <th className="px-4 py-3 text-left">VTO F.657</th>
@@ -195,6 +203,7 @@ export default async function ContableVencimientosPage({
                       {new Date(b.fecha_cierre + "T00:00:00").toLocaleDateString("es-AR")}
                     </td>
                     <td className="px-4 py-3 text-gray-400">{fmt(b.vtoBalance)}</td>
+                    <td className="px-4 py-3 text-gray-400">{fmt(b.vtoGanancias)}</td>
                     <td className="px-4 py-3 text-gray-400">{fmt(b.vto855)}</td>
                     <td className="px-4 py-3 text-gray-400">{fmt(b.vto855)}</td>
                     <td className="px-4 py-3 text-gray-400">{fmt(b.vto855)}</td>

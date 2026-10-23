@@ -4,7 +4,12 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql` corrida por Matías el 23-oct).
+
+### Vencimiento de Ganancias como fecha propia (23-oct, Matías)
+
+- `balances.vto_ganancias`: null = regla (mismo día que el VTO balance, cierre + 135); con fecha = prórroga. Se edita en Seguimiento Contable (columna "Vto Gcias", azul si está prorrogado, ↺ para volver a la regla) o en lote con "Prórroga Ganancias" (por mes de cierre del año fiscal, pisa también los cargados a mano — `aplicarProrrogaGanancias`).
+- No mueve el VTO balance ni F.855/F899/F657, ni los filtros "Vencidos"/"Vencen en 30 días" (siguen por VTO balance). Vencimientos suma la columna "VTO Ganancias".
 
 ### `.claude/settings.local.json` fuera de Git (23-oct, Matías)
 

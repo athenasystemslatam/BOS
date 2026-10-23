@@ -162,7 +162,7 @@ export function NuevoBalanceModal({
               {clienteSeleccionado?.cierre_ejercicio_mes
                 ? "Autocompletada con el cierre fijo de este cliente — se puede cambiar si corresponde."
                 : "Primera vez para este cliente: lo que cargues acá queda como su fecha fija para los próximos años."}
-              {" "}VTO Balance y Ganancias = cierre + 135 días · F.855/F899 = VTO + 25 días
+              {" "}VTO Balance y Ganancias = cierre + 135 días (Ganancias se puede prorrogar después) · F.855/F899/F657 = VTO + 25 días
             </p>
           </div>
 
