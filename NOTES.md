@@ -2,6 +2,17 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Pendientes al cerrar la sesión del 23-oct (Matías)
+
+Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (detalle en cada bloque de abajo). Quedan sin cerrar, todos fuera de código:
+- **108 (No corresponde):** hecho; falta la prueba con el caso testigo Smart Farming 2026. Smart Farming S.R.L. está activo pero **no tiene el servicio Contable** ni ningún balance: definir si se le activa, su fecha de cierre y el motivo (ítem 135, equipo contable).
+- **Fecha de cierre fija faltante** (no se generan sus balances): Fundación Pan y Arte, Herpam SA, Pan y Arte SRL, Rivadavia SA.
+- **Janina:** destildarle el área Contable en `/equipo`.
+- **F.931 2027:** cargar el calendario oficial cuando lo publique ARCA, y verificar la fecha cargada de diciembre 2026 CUITs 0-3 (09/01/2027, sábado).
+- **124:** cargar las fechas reales de presentación de los 71 balances terminados (a mano o importándolas del ESTATUS, ítems 130/134).
+- **Ítem 119:** figura "Hecho" en el estatus pero no existe rol "administrativo" en el código.
+- Desde la PC de Matías los commits salen como `athenasystemslatam` (config local del repo), y Claude in Chrome solo se usa desde el perfil aislado "Claude BOS".
+
 ## SQL pendiente de correr en Supabase
 
 Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct).
