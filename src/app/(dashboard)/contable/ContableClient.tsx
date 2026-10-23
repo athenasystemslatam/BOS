@@ -6,6 +6,7 @@ import { Plus, ChevronDown, Check, Minus, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
 import { updateBalance, getFichaCliente } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
+import { GenerarBalancesModal } from "./GenerarBalancesModal";
 import { MarcaVto } from "./MarcaVto";
 import { useBackdropClose } from "@/lib/useBackdropClose";
 import type { Vto, VtosBalance } from "@/lib/vencimientosContables";
@@ -72,6 +73,8 @@ type Balance = {
   igj_tasa: string;
   observaciones: string | null;
   no_corresponde_motivo: string | null;
+  // Ítem 109: texto del aviso si la fecha de cierre no coincide con la fija del cliente.
+  cierre_distinto: string | null;
   // Ítem 91: ya vienen resueltos desde el servidor (regla, prórroga o fecha
   // manual) — este componente no sabe nada de reglas, solo los muestra.
   vtos: VtosBalance;
@@ -129,6 +132,7 @@ export function ContableClient({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [showModal, setShowModal] = useState(false);
+  const [showGenerar, setShowGenerar] = useState(false);
   const [filterResp, setFilterResp] = useState("");
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapido>("todos");
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
@@ -366,6 +370,16 @@ export function ContableClient({
 
             {puedeEditar && (
               <button
+                onClick={() => setShowGenerar(true)}
+                className="px-3 py-2 text-sm font-medium text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-50 rounded-lg transition-colors"
+                title="Crea el balance del año para cada cliente con fecha de cierre fija que todavía no lo tiene"
+              >
+                Generar balances {anio}
+              </button>
+            )}
+
+            {puedeEditar && (
+              <button
                 onClick={() => setShowModal(true)}
                 className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors"
               >
@@ -557,7 +571,17 @@ export function ContableClient({
 
                   {/* Cierre */}
                   <td className="px-3 py-2.5 text-center">
-                    <span className="text-[12px] text-gray-600">{fmt(b.fecha_cierre)}</span>
+                    <span className="inline-flex items-center text-[12px] text-gray-600">
+                      {fmt(b.fecha_cierre)}
+                      {b.cierre_distinto && (
+                        <span
+                          title={b.cierre_distinto}
+                          className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full text-[9px] font-bold text-white bg-amber-500 ml-1 cursor-help"
+                        >
+                          !
+                        </span>
+                      )}
+                    </span>
                   </td>
 
                   {/* Vto balance · Vto Gcias — se editan desde
@@ -748,6 +772,7 @@ export function ContableClient({
         </table>
       </div>
 
+      {showGenerar && <GenerarBalancesModal anio={anio} onClose={() => setShowGenerar(false)} />}
       {showModal && (
         <NuevoBalanceModal
           anio={anio}

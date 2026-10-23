@@ -24,7 +24,7 @@ export default async function ContablePage({
     admin
       .from("balances")
       .select(
-        "*, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso), " +
+        "*, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso, cierre_ejercicio_mes, cierre_ejercicio_dia), " +
         "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
         "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
       )
@@ -43,13 +43,30 @@ export default async function ContablePage({
     getContextoVencimientos(),
   ]);
 
+  // Ítem 109: último cambio registrado de la fecha de cierre fija de cada
+  // cliente, para explicar por qué un balance no coincide con ella.
+  const { data: cambiosCierre } = await admin
+    .from("clientes_cierre_cambios")
+    .select("cliente_id, motivo, mes_anterior, dia_anterior, creado_en")
+    .order("creado_en", { ascending: false });
+  const ultimoCambio = new Map<string, { motivo: string; mes_anterior: number; dia_anterior: number }>();
+  for (const c of cambiosCierre ?? []) if (!ultimoCambio.has(c.cliente_id)) ultimoCambio.set(c.cliente_id, c);
+
   // Cada balance lleva sus vencimientos ya resueltos (regla, prórroga o
   // manual, ítem 91): ContableClient no sabe nada de reglas, solo los muestra.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const balancesConObjetivo = ((balancesRaw as any[]) ?? []).map((b) => ({
-    ...b,
-    vtos: vencimientos.resolver(b),
-  }));
+  const balancesConObjetivo = ((balancesRaw as any[]) ?? []).map((b) => {
+    const mes = b.clientes?.cierre_ejercicio_mes as number | null;
+    const dia = b.clientes?.cierre_ejercicio_dia as number | null;
+    const [, m, d] = (b.fecha_cierre as string).split("-").map(Number);
+    let cierre_distinto: string | null = null;
+    if (mes && dia && (m !== mes || d !== dia)) {
+      const fijo = `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}`;
+      const cambio = ultimoCambio.get(b.cliente_id);
+      cierre_distinto = `Distinto del cierre fijo del cliente (${fijo})` + (cambio ? `. Cambio registrado: ${cambio.motivo}` : "");
+    }
+    return { ...b, vtos: vencimientos.resolver(b), cierre_distinto };
+  });
 
   const equipoIdsContable = new Set(
     (equipoModulosTodos ?? []).filter((m) => m.modulo === "contable").map((m) => m.equipo_id)

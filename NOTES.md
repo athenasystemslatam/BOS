@@ -4,7 +4,17 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql` y `add_balances_no_corresponde.sql` corridas por Matías el 23-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql` y `add_clientes_cierre_cambios.sql` corridas por Matías el 23-oct).
+
+### Fecha de cierre fija que genera el balance de cada año — ítem 109 (23-oct, Matías)
+
+- Ya existía (`04305ed`): `clientes.cierre_ejercicio_mes/dia`, editable en Panel General → Editar (con Contable), autocompleta "Agregar balance".
+- Nuevo: botón "Generar balances {año}" en Seguimiento Contable (`generarBalancesDelAnio`): un balance "Sin asignar" por cliente activo con Contable y cierre fijo que no lo tenga; muestra antes la lista y los clientes sin cierre fijo. No toca los existentes.
+- Nuevo: cambiar un cierre ya cargado pide motivo y queda en `clientes_cierre_cambios`. El balance cuya fecha no coincide con la fija se marca con "!" en la columna Cierre.
+
+### Cruce del estatus del 23-oct (Matías)
+
+Figuran pendientes en el Sheet pero ya están hechos: 79 y 127 (`6c3c41b`), 91 (con el 107), 120 (`94bd7a3`), 121 y 123 (`d33861c`), 64 (`84b6665`/`afcaf55`), 76/77/78 (20-oct, ver arriba), 109 (este), 114 (fecha de recepción ya se guarda, `156f2d0`), 93 (F657 pasó a casilla, `720c151`). Bug confirmado y abierto: 122 (Dashboard Contable calcula el avance sin traer envio1/info_recibida/estado_eecc → todo cae en "Sin empezar").
 
 ### Estado "No corresponde" en Contable (23-oct, Matías)
 

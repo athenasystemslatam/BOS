@@ -175,6 +175,85 @@ export async function updateBalance(
   return { ok: true };
 }
 
+// Ítem 109: la fecha de cierre fija del cliente genera el balance de cada año.
+export type BalanceAGenerar = { cliente_id: string; nombre: string; fecha_cierre: string };
+
+function fechaCierreDelAnio(anio: number, mes: number, dia: number): string {
+  // Un cierre al 29/02 cae en 28/02 en los años no bisiestos.
+  const ultimoDia = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+  return `${anio}-${String(mes).padStart(2, "0")}-${String(Math.min(dia, ultimoDia)).padStart(2, "0")}`;
+}
+
+async function calcularBalancesAGenerar(anio: number) {
+  const admin = createAdminClient();
+  const [{ data: servicios }, { data: existentes }] = await Promise.all([
+    admin
+      .from("servicios_cliente")
+      .select("cliente_id, clientes!inner(id, nombre, estado, cierre_ejercicio_mes, cierre_ejercicio_dia)")
+      .eq("servicio", "contable")
+      .eq("estado", true)
+      .eq("clientes.estado", "activo"),
+    admin.from("balances").select("cliente_id").eq("anio_fiscal", anio),
+  ]);
+  const yaTienen = new Set((existentes ?? []).map((b) => b.cliente_id));
+  const aGenerar: BalanceAGenerar[] = [];
+  const sinCierre: string[] = [];
+  const vistos = new Set<string>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const s of (servicios as any[]) ?? []) {
+    const c = s.clientes;
+    if (!c || yaTienen.has(c.id) || vistos.has(c.id)) continue;
+    vistos.add(c.id);
+    if (!c.cierre_ejercicio_mes || !c.cierre_ejercicio_dia) {
+      sinCierre.push(c.nombre);
+      continue;
+    }
+    aGenerar.push({
+      cliente_id: c.id,
+      nombre: c.nombre,
+      fecha_cierre: fechaCierreDelAnio(anio, c.cierre_ejercicio_mes, c.cierre_ejercicio_dia),
+    });
+  }
+  aGenerar.sort((a, b) => a.fecha_cierre.localeCompare(b.fecha_cierre) || a.nombre.localeCompare(b.nombre));
+  sinCierre.sort();
+  return { aGenerar, sinCierre };
+}
+
+export async function previsualizarBalancesAGenerar(anio: number) {
+  try {
+    await requireAreaOrAdmin("contable");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+  return { ok: true, ...(await calcularBalancesAGenerar(anio)) };
+}
+
+export async function generarBalancesDelAnio(anio: number) {
+  try {
+    await requireAreaOrAdmin("contable");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+  // Se recalcula acá (no se confía en la lista que vio el usuario): si alguien
+  // cargó un balance a mano en el medio, no se duplica.
+  const { aGenerar } = await calcularBalancesAGenerar(anio);
+  if (aGenerar.length === 0) return { ok: true, creados: 0 };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("balances").upsert(
+    aGenerar.map((b) => ({
+      cliente_id: b.cliente_id,
+      anio_fiscal: anio,
+      fecha_cierre: b.fecha_cierre,
+      estado: "sin_asignar",
+    })),
+    { onConflict: "cliente_id,anio_fiscal", ignoreDuplicates: true }
+  );
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true, creados: aGenerar.length };
+}
+
 export async function crearBalance(data: {
   cliente_id: string;
   anio_fiscal: number;

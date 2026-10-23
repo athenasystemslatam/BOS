@@ -293,8 +293,9 @@ export async function getEmpresaCompleta(clienteId: string) {
 }
 
 export async function editarClienteConServicios(formData: FormData) {
+  let yo;
   try {
-    await requireAdmin();
+    yo = await requireAdmin();
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
@@ -327,6 +328,38 @@ export async function editarClienteConServicios(formData: FormData) {
     servicios = JSON.parse((formData.get("servicios") as string) || "[]");
   } catch {
     return { error: "Error al procesar los servicios." };
+  }
+
+  // Ítem 109: cambiar una fecha de cierre que ya estaba cargada es una
+  // excepción — motivo obligatorio y queda registrada. Cargarla por primera
+  // vez no lo es. Se valida antes de guardar nada, para no dejar la ficha a medias.
+  let cambioCierre: Record<string, unknown> | null = null;
+  if (servicios.some((s) => s.servicio === "contable")) {
+    const mesRaw = (formData.get("contable_cierre_ejercicio_mes") as string)?.trim();
+    const diaRaw = (formData.get("contable_cierre_ejercicio_dia") as string)?.trim();
+    const mesNuevo = mesRaw ? parseInt(mesRaw) : null;
+    const diaNuevo = diaRaw ? parseInt(diaRaw) : null;
+    const { data: antes } = await supabase
+      .from("clientes")
+      .select("cierre_ejercicio_mes, cierre_ejercicio_dia")
+      .eq("id", id)
+      .maybeSingle();
+    if (
+      antes?.cierre_ejercicio_mes && antes?.cierre_ejercicio_dia &&
+      (antes.cierre_ejercicio_mes !== mesNuevo || antes.cierre_ejercicio_dia !== diaNuevo)
+    ) {
+      const motivo = (formData.get("contable_cierre_motivo") as string)?.trim();
+      if (!motivo) return { error: "Para cambiar la fecha de cierre de ejercicio hay que indicar el motivo." };
+      cambioCierre = {
+        cliente_id: id,
+        mes_anterior: antes.cierre_ejercicio_mes,
+        dia_anterior: antes.cierre_ejercicio_dia,
+        mes_nuevo: mesNuevo,
+        dia_nuevo: diaNuevo,
+        motivo,
+        creado_por: yo.id,
+      };
+    }
   }
 
   const { error: clienteError } = await supabase
@@ -506,6 +539,12 @@ export async function editarClienteConServicios(formData: FormData) {
     const diaRaw = (formData.get("contable_cierre_ejercicio_dia") as string)?.trim();
     const cierre_ejercicio_mes = mesRaw ? parseInt(mesRaw) : null;
     const cierre_ejercicio_dia = diaRaw ? parseInt(diaRaw) : null;
+
+    if (cambioCierre) {
+      const { error: logError } = await supabase.from("clientes_cierre_cambios").insert(cambioCierre);
+      if (logError) return { error: logError.message };
+    }
+
     await supabase
       .from("clientes")
       .update({ cierre_ejercicio_mes, cierre_ejercicio_dia })

@@ -57,6 +57,9 @@ export function EditarClienteModal({
 
   const [cierreEjercicioMes, setCierreEjercicioMes] = useState("");
   const [cierreEjercicioDia, setCierreEjercicioDia] = useState("");
+  // Ítem 109: cambiar una fecha de cierre ya cargada es una excepción y pide motivo.
+  const [cierreOriginal, setCierreOriginal] = useState({ mes: "", dia: "" });
+  const [cierreMotivo, setCierreMotivo] = useState("");
 
   const [cuilArca, setCuilArca] = useState("");
   const [art, setArt] = useState("");
@@ -117,6 +120,10 @@ export function EditarClienteModal({
 
       setCierreEjercicioMes(cliente.cierre_ejercicio_mes ? String(cliente.cierre_ejercicio_mes) : "");
       setCierreEjercicioDia(cliente.cierre_ejercicio_dia ? String(cliente.cierre_ejercicio_dia) : "");
+      setCierreOriginal({
+        mes: cliente.cierre_ejercicio_mes ? String(cliente.cierre_ejercicio_mes) : "",
+        dia: cliente.cierre_ejercicio_dia ? String(cliente.cierre_ejercicio_dia) : "",
+      });
 
       setCuilArca(cliente.cuil_arca ?? "");
       setArt(cliente.art ?? "");
@@ -203,6 +210,7 @@ export function EditarClienteModal({
     if ("contable:general" in serviciosActivos) {
       formData.set("contable_cierre_ejercicio_mes", cierreEjercicioMes);
       formData.set("contable_cierre_ejercicio_dia", cierreEjercicioDia);
+      formData.set("contable_cierre_motivo", cierreMotivo);
     }
 
     startTransition(async () => {
@@ -591,6 +599,21 @@ export function EditarClienteModal({
                               <p className="text-[11px] text-ink-faint">
                                 Se usa para autocompletar la fecha de cierre al crear el balance de cada año nuevo.
                               </p>
+                              {cierreOriginal.mes && cierreOriginal.dia &&
+                                (cierreOriginal.mes !== cierreEjercicioMes || cierreOriginal.dia !== cierreEjercicioDia) && (
+                                <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 space-y-2">
+                                  <p className="text-[11px] text-amber-800">
+                                    Cambiar la fecha de cierre es una excepción: aplica a los próximos balances, los ya
+                                    cargados no se tocan. El cambio queda registrado.
+                                  </p>
+                                  <input
+                                    value={cierreMotivo}
+                                    onChange={(e) => setCierreMotivo(e.target.value)}
+                                    placeholder="Motivo del cambio (obligatorio)"
+                                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
+                                  />
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
