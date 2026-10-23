@@ -12,6 +12,12 @@ Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.s
 - Nuevo: botón "Generar balances {año}" en Seguimiento Contable (`generarBalancesDelAnio`): un balance "Sin asignar" por cliente activo con Contable y cierre fijo que no lo tenga; muestra antes la lista y los clientes sin cierre fijo. No toca los existentes.
 - Nuevo: cambiar un cierre ya cargado pide motivo y queda en `clientes_cierre_cambios`. El balance cuya fecha no coincide con la fija se marca con "!" en la columna Cierre.
 
+### Contable: resp. 2 y balance nuevo — ítem 82 (23-oct, Matías)
+
+- "+ resp. 2" ahora muestra el segundo desplegable (antes guardaba "" y nunca aparecía); no guarda nada hasta elegir a alguien.
+- "Agregar balance" recarga la página al crear, así el balance aparece al toque (igual que "Generar balances").
+- El punto 2 del ítem (elegir responsable pasa de Sin asignar a Asignado) ya estaba resuelto por el ítem 34.
+
 ### Guardados que fallaban sin aviso — ítem 81 (23-oct, Matías)
 
 - `src/components/AvisoErrorGuardado.tsx`: `guardar(accion)` devuelve el error de una Server Action (o de conexión) y `useAvisoErrorGuardado()` muestra un aviso abajo a la derecha. Usarlo en cualquier pantalla nueva con cambios optimistas.

@@ -141,6 +141,10 @@ export function ContableClient({
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
   const [editandoClienteId, setEditandoClienteId] = useState<string | null>(null);
   const [noCorrespondeDe, setNoCorrespondeDe] = useState<Balance | null>(null);
+  // Ítem 82: filas donde se apretó "+ resp. 2" — muestra el segundo desplegable
+  // sin guardar nada hasta que se elija a alguien (antes guardaba "" y el
+  // desplegable nunca aparecía).
+  const [conResp2, setConResp2] = useState<Set<string>>(new Set());
 
   const [balancesMap, setBalancesMap] = useState<Map<string, Balance>>(() => {
     const m = new Map<string, Balance>();
@@ -645,7 +649,7 @@ export function ContableClient({
                           </select>
                           <ChevronDown size={10} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                         </div>
-                        {(b.responsable2_id || b.responsable2) && (
+                        {(b.responsable2_id || b.responsable2 || conResp2.has(b.id)) && (
                           <div className="relative">
                             <select
                               value={b.responsable2_id ?? ""}
@@ -661,9 +665,9 @@ export function ContableClient({
                             <ChevronDown size={10} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                           </div>
                         )}
-                        {!b.responsable2_id && !b.responsable2 && (
+                        {!b.responsable2_id && !b.responsable2 && !conResp2.has(b.id) && (
                           <button
-                            onClick={() => patch(b.id, { responsable2_id: "" })}
+                            onClick={() => setConResp2((prev) => new Set(prev).add(b.id))}
                             className="text-[11px] text-gray-300 hover:text-gray-500 text-left"
                           >
                             + resp. 2

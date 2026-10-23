@@ -73,7 +73,9 @@ export function NuevoBalanceModal({
         setError(result.error);
         return;
       }
-      onClose();
+      // Ítem 82: la tabla arma su estado una sola vez desde el servidor; sin
+      // recargar, el balance nuevo no aparecía hasta apretar F5.
+      window.location.reload();
     });
   }
 
