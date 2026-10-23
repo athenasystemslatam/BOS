@@ -14,7 +14,7 @@ Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.s
 
 ### Cruce del estatus del 23-oct (Matías)
 
-Figuran pendientes en el Sheet pero ya están hechos: 79 y 127 (`6c3c41b`), 91 (con el 107), 120 (`94bd7a3`), 121 y 123 (`d33861c`), 64 (`84b6665`/`afcaf55`), 76/77/78 (20-oct, ver arriba), 109 (este), 114 (fecha de recepción ya se guarda, `156f2d0`), 93 (F657 pasó a casilla, `720c151`). Bug confirmado y abierto: 122 (Dashboard Contable calcula el avance sin traer envio1/info_recibida/estado_eecc → todo cae en "Sin empezar").
+Figuran pendientes en el Sheet pero ya están hechos: 79 y 127 (`6c3c41b`), 91 (con el 107), 120 (`94bd7a3`), 121 y 123 (`d33861c`), 64 (`84b6665`/`afcaf55`), 76/77/78 (20-oct, ver arriba), 109 (este), 114 (fecha de recepción ya se guarda, `156f2d0`), 93 (F657 pasó a casilla, `720c151`). 122 (avance en 0 en el Dashboard: la consulta no traía envio1/info_recibida/estado_eecc) corregido el mismo día, junto con las columnas "Total {año}" del resumen por contador.
 
 ### Estado "No corresponde" en Contable (23-oct, Matías)
 

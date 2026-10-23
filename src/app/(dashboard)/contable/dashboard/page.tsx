@@ -35,7 +35,10 @@ export default async function ContableDashboardPage({
     admin
       .from("balances")
       .select(
+        // envio1/info_recibida/estado_eecc: los usa calcularAvance para separar
+        // "En proceso" de "Sin empezar" (sin ellos todo daba 0%, ítem 122).
         "id, cliente_id, anio_fiscal, fecha_cierre, estado, f855_estado, presentado_fecha, f855_fecha, " +
+        "envio1, info_recibida, estado_eecc, " +
         "clientes(nombre), " +
         "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
         "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
@@ -108,6 +111,7 @@ export default async function ContableDashboardPage({
     {
       nombre: string;
       total: number;
+      totalPorAnio: Record<number, number>;
       terminados: number;
       enProceso: number;
       sinEmpezar: number;
@@ -123,6 +127,7 @@ export default async function ContableDashboardPage({
         respMap.set(r.id, {
           nombre: r.nombre,
           total: 0,
+          totalPorAnio: {},
           terminados: 0,
           enProceso: 0,
           sinEmpezar: 0,
@@ -132,6 +137,7 @@ export default async function ContableDashboardPage({
       }
       const entry = respMap.get(r.id)!;
       entry.total++;
+      entry.totalPorAnio[b.anio_fiscal] = (entry.totalPorAnio[b.anio_fiscal] ?? 0) + 1;
       if (b.estado === "finalizado") entry.terminados++;
       else if (b.estado === "frenado") entry.frenados++;
       else if (calcularAvance(b) === 0) entry.sinEmpezar++;
@@ -264,9 +270,7 @@ export default async function ContableDashboardPage({
         <div className="md:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="text-[14px] font-semibold text-gray-900">Resumen por contador</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              {filtroAnio ? `Año fiscal ${filtroAnio}` : `Años fiscales ${anios[0]} y ${anios[1]}`}
-            </p>
+            {filtroAnio && <p className="text-[11px] text-gray-400 mt-0.5">Año fiscal {filtroAnio}</p>}
           </div>
           {porResponsable.length === 0 ? (
             <div className="py-14 text-center text-[13px] text-gray-400">Sin responsables asignados</div>
@@ -277,6 +281,10 @@ export default async function ContableDashboardPage({
                   <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
                     <th className="px-6 py-3 text-left">Contador</th>
                     <th className="px-3 py-3 text-center">Total</th>
+                    {!filtroAnio &&
+                      anios.map((a) => (
+                        <th key={a} className="px-3 py-3 text-center">Total {a}</th>
+                      ))}
                     <th className="px-3 py-3 text-center">Terminados</th>
                     <th className="px-3 py-3 text-center">En proceso</th>
                     <th className="px-3 py-3 text-center">Sin empezar</th>
@@ -296,6 +304,12 @@ export default async function ContableDashboardPage({
                         </div>
                       </td>
                       <td className="px-3 py-3.5 text-center text-[13px] text-gray-600">{r.total}</td>
+                      {!filtroAnio &&
+                        anios.map((a) => (
+                          <td key={a} className="px-3 py-3.5 text-center text-[13px] text-gray-400">
+                            {r.totalPorAnio[a] ?? 0}
+                          </td>
+                        ))}
                       <td className="px-3 py-3.5 text-center text-[13px] text-emerald-600 font-medium">{r.terminados}</td>
                       <td className="px-3 py-3.5 text-center text-[13px] text-amber-600 font-medium">{r.enProceso}</td>
                       <td className="px-3 py-3.5 text-center text-[13px] text-gray-500">{r.sinEmpezar}</td>
