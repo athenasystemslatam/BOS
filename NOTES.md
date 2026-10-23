@@ -6,6 +6,10 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 Ninguno (Libros: etapas 1 a 11 corridas al 20-oct).
 
+### `.claude/settings.local.json` fuera de Git (23-oct, Matías)
+
+- Son los permisos que cada persona le aprueba a Claude Code en su PC; estaba commiteado y se mezclaban entre cuentas. Se sacó del repo (`git rm --cached`) y quedó en `.gitignore`. **Ojo Giuliana:** al hacer `git pull` de este cambio, Git **borra tu copia** del archivo. Antes del pull, copialo afuera (`copy .claude\settings.local.json %TEMP%\`) y después volvelo a poner en `.claude\` — o no hagas nada y Claude Code te vuelve a pedir los permisos de a uno. No afecta a la app ni a producción.
+
 ### Velocidad de todo BOS (20-oct, `2e651a4` + `f6d6a3e`)
 
 - La sesión se consulta una vez por click (`getUsuario` con `cache()` en `lib/auth.ts`).
