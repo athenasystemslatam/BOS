@@ -9,6 +9,7 @@ import { NuevoBalanceModal } from "./NuevoBalanceModal";
 import { GenerarBalancesModal } from "./GenerarBalancesModal";
 import { MarcaVto } from "./MarcaVto";
 import { useBackdropClose } from "@/lib/useBackdropClose";
+import { guardar, useAvisoErrorGuardado } from "@/components/AvisoErrorGuardado";
 import type { Vto, VtosBalance } from "@/lib/vencimientosContables";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
@@ -132,6 +133,7 @@ export function ContableClient({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const { avisar, aviso } = useAvisoErrorGuardado();
   const [showModal, setShowModal] = useState(false);
   const [showGenerar, setShowGenerar] = useState(false);
   const [filterResp, setFilterResp] = useState("");
@@ -157,6 +159,19 @@ export function ContableClient({
     });
   }
 
+  // Ítem 81: guarda en el servidor y, si falla, vuelve el balance a como
+  // estaba antes del cambio y avisa (antes quedaba marcado solo en pantalla).
+  // `antes` se toma acá, antes de que React aplique el patch optimista.
+  function guardarBalance(id: string, accion: () => Promise<unknown>) {
+    const antes = balancesMap.get(id);
+    startTransition(async () => {
+      const error = await guardar(accion);
+      if (!error) return;
+      if (antes) setBalancesMap((prev) => new Map(prev).set(id, antes));
+      avisar(`No se guardó el cambio en ${antes?.clientes?.nombre ?? "el balance"}, se deshizo en pantalla. ${error}`);
+    });
+  }
+
   function update(id: string, updates: Partial<Balance>) {
     // El Estado es automático (ítem 34): si este cambio toca EECC o
     // responsable, se recalcula al toque en la UI para no esperar a que se
@@ -172,9 +187,7 @@ export function ContableClient({
       finalUpdates = { ...updates, estado: calcularEstado({ ...actual, ...updates }) };
     }
     patch(id, finalUpdates);
-    startTransition(async () => {
-      await updateBalance(id, updates as Record<string, unknown>);
-    });
+    guardarBalance(id, () => updateBalance(id, updates as Record<string, unknown>));
   }
 
   // Frenar/reanudar (ítem 34): única forma manual de tocar el Estado. Al
@@ -183,14 +196,10 @@ export function ContableClient({
   function toggleFrenado(b: Balance) {
     if (b.estado === "frenado") {
       patch(b.id, { estado: calcularEstado(b) });
-      startTransition(async () => {
-        await updateBalance(b.id, { estado: "auto" });
-      });
+      guardarBalance(b.id, () => updateBalance(b.id, { estado: "auto" }));
     } else {
       patch(b.id, { estado: "frenado" });
-      startTransition(async () => {
-        await updateBalance(b.id, { estado: "frenado" });
-      });
+      guardarBalance(b.id, () => updateBalance(b.id, { estado: "frenado" }));
     }
   }
 
@@ -198,16 +207,12 @@ export function ContableClient({
   // volver se recalcula desde EECC/responsable (centinela "auto").
   function marcarNoCorresponde(b: Balance, motivo: string) {
     patch(b.id, { estado: "no_corresponde", no_corresponde_motivo: motivo });
-    startTransition(async () => {
-      await updateBalance(b.id, { estado: "no_corresponde", no_corresponde_motivo: motivo });
-    });
+    guardarBalance(b.id, () => updateBalance(b.id, { estado: "no_corresponde", no_corresponde_motivo: motivo }));
   }
 
   function volverACorresponder(b: Balance) {
     patch(b.id, { estado: calcularEstado(b), no_corresponde_motivo: null });
-    startTransition(async () => {
-      await updateBalance(b.id, { estado: "auto" });
-    });
+    guardarBalance(b.id, () => updateBalance(b.id, { estado: "auto" }));
   }
 
   // Pedido/Recepción de información: fecha y hora igual que F.931/recibos
@@ -217,9 +222,7 @@ export function ContableClient({
   function toggleFecha(id: string, campo: "envio1" | "info_recibida", marcado: boolean) {
     const fechaCampo = campo === "envio1" ? "envio1_fecha" : "info_recibida_fecha";
     patch(id, { [campo]: marcado, [fechaCampo]: marcado ? new Date().toISOString() : null } as Partial<Balance>);
-    startTransition(async () => {
-      await updateBalance(id, { [campo]: marcado });
-    });
+    guardarBalance(id, () => updateBalance(id, { [campo]: marcado }));
   }
 
   // IDs already in this year
@@ -334,6 +337,7 @@ export function ContableClient({
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
+      {aviso}
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 shrink-0">
         <div className="flex items-center justify-between gap-4 flex-wrap">

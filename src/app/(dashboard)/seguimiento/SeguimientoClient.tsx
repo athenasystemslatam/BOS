@@ -30,6 +30,7 @@ import { Cliente, ClaveAcceso, EmailContacto, Liquidadora, Periodo, Tarea } from
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { useBackdropClose } from "@/lib/useBackdropClose";
+import { guardar, useAvisoErrorGuardado } from "@/components/AvisoErrorGuardado";
 import {
   editarDatosCliente,
   toggleManual,
@@ -589,6 +590,7 @@ export function SeguimientoClient({
   const [currentPeriodo, setCurrentPeriodo] = useState<Periodo | null>(initialPeriodo);
   const [currentTareas, setCurrentTareas] = useState<Tarea[]>(initialTareas);
   const [isPending, startTransition] = useTransition();
+  const { avisar, aviso } = useAvisoErrorGuardado();
 
   // Optimistic overrides for instant checkbox feedback
   const [overrides, setOverrides] = useState<Map<string, Partial<TareaState>>>(new Map());
@@ -837,6 +839,14 @@ export function SeguimientoClient({
     jumpPeriodo(newAnio, newMes);
   }
 
+  // Campos de texto/número: si el guardado falla no se borra lo escrito
+  // (para poder reintentar), solo se avisa.
+  function guardarTexto(accion: () => Promise<unknown>, que: string) {
+    guardar(accion).then((error) => {
+      if (error) avisar(`No se guardó ${que}: volvé a escribirlo o recargá la página. ${error}`);
+    });
+  }
+
   // ── Checkbox toggle (optimistic) ──────────────────────────────────────────
 
   function handleToggle(clienteId: string, campo: CampoManual) {
@@ -844,14 +854,21 @@ export function SeguimientoClient({
     const current = getEffective(clienteId);
     const newValue = !current[`${campo}_manual`];
 
-    setOverrides((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(clienteId) ?? {};
-      next.set(clienteId, { ...existing, [`${campo}_manual`]: newValue });
-      return next;
-    });
+    const aplicar = (valor: boolean) =>
+      setOverrides((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(clienteId) ?? {};
+        next.set(clienteId, { ...existing, [`${campo}_manual`]: valor });
+        return next;
+      });
+    aplicar(newValue);
 
-    toggleManual(clienteId, currentPeriodo.id, campo, newValue);
+    const periodoId = currentPeriodo.id;
+    guardar(() => toggleManual(clienteId, periodoId, campo, newValue)).then((error) => {
+      if (!error) return;
+      aplicar(!newValue);
+      avisar(`No se guardó el cambio, se deshizo en pantalla. ${error}`);
+    });
   }
 
   // Ítem 97: a diferencia de handleToggle, acá SÍ hay una fecha propia que
@@ -863,18 +880,22 @@ export function SeguimientoClient({
     const newValue = !current[campo];
     const fechaCampo = campo === "preliquidado" ? "preliquidado_fecha" : "novedades_recibidas_fecha";
 
-    setOverrides((prev) => {
-      const next = new Map(prev);
-      const existing = next.get(clienteId) ?? {};
-      next.set(clienteId, {
-        ...existing,
-        [campo]: newValue,
-        [fechaCampo]: newValue ? new Date().toISOString() : null,
+    const fechaAnterior = current[fechaCampo] ?? null;
+    const aplicar = (valor: boolean, fecha: string | null) =>
+      setOverrides((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(clienteId) ?? {};
+        next.set(clienteId, { ...existing, [campo]: valor, [fechaCampo]: fecha });
+        return next;
       });
-      return next;
-    });
+    aplicar(newValue, newValue ? new Date().toISOString() : null);
 
-    toggleSeguimientoExtra(clienteId, currentPeriodo.id, campo, newValue);
+    const periodoId = currentPeriodo.id;
+    guardar(() => toggleSeguimientoExtra(clienteId, periodoId, campo, newValue)).then((error) => {
+      if (!error) return;
+      aplicar(!newValue, fechaAnterior);
+      avisar(`No se guardó el cambio, se deshizo en pantalla. ${error}`);
+    });
   }
 
   // ── Legajos (debounced) ───────────────────────────────────────────────────
@@ -892,7 +913,7 @@ export function SeguimientoClient({
     clearTimeout(debounceTimers.current.get(key));
     debounceTimers.current.set(
       key,
-      setTimeout(() => updateLegajos(clienteId, currentPeriodo.id, num), 700)
+      setTimeout(() => guardarTexto(() => updateLegajos(clienteId, currentPeriodo.id, num), "la cantidad de legajos"), 700)
     );
   }
 
@@ -911,7 +932,7 @@ export function SeguimientoClient({
     debounceTimers.current.set(
       key,
       setTimeout(
-        () => updateObservaciones(clienteId, currentPeriodo.id, valor),
+        () => guardarTexto(() => updateObservaciones(clienteId, currentPeriodo.id, valor), "la observación"),
         700
       )
     );
@@ -928,7 +949,7 @@ export function SeguimientoClient({
     clearTimeout(debounceTimers.current.get(key));
     debounceTimers.current.set(
       key,
-      setTimeout(() => updateAlicuotaArt(clienteId, valor), 700)
+      setTimeout(() => guardarTexto(() => updateAlicuotaArt(clienteId, valor), "la alícuota ART"), 700)
     );
   }
 
@@ -947,7 +968,7 @@ export function SeguimientoClient({
     debounceTimers.current.set(
       key,
       setTimeout(
-        () => updateRecordatorio(clienteId, currentPeriodo.id, valor),
+        () => guardarTexto(() => updateRecordatorio(clienteId, currentPeriodo.id, valor), "la nota para el mes siguiente"),
         700
       )
     );
@@ -978,6 +999,7 @@ export function SeguimientoClient({
 
   return (
     <div className="flex flex-col h-full p-4 md:p-8">
+      {aviso}
       {clienteClaves && (
         <ClavesModal
           cliente={clienteClaves}

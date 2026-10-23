@@ -12,6 +12,12 @@ Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.s
 - Nuevo: botón "Generar balances {año}" en Seguimiento Contable (`generarBalancesDelAnio`): un balance "Sin asignar" por cliente activo con Contable y cierre fijo que no lo tenga; muestra antes la lista y los clientes sin cierre fijo. No toca los existentes.
 - Nuevo: cambiar un cierre ya cargado pide motivo y queda en `clientes_cierre_cambios`. El balance cuya fecha no coincide con la fija se marca con "!" en la columna Cierre.
 
+### Guardados que fallaban sin aviso — ítem 81 (23-oct, Matías)
+
+- `src/components/AvisoErrorGuardado.tsx`: `guardar(accion)` devuelve el error de una Server Action (o de conexión) y `useAvisoErrorGuardado()` muestra un aviso abajo a la derecha. Usarlo en cualquier pantalla nueva con cambios optimistas.
+- Seguimiento Sueldos: casillas (recibos, F.931, etc., Preliquidado/Novedades) vuelven atrás si el guardado falla. Legajos, observaciones, nota sig. mes y alícuota ART no borran lo escrito, solo avisan.
+- Contable: cualquier cambio de la fila (casillas, EECC, responsable, frenar, no corresponde, observaciones) vuelve el balance a como estaba y avisa.
+
 ### Años fijos y 2027 — ítem 85 (23-oct, Matías)
 
 - Contable: el selector de años sale de `getAniosContables()` (`src/lib/aniosContables.ts`): años con balances desde 2025 + el año en curso. 2027 aparece solo en enero.
