@@ -336,6 +336,13 @@ export function ContableClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [porResp, filtroRapido, miId]);
 
+  // Ítem 93: a diferencia de 855/899/F713, F657 necesita un tercer estado
+  // (N/A) — ver FormVtoSelectCell.
+  const FORM_OPTIONS_657 = [
+    { value: "pendiente", label: "Pendiente" },
+    { value: "presentado", label: "Presentado" },
+    { value: "no_corresponde", label: "N/A" },
+  ];
   const FORM_OPTIONS_IGJ = [
     { value: "pendiente", label: "Pendiente" },
     { value: "presentado", label: "Presentado" },
@@ -751,17 +758,19 @@ export function ContableClient({
                     )}
                   </td>
 
-                  {/* 855 · F899 · F657 — casilla + fecha de vencimiento al
-                      lado, con semáforo. Tachado gris si ya está presentado.
-                      El 713 no tiene vencimiento propio, va solo con casilla. */}
+                  {/* 855 · F899 — casilla + fecha de vencimiento al lado, con
+                      semáforo. Tachado gris si ya está presentado. El 713 no
+                      tiene vencimiento propio, va solo con casilla. F657 va
+                      aparte, más abajo (acepta N/A, ítem 93). */}
                   <FormVtoCheckCell estado={b.f855_estado} field="f855_estado" balanceId={b.id}
                     vto={b.vtos.f855} puedeEditar={puedeEditar} onUpdate={update} />
                   <FormVtoCheckCell estado={b.f899_estado} field="f899_estado" balanceId={b.id}
                     vto={b.vtos.f899} puedeEditar={puedeEditar} onUpdate={update} />
                   <FormCheckCell estado={b.f713_estado} field="f713_estado" balanceId={b.id}
                     puedeEditar={puedeEditar} onUpdate={update} />
-                  <FormVtoCheckCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
-                    vto={b.vtos.f657} puedeEditar={puedeEditar} onUpdate={update} />
+                  {/* F657: a diferencia de 899/855, acepta N/A (ítem 93) */}
+                  <FormVtoSelectCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
+                    vto={b.vtos.f657} options={FORM_OPTIONS_657} puedeEditar={puedeEditar} onUpdate={update} />
 
                   {/* IGJ Presentación */}
                   <FormCell estado={b.igj_presentacion} field="igj_presentacion" balanceId={b.id}
@@ -996,6 +1005,61 @@ function FormVtoCheckCell({
         <span
           className={clsx(
             "text-[11px] rounded px-1.5 py-0.5 tabular-nums",
+            presentado ? "text-gray-400 line-through bg-transparent" : vtoSemaforoCls(diasRestantes(vto.fecha))
+          )}
+        >
+          {fmt(vto.fecha)}
+        </span>
+        <MarcaVto vto={vto} />
+      </div>
+    </td>
+  );
+}
+
+// Ítem 93: versión de FormVtoCheckCell con un tercer estado (N/A) — una
+// casilla binaria no puede representarlo sin perderlo apenas se la toca.
+// Mismo selector invisible que FormCell, con la fecha y el semáforo de
+// FormVtoCheckCell al lado.
+function FormVtoSelectCell({
+  estado,
+  field,
+  balanceId,
+  vto,
+  options,
+  puedeEditar,
+  onUpdate,
+}: {
+  estado: string;
+  field: string;
+  balanceId: string;
+  vto: Vto;
+  options: { value: string; label: string }[];
+  puedeEditar: boolean;
+  onUpdate: (id: string, updates: Partial<Balance>) => void;
+}) {
+  const presentado = estado === "presentado";
+  const noCorresponde = estado === "no_corresponde";
+  return (
+    <td className="px-3 py-2.5">
+      <div className="inline-flex items-center gap-1.5">
+        <div className="relative inline-flex items-center justify-center shrink-0">
+          {puedeEditar && (
+            <select
+              value={estado}
+              onChange={(e) => onUpdate(balanceId, { [field]: e.target.value } as Partial<Balance>)}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full min-w-[16px] min-h-[16px]"
+            >
+              {options.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          )}
+          <FormBadge estado={estado} options={options} />
+        </div>
+        <span
+          className={clsx(
+            "text-[11px] rounded px-1.5 py-0.5 tabular-nums",
+            noCorresponde ? "text-gray-300" :
             presentado ? "text-gray-400 line-through bg-transparent" : vtoSemaforoCls(diasRestantes(vto.fecha))
           )}
         >
