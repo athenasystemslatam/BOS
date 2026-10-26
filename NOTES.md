@@ -8,6 +8,9 @@ Hecho ese día:
 - Ítem 119 — rol "administrativo" (consulta solo lectura en Contable, acceso completo a Libros, edita Panel General como un admin; no el resto de acciones exclusivas de admin). `supabase/add_rol_administrativo.sql` **corrida** por Matías el 26-oct.
 - Ítem 80 — Seguimiento ya no muestra a la persona de una asignación vieja tapando una edición directa del responsable más reciente (gana quien se tocó último, comparando `asignaciones.creado_en` contra `clientes.fecha_modificacion`). No toca Productividad (resuelve períodos históricos, ahí sigue ganando la asignación histórica).
 - Ítem 147 — Sueldos: botón "Descargar Excel" en Dashboard y en Seguimiento (checklist del período), mismo patrón que Libros (`obtenerDatosDashboardSueldos`/`obtenerSeguimientoSueldos` en sendos `datos.ts`). El backup de Sueldos ya existía solo en el Dashboard; no se duplicó en Seguimiento.
+- Contable: tooltip (`title`) con el texto completo al pasar el mouse por nombre de cliente y observaciones cortados.
+- Decidido: IGJ y Tasa quedan como desplegable (no se pasan a casilla).
+- Repaso general de este archivo: varias notas de sesiones previas (F657, IGJ/Tasa, "Legalizado→Finalizado", filtro por defecto de Panel General/Empresas, ítem 119 en la sección del 118) estaban desactualizadas — ya se habían resuelto en código pero seguían anotadas como pendientes. Corregidas/tachadas donde correspondía, incluyendo el intento (sin resultado, ARCA no publicó aún) de confirmar la fecha de F.931 de enero 2027.
 
 Queda pendiente, fuera de código:
 - **Janina:** sigue sin destildarle el área Contable en `/equipo` (viene del 23-oct, ver abajo).
@@ -58,13 +61,13 @@ Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.s
 - F.931: `FECHAS_OFICIALES` en `src/lib/vencimientos.ts`, por año. **Pendiente: cargar 2027 cuando ARCA publique el calendario** (suele ser en diciembre), mismo formato que 2026. Hasta entonces 2027 usa estimado (9/10/11 del mes siguiente corrido a día hábil, sin feriados) y `/vencimientos` lo avisa en naranja.
 - `/vencimientos` ya no dice 2026 fijo: año del mes de trabajo, con flechas para cambiar; el link del Dashboard de Sueldos lleva al año del período.
 - Aviso de vencimientos del período diciembre (SeguimientoClient) se calculaba con el año siguiente → corregido.
-- **A verificar:** el dato oficial cargado para F.931 de diciembre 2026, CUITs 0-3, es 09/01/2027, que cae sábado. Confirmar contra la resolución de ARCA (probablemente sea lunes 11/01).
+- **A verificar:** el dato oficial cargado para F.931 de diciembre 2026, CUITs 0-3, es 09/01/2027, que cae sábado. Confirmar contra la resolución de ARCA (probablemente sea lunes 11/01). **Intentado el 26-oct:** ARCA todavía no publicó el calendario 2027 (suele salir en diciembre) — no hay nada para cargar/confirmar todavía, no repetir la búsqueda antes de diciembre.
 
 ### Responsables inactivos en Contable — ítem 118 (23-oct, Matías)
 
 - "Inactivo" para Contable = `activa: false` o sin el área `contable` en `equipo_modulos`. Sigue visible con su nombre + "(inactivo)" en los balances donde ya está (Seguimiento: opción deshabilitada en el desplegable, no se puede asignar a otro), en el resumen por contador del Dashboard y en Productividad Contable (ahora trae también a los dados de baja).
 - **Janina** no se saca por código: tiene marcada el área Contable en `/equipo`. Hay que destildársela ahí (lo hace un admin).
-- Ojo ítem 119 del estatus: figura "Hecho" pero no existe ningún rol "administrativo" en el código.
+- ~~Ojo ítem 119 del estatus: figura "Hecho" pero no existe ningún rol "administrativo" en el código~~: resuelto el 26-oct, ver arriba.
 
 ### Cruce del estatus del 23-oct (Matías)
 
@@ -266,15 +269,18 @@ Decisiones:
   `balances.estado = 'legalizado'`; badge "Finalizado" (gris) si `'finalizado'`. Solo lectura de
   la tabla balances, sin tocar el módulo Contable.
 
-## Pendientes / decisiones abiertas (21-sep-2026)
+## Pendientes / decisiones abiertas
 
-- **F657 como casilla**: hecho localmente en `ContableClient.tsx` pero **sin pushear** (esperando OK de Matías). No había ningún balance con F657 en N/A, así que no se pierde nada.
-- **IGJ y Tasa**: siguen como desplegable porque tienen N/A (3 balances en IGJ, 4 en Tasa). **Decidido (26-oct, Matías): quedan como desplegable** — no pasarlos a casilla para no perder la diferencia "pendiente" vs "no corresponde".
-- **Contable — "Legalizado" pasa solo a "Finalizado (en ARCA)"**: pedido sin implementar; falta definir si aplica a la columna Estado o a EECC y si "Legalizado" debe verse antes de pasar.
-- **Contable — fórmula de vencimientos** (VTO Balance = cierre + 135 días, VTO 855 = cierre + 160 días): Matías la está consultando aparte, puede cambiar.
-- **Texto cortado sin globito**: nombre de cliente y observaciones en la tabla de Contable se cortan con "…" sin mostrar el completo. Ofrecido, no pedido todavía.
-- **Reparto de Cartera** (artifact aparte, no está en el repo): faltan cargar 10 clientes de Monotributo sin responsable.
-- **Panel General**: filtro por defecto al usuario logueado (Responsable/Liquidadora) — ver memoria del proyecto.
+- **Contable — fórmula de vencimientos** (VTO Balance = cierre + 135 días, VTO 855 = cierre + 160 días): Matías la está consultando aparte, puede cambiar. (21-sep-2026)
+- **Reparto de Cartera** (artifact aparte, no está en el repo): faltan cargar 10 clientes de Monotributo sin responsable. (21-sep-2026)
+
+### Resueltas (ya no son pendientes — quedaban anotadas acá desactualizadas)
+
+- ~~F657 como casilla~~: pusheado el 23-oct (`720c151`, ítem 93 — ver "Cruce del estatus" arriba).
+- ~~IGJ y Tasa como casilla~~: **decidido 26-oct (Matías): quedan como desplegable**, no se pasan a casilla para no perder la diferencia "pendiente" vs "no corresponde".
+- ~~Contable — "Legalizado" pasa solo a "Finalizado (en ARCA)"~~: ya resuelto por el ítem 34 (verificado en código 26-oct) — `calcularEstado()` en `semaforo.ts` deriva Estado desde EECC automáticamente (EECC Legalizado → Estado Legalizado; EECC En ARCA → Estado Finalizado), se recalcula solo en cada guardado (`actions.ts`).
+- ~~Texto cortado sin globito~~: tooltip (`title`) agregado el 26-oct (`c7cc828`) al nombre de cliente y observaciones en la tabla de Contable.
+- ~~Panel General / Clientes de Sueldos: filtro por defecto al usuario logueado~~: ya implementado (verificado en código 26-oct) — `filtroResponsable`/`miNombre` en `PanelGeneralClient.tsx` y `filtroLiq`/`creadoPor` en `EmpresasClient.tsx`.
 
 ## Hecho recientemente (sep-2026)
 
