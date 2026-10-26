@@ -86,7 +86,14 @@ export default async function SeguimientoPage() {
       }
       for (const c of clientes) {
         const asig = porCliente.get(c.id);
-        if (asig) {
+        // Ítem 80: Panel General (y la edición directa de /empresas) cambian
+        // clientes.liquidador_id sin pasar por acá — si para ese cliente ya
+        // había una asignación vigente, esa edición directa quedaba
+        // invisible para siempre (acá se seguía mostrando a la persona de la
+        // última asignación, aunque fuera más vieja). Gana quien se haya
+        // tocado más reciente: la asignación solo pisa si es más nueva que
+        // la última edición directa del cliente.
+        if (asig && asig.creado_en > c.fecha_modificacion) {
           c.liquidador_id = asig.liquidador_id;
           (c as unknown as Record<string, unknown>).liquidadora = asig.liquidadora;
         }
