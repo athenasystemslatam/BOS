@@ -539,6 +539,7 @@ export async function editarClienteConServicios(formData: FormData) {
     const diaRaw = (formData.get("contable_cierre_ejercicio_dia") as string)?.trim();
     const cierre_ejercicio_mes = mesRaw ? parseInt(mesRaw) : null;
     const cierre_ejercicio_dia = diaRaw ? parseInt(diaRaw) : null;
+    const fecha_alta_estudio = (formData.get("contable_fecha_alta_estudio") as string)?.trim() || null;
 
     if (cambioCierre) {
       const { error: logError } = await supabase.from("clientes_cierre_cambios").insert(cambioCierre);
@@ -547,7 +548,7 @@ export async function editarClienteConServicios(formData: FormData) {
 
     await supabase
       .from("clientes")
-      .update({ cierre_ejercicio_mes, cierre_ejercicio_dia })
+      .update({ cierre_ejercicio_mes, cierre_ejercicio_dia, fecha_alta_estudio })
       .eq("id", id);
   }
 

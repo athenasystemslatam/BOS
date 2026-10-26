@@ -60,6 +60,7 @@ export function EditarClienteModal({
   // Ítem 109: cambiar una fecha de cierre ya cargada es una excepción y pide motivo.
   const [cierreOriginal, setCierreOriginal] = useState({ mes: "", dia: "" });
   const [cierreMotivo, setCierreMotivo] = useState("");
+  const [fechaAltaEstudio, setFechaAltaEstudio] = useState("");
 
   const [cuilArca, setCuilArca] = useState("");
   const [art, setArt] = useState("");
@@ -124,6 +125,7 @@ export function EditarClienteModal({
         mes: cliente.cierre_ejercicio_mes ? String(cliente.cierre_ejercicio_mes) : "",
         dia: cliente.cierre_ejercicio_dia ? String(cliente.cierre_ejercicio_dia) : "",
       });
+      setFechaAltaEstudio(cliente.fecha_alta_estudio ?? "");
 
       setCuilArca(cliente.cuil_arca ?? "");
       setArt(cliente.art ?? "");
@@ -211,6 +213,7 @@ export function EditarClienteModal({
       formData.set("contable_cierre_ejercicio_mes", cierreEjercicioMes);
       formData.set("contable_cierre_ejercicio_dia", cierreEjercicioDia);
       formData.set("contable_cierre_motivo", cierreMotivo);
+      formData.set("contable_fecha_alta_estudio", fechaAltaEstudio);
     }
 
     startTransition(async () => {
@@ -614,6 +617,23 @@ export function EditarClienteModal({
                                   />
                                 </div>
                               )}
+
+                              {/* Ítem 110: para avisar cuando el primer ejercicio quizás no
+                                  corresponde (el cliente entró con el ejercicio ya iniciado). */}
+                              <div className="mt-3 pt-3 border-t border-line-soft">
+                                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                                  Fecha de alta en el estudio
+                                </label>
+                                <input
+                                  type="date"
+                                  value={fechaAltaEstudio}
+                                  onChange={(e) => setFechaAltaEstudio(e.target.value)}
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
+                                />
+                                <p className="text-[11px] text-ink-faint mt-1.5">
+                                  Cuándo empezó a ser cliente del estudio (no cuándo se cargó en BOS) — ayuda a saber si el primer balance no corresponde.
+                                </p>
+                              </div>
                             </div>
                           )}
                         </div>

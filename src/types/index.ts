@@ -105,6 +105,10 @@ export interface Cliente {
   // balance del año siguiente (ver NuevoBalanceModal.tsx).
   cierre_ejercicio_mes?: number | null;
   cierre_ejercicio_dia?: number | null;
+  // Ítem 110: cuándo el cliente entró al estudio (distinto de fecha_alta,
+  // que es cuándo se cargó en BOS) — para avisar si el primer ejercicio
+  // contable quizás no corresponde.
+  fecha_alta_estudio?: string | null;
   fecha_alta: string;
   fecha_alta_empleador?: string;
   fecha_inicio_liquidacion?: string;

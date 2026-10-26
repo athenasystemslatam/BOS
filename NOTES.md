@@ -16,6 +16,7 @@ Hecho ese día:
 - Ítem 112 — Ficha de cliente abierta desde Contable: el link "Carpeta de Drive" apuntaba siempre a la carpeta de Sueldos (`clientes.drive_folder_id`, un solo campo para todo el sistema). Se ocultó ese link específicamente en la ficha de Contable (`ocultarDrive` en `FichaClienteBoton`) para no mostrar una carpeta equivocada — es la opción que el propio ítem dejaba como salida si no valía la pena crear un campo de Drive propio para Contable.
 - Ítem 125 — Mapa de carga (Dashboard Contable): default pasó de "por fecha de cierre" a "por fecha de vencimiento"; ahora solo cuenta balances no finalizados; se agregó la leyenda de lectura al pie.
 - Ítem 126 — "Próximos vencimientos" (Dashboard Contable) se separó en dos tablas: "Vencidos" (sin techo) y "Próximos 30 días" (hasta 15), en vez de una sola mezclada con tope de 10.
+- Ítem 110 — Nuevo campo `clientes.fecha_alta_estudio` (cuándo el cliente entró al estudio, distinto de `fecha_alta` que es cuándo se cargó en BOS), editable en Panel General → Editar → bloque Contable, debajo de la fecha de cierre. Solo guarda el dato — la decisión de si el primer balance "no corresponde" la sigue tomando el contador a mano (ítem 108). `supabase/add_clientes_fecha_alta_estudio.sql` **corrida** por Matías el 26-oct.
 
 Queda pendiente, fuera de código:
 - **Janina:** sigue sin destildarle el área Contable en `/equipo` (viene del 23-oct, ver abajo).
@@ -33,7 +34,7 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql` corrida por Matías el 26-oct; `add_balances_igj_numero.sql` corrida por Matías el 26-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct).
 
 ### Objetivo "0 en término" — ítem 124 (23-oct, Matías)
 
