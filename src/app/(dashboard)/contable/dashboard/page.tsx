@@ -111,8 +111,10 @@ export default async function ContableDashboardPage({
   ).length;
 
   // Resumen por contador: "sin empezar" = asignado pero todavía en 0% de
-  // avance (ni siquiera se pidió información); "en proceso" = cualquier
-  // avance > 0% que no sea ni terminado ni frenado.
+  // avance (ni siquiera se pidió información); "con avance" = cualquier
+  // avance > 0% que no sea ni terminado ni frenado. Ítem 117: se llama "con
+  // avance" (no "en proceso") para no confundirse con la tarjeta de arriba,
+  // que cuenta distinto (todo lo Asignado/Legalizado, haya avance o no).
   const respMap = new Map<
     string,
     {
@@ -294,7 +296,7 @@ export default async function ContableDashboardPage({
                         <th key={a} className="px-3 py-3 text-center">Total {a}</th>
                       ))}
                     <th className="px-3 py-3 text-center">Terminados</th>
-                    <th className="px-3 py-3 text-center">En proceso</th>
+                    <th className="px-3 py-3 text-center">Con avance</th>
                     <th className="px-3 py-3 text-center">Sin empezar</th>
                     <th className="px-3 py-3 text-center">Frenados</th>
                     <th className="px-3 py-3 text-center">Próx. vtos.</th>
