@@ -1,14 +1,11 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-import { Cliente, Liquidadora, Tarea } from "@/types";
-import { getVencimientosGrupos, getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
-import { getObjetivoSueldos } from "@/lib/objetivos";
-import { objetivoLimiteF931, objetivoRecibos, limiteRecibos, clasificarEstado, type Color } from "@/lib/objetivoSueldos";
+import { MESES_NOMBRES } from "@/lib/vencimientos";
+import { type Color } from "@/lib/objetivoSueldos";
 import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle, Target } from "lucide-react";
 import clsx from "clsx";
 import { MonthSelector } from "./MonthSelector";
-import { fetchPeriodo } from "../seguimiento/actions";
-import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
+import { DescargarExcelButton } from "@/components/DescargarExcelButton";
+import { obtenerDatosDashboardSueldos } from "./datos";
 
 const CAMPO_LABELS: Record<string, string> = {
   f931: "F.931", recibos: "Recibos", rec_q1: "Recibos Q1",
@@ -19,155 +16,18 @@ function fmtCorta(d: Date): string {
   return d.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
 }
 
-function generateMonthOptions(mesTrabajo: number, anioTrabajo: number) {
-  let mes = mesTrabajo;
-  let anio = anioTrabajo;
-  for (let i = 0; i < 12; i++) {
-    if (mes === 1) { mes = 12; anio--; } else mes--;
-  }
-  const options = [];
-  for (let i = 0; i < 15; i++) {
-    options.push({ label: `${MESES_NOMBRES[mes]} ${anio}`, mes, anio });
-    if (mes === 12) { mes = 1; anio++; } else mes++;
-  }
-  return options;
-}
-
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: { mes?: string; anio?: string };
 }) {
-  const supabase = createAdminClient();
-  const hoy = new Date();
-
-  const { mes: mesTrabajo, anio: anioTrabajo } = getMesTrabajoActual();
-  const mesActual = parseInt(searchParams.mes ?? "") || mesTrabajo;
-  const anioActual = parseInt(searchParams.anio ?? "") || anioTrabajo;
-
-  const esMesSAC = mesActual === 6 || mesActual === 12;
-
-  const esMesActual = mesActual === mesTrabajo && anioActual === anioTrabajo;
-  const monthOptions = generateMonthOptions(mesTrabajo, anioTrabajo);
-
-  // Misma función que usa Seguimiento para crear/pedir el período — antes
-  // este dashboard lo creaba por su cuenta con un simple upsert, sin repetir
-  // los legajos del mes anterior; si alguien entraba acá primero en un mes
-  // nuevo, esa copia no pasaba y quedaba en 0 hasta que alguien lo cargara
-  // a mano en Seguimiento. Todo lo que no depende del período va en paralelo.
-  const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }, periodoActual, { data: alertasPostcierre }, objetivoGeneral, yo] = await Promise.all([
-    supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
-    supabase.from("clientes").select("*, liquidadora:liquidadoras!liquidador_id(*)").eq("estado", "activo"),
-    supabase
-      .from("servicios_cliente")
-      .select("cliente_id")
-      .eq("servicio", "sueldos")
-      .eq("subtipo", "general")
-      .eq("estado", true),
-    fetchPeriodo(anioActual, mesActual),
-    supabase
-      .from("alertas_postcierre")
-      .select("*, cliente:clientes(nombre), periodo:periodos(nombre_mes)")
-      .gte("modificado_at", new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString())
-      .order("modificado_at", { ascending: false })
-      .limit(50),
-    getObjetivoSueldos(),
-    getCurrentLiquidadora(),
-  ]);
-
-  // "clientes" trae toda empresa activa, tenga o no Sueldos contratado (ej:
-  // una que solo hace Monotributo) — este dashboard es de Seguimiento de
-  // Sueldos, así que el total (y todo lo que sale de él) tiene que salir
-  // solo de las que sí tienen el servicio activo, no de todas las activas.
-  const idsConSueldos = new Set((serviciosSueldos ?? []).map((s) => s.cliente_id));
-
-  const { data: tareas } = periodoActual
-    ? await supabase.from("tareas").select("*").eq("periodo_id", periodoActual.id)
-    : { data: [] };
-
-  const clientesList = ((clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? []).filter((c) =>
-    idsConSueldos.has(c.id)
-  );
-  const clienteLiqIds = new Set(clientesList.map((c) => c.liquidador_id).filter(Boolean));
-  const liquidadorasList = ((liquidadoras as Liquidadora[]) ?? []).filter((l) => clienteLiqIds.has(l.id));
-  const tareasList = (tareas as Tarea[]) ?? [];
-  const tareasMap = new Map(tareasList.map((t) => [t.cliente_id, t]));
-
-  let recibosOk = 0;
-  let cargasOk = 0;
-  for (const c of clientesList) {
-    const t = tareasMap.get(c.id);
-    if (!t) continue;
-    if (t.recibos_manual || t.recibos_drive) recibosOk++;
-    if (t.f931_manual || t.f931_drive) cargasOk++;
-  }
-
-  const total = clientesList.length;
-  const pctAvance = total > 0 ? Math.round(((recibosOk + cargasOk) / (total * 2)) * 100) : 0;
-
-  // Ítem 69: objetivo/límite de Recibos del mes — el límite no depende del
-  // cliente, el objetivo sí (por la excepción de Preliquidado, ítem 97).
-  const limiteRecibosGeneral = limiteRecibos(anioActual, mesActual, objetivoGeneral);
-  const objetivoRecibosGeneral = objetivoRecibos(anioActual, mesActual, objetivoGeneral, {
-    preliquidado: false, preliquidado_fecha: null, novedades_recibidas_fecha: null,
-  });
-
-  const resumen = liquidadorasList.map((liq) => {
-    const mis = clientesList.filter((c) => c.liquidador_id === liq.id);
-    let recibosOk = 0, f931Ok = 0, sacOk = 0, pendientes = 0, legajos = 0;
-    let f931Verde = 0, f931Amarillo = 0, f931Rojo = 0;
-    let recibosVerde = 0, recibosAmarillo = 0, recibosRojo = 0;
-    for (const c of mis) {
-      const t = tareasMap.get(c.id);
-      const tieneRecibos = !!t && (t.recibos_manual || t.recibos_drive);
-      const tieneF931 = !!t && (t.f931_manual || t.f931_drive);
-      if (!t) {
-        pendientes++;
-      } else {
-        if (tieneRecibos) recibosOk++;
-        if (tieneF931) f931Ok++;
-        if (esMesSAC && (t.sac_manual || t.sac_drive)) sacOk++;
-        legajos += t.legajos_cantidad ?? 0;
-        if (!tieneRecibos || !tieneF931) pendientes++;
-      }
-
-      // Ítem 69: estado en vivo contra el objetivo del área — a diferencia
-      // de Productividad (histórico, solo tareas ya marcadas), acá una
-      // tarea pendiente también se clasifica, comparando "hoy" contra el
-      // objetivo/límite (¿vamos a tiempo o ya estamos tarde?).
-      const { objetivo: objF931, limite: limF931 } = objetivoLimiteF931(c.terminacion_cuit, anioActual, mesActual, objetivoGeneral);
-      const colorF931 = clasificarEstado(tieneF931, t?.f931_manual_en ?? null, objF931, limF931, hoy);
-      if (colorF931 === "verde") f931Verde++; else if (colorF931 === "amarillo") f931Amarillo++; else f931Rojo++;
-
-      const objRecibos = objetivoRecibos(anioActual, mesActual, objetivoGeneral, {
-        preliquidado: t?.preliquidado ?? false,
-        preliquidado_fecha: t?.preliquidado_fecha ?? null,
-        novedades_recibidas_fecha: t?.novedades_recibidas_fecha ?? null,
-      });
-      const colorRecibos = clasificarEstado(tieneRecibos, t?.recibos_manual_en ?? null, objRecibos, limiteRecibosGeneral, hoy);
-      if (colorRecibos === "verde") recibosVerde++; else if (colorRecibos === "amarillo") recibosAmarillo++; else recibosRojo++;
-    }
-    return {
-      liq, total: mis.length, recibosOk, f931Ok, sacOk, pendientes, legajos,
-      f931Verde, f931Amarillo, f931Rojo, recibosVerde, recibosAmarillo, recibosRojo,
-    };
-  });
-  const totalLegajos = resumen.reduce((sum, r) => sum + r.legajos, 0);
-
-  // F.931 por grupo de CUIT — vencimientos del mes de trabajo
-  const gruposF931 = getVencimientosGrupos(anioActual, mesActual).map((g) => {
-    const clientesGrupo = clientesList.filter(
-      (c) => c.terminacion_cuit >= g.min && c.terminacion_cuit <= g.max
-    );
-    const ok = clientesGrupo.filter((c) => {
-      const t = tareasMap.get(c.id);
-      return t ? t.f931_manual || t.f931_drive : false;
-    }).length;
-    const ms = g.fecha.getTime() - hoy.getTime();
-    const diasRestantes = Math.ceil(ms / 86400000);
-    const { objetivo } = objetivoLimiteF931(g.min, anioActual, mesActual, objetivoGeneral);
-    return { ...g, ok, total: clientesGrupo.length, diasRestantes, objetivo };
-  });
+  const {
+    mesActual, anioActual, esMesSAC, esMesActual, monthOptions,
+    resumen, totalLegajos, gruposF931,
+    total, recibosOk, cargasOk, pctAvance,
+    objetivoGeneral, objetivoRecibosGeneral, limiteRecibosGeneral,
+    alertasPostcierre, yo,
+  } = await obtenerDatosDashboardSueldos(searchParams);
 
   return (
     <div className="p-4 md:p-8">
@@ -186,6 +46,12 @@ export default async function DashboardPage({
             <a href="/dashboard" className="text-[12px] text-bordo font-medium hover:underline">
               Mes actual
             </a>
+          )}
+          {yo?.isAdmin && (
+            <DescargarExcelButton
+              href={`/api/exportar/sueldos/dashboard?mes=${mesActual}&anio=${anioActual}`}
+              title="Descargar este tablero (avance por liquidadora, F.931) a Excel"
+            />
           )}
           {yo?.isAdmin && <BackupButton modulo="sueldos" />}
         </div>

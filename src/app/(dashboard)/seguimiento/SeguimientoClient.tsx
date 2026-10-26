@@ -29,6 +29,7 @@ import {
 import { Cliente, ClaveAcceso, EmailContacto, Liquidadora, Periodo, Tarea } from "@/types";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
+import { DescargarExcelButton } from "@/components/DescargarExcelButton";
 import { useBackdropClose } from "@/lib/useBackdropClose";
 import { guardar, useAvisoErrorGuardado } from "@/components/AvisoErrorGuardado";
 import {
@@ -1072,6 +1073,15 @@ export function SeguimientoClient({
 
         {/* Right side: sync + period nav */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Ítem 147: Excel del checklist completo del período (recibos,
+              F.931, etc.), distinto de "Exportar nómina" (facturación). */}
+          {isAdmin && (
+            <DescargarExcelButton
+              href="/api/exportar/sueldos/seguimiento"
+              title="Descargar este seguimiento (checklist del período) a Excel"
+            />
+          )}
+
           {/* Exportar nómina — para facturación, no necesita permiso de edición */}
           {currentPeriodo && (
             <a
