@@ -2,6 +2,12 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Pendientes al cerrar la sesión del 26-oct (Matías)
+
+Hecho ese día: ítem 119 — rol "administrativo" (consulta solo lectura en Contable, acceso completo a Libros, edita Panel General como un admin; no el resto de acciones exclusivas de admin). `supabase/add_rol_administrativo.sql` **corrida** por Matías el 26-oct. Queda pendiente, fuera de código:
+- **Janina:** sigue sin destildarle el área Contable en `/equipo` (viene del 23-oct, ver abajo).
+- Si se le quiere dar este rol a alguien, falta tildarle las áreas Contable y/o Libros en Equipo.
+
 ## Pendientes al cerrar la sesión del 23-oct (Matías)
 
 Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (detalle en cada bloque de abajo). Quedan sin cerrar, todos fuera de código:
@@ -10,12 +16,11 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 - **Janina:** destildarle el área Contable en `/equipo`.
 - **F.931 2027:** cargar el calendario oficial cuando lo publique ARCA, y verificar la fecha cargada de diciembre 2026 CUITs 0-3 (09/01/2027, sábado).
 - **124:** cargar las fechas reales de presentación de los 71 balances terminados (a mano o importándolas del ESTATUS, ítems 130/134).
-- **Ítem 119:** figura "Hecho" en el estatus pero no existe rol "administrativo" en el código.
 - Desde la PC de Matías los commits salen como `athenasystemslatam` (config local del repo), y Claude in Chrome solo se usa desde el perfil aislado "Claude BOS".
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql` corrida por Matías el 26-oct).
 
 ### Objetivo "0 en término" — ítem 124 (23-oct, Matías)
 
