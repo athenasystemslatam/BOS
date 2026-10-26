@@ -4,9 +4,14 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## Pendientes al cerrar la sesión del 26-oct (Matías)
 
-Hecho ese día: ítem 119 — rol "administrativo" (consulta solo lectura en Contable, acceso completo a Libros, edita Panel General como un admin; no el resto de acciones exclusivas de admin). `supabase/add_rol_administrativo.sql` **corrida** por Matías el 26-oct. Queda pendiente, fuera de código:
+Hecho ese día:
+- Ítem 119 — rol "administrativo" (consulta solo lectura en Contable, acceso completo a Libros, edita Panel General como un admin; no el resto de acciones exclusivas de admin). `supabase/add_rol_administrativo.sql` **corrida** por Matías el 26-oct.
+- Ítem 80 — Seguimiento ya no muestra a la persona de una asignación vieja tapando una edición directa del responsable más reciente (gana quien se tocó último, comparando `asignaciones.creado_en` contra `clientes.fecha_modificacion`). No toca Productividad (resuelve períodos históricos, ahí sigue ganando la asignación histórica).
+- Ítem 147 — Sueldos: botón "Descargar Excel" en Dashboard y en Seguimiento (checklist del período), mismo patrón que Libros (`obtenerDatosDashboardSueldos`/`obtenerSeguimientoSueldos` en sendos `datos.ts`). El backup de Sueldos ya existía solo en el Dashboard; no se duplicó en Seguimiento.
+
+Queda pendiente, fuera de código:
 - **Janina:** sigue sin destildarle el área Contable en `/equipo` (viene del 23-oct, ver abajo).
-- Si se le quiere dar este rol a alguien, falta tildarle las áreas Contable y/o Libros en Equipo.
+- Si se le quiere dar el rol administrativo a alguien, falta tildarle las áreas Contable y/o Libros en Equipo.
 
 ## Pendientes al cerrar la sesión del 23-oct (Matías)
 
