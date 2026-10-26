@@ -12,6 +12,7 @@ const ROLES = [
   { value: "admin",       label: "Admin" },
   { value: "viewer",      label: "Solo lectura" },
   { value: "cobranzas",   label: "Cobranzas (ve todo, no edita)" },
+  { value: "administrativo", label: "Administrativo/a (consulta Contable, edita Panel General y Libros)" },
 ];
 
 const AREAS = [

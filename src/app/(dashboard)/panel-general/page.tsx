@@ -50,7 +50,8 @@ export default async function PanelGeneralPage() {
       equipoModulos={equipoModulos ?? []}
       serviciosActivos={serviciosActivos}
       sueldosSinLiquidadora={sueldosSinLiquidadora}
-      isAdmin={yo?.isAdmin ?? false}
+      // Ítem 119: administrativo edita Panel General igual que un admin.
+      isAdmin={!!yo?.isAdmin || !!yo?.esAdministrativo}
       miNombre={yo?.nombre ?? null}
     />
   );

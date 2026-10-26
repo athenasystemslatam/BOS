@@ -106,7 +106,9 @@ export default async function ContablePage({
       anios={anios}
       isAdmin={yo?.isAdmin ?? false}
       miId={yo?.id ?? null}
-      puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("contable"))}
+      // Ítem 119: administrativo ve Contable (si tiene el área asignada)
+      // pero no edita acá, solo consulta.
+      puedeEditar={!yo?.esCobranzas && !yo?.esAdministrativo && (!!yo?.isAdmin || areas.includes("contable"))}
       equipo={equipo}
       equipoModulos={equipoModulosTodos ?? []}
     />

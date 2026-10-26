@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { getCurrentLiquidadora, requireAdmin } from "@/lib/auth";
+import { getCurrentLiquidadora, requireAdminOrAdministrativo } from "@/lib/auth";
 import { sendEmailBajaServicio, sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import type { Cliente, ClienteSocietario } from "@/types";
@@ -128,7 +128,7 @@ const ERROR_EMAILS_DETALLE =
 
 export async function crearClienteConServicios(formData: FormData) {
   try {
-    await requireAdmin();
+    await requireAdminOrAdministrativo();
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
@@ -274,7 +274,7 @@ export async function crearClienteConServicios(formData: FormData) {
  * Editar: la fila de `clientes` entera + sus servicios con responsable_id. */
 export async function getEmpresaCompleta(clienteId: string) {
   try {
-    await requireAdmin();
+    await requireAdminOrAdministrativo();
   } catch {
     return null;
   }
@@ -295,7 +295,7 @@ export async function getEmpresaCompleta(clienteId: string) {
 export async function editarClienteConServicios(formData: FormData) {
   let yo;
   try {
-    yo = await requireAdmin();
+    yo = await requireAdminOrAdministrativo();
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
@@ -557,7 +557,7 @@ export async function editarClienteConServicios(formData: FormData) {
 
 export async function darDeBajaServicio(clienteId: string, servicio: string, subtipo: string) {
   try {
-    await requireAdmin();
+    await requireAdminOrAdministrativo();
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
@@ -609,7 +609,7 @@ export async function darDeBajaServicio(clienteId: string, servicio: string, sub
 
 export async function darDeBajaCliente(clienteId: string) {
   try {
-    await requireAdmin();
+    await requireAdminOrAdministrativo();
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
@@ -628,7 +628,7 @@ export async function darDeBajaCliente(clienteId: string) {
 
 export async function reactivarCliente(clienteId: string) {
   try {
-    await requireAdmin();
+    await requireAdminOrAdministrativo();
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }

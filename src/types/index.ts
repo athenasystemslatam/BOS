@@ -1,4 +1,4 @@
-export type Rol = "admin" | "supervisor" | "liquidadora" | "viewer" | "cobranzas";
+export type Rol = "admin" | "supervisor" | "liquidadora" | "viewer" | "cobranzas" | "administrativo";
 export type EstadoCliente = "activo" | "inactivo";
 export type TipoContribuyente = "empresa" | "monotributista" | "inscripto";
 

@@ -13,6 +13,11 @@ export interface CurrentLiquidadora {
   // puede editar nada — requireLiquidadoraOrAdmin/requireAreaOrAdmin la
   // rechazan igual que a alguien en modo consulta.
   esCobranzas: boolean;
+  // Ítem 119: consulta (solo lectura) en Contable, acceso completo a Libros
+  // (depende de equipo_modulos, como liquidadora/viewer) y edita Panel
+  // General como un admin — ver requireAreaOrAdmin y
+  // requireAdminOrAdministrativo más abajo.
+  esAdministrativo: boolean;
 }
 
 // Usuario logueado, una sola vez por request: getCurrentLiquidadora y
@@ -46,7 +51,12 @@ export const getCurrentLiquidadora = cache(async (): Promise<CurrentLiquidadora 
 
   if (!data || !data.activa) return null;
 
-  return { ...data, isAdmin: data.rol === "admin", esCobranzas: data.rol === "cobranzas" };
+  return {
+    ...data,
+    isAdmin: data.rol === "admin",
+    esCobranzas: data.rol === "cobranzas",
+    esAdministrativo: data.rol === "administrativo",
+  };
 });
 
 /** Tira error si el usuario logueado no es admin. Para usar en Server Actions
@@ -55,6 +65,18 @@ export async function requireAdmin(): Promise<CurrentLiquidadora> {
   const liquidadora = await getCurrentLiquidadora();
   if (!liquidadora?.isAdmin) {
     throw new Error("Solo un admin puede realizar esta acción.");
+  }
+  return liquidadora;
+}
+
+/** Tira error si el usuario logueado no es admin ni tiene el rol
+ * "administrativo" (ítem 119: edita Panel General igual que un admin, pero
+ * no el resto de las acciones exclusivas de admin en otros módulos). Para
+ * las Server Actions de Panel General. */
+export async function requireAdminOrAdministrativo(): Promise<CurrentLiquidadora> {
+  const liquidadora = await getCurrentLiquidadora();
+  if (!liquidadora || (!liquidadora.isAdmin && !liquidadora.esAdministrativo)) {
+    throw new Error("No tenés permiso para realizar esta acción.");
   }
   return liquidadora;
 }
@@ -100,6 +122,12 @@ export async function requireAreaOrAdmin(modulo: string): Promise<CurrentLiquida
   const liquidadora = await getCurrentLiquidadora();
   if (!liquidadora || liquidadora.esCobranzas) {
     throw new Error("No tenés permiso para editar — estás en modo consulta.");
+  }
+  // Ítem 119: administrativo tiene consulta (solo lectura) específicamente
+  // en Contable, a diferencia del resto de los módulos donde si tiene el
+  // área asignada edita como cualquiera (ej. Libros).
+  if (liquidadora.esAdministrativo && modulo === "contable") {
+    throw new Error("No tenés permiso para editar — tu rol es de consulta en Contable.");
   }
   if (liquidadora.isAdmin) return liquidadora;
 

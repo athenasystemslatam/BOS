@@ -16,6 +16,7 @@ const ROL_LABELS: Record<string, { label: string; cls: string }> = {
   liquidadora: { label: "Liquidadora",  cls: "bg-bordo/10 text-bordo" },
   viewer:      { label: "Solo lectura", cls: "bg-gray-100 text-gray-500" },
   cobranzas:   { label: "Cobranzas",    cls: "bg-teal-50 text-teal-700" },
+  administrativo: { label: "Administrativo/a", cls: "bg-indigo-50 text-indigo-700" },
 };
 
 const AREA_LABELS: Record<string, { label: string; cls: string }> = {
