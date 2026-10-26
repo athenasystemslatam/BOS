@@ -11,6 +11,7 @@ Hecho ese día:
 - Contable: tooltip (`title`) con el texto completo al pasar el mouse por nombre de cliente y observaciones cortados.
 - Decidido: IGJ y Tasa quedan como desplegable (no se pasan a casilla).
 - Repaso general de este archivo: varias notas de sesiones previas (F657, IGJ/Tasa, "Legalizado→Finalizado", filtro por defecto de Panel General/Empresas, ítem 119 en la sección del 118) estaban desactualizadas — ya se habían resuelto en código pero seguían anotadas como pendientes. Corregidas/tachadas donde correspondía, incluyendo el intento (sin resultado, ARCA no publicó aún) de confirmar la fecha de F.931 de enero 2027.
+- Ítem 116 — Nº correlativo IGJ: columna propia `balances.igj_numero` (antes se anotaba en Observaciones), editable en Contable junto a IGJ/Tasa. **`supabase/add_balances_igj_numero.sql` pendiente de correr en Supabase.**
 
 Queda pendiente, fuera de código:
 - **Janina:** sigue sin destildarle el área Contable en `/equipo` (viene del 23-oct, ver abajo).
@@ -28,7 +29,9 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql` corrida por Matías el 26-oct).
+**`add_balances_igj_numero.sql`** (ítem 116, columna `balances.igj_numero`) — todavía no corrida.
+
+(Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql` corrida por Matías el 26-oct.)
 
 ### Objetivo "0 en término" — ítem 124 (23-oct, Matías)
 

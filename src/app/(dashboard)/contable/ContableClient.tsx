@@ -72,6 +72,8 @@ type Balance = {
   f657_estado: string;
   igj_presentacion: string;
   igj_tasa: string;
+  // Ítem 116: campo propio en vez de anotarlo en Observaciones.
+  igj_numero: string | null;
   observaciones: string | null;
   no_corresponde_motivo: string | null;
   // Ítem 109: texto del aviso si la fecha de cierre no coincide con la fija del cliente.
@@ -514,7 +516,7 @@ export function ContableClient({
               <th colSpan={4} className={clsx(GRUPO.formularios, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
                 Formularios
               </th>
-              <th colSpan={2} className={clsx(GRUPO.igj, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
+              <th colSpan={3} className={clsx(GRUPO.igj, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
                 IGJ
               </th>
               <th className="bg-gray-50 px-3 py-1.5" />
@@ -547,6 +549,7 @@ export function ContableClient({
               {/* IGJ */}
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">IGJ</th>
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">Tasa</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-20">Nº IGJ</th>
               {/* Obs + acciones */}
               <th className="bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Obs.</th>
               <th className="bg-gray-50 px-3 py-3 w-10" />
@@ -555,7 +558,7 @@ export function ContableClient({
           <tbody className="divide-y divide-gray-100">
             {filas.length === 0 && (
               <tr>
-                <td colSpan={18}className="text-center text-gray-400 text-sm py-16">
+                <td colSpan={19} className="text-center text-gray-400 text-sm py-16">
                   {filterResp || filtroRapido !== "todos"
                     ? "Sin resultados para el filtro aplicado"
                     : `No hay balances cargados para ${anio}`}
@@ -766,6 +769,22 @@ export function ContableClient({
                   {/* IGJ Tasa */}
                   <FormCell estado={b.igj_tasa} field="igj_tasa" balanceId={b.id}
                     options={FORM_OPTIONS_IGJ_TASA} puedeEditar={puedeEditar} onUpdate={update} />
+
+                  {/* Nº IGJ — ítem 116: campo propio, antes se anotaba en Observaciones */}
+                  <td className="px-3 py-2.5">
+                    {puedeEditar ? (
+                      <input
+                        type="text"
+                        defaultValue={b.igj_numero ?? ""}
+                        placeholder="—"
+                        title={b.igj_numero ?? undefined}
+                        onBlur={(e) => update(b.id, { igj_numero: e.target.value || null })}
+                        className="w-full text-[12px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-300 rounded px-1 placeholder:text-gray-200 truncate text-center"
+                      />
+                    ) : (
+                      <span title={b.igj_numero ?? undefined} className="text-[12px] text-gray-500 truncate block text-center">{b.igj_numero ?? "—"}</span>
+                    )}
+                  </td>
 
                   {/* Observaciones */}
                   <td className="px-3 py-2.5 max-w-[180px]">
