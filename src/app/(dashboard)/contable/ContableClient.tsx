@@ -336,9 +336,10 @@ export function ContableClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [porResp, filtroRapido, miId]);
 
-  // Ítem 93: a diferencia de 855/899/F713, F657 necesita un tercer estado
-  // (N/A) — ver FormVtoSelectCell.
-  const FORM_OPTIONS_657 = [
+  // Ítems 93/115: 855, F899, F713 y F657 aceptan "N/A" en la base pero la
+  // casilla binaria no lo puede representar sin perderlo al tocarla — mismo
+  // selector de 3 opciones para los cuatro (ver FormVtoSelectCell/FormCell).
+  const FORM_OPTIONS_PRESENTADO = [
     { value: "pendiente", label: "Pendiente" },
     { value: "presentado", label: "Presentado" },
     { value: "no_corresponde", label: "N/A" },
@@ -758,19 +759,17 @@ export function ContableClient({
                     )}
                   </td>
 
-                  {/* 855 · F899 — casilla + fecha de vencimiento al lado, con
-                      semáforo. Tachado gris si ya está presentado. El 713 no
-                      tiene vencimiento propio, va solo con casilla. F657 va
-                      aparte, más abajo (acepta N/A, ítem 93). */}
-                  <FormVtoCheckCell estado={b.f855_estado} field="f855_estado" balanceId={b.id}
-                    vto={b.vtos.f855} puedeEditar={puedeEditar} onUpdate={update} />
-                  <FormVtoCheckCell estado={b.f899_estado} field="f899_estado" balanceId={b.id}
-                    vto={b.vtos.f899} puedeEditar={puedeEditar} onUpdate={update} />
-                  <FormCheckCell estado={b.f713_estado} field="f713_estado" balanceId={b.id}
-                    puedeEditar={puedeEditar} onUpdate={update} />
-                  {/* F657: a diferencia de 899/855, acepta N/A (ítem 93) */}
+                  {/* 855 · F899 · F657 — selector de 3 opciones + fecha de
+                      vencimiento al lado, con semáforo (ítems 93/115). El 713
+                      no tiene vencimiento propio, va solo con el selector. */}
+                  <FormVtoSelectCell estado={b.f855_estado} field="f855_estado" balanceId={b.id}
+                    vto={b.vtos.f855} options={FORM_OPTIONS_PRESENTADO} puedeEditar={puedeEditar} onUpdate={update} />
+                  <FormVtoSelectCell estado={b.f899_estado} field="f899_estado" balanceId={b.id}
+                    vto={b.vtos.f899} options={FORM_OPTIONS_PRESENTADO} puedeEditar={puedeEditar} onUpdate={update} />
+                  <FormCell estado={b.f713_estado} field="f713_estado" balanceId={b.id}
+                    options={FORM_OPTIONS_PRESENTADO} puedeEditar={puedeEditar} onUpdate={update} />
                   <FormVtoSelectCell estado={b.f657_estado} field="f657_estado" balanceId={b.id}
-                    vto={b.vtos.f657} options={FORM_OPTIONS_657} puedeEditar={puedeEditar} onUpdate={update} />
+                    vto={b.vtos.f657} options={FORM_OPTIONS_PRESENTADO} puedeEditar={puedeEditar} onUpdate={update} />
 
                   {/* IGJ Presentación */}
                   <FormCell estado={b.igj_presentacion} field="igj_presentacion" balanceId={b.id}
@@ -938,88 +937,11 @@ function FechaCheckCell({
   );
 }
 
-// Formularios binarios (855, F899, F713): casilla tildada = "presentado",
-// destildada = "pendiente". Mismos valores que ya guarda la base.
-function FormCheckCell({
-  estado,
-  field,
-  balanceId,
-  puedeEditar,
-  onUpdate,
-}: {
-  estado: string;
-  field: string;
-  balanceId: string;
-  puedeEditar: boolean;
-  onUpdate: (id: string, updates: Partial<Balance>) => void;
-}) {
-  return (
-    <td className="px-3 py-2.5 text-center">
-      <input
-        type="checkbox"
-        checked={estado === "presentado"}
-        disabled={!puedeEditar}
-        onChange={(e) =>
-          onUpdate(balanceId, { [field]: e.target.checked ? "presentado" : "pendiente" } as Partial<Balance>)
-        }
-        title={estado === "presentado" ? "Presentado" : "No presentado"}
-        className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer"
-      />
-    </td>
-  );
-}
-
-// Formulario con vencimiento propio (855, 899, 657): casilla + fecha al
-// lado, coloreada por semáforo (verde +30 días, amarillo 14-30, rojo -14 o
-// vencido). Tachado y gris si ya está presentado — ahí el semáforo no
-// importa más.
-function FormVtoCheckCell({
-  estado,
-  field,
-  balanceId,
-  vto,
-  puedeEditar,
-  onUpdate,
-}: {
-  estado: string;
-  field: string;
-  balanceId: string;
-  vto: Vto;
-  puedeEditar: boolean;
-  onUpdate: (id: string, updates: Partial<Balance>) => void;
-}) {
-  const presentado = estado === "presentado";
-  return (
-    <td className="px-3 py-2.5">
-      <div className="inline-flex items-center gap-1.5">
-        <input
-          type="checkbox"
-          checked={presentado}
-          disabled={!puedeEditar}
-          onChange={(e) =>
-            onUpdate(balanceId, { [field]: e.target.checked ? "presentado" : "pendiente" } as Partial<Balance>)
-          }
-          title={presentado ? "Presentado" : "No presentado"}
-          className="w-3.5 h-3.5 accent-emerald-600 cursor-pointer shrink-0"
-        />
-        <span
-          className={clsx(
-            "text-[11px] rounded px-1.5 py-0.5 tabular-nums",
-            presentado ? "text-gray-400 line-through bg-transparent" : vtoSemaforoCls(diasRestantes(vto.fecha))
-          )}
-        >
-          {fmt(vto.fecha)}
-        </span>
-        <MarcaVto vto={vto} />
-      </div>
-    </td>
-  );
-}
-
-// Ítem 93: versión de FormVtoCheckCell con un tercer estado (N/A) — una
-// casilla binaria no puede representarlo sin perderlo apenas se la toca.
-// Mismo selector invisible que FormCell, con la fecha y el semáforo de
-// FormVtoCheckCell al lado.
+// Formulario con vencimiento propio (855, 899, 657): selector de 3 opciones
+// (Pendiente/Presentado/N/A) + fecha al lado, coloreada por semáforo (verde
+// +30 días, amarillo 14-30, rojo -14 o vencido). Tachado y gris si ya está
+// presentado, gris lisa si es N/A — ahí el semáforo no importa más. Mismo
+// selector invisible que FormCell, con la fecha y el semáforo al lado.
 function FormVtoSelectCell({
   estado,
   field,
