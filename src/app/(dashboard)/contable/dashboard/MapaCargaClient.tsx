@@ -40,7 +40,9 @@ export function MapaCargaClient({
   balances: BalanceLigero[];
   anios: number[];
 }) {
-  const [modo, setModo] = useState<"cierre" | "vencimiento">("cierre");
+  // Ítem 125: por defecto "por vencimiento" — es lo que importa para
+  // detectar picos de carga próximos, no el mes en que cerró el ejercicio.
+  const [modo, setModo] = useState<"cierre" | "vencimiento">("vencimiento");
 
   const meses = useMemo(() => {
     const out: { anio: number; mes: number; label: string }[] = [];
@@ -152,6 +154,7 @@ export function MapaCargaClient({
         </div>
       )}
       <div className="px-5 py-3 border-t border-gray-50 text-[11px] text-gray-400">
+        Cada celda = cantidad de balances no finalizados que {modo === "cierre" ? "cierran" : "vencen"} ese mes para ese contador — más oscuro, más carga.
         Un balance con dos responsables aparece en la fila de ambos. El color es relativo al mes de mayor carga de todo el estudio.
       </div>
     </div>

@@ -12,6 +12,10 @@ Hecho ese día:
 - Decidido: IGJ y Tasa quedan como desplegable (no se pasan a casilla).
 - Repaso general de este archivo: varias notas de sesiones previas (F657, IGJ/Tasa, "Legalizado→Finalizado", filtro por defecto de Panel General/Empresas, ítem 119 en la sección del 118) estaban desactualizadas — ya se habían resuelto en código pero seguían anotadas como pendientes. Corregidas/tachadas donde correspondía, incluyendo el intento (sin resultado, ARCA no publicó aún) de confirmar la fecha de F.931 de enero 2027.
 - Ítem 116 — Nº correlativo IGJ: columna propia `balances.igj_numero` (antes se anotaba en Observaciones), editable en Contable junto a IGJ/Tasa. `supabase/add_balances_igj_numero.sql` **corrida** por Matías el 26-oct.
+- Ítem 117 — Contable Dashboard: la tarjeta de arriba y la tabla por contador usaban el mismo nombre "En proceso" para dos cosas distintas (Asignado+Legalizado vs avance>0%). Se renombró la columna de la tabla por contador a "Con avance" (sin tocar ningún cálculo).
+- Ítem 112 — Ficha de cliente abierta desde Contable: el link "Carpeta de Drive" apuntaba siempre a la carpeta de Sueldos (`clientes.drive_folder_id`, un solo campo para todo el sistema). Se ocultó ese link específicamente en la ficha de Contable (`ocultarDrive` en `FichaClienteBoton`) para no mostrar una carpeta equivocada — es la opción que el propio ítem dejaba como salida si no valía la pena crear un campo de Drive propio para Contable.
+- Ítem 125 — Mapa de carga (Dashboard Contable): default pasó de "por fecha de cierre" a "por fecha de vencimiento"; ahora solo cuenta balances no finalizados; se agregó la leyenda de lectura al pie.
+- Ítem 126 — "Próximos vencimientos" (Dashboard Contable) se separó en dos tablas: "Vencidos" (sin techo) y "Próximos 30 días" (hasta 15), en vez de una sola mezclada con tope de 10.
 
 Queda pendiente, fuera de código:
 - **Janina:** sigue sin destildarle el área Contable en `/equipo` (viene del 23-oct, ver abajo).

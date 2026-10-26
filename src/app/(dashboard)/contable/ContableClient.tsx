@@ -586,6 +586,7 @@ export function ContableClient({
                         fetchAction={getFichaCliente}
                         puedeEditar={isAdmin}
                         onEditar={() => setEditandoClienteId(b.cliente_id)}
+                        ocultarDrive
                       />
                     </div>
                   </td>

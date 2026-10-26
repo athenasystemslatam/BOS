@@ -159,7 +159,7 @@ export default async function ContableDashboardPage({
 
   // Próximos vencimientos (detalle) — incluye los ya vencidos sin cerrar,
   // ordenados primero por ser lo más urgente.
-  const proximosVto = conVto
+  const proximosVtoTodos = conVto
     .filter((b) => b.estado !== "finalizado")
     .map((b) => ({
       nombre: b.clientes?.nombre ?? "—",
@@ -168,8 +168,14 @@ export default async function ContableDashboardPage({
       vtoBalance: b.vtoBalance,
       vto855: b.vto855,
     }))
-    .sort((a, b) => a.vtoBalance.getTime() - b.vtoBalance.getTime())
-    .slice(0, 10);
+    .sort((a, b) => a.vtoBalance.getTime() - b.vtoBalance.getTime());
+  // Ítem 126: dos listas separadas en vez de una sola mezclada — "Vencidos"
+  // no tiene techo (hay que verlos todos), "Próximos 30 días" se recorta
+  // para no alargar la pantalla.
+  const vencidosDetalle = proximosVtoTodos.filter((b) => diasRestantes(b.vtoBalance) < 0);
+  const proximos30Detalle = proximosVtoTodos
+    .filter((b) => { const d = diasRestantes(b.vtoBalance); return d >= 0 && d <= 30; })
+    .slice(0, 15);
 
   // Desglose por año de una tarjeta — solo tiene sentido con "Ambos", con un
   // año puntual elegido ya está todo acotado a ese año.
@@ -360,69 +366,86 @@ export default async function ContableDashboardPage({
       <div className="mt-5">
         <MapaCargaClient
           contadores={equipoContable}
-          balances={conVto.map((b) => ({
-            responsable_id: b.responsable?.id ?? null,
-            responsable2_id: b.responsable2?.id ?? null,
-            fechaCierre: b.fecha_cierre,
-            fechaVencimiento: b.vtoBalance.toISOString().slice(0, 10),
-          }))}
+          balances={conVto
+            .filter((b) => b.estado !== "finalizado")
+            .map((b) => ({
+              responsable_id: b.responsable?.id ?? null,
+              responsable2_id: b.responsable2?.id ?? null,
+              fechaCierre: b.fecha_cierre,
+              fechaVencimiento: b.vtoBalance.toISOString().slice(0, 10),
+            }))}
           anios={anios}
         />
       </div>
 
-      {/* Próximos vencimientos */}
-      {proximosVto.length > 0 && (
-        <div className="mt-5 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <AlertTriangle size={14} className="text-amber-500" />
-            <h2 className="text-[14px] font-semibold text-gray-900">Próximos vencimientos</h2>
-            <span className="text-[11px] text-gray-400 ml-auto">balances no finalizados</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12px] whitespace-nowrap">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                  <th className="px-6 py-3 text-left">Cliente</th>
-                  <th className="px-4 py-3 text-left">Cierre</th>
-                  <th className="px-4 py-3 text-left">VTO Balance</th>
-                  <th className="px-4 py-3 text-left">VTO F.855</th>
-                  <th className="px-4 py-3 text-left">Estado</th>
+      {/* Próximos vencimientos — ítem 126: Vencidos y Próximos 30 días,
+          separados (antes era una sola tabla mezclada). */}
+      <TablaVencimientos titulo="Vencidos" filas={vencidosDetalle} />
+      <TablaVencimientos titulo="Próximos 30 días" filas={proximos30Detalle} />
+    </div>
+  );
+}
+
+type FilaVencimiento = {
+  nombre: string;
+  estado: string;
+  fechaCierre: string;
+  vtoBalance: Date;
+  vto855: Date;
+};
+
+function TablaVencimientos({ titulo, filas }: { titulo: string; filas: FilaVencimiento[] }) {
+  if (filas.length === 0) return null;
+  return (
+    <div className="mt-5 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+        <AlertTriangle size={14} className="text-amber-500" />
+        <h2 className="text-[14px] font-semibold text-gray-900">{titulo}</h2>
+        <span className="text-[11px] text-gray-400 ml-auto">{filas.length} balance{filas.length === 1 ? "" : "s"} no finalizado{filas.length === 1 ? "" : "s"}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12px] whitespace-nowrap">
+          <thead className="sticky top-0 z-10 bg-white">
+            <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left">Cliente</th>
+              <th className="px-4 py-3 text-left">Cierre</th>
+              <th className="px-4 py-3 text-left">VTO Balance</th>
+              <th className="px-4 py-3 text-left">VTO F.855</th>
+              <th className="px-4 py-3 text-left">Estado</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {filas.map((b, i) => {
+              const dias = diasRestantes(b.vtoBalance);
+              const urgente = dias <= 14;
+              const proximo = dias <= 30;
+              return (
+                <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-6 py-3 font-medium text-gray-800">{b.nombre}</td>
+                  <td className="px-4 py-3 text-gray-500">
+                    {new Date(b.fechaCierre + "T00:00:00").toLocaleDateString("es-AR")}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={clsx(
+                      "font-medium",
+                      urgente ? "text-red-600" : proximo ? "text-amber-600" : "text-gray-700"
+                    )}>
+                      {fmt(b.vtoBalance)}
+                      <span className="ml-1.5 text-[11px] font-normal opacity-70">
+                        {dias === 0 ? "hoy" : dias > 0 ? `${dias}d` : "vencido"}
+                      </span>
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
+                  <td className="px-4 py-3">
+                    <EstadoBadge estado={b.estado} />
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {proximosVto.map((b, i) => {
-                  const dias = diasRestantes(b.vtoBalance);
-                  const urgente = dias <= 14;
-                  const proximo = dias <= 30;
-                  return (
-                    <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-3 font-medium text-gray-800">{b.nombre}</td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {new Date(b.fechaCierre + "T00:00:00").toLocaleDateString("es-AR")}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={clsx(
-                          "font-medium",
-                          urgente ? "text-red-600" : proximo ? "text-amber-600" : "text-gray-700"
-                        )}>
-                          {fmt(b.vtoBalance)}
-                          <span className="ml-1.5 text-[11px] font-normal opacity-70">
-                            {dias === 0 ? "hoy" : dias > 0 ? `${dias}d` : "vencido"}
-                          </span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">{fmt(b.vto855)}</td>
-                      <td className="px-4 py-3">
-                        <EstadoBadge estado={b.estado} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -139,6 +139,7 @@ export function FichaClienteBoton({
   fetchAction,
   puedeEditar,
   onEditar,
+  ocultarDrive,
 }: {
   clienteId: string;
   nombre: string;
@@ -148,6 +149,11 @@ export function FichaClienteBoton({
    *  ve y se dispara). */
   puedeEditar?: boolean;
   onEditar?: () => void;
+  /** Ítem 112: `drive_folder_id` es la carpeta de Sueldos — en la ficha
+   *  abierta desde Contable mostrarla confunde (parece la carpeta contable
+   *  y no lo es). Hasta que exista una carpeta propia de Contable, se oculta
+   *  acá en vez de mostrar un link equivocado. */
+  ocultarDrive?: boolean;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -326,9 +332,9 @@ export function FichaClienteBoton({
                     </Seccion>
                   )}
 
-                  {(cliente.drive_folder_id || cliente.observaciones) && (
+                  {((cliente.drive_folder_id && !ocultarDrive) || cliente.observaciones) && (
                     <Seccion titulo="Otros">
-                      {cliente.drive_folder_id && (
+                      {cliente.drive_folder_id && !ocultarDrive && (
                         <a
                           href={driveUrl(cliente.drive_folder_id)}
                           target="_blank"
