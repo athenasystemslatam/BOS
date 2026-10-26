@@ -571,7 +571,10 @@ export function ContableClient({
                   {/* Cliente — columna fijada a la izquierda */}
                   <td className="sticky left-0 z-10 bg-white group-hover:bg-emerald-50/50 px-6 py-2.5">
                     <div className="flex items-center gap-1.5">
-                      <p className="text-[13px] font-medium text-gray-800 truncate max-w-[200px]">
+                      <p
+                        title={b.clientes?.nombre ?? undefined}
+                        className="text-[13px] font-medium text-gray-800 truncate max-w-[200px]"
+                      >
                         {b.clientes?.nombre ?? "—"}
                       </p>
                       <FichaClienteBoton
@@ -771,11 +774,12 @@ export function ContableClient({
                         type="text"
                         defaultValue={b.observaciones ?? ""}
                         placeholder="—"
+                        title={b.observaciones ?? undefined}
                         onBlur={(e) => update(b.id, { observaciones: e.target.value || null })}
                         className="w-full text-[12px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-300 rounded px-1 placeholder:text-gray-200 truncate"
                       />
                     ) : (
-                      <span className="text-[12px] text-gray-500 truncate block">{b.observaciones ?? "—"}</span>
+                      <span title={b.observaciones ?? undefined} className="text-[12px] text-gray-500 truncate block">{b.observaciones ?? "—"}</span>
                     )}
                   </td>
 
