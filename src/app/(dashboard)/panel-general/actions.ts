@@ -231,6 +231,7 @@ export async function crearClienteConServicios(formData: FormData) {
     // se completan acá directamente para no obligar a pasar por las dos
     // pantallas al dar de alta.
     const cuil_arca = (formData.get("sueldos_cuil_arca") as string)?.trim() || null;
+    const id_fal = (formData.get("sueldos_id_fal") as string)?.trim() || null;
     const art = (formData.get("sueldos_art") as string)?.trim() || null;
     const red_bancaria = (formData.get("sueldos_red_bancaria") as string)?.trim() || null;
     const fecha_alta_empleador = (formData.get("sueldos_fecha_alta_empleador") as string)?.trim() || null;
@@ -251,6 +252,7 @@ export async function crearClienteConServicios(formData: FormData) {
       tiene_rubrica_lsd,
       jurisdiccion,
       cuil_arca,
+      id_fal,
       art,
       red_bancaria,
       fecha_alta_empleador,
@@ -482,6 +484,7 @@ export async function editarClienteConServicios(formData: FormData) {
     const tiene_rubrica_lsd = formData.get("sueldos_tiene_rubrica_lsd") === "true";
     const jurisdiccion = (formData.get("sueldos_jurisdiccion") as string)?.trim() || null;
     const cuil_arca = (formData.get("sueldos_cuil_arca") as string)?.trim() || null;
+    const id_fal = (formData.get("sueldos_id_fal") as string)?.trim() || null;
     const art = (formData.get("sueldos_art") as string)?.trim() || null;
     const red_bancaria = (formData.get("sueldos_red_bancaria") as string)?.trim() || null;
     const fecha_alta_empleador = (formData.get("sueldos_fecha_alta_empleador") as string)?.trim() || null;
@@ -501,6 +504,7 @@ export async function editarClienteConServicios(formData: FormData) {
       tiene_rubrica_lsd,
       jurisdiccion,
       cuil_arca,
+      id_fal,
       art,
       red_bancaria,
       fecha_alta_empleador,

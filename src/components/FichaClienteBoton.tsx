@@ -272,6 +272,7 @@ export function FichaClienteBoton({
                         value={cliente.tiene_rubrica_lsd ? (cliente.jurisdiccion || "Sí") : "No"}
                       />
                       <Campo label="CUIL de acceso a ARCA" value={cliente.cuil_arca} />
+                      <Campo label="ID FAL" value={cliente.id_fal} />
                       <Campo label="ART" value={cliente.art} />
                       <Campo label="Alícuota ART" value={cliente.alicuota_art} />
                       <Campo label="Red bancaria" value={cliente.red_bancaria} />

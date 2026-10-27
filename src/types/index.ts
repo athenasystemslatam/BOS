@@ -64,6 +64,7 @@ export interface Cliente {
   cuit: string;
   terminacion_cuit: number;
   cuil_arca?: string;
+  id_fal?: string | null;
   emails_contacto?: string[];
   emails_contacto_detalle?: EmailContacto[];
   telefono?: string;

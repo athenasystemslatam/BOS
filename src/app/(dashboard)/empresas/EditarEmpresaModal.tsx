@@ -185,6 +185,19 @@ export function EditarEmpresaModal({
               />
             </div>
 
+            {/* ID FAL */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                ID FAL
+              </label>
+              <input
+                name="id_fal"
+                type="text"
+                defaultValue={cliente.id_fal ?? ""}
+                className={inputCls}
+              />
+            </div>
+
             {/* Teléfono */}
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1.5">

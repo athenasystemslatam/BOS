@@ -434,6 +434,13 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                           <input name="cuil_arca" type="text" placeholder="20-12345678-9" className={nestedCls} />
                         </div>
 
+                        <div>
+                          <label className="text-[11px] text-gray-400 block mb-1">
+                            ID FAL
+                          </label>
+                          <input name="id_fal" type="text" className={nestedCls} />
+                        </div>
+
                         <div className="grid grid-cols-2 gap-2">
                           <div>
                             <label className="text-[11px] text-gray-400 block mb-1">ART</label>

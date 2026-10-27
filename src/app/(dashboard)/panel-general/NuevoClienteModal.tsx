@@ -50,6 +50,7 @@ export function NuevoClienteModal({
   // pantallas al dar de alta una empresa. Mismos campos de `clientes`,
   // sin duplicar nada.
   const [cuilArca, setCuilArca] = useState("");
+  const [idFal, setIdFal] = useState("");
   const [art, setArt] = useState("");
   const [redBancaria, setRedBancaria] = useState("");
   const [fechaAltaEmpleador, setFechaAltaEmpleador] = useState("");
@@ -121,6 +122,7 @@ export function NuevoClienteModal({
       formData.set("sueldos_tiene_rubrica_lsd", String(tieneRubricaLsd));
       formData.set("sueldos_jurisdiccion", jurisdiccion === "Otra" ? jurisdiccionOtra : jurisdiccion);
       formData.set("sueldos_cuil_arca", cuilArca);
+      formData.set("sueldos_id_fal", idFal);
       formData.set("sueldos_art", art);
       formData.set("sueldos_red_bancaria", redBancaria);
       formData.set("sueldos_fecha_alta_empleador", fechaAltaEmpleador);
@@ -407,6 +409,18 @@ export function NuevoClienteModal({
                                   type="text"
                                   value={cuilArca}
                                   onChange={(e) => setCuilArca(e.target.value)}
+                                  className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                                  ID FAL
+                                </label>
+                                <input
+                                  type="text"
+                                  value={idFal}
+                                  onChange={(e) => setIdFal(e.target.value)}
                                   className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                                 />
                               </div>
