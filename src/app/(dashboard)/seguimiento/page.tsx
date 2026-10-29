@@ -3,7 +3,7 @@ import { obtenerSeguimientoSueldos } from "./datos";
 
 // Ruta dinámica: usa cookies para saber qué empresas mostrar.
 export default async function SeguimientoPage() {
-  const { clientes, tareas, periodos, periodo, liquidadoras, isAdmin, puedeEditar, recordatoriosPrevios } =
+  const { clientes, tareas, periodos, periodo, liquidadoras, isAdmin, puedeEditar, recordatoriosPrevios, fal } =
     await obtenerSeguimientoSueldos();
 
   return (
@@ -16,6 +16,7 @@ export default async function SeguimientoPage() {
       isAdmin={isAdmin}
       puedeEditar={puedeEditar}
       recordatoriosPrevios={recordatoriosPrevios}
+      fal={fal}
     />
   );
 }

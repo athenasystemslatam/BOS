@@ -48,6 +48,9 @@ import {
   SyncDriveResult,
 } from "./actions";
 import { getVencimientosGrupos, getVencimientoF931, MESES_NOMBRES } from "@/lib/vencimientos";
+import { FalSeccion } from "@/components/FalSeccion";
+import type { FilaFal } from "@/lib/fal";
+import { FalCartel } from "./FalCartel";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -62,6 +65,7 @@ interface Props {
    * salvo el campo Observaciones que queda habilitado para todos. */
   puedeEditar: boolean;
   recordatoriosPrevios: Record<string, string>;
+  fal: { fechaCorte: string; filas: FilaFal[] };
 }
 
 type TareaState = {
@@ -509,6 +513,10 @@ function ClavesModal({
                 </p>
               </div>
             )}
+
+            <div className="mt-4">
+              <FalSeccion clienteId={cliente.id} />
+            </div>
           </>
         )}
       </div>
@@ -584,6 +592,7 @@ export function SeguimientoClient({
   isAdmin,
   puedeEditar,
   recordatoriosPrevios: initialRecordatoriosPrevios,
+  fal,
 }: Props) {
   const router = useRouter();
 
@@ -1151,6 +1160,15 @@ export function SeguimientoClient({
           </div>
         </div>
       </div>
+
+      <FalCartel
+        clientes={clientes}
+        filas={fal.filas}
+        fechaCorte={fal.fechaCorte}
+        periodo={currentPeriodo}
+        puedeEditar={puedeEditar}
+        liquidadoras={liquidadoras}
+      />
 
       {/* Sync result banner */}
       {syncResult && (
