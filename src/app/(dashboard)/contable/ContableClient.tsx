@@ -103,6 +103,7 @@ function FormBadge({ estado, options }: {
   options: { value: string; label: string }[];
 }) {
   if (estado === "no_corresponde") return <span className="text-gray-300 text-xs">N/A</span>;
+  if (estado === "presenta_cliente") return <span className="text-blue-400 text-[10px] font-semibold">Cliente</span>;
   if (estado === "presentado" || estado === "enviada")
     return <Check size={14} className="text-emerald-500" strokeWidth={2.5} />;
   return <Minus size={14} className="text-gray-300" />;
@@ -338,20 +339,27 @@ export function ContableClient({
 
   // Ítems 93/115: 855, F899, F713 y F657 aceptan "N/A" en la base pero la
   // casilla binaria no lo puede representar sin perderlo al tocarla — mismo
-  // selector de 3 opciones para los cuatro (ver FormVtoSelectCell/FormCell).
+  // selector de opciones para los cuatro (ver FormVtoSelectCell/FormCell).
+  // "Presenta el cliente": el trámite lo hace el cliente directo, no el
+  // estudio — no cuenta como pendiente del contador (ver productividad).
   const FORM_OPTIONS_PRESENTADO = [
     { value: "pendiente", label: "Pendiente" },
     { value: "presentado", label: "Presentado" },
+    { value: "presenta_cliente", label: "Presenta el cliente" },
     { value: "no_corresponde", label: "N/A" },
   ];
   const FORM_OPTIONS_IGJ = [
     { value: "pendiente", label: "Pendiente" },
     { value: "presentado", label: "Presentado" },
+    { value: "presenta_cliente", label: "Presenta el cliente" },
     { value: "no_corresponde", label: "N/A" },
   ];
+  // Tasa IGJ: la etiqueta pasa a "Pago" (como la llama el ESTATUS) — el
+  // valor guardado sigue siendo "enviada", así que no hace falta migrar
+  // nada de lo ya cargado.
   const FORM_OPTIONS_IGJ_TASA = [
     { value: "pendiente", label: "Pendiente" },
-    { value: "enviada", label: "Enviada" },
+    { value: "enviada", label: "Pago" },
     { value: "no_corresponde", label: "N/A" },
   ];
 
@@ -961,6 +969,7 @@ function FormVtoSelectCell({
 }) {
   const presentado = estado === "presentado";
   const noCorresponde = estado === "no_corresponde";
+  const presentaCliente = estado === "presenta_cliente";
   return (
     <td className="px-3 py-2.5">
       <div className="inline-flex items-center gap-1.5">
@@ -981,7 +990,7 @@ function FormVtoSelectCell({
         <span
           className={clsx(
             "text-[11px] rounded px-1.5 py-0.5 tabular-nums",
-            noCorresponde ? "text-gray-300" :
+            noCorresponde || presentaCliente ? "text-gray-300" :
             presentado ? "text-gray-400 line-through bg-transparent" : vtoSemaforoCls(diasRestantes(vto.fecha))
           )}
         >

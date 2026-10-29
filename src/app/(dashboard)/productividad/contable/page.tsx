@@ -140,7 +140,9 @@ export default async function ProductividadContablePage() {
       for (const b of items) {
         for (const { campo, presentadoVal } of CAMPOS_FORM) {
           const valor = (b as unknown as Record<string, string>)[campo];
-          if (valor === "no_corresponde") continue;
+          // "Presenta el cliente": lo tramita el cliente directo, no cuenta
+          // ni a favor ni en contra del contador — mismo criterio que N/A.
+          if (valor === "no_corresponde" || valor === "presenta_cliente") continue;
           formAplican++;
           if (valor === presentadoVal) formPresentados++;
         }
@@ -151,7 +153,7 @@ export default async function ProductividadContablePage() {
       const vtoF855 = (b: { id: string; fecha_cierre: string; cliente_id: string }) =>
         aFecha(vencimientos.resolver(b).f855.fecha);
       const f855Vencidos = items.filter((b) => {
-        if (b.f855_estado === "no_corresponde") return false;
+        if (b.f855_estado === "no_corresponde" || b.f855_estado === "presenta_cliente") return false;
         if (b.f855_estado === "presentado" && !b.f855_fecha_real) return false;
         return hoy > vtoF855(b);
       });
