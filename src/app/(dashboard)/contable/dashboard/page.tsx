@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { Building2, CheckCircle2, Clock, AlertTriangle, Ban, UserX, Target } from "lucide-react";
+import { Building2, CheckCircle2, Clock, AlertTriangle, Ban, UserX, Target, BadgeCheck } from "lucide-react";
 import clsx from "clsx";
 import { ESTADO_BALANCE, calcularAvance, cuentaBalance, OBJETIVO_CONTABLE_TEXTO } from "../semaforo";
 import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
@@ -105,7 +105,12 @@ export default async function ContableDashboardPage({
   const terminados = balances.filter((b) => b.estado === "finalizado").length;
   const frenados = balances.filter((b) => b.estado === "frenado").length;
   const sinAsignar = balances.filter((b) => b.estado === "sin_asignar").length;
-  const enProceso = balances.filter((b) => b.estado === "asignado" || b.estado === "legalizado").length;
+  // Ítem 117: antes una sola tarjeta "En proceso" juntaba Asignado y
+  // Legalizado bajo un nombre que no existe en ningún otro lado del módulo
+  // (la tabla de Seguimiento y la barra por año sí distinguen los dos
+  // estados). Separadas, usan los mismos dos nombres en todas partes.
+  const asignados = balances.filter((b) => b.estado === "asignado").length;
+  const legalizados = balances.filter((b) => b.estado === "legalizado").length;
   const vencidosSinCerrar = conVto.filter(
     (b) => b.estado !== "finalizado" && b.vtoBalance < hoy
   ).length;
@@ -113,8 +118,8 @@ export default async function ContableDashboardPage({
   // Resumen por contador: "sin empezar" = asignado pero todavía en 0% de
   // avance (ni siquiera se pidió información); "con avance" = cualquier
   // avance > 0% que no sea ni terminado ni frenado. Ítem 117: se llama "con
-  // avance" (no "en proceso") para no confundirse con la tarjeta de arriba,
-  // que cuenta distinto (todo lo Asignado/Legalizado, haya avance o no).
+  // avance" (no "en proceso") para no confundirse con las tarjetas de
+  // arriba, que cuentan distinto (Asignado/Legalizado, haya avance o no).
   const respMap = new Map<
     string,
     {
@@ -122,7 +127,7 @@ export default async function ContableDashboardPage({
       total: number;
       totalPorAnio: Record<number, number>;
       terminados: number;
-      enProceso: number;
+      conAvance: number;
       sinEmpezar: number;
       frenados: number;
       proximosVencimientos: number;
@@ -139,7 +144,7 @@ export default async function ContableDashboardPage({
           total: 0,
           totalPorAnio: {},
           terminados: 0,
-          enProceso: 0,
+          conAvance: 0,
           sinEmpezar: 0,
           frenados: 0,
           proximosVencimientos: 0,
@@ -151,7 +156,7 @@ export default async function ContableDashboardPage({
       if (b.estado === "finalizado") entry.terminados++;
       else if (b.estado === "frenado") entry.frenados++;
       else if (calcularAvance(b) === 0) entry.sinEmpezar++;
-      else entry.enProceso++;
+      else entry.conAvance++;
       if (b.estado !== "finalizado" && diasRestantes(b.vtoBalance) <= 30) entry.proximosVencimientos++;
     }
   }
@@ -238,7 +243,7 @@ export default async function ContableDashboardPage({
       </div>
 
       {/* Estado general */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
         <StatCard
           label="Total balances"
           value={total}
@@ -253,11 +258,18 @@ export default async function ContableDashboardPage({
           desglose={desglose((b) => b.estado === "finalizado")}
         />
         <StatCard
-          label="En proceso"
-          value={enProceso}
+          label="Asignado"
+          value={asignados}
           icon={<Clock size={16} className="text-amber-500" />}
           valueColor="text-amber-600"
-          desglose={desglose((b) => b.estado === "asignado" || b.estado === "legalizado")}
+          desglose={desglose((b) => b.estado === "asignado")}
+        />
+        <StatCard
+          label="Legalizado"
+          value={legalizados}
+          icon={<BadgeCheck size={16} className="text-green-500" />}
+          valueColor="text-green-600"
+          desglose={desglose((b) => b.estado === "legalizado")}
         />
         <StatCard
           label="Sin asignar"
@@ -327,7 +339,7 @@ export default async function ContableDashboardPage({
                           </td>
                         ))}
                       <td className="px-3 py-3.5 text-center text-[13px] text-emerald-600 font-medium">{r.terminados}</td>
-                      <td className="px-3 py-3.5 text-center text-[13px] text-amber-600 font-medium">{r.enProceso}</td>
+                      <td className="px-3 py-3.5 text-center text-[13px] text-amber-600 font-medium">{r.conAvance}</td>
                       <td className="px-3 py-3.5 text-center text-[13px] text-gray-500">{r.sinEmpezar}</td>
                       <td className={clsx("px-3 py-3.5 text-center text-[13px] font-medium", r.frenados > 0 ? "text-red-600" : "text-gray-300")}>
                         {r.frenados}
