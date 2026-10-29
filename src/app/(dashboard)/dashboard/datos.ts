@@ -2,9 +2,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Cliente, Liquidadora, Tarea } from "@/types";
 import { getVencimientosGrupos, getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import { getObjetivoSueldos } from "@/lib/objetivos";
-import { objetivoLimiteF931, objetivoRecibos, limiteRecibos, clasificarEstado } from "@/lib/objetivoSueldos";
+import {
+  objetivoLimiteF931, objetivoRecibos, limiteRecibos, clasificarEnVivo, diasHabilesHasta, diaAR, diaFecha,
+  type ColorEnVivo,
+} from "@/lib/objetivoSueldos";
 import { fetchPeriodo } from "../seguimiento/actions";
 import { getCurrentLiquidadora } from "@/lib/auth";
+
+export type ConteoObjetivo = Record<ColorEnVivo, number>;
+
+function conteoVacio(): ConteoObjetivo {
+  return { verde: 0, amarillo: 0, rojo: 0, vencido: 0, gris: 0, sin_fecha: 0 };
+}
 
 function generateMonthOptions(mesTrabajo: number, anioTrabajo: number) {
   let mes = mesTrabajo;
@@ -89,8 +98,8 @@ export async function obtenerDatosDashboardSueldos(searchParams: { mes?: string;
   const resumen = liquidadorasList.map((liq) => {
     const mis = clientesList.filter((c) => c.liquidador_id === liq.id);
     let recibosOk = 0, f931Ok = 0, sacOk = 0, pendientes = 0, legajos = 0;
-    let f931Verde = 0, f931Amarillo = 0, f931Rojo = 0;
-    let recibosVerde = 0, recibosAmarillo = 0, recibosRojo = 0;
+    const objF931 = conteoVacio();
+    const objRecibos = conteoVacio();
     for (const c of mis) {
       const t = tareasMap.get(c.id);
       const tieneRecibos = !!t && (t.recibos_manual || t.recibos_drive);
@@ -105,21 +114,18 @@ export async function obtenerDatosDashboardSueldos(searchParams: { mes?: string;
         if (!tieneRecibos || !tieneF931) pendientes++;
       }
 
-      const { objetivo: objF931, limite: limF931 } = objetivoLimiteF931(c.terminacion_cuit, anioActual, mesActual, objetivoGeneral);
-      const colorF931 = clasificarEstado(tieneF931, t?.f931_manual_en ?? null, objF931, limF931, hoy);
-      if (colorF931 === "verde") f931Verde++; else if (colorF931 === "amarillo") f931Amarillo++; else f931Rojo++;
+      const { objetivo: objetivoF931, limite: limF931 } = objetivoLimiteF931(c.terminacion_cuit, anioActual, mesActual, objetivoGeneral);
+      objF931[clasificarEnVivo(tieneF931, t?.f931_manual ? t.f931_manual_en ?? null : null, objetivoF931, limF931, hoy)]++;
 
-      const objRecibos = objetivoRecibos(anioActual, mesActual, objetivoGeneral, {
+      const objetivoRec = objetivoRecibos(anioActual, mesActual, objetivoGeneral, {
         preliquidado: t?.preliquidado ?? false,
         preliquidado_fecha: t?.preliquidado_fecha ?? null,
         novedades_recibidas_fecha: t?.novedades_recibidas_fecha ?? null,
       });
-      const colorRecibos = clasificarEstado(tieneRecibos, t?.recibos_manual_en ?? null, objRecibos, limiteRecibosGeneral, hoy);
-      if (colorRecibos === "verde") recibosVerde++; else if (colorRecibos === "amarillo") recibosAmarillo++; else recibosRojo++;
+      objRecibos[clasificarEnVivo(tieneRecibos, t?.recibos_manual ? t.recibos_manual_en ?? null : null, objetivoRec, limiteRecibosGeneral, hoy)]++;
     }
     return {
-      liq, total: mis.length, recibosOk, f931Ok, sacOk, pendientes, legajos,
-      f931Verde, f931Amarillo, f931Rojo, recibosVerde, recibosAmarillo, recibosRojo,
+      liq, total: mis.length, recibosOk, f931Ok, sacOk, pendientes, legajos, objF931, objRecibos,
     };
   });
   const totalLegajos = resumen.reduce((sum, r) => sum + r.legajos, 0);
@@ -138,7 +144,30 @@ export async function obtenerDatosDashboardSueldos(searchParams: { mes?: string;
     return { ...g, ok, total: clientesGrupo.length, diasRestantes, objetivo };
   });
 
+  // Tarjetas del cuadro de objetivo: una por tanda de CUIT + Recibos. Pasada =
+  // límite vencido. Próxima = la de fecha pendiente más cercana (el objetivo
+  // si todavía no pasó; si no, el límite).
+  const hoyDia = diaAR(hoy);
+  const tarjetasBase = [
+    ...gruposF931.map((g) => ({ clave: g.label, titulo: "F.931", subtitulo: g.label, objetivo: g.objetivo, limite: g.fecha })),
+    { clave: "recibos", titulo: "Recibos", subtitulo: "Todos los clientes", objetivo: objetivoRecibosGeneral, limite: limiteRecibosGeneral },
+  ].map((tj) => {
+    const pasada = hoyDia > diaFecha(tj.limite);
+    const objetivoPasado = hoyDia > diaFecha(tj.objetivo);
+    const fechaHacia = objetivoPasado ? tj.limite : tj.objetivo;
+    return {
+      ...tj, pasada, fechaHacia,
+      hacia: objetivoPasado ? ("limite" as const) : ("objetivo" as const),
+      diasHabiles: diasHabilesHasta(fechaHacia, hoy),
+    };
+  });
+  const proxima = tarjetasBase
+    .filter((tj) => !tj.pasada)
+    .sort((a, b) => a.fechaHacia.getTime() - b.fechaHacia.getTime())[0]?.clave;
+  const tarjetasObjetivo = tarjetasBase.map((tj) => ({ ...tj, proxima: tj.clave === proxima }));
+
   return {
+    tarjetasObjetivo,
     mesActual, anioActual, esMesSAC, esMesActual, monthOptions,
     resumen, totalLegajos, gruposF931,
     total, recibosOk, cargasOk, pctAvance,

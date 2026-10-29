@@ -2,6 +2,13 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 29-oct (Giuliana) — rama `giuliana/dashboard-sueldos-objetivos`, PR para que revise Mati
+
+Dashboard de Sueldos (sin cambios de base):
+- "En objetivo" (F.931 y Recibos) medía mal: contaba como verde lo pendiente todavía en plazo y lo detectado por Drive sin fecha. Ahora `clasificarEnVivo` (`lib/objetivoSueldos.ts`): verde = hecho con tilde ≤ objetivo; amarillo = hecho entre objetivo y límite; rojo = hecho después del límite o pendiente con el límite vencido; gris = pendiente en plazo; "sin fecha" = hecho por Drive sin timestamp (aparte, no cuenta como en objetivo — decisión de Giuliana). Fechas comparadas por día en hora de Argentina. Se ve "15/22 en objetivo · 2 fuera · 5 pendientes". El Excel del Dashboard usa lo mismo. `clasificarEstado` (la vieja) se reemplazó; `clasificar` de Productividad no se tocó.
+- Cuadro "Objetivo del área": tarjetas por tanda de CUIT + Recibos, la próxima resaltada con "faltan X días hábiles" (sin feriados), las pasadas en gris.
+- Tarjetas "Recibos liquidados" / "F.931 presentados" con el formato de "Avance global"; "Avance global" aclara que el total = clientes × 2 (recibos + F.931).
+
 ## Pendientes al cerrar la sesión del 29-oct (Matías)
 
 Hecho ese día:
