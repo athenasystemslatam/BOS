@@ -387,6 +387,7 @@ Aplicadas en producción:
 - `add_balances_no_corresponde.sql` — amplía `balances_estado_check` con `no_corresponde`; columnas `no_corresponde_motivo` y `no_corresponde_desde`. Corrida por Matías el 23-oct-2026.
 - `add_clientes_cierre_cambios.sql` — registro de cambios de la fecha de cierre fija, con motivo (ítem 109). Corrida por Matías el 23-oct-2026.
 - `add_balances_fechas_reales.sql` — `presentado_fecha_real` / `f855_fecha_real`: separa las fechas reales de presentación de las aproximadas que cargó la migración del 20-oct (ítem 124). Corrida por Matías el 23-oct-2026.
+- `add_clientes_fal.sql` — tabla `clientes_fal` (seguimiento FAL por cliente de Sueldos: aviso, respondió, fecha de carga del ID FAL, confirmado en ARCA, "Asignado por default" con motivo). Fecha de corte en `objetivos_area` sueldos `fal_fecha_corte`. Corrida por Giuliana el 29-oct-2026.
 
 **Correcciones puntuales de datos corridas directo en Supabase SQL Editor (octubre 2026, no quedaron como archivo `.sql` porque son fixes de una fila, no migraciones de esquema):**
 - `liquidadoras.user_id` de Andrea Dilonardo (ficha de Cobranzas sin vincular a su login).

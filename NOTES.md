@@ -4,7 +4,7 @@ Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hiz
 
 ## Sesión del 29-oct (Giuliana) — FAL (Fondo de Asistencia Laboral) en Sueldos
 
-- **SQL `supabase/add_clientes_fal.sql`** (tabla nueva `clientes_fal`, una fila por cliente) — pendiente de que Giuliana lo corra antes del push.
+- **SQL `supabase/add_clientes_fal.sql`** (tabla nueva `clientes_fal`, una fila por cliente) — **corrida** por Giuliana el 29-oct. Probado en producción tildando un paso.
 - Cuatro pasos por cliente con fecha y persona: Aviso enviado, Respondió, ID FAL (reusa `clientes.id_fal` de Matías; la fecha de carga queda en `clientes_fal.id_fal_en`, solo cuando se carga desde FAL), Confirmado en ARCA. Acciones en `seguimiento/falActions.ts`, gateadas por `requireAreaOrAdmin("sueldos")`.
 - Cartel en Seguimiento (`FalCartel.tsx`) desde el período oct-2026 hasta el día anterior al corte, con alerta "respondieron y falta confirmar en ARCA" y lista para marcar.
 - Fecha de corte: Productividad → Configuración (`objetivos_area` sueldos, `fal_fecha_corte`, provisoria 15/01/2027). Al llegar, `aplicarDefaultFal` (`lib/falServer.ts`, corre al abrir Seguimiento) marca una sola vez "Asignado por default" con motivo a los no confirmados; candado por corte (`fal_default_aplicado_para`) y por fila (`default_aplicado_en`) para no pisar correcciones ni barrer clientes nuevos.
