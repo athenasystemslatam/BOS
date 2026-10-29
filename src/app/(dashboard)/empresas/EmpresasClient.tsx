@@ -88,6 +88,7 @@ export function EmpresasClient({
   creadoPor,
   lsdHasta,
   puedeEditar,
+  puedeCrear,
 }: {
   clientes: ClienteConLiq[];
   liquidadoras: Liquidadora[];
@@ -95,6 +96,7 @@ export function EmpresasClient({
   creadoPor: string | null;
   lsdHasta: Record<string, { anio: number; mes: number }>;
   puedeEditar: boolean;
+  puedeCrear: boolean;
 }) {
   const [search, setSearch] = useState("");
   // Un no-admin que ya tiene al menos un cliente a cargo arranca viendo su
@@ -138,7 +140,7 @@ export function EmpresasClient({
             </p>
             <h1 className="text-2xl font-semibold text-gray-900 mt-1">Clientes</h1>
           </div>
-          {isAdmin && <NuevaEmpresaModal liquidadoras={liquidadoras} />}
+          {puedeCrear && <NuevaEmpresaModal liquidadoras={liquidadoras} />}
         </div>
 
         {/* Alerta: empresas sin liquidadora activa */}

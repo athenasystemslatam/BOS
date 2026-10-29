@@ -85,6 +85,7 @@ export function PanelGeneralClient({
   serviciosActivos,
   sueldosSinLiquidadora,
   isAdmin,
+  puedeCrearCliente,
   miNombre,
 }: {
   empresas: VistEmpresa[];
@@ -93,6 +94,10 @@ export function PanelGeneralClient({
   serviciosActivos: Record<string, string[]>;
   sueldosSinLiquidadora: string[];
   isAdmin: boolean;
+  /** Ítem (liquidadores en Panel General): además de admin/administrativo,
+   *  cualquiera del área Sueldos puede dar de alta un cliente nuevo — pero
+   *  no editar/dar de baja cualquier cliente, eso sigue siendo de isAdmin. */
+  puedeCrearCliente: boolean;
   miNombre: string | null;
 }) {
   const [search, setSearch] = useState("");
@@ -476,7 +481,7 @@ export function PanelGeneralClient({
             </button>
           )}
 
-          {isAdmin && (
+          {puedeCrearCliente && (
             <button
               onClick={() => setCreando(true)}
               className="ml-auto inline-flex items-center gap-2 bg-bordo text-white text-[12.5px] font-semibold px-4 py-2.5 rounded-[9px] hover:bg-bordo-light transition-colors"

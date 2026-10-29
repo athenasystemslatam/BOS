@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { getCurrentLiquidadora, requireAdminOrAdministrativo } from "@/lib/auth";
+import { getCurrentLiquidadora, requireAdminOrAdministrativo, requireAreaOrAdmin } from "@/lib/auth";
 import { sendEmailBajaServicio, sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import type { Cliente, ClienteSocietario } from "@/types";
@@ -129,8 +129,14 @@ const ERROR_EMAILS_DETALLE =
 export async function crearClienteConServicios(formData: FormData) {
   try {
     await requireAdminOrAdministrativo();
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "No autorizado." };
+  } catch {
+    // Liquidadores (área Sueldos) también pueden dar de alta clientes desde
+    // Panel General, igual que ya podían hacerlo en Empresas al editar.
+    try {
+      await requireAreaOrAdmin("sueldos");
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "No autorizado." };
+    }
   }
 
   const supabase = createAdminClient();

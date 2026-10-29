@@ -72,6 +72,10 @@ export default async function EmpresasPage() {
       creadoPor={yo?.id ?? null}
       lsdHasta={lsdHasta}
       puedeEditar={!yo?.esCobranzas}
+      // Cualquier liquidador del área Sueldos (ya filtrada arriba) puede dar
+      // de alta un cliente nuevo, no solo un admin — mismo criterio que ya
+      // regía para editar (puedeEditar).
+      puedeCrear={!yo?.esCobranzas}
     />
   );
 }

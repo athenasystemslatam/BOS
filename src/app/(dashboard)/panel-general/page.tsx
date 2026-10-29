@@ -43,6 +43,11 @@ export default async function PanelGeneralPage() {
     rol: e.rol,
   }));
 
+  // Liquidadores (área Sueldos) también pueden dar de alta clientes, además
+  // de admin/administrativo — no así editar/dar de baja cualquier cliente,
+  // que sigue siendo exclusivo de esos dos roles (ver isAdmin).
+  const esDeSueldos = !!yo && (equipoModulos ?? []).some((m) => m.equipo_id === yo.id && m.modulo === "sueldos");
+
   return (
     <PanelGeneralClient
       empresas={empresas ?? []}
@@ -52,6 +57,7 @@ export default async function PanelGeneralPage() {
       sueldosSinLiquidadora={sueldosSinLiquidadora}
       // Ítem 119: administrativo edita Panel General igual que un admin.
       isAdmin={!!yo?.isAdmin || !!yo?.esAdministrativo}
+      puedeCrearCliente={!!yo?.isAdmin || !!yo?.esAdministrativo || esDeSueldos}
       miNombre={yo?.nombre ?? null}
     />
   );

@@ -2,6 +2,12 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Pendientes al cerrar la sesión del 29-oct (Matías)
+
+Hecho ese día:
+- Sueldos: nuevo campo `clientes.id_fal` (alfanumérico), editable junto al CUIL de ARCA en Panel General (alta/edición) y en Empresas (alta/edición), visible en la ficha de cliente de solo lectura. `supabase/add_clientes_id_fal.sql` **corrida** por Matías el 27-oct.
+- Permiso: liquidadores (área Sueldos) ya pueden dar de alta clientes nuevos, no solo editarlos — antes `crearClienteConServicios` (Panel General) y `crearEmpresa` (Empresas) exigían admin/administrativo; ahora aceptan también a cualquiera del área Sueldos (`requireAreaOrAdmin("sueldos")`), igual que ya regía para editar. Alcance acotado a pedido: solo "agregar clientes", no se tocó el resto de lo que sigue siendo exclusivo de admin/administrativo en Panel General (editar/dar de baja cualquier cliente, exportar, backup) ni en Empresas (reasignar liquidadora, ver todas las carteras por defecto).
+
 ## Pendientes al cerrar la sesión del 26-oct (Matías)
 
 Hecho ese día:
@@ -36,7 +42,7 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct).
+Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).
 
 ### Objetivo "0 en término" — ítem 124 (23-oct, Matías)
 

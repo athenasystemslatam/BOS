@@ -52,7 +52,9 @@ const ERROR_EMAILS_DETALLE =
 
 export async function crearEmpresa(formData: FormData) {
   try {
-    await requireAdmin();
+    // Igual que editarEmpresa: cualquier liquidador del área Sueldos puede
+    // dar de alta un cliente, no solo un admin.
+    await requireAreaOrAdmin("sueldos");
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
