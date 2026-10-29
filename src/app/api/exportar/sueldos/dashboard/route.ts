@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { requireAdmin } from "@/lib/auth";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
-import { obtenerDatosDashboardSueldos } from "@/app/(dashboard)/dashboard/datos";
+import { obtenerDatosDashboardSueldos, type ConteoObjetivo } from "@/app/(dashboard)/dashboard/datos";
+
+function resumenObjetivo(c: ConteoObjetivo) {
+  const total = c.verde + c.amarillo + c.rojo + c.vencido + c.gris + c.sin_fecha;
+  const partes = [`${c.verde}/${total} en objetivo`, `${c.amarillo + c.rojo} fuera`, `${c.gris + c.vencido} pendientes`];
+  if (c.sin_fecha > 0) partes.push(`${c.sin_fecha} sin fecha`);
+  return partes.join(" · ");
+}
 
 export const maxDuration = 60;
 
@@ -66,8 +73,8 @@ export async function GET(req: NextRequest) {
     { header: "Legajos", key: "legajos", width: 10 },
     { header: "Recibos", key: "recibos", width: 12 },
     { header: "F.931", key: "f931", width: 12 },
-    { header: "En objetivo F.931 (verde/amar/rojo)", key: "objF931", width: 26 },
-    { header: "En objetivo Recibos (verde/amar/rojo)", key: "objRecibos", width: 28 },
+    { header: "En objetivo F.931", key: "objF931", width: 44 },
+    { header: "En objetivo Recibos", key: "objRecibos", width: 44 },
     ...(datos.esMesSAC ? [{ header: "SAC", key: "sac", width: 10 }] : []),
     { header: "Pendientes", key: "pendientes", width: 12 },
   ];
@@ -79,8 +86,8 @@ export async function GET(req: NextRequest) {
       legajos: r.legajos,
       recibos: `${r.recibosOk}/${r.total}`,
       f931: `${r.f931Ok}/${r.total}`,
-      objF931: `${r.f931Verde}/${r.f931Amarillo}/${r.f931Rojo}`,
-      objRecibos: `${r.recibosVerde}/${r.recibosAmarillo}/${r.recibosRojo}`,
+      objF931: resumenObjetivo(r.objF931),
+      objRecibos: resumenObjetivo(r.objRecibos),
       ...(datos.esMesSAC ? { sac: `${r.sacOk}/${r.total}` } : {}),
       pendientes: r.pendientes,
     });

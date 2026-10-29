@@ -1,11 +1,10 @@
 import { MESES_NOMBRES } from "@/lib/vencimientos";
-import { type Color } from "@/lib/objetivoSueldos";
+import { obtenerDatosDashboardSueldos, type ConteoObjetivo } from "./datos";
 import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle, Target } from "lucide-react";
 import clsx from "clsx";
 import { MonthSelector } from "./MonthSelector";
 import { BackupButton } from "@/components/BackupButton";
 import { DescargarExcelButton } from "@/components/DescargarExcelButton";
-import { obtenerDatosDashboardSueldos } from "./datos";
 
 const CAMPO_LABELS: Record<string, string> = {
   f931: "F.931", recibos: "Recibos", rec_q1: "Recibos Q1",
@@ -24,8 +23,8 @@ export default async function DashboardPage({
   const {
     mesActual, anioActual, esMesSAC, esMesActual, monthOptions,
     resumen, totalLegajos, gruposF931,
-    total, recibosOk, cargasOk, pctAvance,
-    objetivoGeneral, objetivoRecibosGeneral, limiteRecibosGeneral,
+    total, recibosOk, cargasOk,
+    objetivoGeneral, tarjetasObjetivo,
     alertasPostcierre, yo,
   } = await obtenerDatosDashboardSueldos(searchParams);
 
@@ -61,58 +60,83 @@ export default async function DashboardPage({
           /productividad/configuracion. Acá se muestra sin la excepción de
           Preliquidado (ítem 97), que es por cliente/período. */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4 mb-5">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-1">
           <Target size={16} className="text-bordo" />
           <span className="text-[13px] font-semibold text-gray-900">Objetivo del área</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <p className="text-[11px] text-gray-400 mb-2">
-              F.931 — objetivo: {objetivoGeneral.f931_dias_habiles_antes_vencimiento} días hábiles antes del vencimiento · límite: el vencimiento
-            </p>
-            <div className="flex gap-4 flex-wrap">
-              {gruposF931.map((g) => (
-                <div key={g.label} className="text-[12px]">
-                  <p className="text-gray-500 font-medium">{g.label}</p>
-                  <p className="text-gray-700">Objetivo: <span className="font-medium">{fmtCorta(g.objetivo)}</span></p>
-                  <p className="text-gray-700">Límite: <span className="font-medium">{fmtCorta(g.fecha)}</span></p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="text-[11px] text-gray-400 mb-2">
-              Recibos — objetivo: {objetivoGeneral.recibos_dias_antes_fin_mes} días antes de fin de mes · límite: {objetivoGeneral.recibos_limite_dia_habil_mes_siguiente}º día hábil del mes siguiente
-            </p>
-            <div className="text-[12px]">
-              <p className="text-gray-700">Objetivo: <span className="font-medium">{fmtCorta(objetivoRecibosGeneral)}</span></p>
-              <p className="text-gray-700">Límite: <span className="font-medium">{fmtCorta(limiteRecibosGeneral)}</span></p>
-              <p className="text-[11px] text-amber-600 mt-1">
-                Con &quot;Preliquidado&quot; (ítem 97), el objetivo pasa a ser novedades recibidas + 1 día hábil.
+        <p className="text-[11px] text-gray-400 mb-3">
+          F.931: objetivo {objetivoGeneral.f931_dias_habiles_antes_vencimiento} días hábiles antes del vencimiento, límite el vencimiento ·
+          Recibos: objetivo {objetivoGeneral.recibos_dias_antes_fin_mes} días antes de fin de mes, límite el {objetivoGeneral.recibos_limite_dia_habil_mes_siguiente}º día hábil del mes siguiente
+        </p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {tarjetasObjetivo.map((tj) => (
+            <div
+              key={tj.clave}
+              className={clsx(
+                "rounded-lg border px-4 py-3",
+                tj.proxima
+                  ? "border-bordo bg-bordo/5 ring-1 ring-bordo/20"
+                  : tj.pasada
+                  ? "border-gray-100 bg-gray-50"
+                  : "border-gray-100 bg-white"
+              )}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <p className={clsx("text-[13px] font-semibold", tj.pasada ? "text-gray-400" : "text-gray-900")}>{tj.titulo}</p>
+                <p className="text-[11px] text-gray-400">{tj.subtitulo}</p>
+              </div>
+              <div className={clsx("mt-2 space-y-0.5 text-[12px]", tj.pasada ? "text-gray-400" : "text-gray-600")}>
+                <p className="flex justify-between">
+                  <span>Objetivo</span>
+                  <span className={clsx("font-semibold", !tj.pasada && "text-gray-900")}>{fmtCorta(tj.objetivo)}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span>Límite</span>
+                  <span className={clsx("font-semibold", !tj.pasada && "text-gray-900")}>{fmtCorta(tj.limite)}</span>
+                </p>
+              </div>
+              <p className={clsx("mt-2 text-[11px] font-semibold",
+                tj.pasada ? "text-gray-400" : tj.proxima ? "text-bordo" : "text-gray-500"
+              )}>
+                {tj.pasada
+                  ? "Ya pasó"
+                  : tj.diasHabiles === 0
+                  ? `${tj.hacia === "objetivo" ? "Objetivo" : "Límite"}: hoy`
+                  : `Faltan ${tj.diasHabiles} ${tj.diasHabiles === 1 ? "día hábil" : "días hábiles"} ${tj.hacia === "objetivo" ? "para el objetivo" : "para el límite"}`}
               </p>
             </div>
-          </div>
+          ))}
         </div>
+        <p className="text-[11px] text-amber-600 mt-3">
+          Recibos: con &quot;Preliquidado&quot; (ítem 97), el objetivo de ese cliente pasa a ser novedades recibidas + 1 día hábil.
+        </p>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-5 md:mb-7">
         <StatCard label="Total clientes" value={total} icon={<Building2 size={16} className="text-gray-400" />} />
-        <StatCard
-          label="Recibos"
-          value={recibosOk}
+        <ProgressCard
+          label="Recibos liquidados"
           icon={<CheckCircle2 size={16} className="text-success" />}
-          valueColor="text-success"
-          sub={total > 0 ? `${Math.round((recibosOk / total) * 100)}%` : undefined}
+          completadas={recibosOk}
+          total={total}
+          detalle={`${recibosOk} de ${total} clientes`}
         />
-        <StatCard
-          label="Cargas F.931"
-          value={cargasOk}
+        <ProgressCard
+          label="F.931 presentados"
           icon={<Clock size={16} className="text-warning" />}
-          valueColor="text-warning"
-          sub={total > 0 ? `${Math.round((cargasOk / total) * 100)}%` : undefined}
+          completadas={cargasOk}
+          total={total}
+          detalle={`${cargasOk} de ${total} clientes`}
         />
-        <ProgressCard pct={pctAvance} completadas={recibosOk + cargasOk} total={total * 2} />
+        <ProgressCard
+          label="Avance global"
+          icon={<TrendingUp size={16} className="text-bordo" />}
+          completadas={recibosOk + cargasOk}
+          total={total * 2}
+          detalle={`${recibosOk + cargasOk} de ${total * 2} tareas`}
+          aclaracion={`Recibos + F.931 de ${total} clientes (2 por cliente)`}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5">
@@ -131,7 +155,7 @@ export default async function DashboardPage({
             </div>
           ) : (
             <div className="flex-1 min-h-[160px] overflow-auto [scrollbar-gutter:stable]">
-            <table className="w-full min-w-[520px]">
+            <table className="w-full min-w-[640px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-gray-50">
                   {["Liquidadora", "Clientes", "Legajos", "Recibos", "F.931", "En objetivo F.931", "En objetivo Recibos", ...(esMesSAC ? ["SAC"] : []), "Pendientes"].map((h) => (
@@ -150,7 +174,7 @@ export default async function DashboardPage({
               <tbody className="divide-y divide-gray-50">
                 {resumen.map(({
                   liq, total: tot, recibosOk, f931Ok, sacOk, pendientes, legajos,
-                  f931Verde, f931Amarillo, f931Rojo, recibosVerde, recibosAmarillo, recibosRojo,
+                  objF931, objRecibos,
                 }) => (
                   <tr key={liq.id} className="hover:bg-gray-50/60 transition-colors">
                     <td className="px-6 py-3.5">
@@ -170,10 +194,10 @@ export default async function DashboardPage({
                       <ProgressPill done={f931Ok} total={tot} />
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      <ObjetivoPill verde={f931Verde} amarillo={f931Amarillo} rojo={f931Rojo} />
+                      <ObjetivoPill c={objF931} />
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      <ObjetivoPill verde={recibosVerde} amarillo={recibosAmarillo} rojo={recibosRojo} />
+                      <ObjetivoPill c={objRecibos} />
                     </td>
                     {esMesSAC && (
                       <td className="px-4 py-3.5 text-center">
@@ -355,12 +379,15 @@ function StatCard({ label, value, icon, valueColor = "text-gray-900", sub }: {
   );
 }
 
-function ProgressCard({ pct, completadas, total }: { pct: number; completadas: number; total: number }) {
+function ProgressCard({ label, icon, completadas, total, detalle, aclaracion }: {
+  label: string; icon: React.ReactNode; completadas: number; total: number; detalle: string; aclaracion?: string;
+}) {
+  const pct = total > 0 ? Math.round((completadas / total) * 100) : 0;
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 md:px-5 md:py-4">
       <div className="flex items-center justify-between mb-2 md:mb-3">
-        <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Avance global</p>
-        <TrendingUp size={16} className="text-bordo" />
+        <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-wider leading-tight">{label}</p>
+        {icon}
       </div>
       <p className={clsx("text-[22px] md:text-[28px] font-bold leading-none tracking-tight",
         pct >= 80 ? "text-success" : pct >= 40 ? "text-warning" : "text-danger"
@@ -375,7 +402,8 @@ function ProgressCard({ pct, completadas, total }: { pct: number; completadas: n
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-[10px] md:text-[11px] text-gray-400 mt-1">{completadas}/{total} docs</p>
+      <p className="text-[10px] md:text-[11px] text-gray-500 font-medium mt-1">{detalle}</p>
+      {aclaracion && <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{aclaracion}</p>}
     </div>
   );
 }
@@ -394,24 +422,35 @@ function ProgressPill({ done, total }: { done: number; total: number }) {
   );
 }
 
-/** Ítem 69: "en objetivo" (verde) sobre el total, con el desglose de
- * amarillo/rojo debajo cuando corresponde — ej. 20/28 en objetivo, con
- * 5 amarillo y 3 rojo. */
-function ObjetivoPill({ verde, amarillo, rojo }: { verde: number; amarillo: number; rojo: number }) {
-  const total = verde + amarillo + rojo;
+/** Ítem 69: "en objetivo" = solo lo HECHO con tilde en o antes del objetivo.
+ * Debajo: fuera (hecho tarde: amarillo antes del límite, rojo después),
+ * pendientes (gris en plazo, rojo con el límite vencido) y sin fecha
+ * (detectado por Drive, no se puede verificar). */
+function ObjetivoPill({ c }: { c: ConteoObjetivo }) {
+  const total = c.verde + c.amarillo + c.rojo + c.vencido + c.gris + c.sin_fecha;
   if (total === 0) return <span className="text-gray-300 text-xs">—</span>;
-  const colorPrincipal: Color = verde === total ? "verde" : rojo > 0 ? "rojo" : "amarillo";
+  const fuera = c.amarillo + c.rojo;
+  const pendientes = c.gris + c.vencido;
+  const detalle = [
+    `${c.verde} en objetivo`,
+    `${c.amarillo} entre objetivo y límite`,
+    `${c.rojo} hechos después del límite`,
+    `${c.vencido} pendientes con el límite vencido`,
+    `${c.gris} pendientes en plazo`,
+    `${c.sin_fecha} hechos sin fecha (Drive)`,
+  ].join("\n");
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className={clsx("text-[12px] font-medium",
-        colorPrincipal === "verde" ? "text-success" : colorPrincipal === "amarillo" ? "text-warning" : "text-danger"
-      )}>
-        {verde}/{total}
+    <div className="flex flex-col items-center gap-0.5" title={detalle}>
+      <span className={clsx("text-[12px] font-medium", c.verde === total ? "text-success" : "text-gray-700")}>
+        {c.verde}/{total} <span className="text-[10px] font-normal text-gray-400">en objetivo</span>
       </span>
-      {(amarillo > 0 || rojo > 0) && (
-        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold">
-          {amarillo > 0 && <span className="text-warning">{amarillo}</span>}
-          {rojo > 0 && <span className="text-danger">{rojo}</span>}
+      {(fuera > 0 || pendientes > 0 || c.sin_fecha > 0) && (
+        <span className="inline-flex items-center gap-1 text-[10px] text-gray-400">
+          {fuera > 0 && <span className={clsx("font-semibold", c.rojo > 0 ? "text-danger" : "text-warning")}>{fuera} fuera</span>}
+          {fuera > 0 && (pendientes > 0 || c.sin_fecha > 0) && <span>·</span>}
+          {pendientes > 0 && <span className={clsx("font-semibold", c.vencido > 0 ? "text-danger" : "text-gray-400")}>{pendientes} {pendientes === 1 ? "pendiente" : "pendientes"}</span>}
+          {pendientes > 0 && c.sin_fecha > 0 && <span>·</span>}
+          {c.sin_fecha > 0 && <span className="font-semibold text-gray-500">{c.sin_fecha} sin fecha</span>}
         </span>
       )}
     </div>

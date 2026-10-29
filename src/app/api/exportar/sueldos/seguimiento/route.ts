@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { requireAdmin } from "@/lib/auth";
 import { obtenerSeguimientoSueldos } from "@/app/(dashboard)/seguimiento/datos";
 import type { Tarea } from "@/types";
+import { filaFalVacia, fmtFechaFal, MOTIVO_DEFAULT_LABEL } from "@/lib/fal";
 
 export const maxDuration = 60;
 
@@ -55,8 +56,9 @@ export async function GET() {
     return NextResponse.json({ error: e instanceof Error ? e.message : "No autorizado." }, { status: 401 });
   }
 
-  const { clientes, tareas, periodo } = await obtenerSeguimientoSueldos();
+  const { clientes, tareas, periodo, fal } = await obtenerSeguimientoSueldos();
   const tareasPorCliente = new Map(tareas.map((t) => [t.cliente_id, t]));
+  const falPorCliente = new Map(fal.filas.map((f) => [f.cliente_id, f]));
   const esMesSAC = periodo?.mes === 6 || periodo?.mes === 12;
 
   const wb = new ExcelJS.Workbook();
@@ -75,6 +77,11 @@ export async function GET() {
     { header: "Alícuota ART", key: "alicuotaArt", width: 14 },
     { header: "Observaciones", key: "observaciones", width: 30 },
     { header: "Nota → Sig. mes", key: "recordatorio", width: 30 },
+    { header: "FAL: aviso enviado", key: "falAviso", width: 16 },
+    { header: "FAL: respondió", key: "falRespondio", width: 16 },
+    { header: "ID FAL", key: "idFal", width: 18 },
+    { header: "FAL: confirmado en ARCA", key: "falConfirmado", width: 20 },
+    { header: "FAL: resultado", key: "falResultado", width: 36 },
   ];
   encabezado(ws);
 
@@ -89,6 +96,7 @@ export async function GET() {
 
   for (const c of clientes) {
     const t = tareasPorCliente.get(c.id) ?? vacia;
+    const f = falPorCliente.get(c.id) ?? filaFalVacia(c.id);
     ws.addRow({
       cliente: c.nombre,
       cuit: c.cuit ?? "",
@@ -103,6 +111,13 @@ export async function GET() {
       alicuotaArt: c.alicuota_art ?? "",
       observaciones: t.observaciones ?? "",
       recordatorio: t.recordatorio ?? "",
+      falAviso: f.aviso_enviado ? fmtFechaFal(f.aviso_enviado_en) || "Sí" : "",
+      falRespondio: f.respondio ? fmtFechaFal(f.respondio_en) || "Sí" : "",
+      idFal: c.id_fal ?? "",
+      falConfirmado: f.confirmado_arca ? fmtFechaFal(f.confirmado_arca_en) || "Sí" : "",
+      falResultado: f.asignado_default
+        ? `Asignado por default${f.default_motivo ? ` (${MOTIVO_DEFAULT_LABEL[f.default_motivo].toLowerCase()})` : ""}`
+        : f.confirmado_arca ? "Confirmado en ARCA" : "",
     });
   }
 

@@ -56,7 +56,10 @@ export function ConfiguracionObjetivosClient({
 
   function guardarSueldos() {
     startTransition(async () => {
-      await guardarObjetivoArea("sueldos", sueldos);
+      // fal_default_aplicado_para lo escribe solo el sistema (lib/falServer.ts).
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { fal_default_aplicado_para, ...config } = sueldos;
+      await guardarObjetivoArea("sueldos", config);
       setGuardadoSueldos(true);
       setTimeout(() => setGuardadoSueldos(false), 2000);
     });
@@ -149,6 +152,18 @@ export function ConfiguracionObjetivosClient({
             onChange={(v) => setSueldos((s) => ({ ...s, recibos_limite_dia_habil_mes_siguiente: v ?? 0 }))}
           />
         </div>
+        <label className="block mt-4 max-w-xs">
+          <span className="block text-[11px] text-gray-500 mb-1">FAL: fecha de corte</span>
+          <input
+            type="date"
+            value={sueldos.fal_fecha_corte}
+            onChange={(e) => e.target.value && setSueldos((s) => ({ ...s, fal_fecha_corte: e.target.value }))}
+            className="w-full text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-emerald-400"
+          />
+          <span className="block text-[11px] text-gray-400 mt-1">
+            Desde ese día se oculta el cartel FAL de Seguimiento y los clientes sin &quot;Confirmado en ARCA&quot; quedan &quot;Asignado por default&quot;.
+          </span>
+        </label>
         <button
           onClick={guardarSueldos}
           className="mt-4 px-4 py-2 text-sm font-medium text-white bg-bordo hover:opacity-90 rounded-lg transition-opacity"

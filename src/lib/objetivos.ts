@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ReglaVto, TipoVto } from "@/lib/vencimientosContables";
+import { FAL_FECHA_CORTE_DEFAULT } from "@/lib/fal";
 
 // Ítem 67: objetivo general por área + excepción por cliente, en vez de
 // constantes fijas en el código. Sueldos no usa excepción por cliente acá
@@ -21,6 +22,11 @@ export type ObjetivoSueldos = {
   f931_dias_habiles_antes_vencimiento: number;
   recibos_dias_antes_fin_mes: number;
   recibos_limite_dia_habil_mes_siguiente: number;
+  /** FAL: AAAA-MM-DD. Desde ese día se oculta el cartel y lo no confirmado
+   * queda "Asignado por default" (ver lib/falServer.ts). */
+  fal_fecha_corte: string;
+  /** Fecha de corte para la que ya se corrió el marcado automático (una sola vez). */
+  fal_default_aplicado_para?: string;
 };
 
 const DEFAULT_CONTABLE: ObjetivoContable = {
@@ -34,6 +40,7 @@ const DEFAULT_SUELDOS: ObjetivoSueldos = {
   f931_dias_habiles_antes_vencimiento: 3,
   recibos_dias_antes_fin_mes: 2,
   recibos_limite_dia_habil_mes_siguiente: 3,
+  fal_fecha_corte: FAL_FECHA_CORTE_DEFAULT,
 };
 
 export async function getObjetivoContable(): Promise<ObjetivoContable> {

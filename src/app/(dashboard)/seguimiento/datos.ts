@@ -3,6 +3,8 @@ import { getCurrentLiquidadora } from "@/lib/auth";
 import { Cliente, Liquidadora, Periodo, Tarea } from "@/types";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { fetchRecordatoriosPrevios, fetchPeriodo } from "./actions";
+import { getObjetivoSueldos } from "@/lib/objetivos";
+import { aplicarDefaultFal, getFilasFal } from "@/lib/falServer";
 
 export type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -23,7 +25,7 @@ export async function obtenerSeguimientoSueldos() {
   const anioReal = hoyReal.getFullYear();
   const mesReal = hoyReal.getMonth() + 1;
 
-  const [yo, periodo, { data: periodos }, { data: serviciosSueldos }, { data: asignaciones }, { data: liquidadorasActivas }] =
+  const [yo, periodo, { data: periodos }, { data: serviciosSueldos }, { data: asignaciones }, { data: liquidadorasActivas }, objetivoSueldos] =
     await Promise.all([
       getCurrentLiquidadora(),
       fetchPeriodo(anio, mes),
@@ -34,7 +36,9 @@ export async function obtenerSeguimientoSueldos() {
         .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en, liquidadora:liquidadoras!liquidador_id(id, nombre)")
         .lte("desde_anio", anioReal),
       admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+      getObjetivoSueldos(),
     ]);
+  await aplicarDefaultFal(objetivoSueldos);
   const idsSueldos = (serviciosSueldos ?? []).map((s) => s.cliente_id);
 
   let clientesQuery = admin
@@ -81,6 +85,8 @@ export async function obtenerSeguimientoSueldos() {
     }
   }
 
+  const filasFal = await getFilasFal(clientes.map((c) => c.id));
+
   const clienteLiqIds = new Set((clientes ?? []).map((c) => c.liquidador_id).filter(Boolean));
   const liquidadoras = yo?.isAdmin || yo?.esCobranzas
     ? (liquidadorasActivas ?? []).filter((l) => clienteLiqIds.has(l.id))
@@ -95,6 +101,7 @@ export async function obtenerSeguimientoSueldos() {
     isAdmin: yo?.isAdmin ?? false,
     puedeEditar: !!yo && !yo.esCobranzas,
     recordatoriosPrevios,
+    fal: { fechaCorte: objetivoSueldos.fal_fecha_corte, filas: filasFal },
   };
 }
 

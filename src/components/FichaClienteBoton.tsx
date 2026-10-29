@@ -5,6 +5,7 @@ import Link from "next/link";
 import { IdCard, X, Eye, EyeOff, ExternalLink, Pencil } from "lucide-react";
 import type { Cliente, FichaLibrosSocietario, ModuloClave } from "@/types";
 import { vencimientoFinal } from "@/lib/libros";
+import { FalSeccion } from "@/components/FalSeccion";
 
 const MODULO_LABEL: Record<ModuloClave, string> = {
   "": "General",
@@ -279,6 +280,8 @@ export function FichaClienteBoton({
                       <Campo label="Alta como empleador" value={fmtFecha(cliente.fecha_alta_empleador)} />
                     </div>
                   </Seccion>
+
+                  <FalSeccion clienteId={cliente.id} />
 
                   {claves.length > 0 && (
                     <Seccion titulo="Claves de acceso">
