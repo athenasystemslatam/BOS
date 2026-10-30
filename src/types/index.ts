@@ -453,6 +453,7 @@ export interface LibroMovimiento {
   es_mensajeria: boolean;
   comentario: string | null;
   registrado_por: string | null;
+  acta_numero: string | null;
   creado_en: string;
 }
 

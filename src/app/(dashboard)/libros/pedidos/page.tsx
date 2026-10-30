@@ -20,6 +20,8 @@ export default async function PedidosPage({
   const yo = await getCurrentLiquidadora();
   const areas = await getAreasDelUsuario();
 
+  const hace7 = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+
   const [
     { data: pedidosRaw },
     { data: seguimientosRaw },
@@ -28,6 +30,7 @@ export default async function PedidosPage({
     { data: catalogoRaw },
     { data: equipoRaw },
     { data: modulosRaw },
+    { data: sin7dRaw },
   ] = await Promise.all([
     admin
       .from("libros_pedidos")
@@ -36,6 +39,7 @@ export default async function PedidosPage({
           "responsable:liquidadoras!libros_pedidos_responsable_id_fkey(nombre), " +
           "creador:liquidadoras!libros_pedidos_creado_por_fkey(nombre)"
       )
+      .order("orden_manual")
       .order("creado_en", { ascending: false }),
     admin
       .from("libros_pedidos_seguimientos")
@@ -51,6 +55,11 @@ export default async function PedidosPage({
     admin.from("libros_catalogo").select("id, nombre").order("orden"),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "libros"),
+    admin
+      .from("libros_pedidos")
+      .select("id, ultimo_seguimiento, creado_en")
+      .in("estado", ["abierto", "esperando_cliente", "esperando_tercero"])
+      .lt("creado_en", hace7),
   ]);
 
   const idsEquipo = new Set((modulosRaw ?? []).map((m) => m.equipo_id as string));
@@ -107,6 +116,10 @@ export default async function PedidosPage({
     creadorNombre: p.creador?.nombre ?? null,
   }));
 
+  const pedidosSin7d = ((sin7dRaw ?? []) as { id: string; ultimo_seguimiento: string | null; creado_en: string }[])
+    .filter((p) => !p.ultimo_seguimiento || p.ultimo_seguimiento < hace7)
+    .map((p) => p.id);
+
   return (
     <PedidosClient
       filtroInicial={{
@@ -119,6 +132,7 @@ export default async function PedidosPage({
       equipo={equipo}
       puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}
       yoId={yo?.id ?? null}
+      pedidosSin7d={pedidosSin7d}
     />
   );
 }

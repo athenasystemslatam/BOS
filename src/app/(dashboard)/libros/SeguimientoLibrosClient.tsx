@@ -54,6 +54,7 @@ export type TareaVista = LibroTarea & {
   sugerida: PrioridadLibro;
   motivoSugerido: string;
   responsableNombre: string | null;
+  ultimaCopiadaActa: { acta: string; fecha: string } | null;
 };
 
 export type ClienteCola = {
@@ -326,7 +327,9 @@ function FilaTarea({
           {t.periodo_desde || t.periodo_hasta ? `${fmtFecha(t.periodo_desde)} → ${fmtFecha(t.periodo_hasta)}` : "—"}
         </p>
         <p className="text-[11px] text-ink-subtle">
-          Último <span className={MONO}>{fmtFecha(t.ultimoCopiado)}</span>
+          {t.ultimaCopiadaActa
+            ? <><span className={MONO}>Acta {t.ultimaCopiadaActa.acta}</span> · {fmtFecha(t.ultimaCopiadaActa.fecha)}</>
+            : <>Último <span className={MONO}>{fmtFecha(t.ultimoCopiado)}</span></>}
         </p>
       </td>
       <td className="px-2 py-1.5 whitespace-normal">

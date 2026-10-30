@@ -66,6 +66,7 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
     { data: balancesRaw },
     { data: pedidosRaw },
     { data: renovacionesRaw },
+    { data: actasRaw },
   ] = await Promise.all([
     admin
       .from("servicios_cliente")
@@ -87,6 +88,13 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
       .select("*")
       .eq("tipo", "renovacion_autoridades")
       .in("estado", ["abierto", "esperando_cliente", "esperando_tercero", "aprobado"]),
+    admin
+      .from("libros_movimientos")
+      .select("libro_id, acta_numero, fecha")
+      .eq("tipo", "entrada")
+      .eq("destino", "copiadora")
+      .not("acta_numero", "is", null)
+      .order("fecha", { ascending: false }),
   ]);
 
   const servicios = ((serviciosRaw ?? []) as unknown as ServicioRaw[]).filter((s) => s.clientes);
@@ -105,6 +113,13 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
   const renovacionesVencidas = new Set(
     ((renovacionesRaw ?? []) as LibroPedido[]).filter((p) => p.mandato_vence && p.mandato_vence < hoy).map((p) => p.id)
   );
+  // Última acta copiada por libro_id (los más recientes vienen primero por el order).
+  const ultimaActaPorLibroId = new Map<string, { acta: string; fecha: string }>();
+  for (const a of ((actasRaw ?? []) as { libro_id: string | null; acta_numero: string | null; fecha: string }[])) {
+    if (a.libro_id && a.acta_numero && !ultimaActaPorLibroId.has(a.libro_id)) {
+      ultimaActaPorLibroId.set(a.libro_id, { acta: a.acta_numero, fecha: a.fecha });
+    }
+  }
   const primerAviso = (await configLibros(admin)).avisosMandato[0] ?? 90;
 
   const clientes = new Map<string, ClienteCola & { cierre: { mes: number | null; dia: number | null } }>();
@@ -164,6 +179,7 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
       sugerida: sugerida.prioridad,
       motivoSugerido: sugerida.motivo,
       responsableNombre: t.responsable_id ? nombrePersona.get(t.responsable_id) ?? null : null,
+      ultimaCopiadaActa: t.libro_id ? (ultimaActaPorLibroId.get(t.libro_id) ?? null) : null,
     };
   });
 

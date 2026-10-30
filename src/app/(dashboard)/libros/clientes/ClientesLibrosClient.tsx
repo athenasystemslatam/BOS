@@ -8,6 +8,7 @@ import { TIPOS_SOCIETARIOS, TIPO_SOCIETARIO_LABEL, diasHasta, fmtFecha } from "@
 import type { OrganismoSocietario, TipoSocietario } from "@/types";
 import { ESTADO_BALANCE } from "../../contable/semaforo";
 import { MandatoModal } from "../MandatoCampos";
+import { marcarRelevamiento } from "../actions";
 import {
   BOTON_PRIMARIO,
   BOTON_SECUNDARIO,
@@ -44,6 +45,7 @@ export type FilaClienteLibros = {
   mandato: { mandato_designacion: string | null; mandato_anios: number | null; mandato_vence_preciso?: string | null } | null;
   balanceEstado: string | null;
   balanceAnio: number | null;
+  relevamiento: { estado: string; fecha: string | null } | null;
 };
 
 export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClienteLibros[]; puedeEditar: boolean }) {
@@ -199,6 +201,7 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
                   <th className={clsx(TH, "text-right")}>Libros</th>
                   <th className={clsx(TH, "text-left")}>Alertas</th>
                   <th className={clsx(TH, "text-right")}>Mandato vence</th>
+                  <th className={clsx(TH, "text-left")}>Relevamiento</th>
                   <th className={clsx(TH, "text-left hidden lg:table-cell")}>Balance (Contable)</th>
                   <th className={clsx(TH, "text-left hidden md:table-cell")}>Responsable</th>
                 </tr>
@@ -265,6 +268,23 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
                             <span className="text-ink-ghost">—</span>
                           )}
                         </button>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {f.relevamiento?.estado === "relevada" ? (
+                          <span className={clsx(CHIP, SEMAFORO.verdeClaro, "text-[11px]")}>
+                            Relevado{f.relevamiento.fecha ? ` · ${fmtFecha(f.relevamiento.fecha)}` : ""}
+                          </span>
+                        ) : puedeEditar ? (
+                          <button
+                            type="button"
+                            onClick={() => marcarRelevamiento(f.id, "relevada")}
+                            className={clsx(CHIP, SEMAFORO.sinDato, "hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer text-[11px]")}
+                          >
+                            Relevar
+                          </button>
+                        ) : (
+                          <span className="text-ink-ghost">Pendiente</span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5 hidden lg:table-cell">
                         {bal ? (

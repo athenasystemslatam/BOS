@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo } from "react";
 import clsx from "clsx";
-import { Plus, AlertTriangle, Building, Printer, Home, HelpCircle, Info } from "lucide-react";
+import { Plus, AlertTriangle, Building, Printer, Home, HelpCircle, Info, X } from "lucide-react";
 import { DESTINO_LABEL, fmtFecha, hoyISO, UBICACION_LABEL } from "@/lib/libros";
 import type {
   DestinoMovimiento,
@@ -444,6 +444,71 @@ function ResolverModal({ incidencia, onClose }: { incidencia: IncidenciaVista; o
   );
 }
 
+// ── Modal de detalle de movimiento ──────────────────────────────────────────
+
+function DetalleMovimientoModal({ m, onClose }: { m: MovimientoVista; onClose: () => void }) {
+  return (
+    <Modal titulo={m.clienteNombre} subtitulo="Detalle del movimiento" onClose={onClose}>
+      <div className="px-6 py-5 space-y-3">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
+          <div>
+            <dt className={clsx(LABEL, "mb-0")}>Libro</dt>
+            <dd className="text-ink font-medium">{m.libroNombre}</dd>
+          </div>
+          <div>
+            <dt className={clsx(LABEL, "mb-0")}>Fecha</dt>
+            <dd className="text-ink">{fmtFecha(m.fecha)}</dd>
+          </div>
+          <div>
+            <dt className={clsx(LABEL, "mb-0")}>Movimiento</dt>
+            <dd>
+              <span className={clsx(CHIP, m.tipo === "salida" ? SEMAFORO.amarillo : SEMAFORO.verdeClaro)}>
+                {m.tipo === "salida"
+                  ? `Salida → ${DESTINO_LABEL[m.destino].toLowerCase()}`
+                  : `Entrada desde ${DESTINO_LABEL[m.destino].toLowerCase()}`}
+              </span>
+            </dd>
+          </div>
+          {m.acta_numero && (
+            <div>
+              <dt className={clsx(LABEL, "mb-0")}>Nro. de acta</dt>
+              <dd className="text-ink font-medium">{m.acta_numero}</dd>
+            </div>
+          )}
+          {m.persona && (
+            <div>
+              <dt className={clsx(LABEL, "mb-0")}>Quién</dt>
+              <dd className="text-ink">{m.persona}{m.es_mensajeria && <span className="ml-1 text-ink-subtle text-[11px]">(mensajería)</span>}</dd>
+            </div>
+          )}
+          {m.registradorNombre && (
+            <div>
+              <dt className={clsx(LABEL, "mb-0")}>Registró</dt>
+              <dd className="text-ink-muted">{m.registradorNombre}</dd>
+            </div>
+          )}
+          {m.comentario && (
+            <div className="col-span-2">
+              <dt className={clsx(LABEL, "mb-0")}>Comentario</dt>
+              <dd className="text-ink-muted whitespace-pre-wrap">{m.comentario}</dd>
+            </div>
+          )}
+          {m.importado && (
+            <div className="col-span-2">
+              <dd><MarcaSheet /></dd>
+            </div>
+          )}
+        </dl>
+        <div className="flex justify-end pt-2">
+          <button onClick={onClose} className={BOTON_SECUNDARIO}>
+            <X size={13} /> Cerrar
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export function MovimientosClient({
@@ -463,14 +528,18 @@ export function MovimientosClient({
   const [modalMovimiento, setModalMovimiento] = useState(false);
   const [modalIncidencia, setModalIncidencia] = useState(false);
   const [incidenciaActiva, setIncidenciaActiva] = useState<IncidenciaVista | null>(null);
+  const [detalleMov, setDetalleMov] = useState<MovimientoVista | null>(null);
   const [alertas, setAlertas] = useState<string[]>([]);
   const [tab, setTab] = useState<"movimientos" | "incidencias">("movimientos");
   const [filtroCliente, setFiltroCliente] = useState("");
+  const [busqueda, setBusqueda] = useState("");
 
-  const movsFiltrados = useMemo(
-    () => (filtroCliente ? movimientos.filter((m) => m.clienteId === filtroCliente) : movimientos),
-    [movimientos, filtroCliente]
-  );
+  const movsFiltrados = useMemo(() => {
+    let lista = filtroCliente ? movimientos.filter((m) => m.clienteId === filtroCliente) : movimientos;
+    const q = busqueda.trim().toLowerCase();
+    if (q) lista = lista.filter((m) => m.clienteNombre.toLowerCase().includes(q) || m.libroNombre.toLowerCase().includes(q));
+    return lista;
+  }, [movimientos, filtroCliente, busqueda]);
 
   const incFiltradas = useMemo(
     () => (filtroCliente ? incidencias.filter((i) => i.clienteId === filtroCliente) : incidencias),
@@ -536,6 +605,13 @@ export function MovimientosClient({
               <option key={id} value={id}>{nombre}</option>
             ))}
           </select>
+          <input
+            type="search"
+            placeholder="Buscar cliente o libro…"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className={clsx(CONTROL, "min-w-0 w-full sm:w-auto sm:min-w-[200px]")}
+          />
           {(["movimientos", "incidencias"] as const).map((t) => (
             <button
               key={t}
@@ -589,7 +665,7 @@ export function MovimientosClient({
                   </tr>
                 ) : (
                   movsFiltrados.map((m) => (
-                    <tr key={m.id} className={FILA}>
+                    <tr key={m.id} className={clsx(FILA, "cursor-pointer")} onClick={() => setDetalleMov(m)}>
                       <td className={TD_FECHA}>{fmtFecha(m.fecha)}</td>
                       <td className={clsx(TD, "font-archivo font-bold text-ink")}>{m.clienteNombre}</td>
                       <td className={clsx(TD, "whitespace-normal max-w-[280px]")}>
@@ -690,6 +766,7 @@ export function MovimientosClient({
         </div>
       </div>
 
+      {detalleMov && <DetalleMovimientoModal m={detalleMov} onClose={() => setDetalleMov(null)} />}
       {modalMovimiento && (
         <MovimientoModal
           clientes={clientes}

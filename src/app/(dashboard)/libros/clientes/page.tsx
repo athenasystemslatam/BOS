@@ -15,6 +15,7 @@ export default async function LibrosClientesPage() {
     { data: librosRaw },
     { data: balancesRaw },
     config,
+    { data: relevamientosRaw },
   ] = await Promise.all([
     admin
       .from("servicios_cliente")
@@ -26,7 +27,13 @@ export default async function LibrosClientesPage() {
     admin.from("libros").select("cliente_id, catalogo_id, estado, folios_totales, folios_usados"),
     admin.from("balances").select("cliente_id, anio_fiscal, estado").order("anio_fiscal", { ascending: false }),
     configLibros(admin),
+    admin.from("libros_relevamiento").select("cliente_id, estado, fecha"),
   ]);
+
+  const relevamientoMap = new Map(
+    ((relevamientosRaw ?? []) as { cliente_id: string; estado: string; fecha: string | null }[])
+      .map((r) => [r.cliente_id, { estado: r.estado, fecha: r.fecha }])
+  );
 
   const societarios = new Map(
     ((societariosRaw ?? []) as ClienteSocietario[]).map((s) => [s.cliente_id, s])
@@ -86,6 +93,7 @@ export default async function LibrosClientesPage() {
           : null,
         balanceEstado: bal?.estado ?? null,
         balanceAnio: bal?.anio ?? null,
+        relevamiento: relevamientoMap.get(c.id) ?? null,
       };
     })
     .filter((f): f is FilaClienteLibros => f !== null)

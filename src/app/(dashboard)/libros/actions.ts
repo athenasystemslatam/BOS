@@ -1,5 +1,6 @@
 "use server";
 
+import { Resend } from "resend";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin, requireAreaOrAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -606,7 +607,7 @@ export async function enviarACopiar(tareaIds: string[], datos: DatosEnvioCopiado
   return {};
 }
 
-export type ItemCopiado = { tarea_id: string; folios_usados: number; periodo_hasta: string };
+export type ItemCopiado = { tarea_id: string; folios_usados: number; periodo_hasta: string; acta_numero?: string | null };
 
 type TareaConLibro = {
   id: string;
@@ -729,6 +730,7 @@ export async function registrarCopiado(
         destino: "copiadora",
         comentario: "Retirado de la copiadora al registrar el copiado.",
         registrado_por: yo.id,
+        acta_numero: item.acta_numero ?? null,
       });
       if (errMov) return { error: errMov.message };
     }
@@ -919,6 +921,38 @@ export async function agregarSeguimiento(
     proximo_seguimiento: proximoSeguimiento || null,
     actualizado_en: ahora,
   }).eq("id", pedidoId);
+
+  // Avisar por mail al responsable del pedido que se cargó un seguimiento.
+  // No bloquea si falla.
+  void (async () => {
+    try {
+      if (!process.env.RESEND_API_KEY) return;
+      const { data: pedido } = await admin
+        .from("libros_pedidos")
+        .select("descripcion, clientes(nombre), responsable:liquidadoras!libros_pedidos_responsable_id_fkey(nombre, email)")
+        .eq("id", pedidoId)
+        .maybeSingle();
+      if (!pedido) return;
+      const p = pedido as unknown as {
+        descripcion: string | null;
+        clientes: { nombre: string } | null;
+        responsable: { nombre: string; email: string } | null;
+      };
+      if (!p.responsable?.email || p.responsable.email === yo.id) return;
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const cliente = p.clientes?.nombre ?? "un cliente";
+      const desc = p.descripcion ? ` — ${esc(p.descripcion)}` : "";
+      const prox = proximoSeguimiento ? `<p>Próximo seguimiento: ${esc(proximoSeguimiento)}.</p>` : "";
+      await resend.emails.send({
+        from: "bos@kmaconsultores.com.ar",
+        to: p.responsable.email,
+        subject: `Seguimiento cargado: ${cliente}${p.descripcion ? ` — ${p.descripcion}` : ""}`,
+        html: `<p>Se cargó un seguimiento en el pedido de <strong>${esc(cliente)}</strong>${esc(desc)}.</p><p><strong>Nota:</strong> ${esc(nota.trim())}</p>${prox}`,
+      });
+    } catch { /* no-op */ }
+  })();
+
   refrescarLibros();
   return {};
 }
@@ -1149,6 +1183,38 @@ export async function registrarMovimiento(
 
   refrescarLibros();
   return { alertas: alertas.length ? alertas : undefined };
+}
+
+export async function reordenarPedidos(pedidoIds: string[]): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const ahora = new Date().toISOString();
+  await Promise.all(
+    pedidoIds.map((id, i) =>
+      admin.from("libros_pedidos").update({ orden_manual: (i + 1) * 10, actualizado_en: ahora }).eq("id", id)
+    )
+  );
+  refrescarLibros();
+  return {};
+}
+
+export async function marcarRelevamiento(
+  clienteId: string,
+  estado: "pendiente" | "relevada"
+): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+  const admin = createAdminClient();
+  const ahora = new Date().toISOString();
+  const fecha = estado === "relevada" ? ahora.slice(0, 10) : null;
+  const { error } = await admin.from("libros_relevamiento").upsert(
+    { cliente_id: clienteId, estado, fecha, relevado_por: yo.id, actualizado_en: ahora },
+    { onConflict: "cliente_id" }
+  );
+  if (error) return { error: error.message };
+  refrescarLibros();
+  return {};
 }
 
 // ── Incidencias ──────────────────────────────────────────────────────────────

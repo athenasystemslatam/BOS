@@ -168,7 +168,7 @@ export function EnviarACopiarModal({
   );
 }
 
-type FilaCopiado = { incluir: boolean; folios: string; hasta: string };
+type FilaCopiado = { incluir: boolean; folios: string; hasta: string; actaNumero: string };
 
 // "Copiado hasta" propuesto: el último cierre exigible del libro. En el envío
 // anual, si el balance que lo originó cierra después, ese cierre. Sin exigible
@@ -203,6 +203,7 @@ export function RegistrarCopiadoModal({
           incluir: !hayEnCopiadora || t.estado_id === copiandoseId,
           folios: "",
           hasta: hastaPropuesto(t),
+          actaNumero: "",
         },
       ])
     )
@@ -228,7 +229,7 @@ export function RegistrarCopiadoModal({
         return setError(`${t.libroNombre} tiene ${t.libres} folios libres: abrí un tomo nuevo desde la ficha.`);
       }
       if (!f.hasta) return setError(`Indicá hasta qué período se copió ${t.libroNombre}.`);
-      items.push({ tarea_id: t.id, folios_usados: folios, periodo_hasta: f.hasta });
+      items.push({ tarea_id: t.id, folios_usados: folios, periodo_hasta: f.hasta, acta_numero: f.actaNumero.trim() || null });
     }
     startTransition(async () => {
       const res = await registrarCopiado(items, fecha);
@@ -286,7 +287,7 @@ export function RegistrarCopiadoModal({
             <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={INPUT} />
           </div>
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
+          <table className="w-full min-w-[700px] text-sm">
             <thead>
               <tr className="text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em] border-b border-line-row">
                 <th className="py-2 w-8"><span className="sr-only">Incluir</span></th>
@@ -295,6 +296,7 @@ export function RegistrarCopiadoModal({
                 <th className="py-2 text-right px-2">Último copiado</th>
                 <th className="py-2 text-left px-2">Folios usados</th>
                 <th className="py-2 text-left px-2">Copiado hasta</th>
+                <th className="py-2 text-left px-2">Nro. de acta</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line-row">
@@ -334,6 +336,16 @@ export function RegistrarCopiadoModal({
                         disabled={!f.incluir}
                         onChange={(e) => cambiar(t.id, { hasta: e.target.value })}
                         className={clsx(INPUT, "w-40")}
+                      />
+                    </td>
+                    <td className="py-2 px-2">
+                      <input
+                        type="text"
+                        placeholder="Opcional"
+                        value={f.actaNumero}
+                        disabled={!f.incluir}
+                        onChange={(e) => cambiar(t.id, { actaNumero: e.target.value })}
+                        className={clsx(INPUT, "w-28")}
                       />
                     </td>
                   </tr>

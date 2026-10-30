@@ -21,9 +21,9 @@ function diasEntre(desde: string, hasta: string): number {
   return Math.round((new Date(hasta + "T00:00:00Z").getTime() - new Date(desde + "T00:00:00Z").getTime()) / 86_400_000);
 }
 
-/** Las 6 métricas de los objetivos, calculadas con los datos de hoy. */
+/** Las 7 métricas de los objetivos, calculadas con los datos de hoy. */
 export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Promise<Record<MetricaObjetivo, ValorMetrica>> {
-  const [atraso, { data: servicios }, { data: societariosRaw }, { data: pedidosRaw }, { data: librosRaw }, { data: tareasRaw }, { data: estadosRaw }] =
+  const [atraso, { data: servicios }, { data: societariosRaw }, { data: pedidosRaw }, { data: librosRaw }, { data: tareasRaw }, { data: estadosRaw }, { data: relevamientosRaw }] =
     await Promise.all([
       calcularAtraso(admin, hoy),
       admin.from("servicios_cliente").select("cliente_id, clientes!inner(estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),
@@ -32,6 +32,7 @@ export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Pr
       admin.from("libros").select("cliente_id, estado, ultimo_periodo_copiado, folios_totales").eq("estado", "activo"),
       admin.from("libros_tareas").select("cliente_id, balance_id, estado_id, fecha_fin, creado_en").eq("origen", "balance"),
       admin.from("libros_estados").select("id, es_final"),
+      admin.from("libros_relevamiento").select("cliente_id, estado"),
     ]);
 
   const clientes = new Set((servicios ?? []).map((s) => s.cliente_id as string));
@@ -100,6 +101,17 @@ export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Pr
   }
   const envios60 = pct(aTiempo, medidos);
 
+  // Relevamiento: clientes con fila en libros_relevamiento en estado 'relevada'.
+  const relevamientoSet = new Set(
+    ((relevamientosRaw ?? []) as { cliente_id: string; estado: string }[])
+      .filter((r) => r.estado === "relevada")
+      .map((r) => r.cliente_id)
+  );
+  const relevamiento = pct(
+    Array.from(clientes).filter((id) => relevamientoSet.has(id)).length,
+    clientes.size
+  );
+
   return {
     mandatos_cargados: mandatosCargados,
     renovaciones_iniciadas: renovacionesIniciadas,
@@ -107,6 +119,7 @@ export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Pr
     datos_completos: datosCompletos,
     puesta_al_dia: puestaAlDia,
     envios_60_dias: envios60,
+    relevamiento,
   };
 }
 

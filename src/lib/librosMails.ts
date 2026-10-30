@@ -92,7 +92,9 @@ async function mailDiario(admin: Admin, hoy: string): Promise<ResultadoMails> {
   // Si nadie del equipo de Libros lo recibe, que no se pierdan los avisos.
   if (sinEquipo) destinatarios = gente.admins.length ? gente.admins : [{ id: "", nombre: "Administración", email: ADMIN_EMAIL }];
 
-  const [{ data: servicios }, { data: pedidosRaw }, { data: societariosRaw }, { data: enviadosRaw, error: errEnviados }, { data: librosRaw }, { data: catalogoRaw }, { data: presupuestosRaw }] =
+  const hace7 = restarDias(hoy, 7);
+
+  const [{ data: servicios }, { data: pedidosRaw }, { data: societariosRaw }, { data: enviadosRaw, error: errEnviados }, { data: librosRaw }, { data: catalogoRaw }, { data: presupuestosRaw }, { data: sin7dRaw }] =
     await Promise.all([
       admin.from("servicios_cliente").select("cliente_id, responsable_id, clientes!inner(nombre, estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),
       admin
@@ -109,6 +111,13 @@ async function mailDiario(admin: Admin, hoy: string): Promise<ResultadoMails> {
         .select("libro_id")
         .eq("tipo", "presupuesto_tomo_nuevo")
         .in("estado", ["abierto", "esperando_cliente", "esperando_tercero"]),
+      // Pedidos sin seguimiento en 7+ días: abiertos, creados hace más de 7 días,
+      // sin seguimiento registrado o el último antes de hace 7 días.
+      admin
+        .from("libros_pedidos")
+        .select("cliente_id, tipo, descripcion, responsable_id, ultimo_seguimiento, creado_en")
+        .in("estado", ["abierto", "esperando_cliente", "esperando_tercero"])
+        .lt("creado_en", hace7),
     ]);
 
   const clientes = new Map(
@@ -171,6 +180,19 @@ async function mailDiario(admin: Admin, hoy: string): Promise<ResultadoMails> {
     });
   }
 
+  // Pedidos sin seguimiento en 7+ días (excluye los que ya tienen próximo vencido,
+  // que ya salen en la sección de seguimientos vencidos).
+  const sinSeguimiento: Item[] = ((sin7dRaw ?? []) as {
+    cliente_id: string; tipo: string; descripcion: string | null; responsable_id: string | null;
+    ultimo_seguimiento: string | null; creado_en: string;
+  }[])
+    .filter((p) => clientes.has(p.cliente_id) && (!p.ultimo_seguimiento || p.ultimo_seguimiento < hace7))
+    .map((p) => ({
+      clienteId: p.cliente_id,
+      responsableId: p.responsable_id ?? responsableDe(p.cliente_id),
+      fila: [esc(clientes.get(p.cliente_id)!.nombre), p.tipo.replace(/_/g, " "), esc(p.descripcion ?? "—"), naranja(`Sin seguimiento desde ${fmtFecha(p.ultimo_seguimiento ?? p.creado_en.slice(0, 10))}`)],
+    }));
+
   // A cada persona: lo de sus clientes + lo que no tiene responsable. Si el
   // mail va a administración (nadie del equipo), va todo.
   const delDestinatario = (p: Persona, items: Item[]) =>
@@ -183,13 +205,15 @@ async function mailDiario(admin: Admin, hoy: string): Promise<ResultadoMails> {
     const s = delDestinatario(p, seguimientos);
     const m = delDestinatario(p, mandatos);
     const f = delDestinatario(p, folios);
-    const total = s.length + m.length + f.length;
+    const ss = delDestinatario(p, sinSeguimiento);
+    const total = s.length + m.length + f.length + ss.length;
     if (total === 0) {
       detalle.push(`[sin novedades] ${p.email}`);
       continue;
     }
     const cuerpo =
       seccion(`Seguimientos vencidos (${s.length})`, s.map((i) => i.fila)) +
+      seccion(`Pedidos sin seguimiento en 7+ días (${ss.length})`, ss.map((i) => i.fila)) +
       seccion(`Mandatos: nuevos avisos de vencimiento (${m.length})`, m.map((i) => i.fila)) +
       seccion(`Libros con pocos folios sin pedido de tomo nuevo (${f.length})`, f.map((i) => i.fila));
     const { error } = await resend.emails.send({

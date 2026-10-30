@@ -7,7 +7,8 @@ export type MetricaObjetivo =
   | "renovaciones_cerradas"
   | "datos_completos"
   | "puesta_al_dia"
-  | "envios_60_dias";
+  | "envios_60_dias"
+  | "relevamiento";
 
 export const METRICAS: { id: MetricaObjetivo; label: string; detalle: string }[] = [
   { id: "mandatos_cargados", label: "% SA y SAS con mandato cargado", detalle: "SA y SAS con Libros que tienen designación o vencimiento del mandato cargado." },
@@ -16,6 +17,7 @@ export const METRICAS: { id: MetricaObjetivo; label: string; detalle: string }[]
   { id: "datos_completos", label: "% libros con dato completo", detalle: "Libros activos con último copiado y folios totales cargados." },
   { id: "puesta_al_dia", label: "% clientes con puesta al día completa", detalle: "Clientes con todos sus libros al día (sin atrasos, sin dato ni libro faltante)." },
   { id: "envios_60_dias", label: "% envíos anuales copiados dentro de 60 días", detalle: "Envíos anuales (balance legalizado) copiados completos dentro de los 60 días." },
+  { id: "relevamiento", label: "% clientes relevados", detalle: "Clientes de Libros con relevamiento de estado de libros completado." },
 ];
 
 export const METRICA_LABEL = Object.fromEntries(METRICAS.map((m) => [m.id, m.label])) as Record<MetricaObjetivo, string>;

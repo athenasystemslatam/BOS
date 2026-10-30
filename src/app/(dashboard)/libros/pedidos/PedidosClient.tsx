@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo, useEffect } from "react";
 import clsx from "clsx";
-import { Plus, ChevronDown, ChevronUp, MessageSquare, X } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, MessageSquare, X, GripVertical, Clock } from "lucide-react";
 import {
   TIPO_PEDIDO_LABEL,
   TIPOS_PEDIDO,
@@ -17,7 +17,7 @@ import {
   fmtFecha,
 } from "@/lib/libros";
 import type { EstadoRenovacion } from "@/lib/libros";
-import type { AutoridadCliente, EstadoPedido, ItemChecklist, LibroPedido, LibroPedidoSeguimiento, TipoPedido } from "@/types";
+import type { AutoridadCliente, EstadoPedido, ItemChecklist, LibroPedido, LibroPedidoSeguimiento, PrioridadLibro, TipoPedido } from "@/types";
 import {
   abrirTomoDesdePedido,
   actualizarChecklist,
@@ -27,6 +27,7 @@ import {
   cerrarRenovacion,
   crearPedido,
   getAutoridades,
+  reordenarPedidos,
 } from "../actions";
 import { Modal, Pie, LABEL, INPUT } from "../ModalBase";
 import {
@@ -118,6 +119,7 @@ function PedidoModal({
   const [descripcion, setDescripcion] = useState(pedido?.descripcion ?? "");
   const [solicitante, setSolicitante] = useState(pedido?.solicitante ?? "");
   const [responsableId, setResponsableId] = useState(pedido?.responsable_id ?? "");
+  const [prioridad, setPrioridad] = useState<PrioridadLibro | "">(pedido?.prioridad ?? "");
   const [fechaPedido, setFechaPedido] = useState(pedido?.fecha_pedido ?? hoyISO());
   const [fechaLimite, setFechaLimite] = useState(pedido?.fecha_limite ?? "");
   const [monto, setMonto] = useState(pedido?.monto != null ? String(pedido.monto) : "");
@@ -136,6 +138,7 @@ function PedidoModal({
         descripcion: descripcion.trim() || null,
         solicitante: solicitante.trim() || null,
         responsable_id: responsableId || null,
+        prioridad: (prioridad || null) as PrioridadLibro | null,
         fecha_pedido: fechaPedido,
         fecha_limite: fechaLimite || null,
         monto: monto || null,
@@ -240,9 +243,20 @@ function PedidoModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
+              <label className={LABEL}>Prioridad</label>
+              <select className={INPUT} value={prioridad} onChange={(e) => setPrioridad(e.target.value as PrioridadLibro | "")}>
+                <option value="">— Sin prioridad —</option>
+                {(["P1", "P2", "P3"] as PrioridadLibro[]).map((p) => (
+                  <option key={p} value={p}>{p} · {PRIORIDAD_INFO[p].label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
               <label className={LABEL}>Fecha límite</label>
               <input type="date" className={INPUT} value={fechaLimite} onChange={(e) => setFechaLimite(e.target.value)} />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>Monto (si es presupuesto)</label>
               <input
@@ -854,12 +868,22 @@ function FilaPedido({
   clientes,
   equipo,
   puedeEditar,
+  esSin7d,
+  draggable: isDraggable,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
 }: {
   pedido: PedidoVista;
   seguimientos: LibroPedidoSeguimiento[];
   clientes: ClienteConLibros[];
   equipo: Persona[];
   puedeEditar: boolean;
+  esSin7d?: boolean;
+  draggable?: boolean;
+  onDragStart?: () => void;
+  onDragEnter?: () => void;
+  onDragEnd?: () => void;
 }) {
   const [expandido, setExpandido] = useState(false);
   const [modal, setModal] = useState<"editar" | "seguimiento" | "aprobar" | "cerrar" | "enviado" | "respuesta" | "tomo" | null>(null);
@@ -877,9 +901,21 @@ function FilaPedido({
 
   return (
     <>
-      <tr className={FILA}>
-        <td className={clsx(TD, "pl-4")}>
-          <div className="flex items-start gap-1.5">
+      <tr
+        className={FILA}
+        draggable={isDraggable}
+        onDragStart={onDragStart}
+        onDragEnter={onDragEnter}
+        onDragEnd={onDragEnd}
+        onDragOver={(e) => e.preventDefault()}
+      >
+        <td className={clsx(TD, "pl-2")}>
+          <div className="flex items-start gap-1">
+            {isDraggable && (
+              <span className="cursor-grab mt-0.5 text-ink-ghost hover:text-ink-subtle shrink-0" title="Arrastrar para reordenar">
+                <GripVertical size={14} />
+              </span>
+            )}
             <button
               onClick={() => setExpandido((v) => !v)}
               aria-expanded={expandido}
@@ -890,12 +926,12 @@ function FilaPedido({
             </button>
             <div className="min-w-0">
               <p className="flex flex-wrap items-center gap-1.5">
-                {pedido.prioridad && (
-                  <span className={clsx(CHIP, "px-1.5 text-[10.5px]", PRIORIDAD_INFO[pedido.prioridad].cls)}>
-                    {pedido.prioridad}
+                <span className="text-[12.5px] font-semibold text-ink">{TIPO_PEDIDO_LABEL[pedido.tipo]}</span>
+                {esSin7d && (
+                  <span title="Sin seguimiento en 7+ días" className={clsx(CHIP, "px-1.5 text-[10px] bg-orange-50 text-orange-700 border-orange-200")}>
+                    <Clock size={10} className="inline mr-0.5" />7d
                   </span>
                 )}
-                <span className="text-[12.5px] font-semibold text-ink">{TIPO_PEDIDO_LABEL[pedido.tipo]}</span>
               </p>
               {pedido.automatico && <p className="text-[11px] text-ink-subtle">automático</p>}
             </div>
@@ -1099,6 +1135,14 @@ function FilaPedido({
 
 const ESTADOS_EN_CURSO: EstadoPedido[] = ["abierto", "esperando_cliente", "esperando_tercero", "aprobado"];
 
+const PRIORIDADES_PEDIDO: (PrioridadLibro | null)[] = ["P1", "P2", "P3", null];
+const PRIORIDAD_LABEL_GRUPO: Record<string, string> = {
+  P1: "P1 · Urgente",
+  P2: "P2 · Planificado",
+  P3: "P3 · Bloqueado",
+  sin_prio: "Sin prioridad",
+};
+
 export function PedidosClient({
   pedidos,
   seguimientosPorPedido,
@@ -1106,13 +1150,15 @@ export function PedidosClient({
   equipo,
   puedeEditar,
   filtroInicial,
+  pedidosSin7d = [],
 }: {
   pedidos: PedidoVista[];
   seguimientosPorPedido: Map<string, LibroPedidoSeguimiento[]>;
   clientes: ClienteConLibros[];
   equipo: Persona[];
   puedeEditar: boolean;
-  yoId: string | null; // reservado para filtros futuros por responsable
+  yoId: string | null;
+  pedidosSin7d?: string[];
   /** Desde un link (ej. el aviso de renovaciones de Seguimiento). */
   filtroInicial?: { tipo?: TipoPedido; enCurso?: boolean };
 }) {
@@ -1121,9 +1167,15 @@ export function PedidosClient({
   const [filtroEstado, setFiltroEstado] = useState<"" | "en_curso" | EstadoPedido>(filtroInicial?.enCurso ? "en_curso" : "");
   const [filtroTipo, setFiltroTipo] = useState<"" | "presupuesto" | TipoPedido>(filtroInicial?.tipo ?? "");
   const [filtroRenovacion, setFiltroRenovacion] = useState<"" | EstadoRenovacion>("");
+  const [busqueda, setBusqueda] = useState("");
+  const [agarrado, setAgarrado] = useState<string | null>(null);
+  const [, setSobre] = useState<string | null>(null);
+  const [ordenLocal, setOrdenLocal] = useState<Record<string, string[]>>({});
 
-  // P1 primero (renovaciones con el mandato vencido), después el orden de carga.
+  const sin7dSet = useMemo(() => new Set(pedidosSin7d), [pedidosSin7d]);
+
   const filtrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
     return pedidos.filter((p) => {
       if (filtroCliente && p.cliente_id !== filtroCliente) return false;
       if (filtroEstado === "en_curso") {
@@ -1135,13 +1187,69 @@ export function PedidosClient({
         return false;
       }
       if (filtroRenovacion && (p.tipo !== "renovacion_autoridades" || estadoRenovacion(p) !== filtroRenovacion)) return false;
+      if (q) {
+        const nombre = clientes.find((c) => c.id === p.cliente_id)?.nombre ?? "";
+        if (!nombre.toLowerCase().includes(q) && !(p.descripcion ?? "").toLowerCase().includes(q)) return false;
+      }
       return true;
-    }).sort((a, b) => Number(b.prioridad === "P1") - Number(a.prioridad === "P1"));
-  }, [pedidos, filtroCliente, filtroEstado, filtroTipo, filtroRenovacion]);
+    });
+  }, [pedidos, filtroCliente, filtroEstado, filtroTipo, filtroRenovacion, busqueda, clientes]);
+
+  // Agrupar por prioridad respetando el orden local (drag-to-sort).
+  const grupos = useMemo(() => {
+    const map = new Map<string, PedidoVista[]>();
+    for (const k of ["P1", "P2", "P3", "sin_prio"]) map.set(k, []);
+    for (const p of filtrados) {
+      const k = p.prioridad ?? "sin_prio";
+      map.get(k)!.push(p);
+    }
+    // Apply local ordering
+    for (const [k, ids] of Object.entries(ordenLocal)) {
+      if (!ids.length) continue;
+      const actuales = map.get(k);
+      if (!actuales) continue;
+      const byId = new Map(actuales.map((p) => [p.id, p]));
+      const ordered = ids.map((id) => byId.get(id)).filter((p): p is PedidoVista => !!p);
+      const resto = actuales.filter((p) => !ids.includes(p.id));
+      map.set(k, [...ordered, ...resto]);
+    }
+    return map;
+  }, [filtrados, ordenLocal]);
+
+  const puedeOrdenar = puedeEditar && !busqueda.trim();
+
+  function dragStart(id: string) {
+    setAgarrado(id);
+    setSobre(id);
+  }
+  function dragEnter(id: string, grupo: string) {
+    if (!agarrado || agarrado === id) return;
+    setSobre(id);
+    const lista = (grupos.get(grupo) ?? []).map((p) => p.id);
+    const de = lista.indexOf(agarrado);
+    const a = lista.indexOf(id);
+    if (de === -1 || a === -1) return;
+    const nueva = [...lista];
+    nueva.splice(de, 1);
+    nueva.splice(a, 0, agarrado);
+    setOrdenLocal((prev) => ({ ...prev, [grupo]: nueva }));
+  }
+  async function dragEnd() {
+    const id = agarrado;
+    setAgarrado(null);
+    setSobre(null);
+    if (!id) return;
+    // Persist: all IDs across all groups in current order
+    const allIds = PRIORIDADES_PEDIDO.flatMap((prio) => {
+      const k = prio ?? "sin_prio";
+      return (grupos.get(k) ?? []).map((p) => p.id);
+    });
+    await reordenarPedidos(allIds);
+  }
 
   const abiertos = pedidos.filter((p) => !["aprobado", "rechazado", "cerrado"].includes(p.estado)).length;
 
-  const hayFiltros = !!(filtroCliente || filtroEstado || filtroTipo || filtroRenovacion);
+  const hayFiltros = !!(filtroCliente || filtroEstado || filtroTipo || filtroRenovacion || busqueda.trim());
   const renovaciones = pedidos.filter((p) => p.tipo === "renovacion_autoridades");
   const cuentaRenov = (e: EstadoRenovacion) => renovaciones.filter((p) => estadoRenovacion(p) === e).length;
 
@@ -1166,7 +1274,14 @@ export function PedidosClient({
       </div>
 
       <div className="shrink-0 px-4 sm:px-6 pb-3 flex flex-wrap items-center gap-2">
-        <select aria-label="Cliente" className={clsx(CONTROL, "w-full sm:w-auto sm:min-w-[220px]")} value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
+        <input
+          type="search"
+          placeholder="Buscar cliente o descripción…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          className={clsx(CONTROL, "w-full sm:w-auto sm:min-w-[220px]")}
+        />
+        <select aria-label="Cliente" className={clsx(CONTROL, "w-full sm:w-auto sm:min-w-[200px]")} value={filtroCliente} onChange={(e) => setFiltroCliente(e.target.value)}>
           <option value="">Todos los clientes</option>
           {clientes.map((c) => (
             <option key={c.id} value={c.id}>{c.nombre}</option>
@@ -1226,7 +1341,7 @@ export function PedidosClient({
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-paper-group z-10 border-b border-line-group">
               <tr>
-                <th className={clsx(TH, "pl-4")}>Tipo</th>
+                <th className={clsx(TH, "pl-2")}>Tipo</th>
                 <th className={TH}>Cliente</th>
                 <th className={clsx(TH, "hidden md:table-cell")}>Libro</th>
                 <th className={TH}>Estado</th>
@@ -1249,7 +1364,7 @@ export function PedidosClient({
                       </p>
                       {hayFiltros ? (
                         <button
-                          onClick={() => { setFiltroCliente(""); setFiltroEstado(""); setFiltroTipo(""); setFiltroRenovacion(""); }}
+                          onClick={() => { setBusqueda(""); setFiltroCliente(""); setFiltroEstado(""); setFiltroTipo(""); setFiltroRenovacion(""); }}
                           className={BOTON_SECUNDARIO}
                         >
                           Quitar filtros
@@ -1265,16 +1380,36 @@ export function PedidosClient({
                   </td>
                 </tr>
               ) : (
-                filtrados.map((p) => (
-                  <FilaPedido
-                    key={p.id}
-                    pedido={p}
-                    seguimientos={seguimientosPorPedido.get(p.id) ?? []}
-                    clientes={clientes}
-                    equipo={equipo}
-                    puedeEditar={puedeEditar}
-                  />
-                ))
+                PRIORIDADES_PEDIDO.flatMap((prio) => {
+                  const k = prio ?? "sin_prio";
+                  const grupo = grupos.get(k) ?? [];
+                  if (grupo.length === 0) return [];
+                  return [
+                    <tr key={`h-${k}`} className="bg-paper-alt border-y border-line-rule">
+                      <td colSpan={COLUMNAS} className="px-4 py-1">
+                        <span className={clsx("text-[11.5px] font-semibold", prio ? "" : "text-ink-subtle")}>
+                          {PRIORIDAD_LABEL_GRUPO[k]}
+                          <span className="font-plex font-normal text-ink-subtle ml-2">{grupo.length}</span>
+                        </span>
+                      </td>
+                    </tr>,
+                    ...grupo.map((p) => (
+                      <FilaPedido
+                        key={p.id}
+                        pedido={p}
+                        seguimientos={seguimientosPorPedido.get(p.id) ?? []}
+                        clientes={clientes}
+                        equipo={equipo}
+                        puedeEditar={puedeEditar}
+                        esSin7d={sin7dSet.has(p.id)}
+                        draggable={puedeOrdenar}
+                        onDragStart={() => dragStart(p.id)}
+                        onDragEnter={() => dragEnter(p.id, k)}
+                        onDragEnd={dragEnd}
+                      />
+                    )),
+                  ];
+                })
               )}
             </tbody>
           </table>
