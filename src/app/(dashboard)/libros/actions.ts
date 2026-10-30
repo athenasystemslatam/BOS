@@ -929,16 +929,17 @@ export async function agregarSeguimiento(
       if (!process.env.RESEND_API_KEY) return;
       const { data: pedido } = await admin
         .from("libros_pedidos")
-        .select("descripcion, clientes(nombre), responsable:liquidadoras!libros_pedidos_responsable_id_fkey(nombre, email)")
+        .select("descripcion, responsable_id, clientes(nombre), responsable:liquidadoras!libros_pedidos_responsable_id_fkey(nombre, email)")
         .eq("id", pedidoId)
         .maybeSingle();
       if (!pedido) return;
       const p = pedido as unknown as {
         descripcion: string | null;
+        responsable_id: string | null;
         clientes: { nombre: string } | null;
         responsable: { nombre: string; email: string } | null;
       };
-      if (!p.responsable?.email || p.responsable.email === yo.id) return;
+      if (!p.responsable?.email || p.responsable_id === yo.id) return;
       const resend = new Resend(process.env.RESEND_API_KEY);
       const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
       const cliente = p.clientes?.nombre ?? "un cliente";
