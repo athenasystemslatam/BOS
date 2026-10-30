@@ -1,0 +1,16 @@
+name: Backup Semanal
+
+on:
+  schedule:
+    - cron: '0 10 * * 0'   # 10:00 UTC = 7:00 AM ART, todos los domingos
+  workflow_dispatch:         # disparo manual desde GitHub Actions
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Backup completo de la base
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bos-plum.vercel.app/api/cron/backup-semanal"

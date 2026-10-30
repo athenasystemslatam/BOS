@@ -147,3 +147,43 @@ export async function resolverResponsablesVigentes(
   });
   return resultado;
 }
+
+// Igual que resolverResponsablesVigentes pero trae todos los subtipos de un
+// servicio en una sola consulta. Útil cuando la página necesita IVA + IIBB + SEH
+// a la vez — evita 3 roundtrips a la base donde alcanza con 1.
+export async function resolverResponsablesVigentesTodos(
+  servicio: string,
+  anio: number,
+  mes: number
+): Promise<Record<string, Map<string, { id: string; nombre: string }>>> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("asignaciones_servicio")
+    .select("cliente_id, subtipo, desde_anio, desde_mes, responsable:liquidadoras!responsable_id(id, nombre)")
+    .eq("servicio", servicio);
+
+  if (!data) return {};
+
+  type Row = { cliente_id: string; subtipo: string; desde_anio: number; desde_mes: number; responsable: { id: string; nombre: string } | null };
+  const porSubtipo = new Map<string, Map<string, Row>>();
+
+  for (const a of data as unknown as Row[]) {
+    if (a.desde_anio * 100 + a.desde_mes > anio * 100 + mes) continue;
+    if (!porSubtipo.has(a.subtipo)) porSubtipo.set(a.subtipo, new Map());
+    const porCliente = porSubtipo.get(a.subtipo)!;
+    const prev = porCliente.get(a.cliente_id);
+    if (!prev || a.desde_anio * 100 + a.desde_mes > prev.desde_anio * 100 + prev.desde_mes) {
+      porCliente.set(a.cliente_id, a);
+    }
+  }
+
+  const resultado: Record<string, Map<string, { id: string; nombre: string }>> = {};
+  for (const [subtipo, porCliente] of Array.from(porSubtipo.entries())) {
+    const mapa = new Map<string, { id: string; nombre: string }>();
+    for (const [clienteId, a] of Array.from(porCliente.entries())) {
+      if (a.responsable) mapa.set(clienteId, a.responsable);
+    }
+    resultado[subtipo] = mapa;
+  }
+  return resultado;
+}

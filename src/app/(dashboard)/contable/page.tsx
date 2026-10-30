@@ -20,6 +20,7 @@ export default async function ContablePage({
     { data: equipoModulosTodos },
     vencimientos,
     anios,
+    { data: cambiosCierre },
   ] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
@@ -44,14 +45,13 @@ export default async function ContablePage({
     admin.from("equipo_modulos").select("equipo_id, modulo"),
     getContextoVencimientos(),
     getAniosContables(),
+    // Ítem 109: último cambio registrado de la fecha de cierre fija de cada
+    // cliente, para explicar por qué un balance no coincide con ella.
+    admin
+      .from("clientes_cierre_cambios")
+      .select("cliente_id, motivo, mes_anterior, dia_anterior, creado_en")
+      .order("creado_en", { ascending: false }),
   ]);
-
-  // Ítem 109: último cambio registrado de la fecha de cierre fija de cada
-  // cliente, para explicar por qué un balance no coincide con ella.
-  const { data: cambiosCierre } = await admin
-    .from("clientes_cierre_cambios")
-    .select("cliente_id, motivo, mes_anterior, dia_anterior, creado_en")
-    .order("creado_en", { ascending: false });
   const ultimoCambio = new Map<string, { motivo: string; mes_anterior: number; dia_anterior: number }>();
   for (const c of cambiosCierre ?? []) if (!ultimoCambio.has(c.cliente_id)) ultimoCambio.set(c.cliente_id, c);
 

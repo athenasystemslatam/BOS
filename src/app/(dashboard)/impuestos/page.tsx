@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
-import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
+import { resolverResponsablesVigentesTodos } from "@/lib/asignacionesServicio";
 import { ImpuestosClient } from "./ImpuestosClient";
 
 export default async function ImpuestosPage({
@@ -20,9 +20,7 @@ export default async function ImpuestosPage({
   const [
     yo,
     areas,
-    vigentesIva,
-    vigentesIibb,
-    vigentesSeh,
+    vigentesPorSubtipo,
     { data: serviciosRaw },
     { data: tareas },
     { data: equipoRaw },
@@ -30,9 +28,7 @@ export default async function ImpuestosPage({
   ] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
-    resolverResponsablesVigentes("impuestos", "iva", anio, mes),
-    resolverResponsablesVigentes("impuestos", "iibb", anio, mes),
-    resolverResponsablesVigentes("impuestos", "seh", anio, mes),
+    resolverResponsablesVigentesTodos("impuestos", anio, mes),
     admin
       .from("servicios_cliente")
       .select("cliente_id, subtipo, responsable_id, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso)")
@@ -49,12 +45,6 @@ export default async function ImpuestosPage({
 
   const equipoIdsImpuestos = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipoImpuestos = (equipoRaw ?? []).filter((e) => equipoIdsImpuestos.has(e.id));
-
-  const vigentesPorSubtipo: Record<string, Map<string, { id: string; nombre: string }>> = {
-    iva: vigentesIva,
-    iibb: vigentesIibb,
-    seh: vigentesSeh,
-  };
 
   // Fallback: clientes sin ninguna reasignación registrada todavía muestran
   // el responsable_id "actual" que ya traía servicios_cliente.
