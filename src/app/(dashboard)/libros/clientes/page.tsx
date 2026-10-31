@@ -27,12 +27,16 @@ export default async function LibrosClientesPage() {
     admin.from("libros").select("cliente_id, catalogo_id, estado, folios_totales, folios_usados"),
     admin.from("balances").select("cliente_id, anio_fiscal, estado").order("anio_fiscal", { ascending: false }),
     configLibros(admin),
-    admin.from("libros_relevamiento").select("cliente_id, estado, fecha"),
+    admin.from("libros_relevamiento").select("cliente_id, estado, fecha, relevado_por:liquidadoras(nombre)"),
   ]);
 
   const relevamientoMap = new Map(
-    ((relevamientosRaw ?? []) as { cliente_id: string; estado: string; fecha: string | null }[])
-      .map((r) => [r.cliente_id, { estado: r.estado, fecha: r.fecha }])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((relevamientosRaw ?? []) as any[])
+      .map((r) => {
+        const liq = Array.isArray(r.relevado_por) ? r.relevado_por[0] : r.relevado_por;
+        return [r.cliente_id, { estado: r.estado, fecha: r.fecha ?? null, relevadoPor: liq?.nombre ?? null }];
+      })
   );
 
   const societarios = new Map(

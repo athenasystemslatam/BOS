@@ -45,7 +45,7 @@ export type FilaClienteLibros = {
   mandato: { mandato_designacion: string | null; mandato_anios: number | null; mandato_vence_preciso?: string | null } | null;
   balanceEstado: string | null;
   balanceAnio: number | null;
-  relevamiento: { estado: string; fecha: string | null } | null;
+  relevamiento: { estado: string; fecha: string | null; relevadoPor: string | null } | null;
 };
 
 export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClienteLibros[]; puedeEditar: boolean }) {
@@ -271,8 +271,8 @@ export function ClientesLibrosClient({ filas, puedeEditar }: { filas: FilaClient
                       </td>
                       <td className="px-3 py-2.5">
                         {f.relevamiento?.estado === "relevada" ? (
-                          <span className={clsx(CHIP, SEMAFORO.verdeClaro, "text-[11px]")}>
-                            Relevado{f.relevamiento.fecha ? ` · ${fmtFecha(f.relevamiento.fecha)}` : ""}
+                          <span className={clsx(CHIP, SEMAFORO.verdeClaro, "text-[11px]")} title={f.relevamiento.relevadoPor ? `Por ${f.relevamiento.relevadoPor}` : undefined}>
+                            Relevado{f.relevamiento.fecha ? ` · ${fmtFecha(f.relevamiento.fecha)}` : ""}{f.relevamiento.relevadoPor ? ` · ${f.relevamiento.relevadoPor}` : ""}
                           </span>
                         ) : puedeEditar ? (
                           <button
