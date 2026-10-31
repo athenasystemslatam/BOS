@@ -92,7 +92,7 @@ export async function obtenerDatosTablero(): Promise<DatosTablero> {
       ),
     admin.from("libros_estados").select("id, es_final"),
     admin.from("balances").select("id, estado"),
-    admin.from("libros_pedidos").select("id, tipo, fecha_limite, mandato_vence"),
+    admin.from("libros_pedidos").select("id, cliente_id, tipo, estado, fecha_limite, mandato_vence"),
     admin.from("servicios_cliente").select("cliente_id, clientes!inner(nombre, estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),
     admin.from("clientes_societario").select("*"),
     admin.from("libros").select("id, cliente_id, catalogo_id, estado"),
@@ -207,7 +207,16 @@ export async function obtenerDatosTablero(): Promise<DatosTablero> {
 
   // ── Prioridad de las tareas abiertas ───────────────────────────────────────
   const balanceEstado = new Map((balancesRaw ?? []).map((b) => [b.id as string, b.estado as string]));
-  const pedidos = (pedidosRaw ?? []) as { id: string; tipo: string; fecha_limite: string | null; mandato_vence?: string | null }[];
+  const pedidos = (pedidosRaw ?? []) as { id: string; cliente_id: string; tipo: string; estado: string; fecha_limite: string | null; mandato_vence?: string | null }[];
+
+  // Clientes con al menos un pedido de presupuesto abierto (no rechazado ni cerrado).
+  const clientesConPresupuesto = new Set(
+    pedidos
+      .filter((p) => (p.tipo === "presupuesto_libro_nuevo" || p.tipo === "presupuesto_tomo_nuevo") && p.estado !== "rechazado" && p.estado !== "cerrado")
+      .map((p) => p.cliente_id)
+  );
+  const presupuestosAPedir = sinLibro.filter((l) => !clientesConPresupuesto.has(l.clienteId)).length;
+
   const pedidosConFecha = new Set(pedidos.filter((p) => p.fecha_limite).map((p) => p.id));
   const renovacionesVencidas = new Set(
     pedidos.filter((p) => p.tipo === "renovacion_autoridades" && p.mandato_vence && p.mandato_vence < hoy).map((p) => p.id)
@@ -345,6 +354,7 @@ export async function obtenerDatosTablero(): Promise<DatosTablero> {
       sinDatoEmpresas: new Set(sinDato.map((l) => l.clienteId)).size,
       sinLibroLibros: sinLibro.length,
       sinLibroEmpresas: new Set(sinLibro.map((l) => l.clienteId)).size,
+      presupuestosAPedir,
     },
     pendienteLibro,
     pendienteSocietario,

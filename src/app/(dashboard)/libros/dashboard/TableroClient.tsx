@@ -47,6 +47,7 @@ export type DatosTablero = {
     sinDatoEmpresas: number;
     sinLibroLibros: number;
     sinLibroEmpresas: number;
+    presupuestosAPedir: number;
   };
   pendienteLibro: FilaCategoria[];
   pendienteSocietario: FilaCategoria[];
@@ -401,7 +402,7 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
     {
       id: "sin-dato",
       titulo: "Sin dato y sin libro",
-      ayuda: "Sin dato: no tiene último copiado cargado, hay que relevarlo. Sin libro: falta el libro, hay que pedir presupuesto.",
+      ayuda: "Sin dato: no tiene último copiado cargado, hay que relevarlo. Sin libro: falta el libro, hay que pedir presupuesto. Presupuestos a pedir: libros sin libro que no tienen pedido de presupuesto abierto.",
       contenido: (
         <div className="flex flex-wrap gap-x-8 gap-y-3">
           <Cifra
@@ -419,6 +420,11 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
                 sin libro en <span className={MONO}>{actual.sinLibroEmpresas}</span> empresas
               </>
             }
+          />
+          <Cifra
+            valor={actual.presupuestosAPedir}
+            cls={actual.presupuestosAPedir > 0 ? "text-amber-700" : undefined}
+            detalle="presupuestos a pedir"
           />
         </div>
       ),
