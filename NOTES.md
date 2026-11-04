@@ -2,6 +2,12 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 04-nov (Matías) — vencimiento F.931 corrido por feriados (visita del Papa)
+
+- ARCA corrió el vencimiento de la liquidación de octubre 2026 de 9-10-11/11 a 11-12-13/11 (DNU 1103/2026: feriados por la visita del Papa León XIV). Corregido a mano en `FECHAS_2026` (`src/lib/vencimientos.ts`), confirmado por Matías. Pusheado (`ac35448`).
+- Surgió la idea de un **override manual de vencimientos** para Sueldos (al estilo del nivel 3 "fecha manual por balance" que ya existe para Contable en `/productividad/configuracion`), para no depender de un deploy cada vez que ARCA corre una fecha así. **Matías decidió dejarlo para más adelante** — no es un pendiente bloqueante, solo queda anotada la idea para cuando se quiera retomar.
+- Importante para la próxima vez que pase algo similar: el F.931 de años con calendario oficial cargado (como 2026) nunca pasa por `esDiaHabil`/corrección de días hábiles — devuelve directo la fecha hardcodeada de `FECHAS_2026`. Un feriado ad hoc solo se refleja si alguien edita esa tabla a mano (como se hizo acá) o si se construye el override pendiente del punto anterior.
+
 ## Sesión del 29-oct (Giuliana) — FAL (Fondo de Asistencia Laboral) en Sueldos
 
 - **SQL `supabase/add_clientes_fal.sql`** (tabla nueva `clientes_fal`, una fila por cliente) — **corrida** por Giuliana el 29-oct. Probado en producción tildando un paso.
