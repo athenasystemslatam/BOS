@@ -1095,7 +1095,7 @@ export function SeguimientoClient({
           {currentPeriodo && (
             <a
               href={`/api/exportar/nomina-sueldos?periodo_id=${currentPeriodo.id}`}
-              title="Exportar nómina por empresa a Excel"
+              title="Exportar nómina por cliente a Excel"
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors"
             >
               <Download size={14} />

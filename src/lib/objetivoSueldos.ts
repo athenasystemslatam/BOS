@@ -14,11 +14,14 @@ export function diffDias(desde: Date, hasta: Date): number {
 /** Objetivo = fin de la ventana ideal, límite = tope real antes de
  * considerarlo tarde. Verde = dentro del objetivo, amarillo = después del
  * objetivo pero dentro del límite, rojo = pasado el límite. Para una tarea
- * ya marcada, usar la fecha real de marcado. */
+ * ya marcada, usar la fecha real de marcado.
+ * Ítem 90: compara por día calendario de Argentina (como clasificarEnVivo),
+ * no por diferencia de timestamp — antes, tildar pasado el mediodía del
+ * mismo día del límite ya daba "rojo" por el redondeo. */
 export function clasificar(marcadoEn: string, objetivo: Date, limite: Date): Color {
-  const marcado = new Date(marcadoEn);
-  if (diffDias(marcado, objetivo) >= 0) return "verde";
-  if (diffDias(marcado, limite) >= 0) return "amarillo";
+  const marcado = diaAR(new Date(marcadoEn));
+  if (marcado <= diaFecha(objetivo)) return "verde";
+  if (marcado <= diaFecha(limite)) return "amarillo";
   return "rojo";
 }
 

@@ -152,7 +152,7 @@ export async function crearEmpresa(formData: FormData) {
     .single();
 
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe una empresa con ese CUIT." };
+    if (error.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
     if (error.message.includes("claves_acceso")) {
       return { error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.' };
     }
@@ -299,7 +299,7 @@ export async function editarEmpresa(formData: FormData) {
   }).eq("id", id);
 
   if (error) {
-    if (error.code === "23505") return { error: "Ya existe una empresa con ese CUIT." };
+    if (error.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
     if (error.message.includes("claves_acceso")) {
       return { error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.' };
     }
@@ -494,7 +494,7 @@ export async function transferirCartera(
 
   if (fetchError) return { error: fetchError.message };
   if (!clientes || clientes.length === 0) {
-    return { error: "Esa persona no tiene empresas activas para transferir." };
+    return { error: "Esa persona no tiene clientes activos para transferir." };
   }
 
   let transferidas = 0;

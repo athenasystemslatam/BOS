@@ -376,7 +376,7 @@ export function PanelGeneralClient({
               <p className="text-xl md:text-[23px] font-semibold tracking-[-.02em] leading-none text-ink tabular-nums">
                 {kpi.activas}
               </p>
-              <p className="text-[10.5px] font-medium tracking-[.1em] uppercase text-ink-faint mt-[5px]">Activas</p>
+              <p className="text-[10.5px] font-medium tracking-[.1em] uppercase text-ink-faint mt-[5px]">Activos</p>
             </div>
             <div className="w-px bg-line-soft" />
             <div className="px-4 md:px-5 py-[11px]">
