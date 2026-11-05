@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { requireAreaOrAdmin } from "@/lib/auth";
+import { getCurrentLiquidadora, requireAreaOrAdmin } from "@/lib/auth";
 import { calcularAvance, calcularEstado, ESTADOS_MANUALES } from "./semaforo";
 import type { Cliente } from "@/types";
 
@@ -13,14 +13,14 @@ const CAMPOS_AVANCE = ["envio1", "info_recibida", "estado_eecc"] as const;
 const CAMPOS_ESTADO = ["estado_eecc", "responsable_id", "responsable2_id"] as const;
 
 // Ficha de cliente de solo lectura para el módulo Contable — misma info que
-// la ficha maestra de Panel General (edición sigue siendo solo desde ahí),
-// pero accesible para todo el equipo de Contable, no solo admins.
+// la ficha maestra de Panel General (edición sigue siendo solo desde ahí).
+// Ítem 88: el criterio de acceso tiene que ser el mismo que para VER la
+// pantalla de Contable (solo estar logueado, como en panel-general/actions.ts),
+// no el de editar (requireAreaOrAdmin) — ese rechaza a Cobranzas y a
+// Administrativo, que sí pueden ver Contable en modo consulta.
 export async function getFichaCliente(clienteId: string): Promise<Cliente | null> {
-  try {
-    await requireAreaOrAdmin("contable");
-  } catch {
-    return null;
-  }
+  const yo = await getCurrentLiquidadora();
+  if (!yo) return null;
 
   const admin = createAdminClient();
   const { data } = await admin

@@ -161,15 +161,16 @@ export function FichaClienteBoton({
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [verPass, setVerPass] = useState<Record<number, boolean>>({});
 
+  // Ítem 88: siempre vuelve a pedir los datos al abrir, no solo la primera
+  // vez — si no, muestra lo que había cuando se abrió por primera vez,
+  // aunque se haya editado el cliente desde otro módulo en el medio.
   function abrir() {
     setAbierto(true);
-    if (!cliente) {
-      setCargando(true);
-      fetchAction(clienteId).then((c) => {
-        setCliente(c);
-        setCargando(false);
-      });
-    }
+    setCargando(true);
+    fetchAction(clienteId).then((c) => {
+      setCliente(c);
+      setCargando(false);
+    });
   }
 
   const claves = cliente?.claves_acceso ?? [];
