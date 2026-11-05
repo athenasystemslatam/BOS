@@ -203,6 +203,10 @@ export function EditarClienteModal({
     );
     formData.set("tiene_locales", String(tieneLocales));
     formData.set("locales", JSON.stringify(tieneLocales ? locales : []));
+    // Ítem 87: generales, no solo para clientes con Sueldos activo.
+    formData.set("claves_acceso", JSON.stringify(claves));
+    formData.set("observaciones", observaciones);
+    formData.set("drive_folder_id", driveFolder);
 
     if ("sueldos:general" in serviciosActivos) {
       formData.set("sueldos_fecha_inicio_liquidacion", fechaInicioLiquidacion);
@@ -216,9 +220,6 @@ export function EditarClienteModal({
       formData.set("sueldos_art", art);
       formData.set("sueldos_red_bancaria", redBancaria);
       formData.set("sueldos_fecha_alta_empleador", fechaAltaEmpleador);
-      formData.set("sueldos_claves_acceso", JSON.stringify(claves));
-      formData.set("sueldos_observaciones", observaciones);
-      formData.set("sueldos_drive_folder_id", driveFolder);
     }
 
     if ("contable:general" in serviciosActivos) {
@@ -570,34 +571,6 @@ export function EditarClienteModal({
                                   />
                                 </div>
 
-                                <div>
-                                  <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">Claves de acceso</label>
-                                  <ClavesAccesoEditor claves={claves} onChange={setClaves} sugerencias={sugerenciasClaves} />
-                                </div>
-
-                                <div>
-                                  <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">Observaciones</label>
-                                  <textarea
-                                    value={observaciones}
-                                    onChange={(e) => setObservaciones(e.target.value)}
-                                    rows={2}
-                                    placeholder="Notas adicionales…"
-                                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] resize-none"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
-                                    Carpeta Drive (URL o ID)
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={driveFolder}
-                                    onChange={(e) => setDriveFolder(e.target.value)}
-                                    placeholder="https://drive.google.com/drive/folders/… o ID directo"
-                                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
-                                  />
-                                </div>
                               </div>
                             </div>
                           )}
@@ -670,6 +643,43 @@ export function EditarClienteModal({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* Ítem 87: antes vivía solo dentro del bloque de Sueldos — un
+                cliente solo de Impuestos/Contable/Monotributo no tenía
+                dónde cargar claves, observaciones ni Drive. Ahora es general. */}
+            <div>
+              <p className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle mb-[9px]">Claves, observaciones y Drive</p>
+              <div className="space-y-3 rounded-[10px] border border-line-soft p-[11px]">
+                <div>
+                  <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">Claves de acceso</label>
+                  <ClavesAccesoEditor claves={claves} onChange={setClaves} sugerencias={sugerenciasClaves} />
+                </div>
+
+                <div>
+                  <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">Observaciones</label>
+                  <textarea
+                    value={observaciones}
+                    onChange={(e) => setObservaciones(e.target.value)}
+                    rows={2}
+                    placeholder="Notas adicionales…"
+                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
+                    Carpeta Drive (URL o ID)
+                  </label>
+                  <input
+                    type="text"
+                    value={driveFolder}
+                    onChange={(e) => setDriveFolder(e.target.value)}
+                    placeholder="https://drive.google.com/drive/folders/… o ID directo"
+                    className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
+                  />
+                </div>
               </div>
             </div>
 

@@ -153,6 +153,15 @@ export async function crearClienteConServicios(formData: FormData) {
   const jurisdiccion_legal = (formData.get("jurisdiccion_legal") as string)?.trim() || null;
   const tiene_locales = formData.get("tiene_locales") === "true";
   const locales = tiene_locales ? parseLocales(formData) : [];
+  // Ítem 87: igual que en editarClienteConServicios — generales, no solo
+  // para clientes con Sueldos activo.
+  let claves_acceso: unknown = [];
+  try { claves_acceso = JSON.parse((formData.get("claves_acceso") as string) || "[]"); } catch { /* keep [] */ }
+  const observaciones = (formData.get("observaciones") as string)?.trim() || null;
+  const driveFolderRaw = (formData.get("drive_folder_id") as string)?.trim() || null;
+  const drive_folder_id = driveFolderRaw
+    ? (driveFolderRaw.match(/\/folders\/([-\w]+)/)?.[1] ?? driveFolderRaw)
+    : null;
 
   if (!nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -184,6 +193,9 @@ export async function crearClienteConServicios(formData: FormData) {
       jurisdiccion_legal,
       tiene_locales,
       locales,
+      claves_acceso,
+      observaciones,
+      drive_folder_id,
     })
     .select("id")
     .single();
@@ -233,22 +245,13 @@ export async function crearClienteConServicios(formData: FormData) {
     const tiene_rubrica_lsd = formData.get("sueldos_tiene_rubrica_lsd") === "true";
     const jurisdiccion = (formData.get("sueldos_jurisdiccion") as string)?.trim() || null;
     // Mismos campos que Clientes → Editar (cuil_arca, art, red_bancaria,
-    // fecha_alta_empleador, claves_acceso, observaciones, drive_folder_id) —
-    // se completan acá directamente para no obligar a pasar por las dos
-    // pantallas al dar de alta.
+    // fecha_alta_empleador) — se completan acá directamente para no obligar
+    // a pasar por las dos pantallas al dar de alta.
     const cuil_arca = (formData.get("sueldos_cuil_arca") as string)?.trim() || null;
     const id_fal = (formData.get("sueldos_id_fal") as string)?.trim() || null;
     const art = (formData.get("sueldos_art") as string)?.trim() || null;
     const red_bancaria = (formData.get("sueldos_red_bancaria") as string)?.trim() || null;
     const fecha_alta_empleador = (formData.get("sueldos_fecha_alta_empleador") as string)?.trim() || null;
-    let claves_acceso: unknown = [];
-    try { claves_acceso = JSON.parse((formData.get("sueldos_claves_acceso") as string) || "[]"); } catch { /* keep [] */ }
-    const observaciones = (formData.get("sueldos_observaciones") as string)?.trim() || null;
-    // Mismo parseo que Clientes → Editar: acepta URL completa de Drive o ID directo.
-    const driveFolderRaw = (formData.get("sueldos_drive_folder_id") as string)?.trim() || null;
-    const drive_folder_id = driveFolderRaw
-      ? (driveFolderRaw.match(/\/folders\/([-\w]+)/)?.[1] ?? driveFolderRaw)
-      : null;
 
     const update: Record<string, unknown> = {
       fecha_inicio_liquidacion,
@@ -262,9 +265,6 @@ export async function crearClienteConServicios(formData: FormData) {
       art,
       red_bancaria,
       fecha_alta_empleador,
-      claves_acceso,
-      observaciones,
-      drive_folder_id,
     };
     update.liquidador_id = sueldos.responsable_id || null;
 
@@ -327,6 +327,16 @@ export async function editarClienteConServicios(formData: FormData) {
   const jurisdiccion_legal = (formData.get("jurisdiccion_legal") as string)?.trim() || null;
   const tiene_locales = formData.get("tiene_locales") === "true";
   const locales = tiene_locales ? parseLocales(formData) : [];
+  // Ítem 87: Claves, Observaciones y Drive vivían solo dentro del bloque de
+  // Sueldos — un cliente solo de Impuestos/Contable/Monotributo no tenía
+  // dónde cargarlas. Ahora son generales, independientes de los servicios.
+  let claves_acceso: unknown = [];
+  try { claves_acceso = JSON.parse((formData.get("claves_acceso") as string) || "[]"); } catch { /* keep [] */ }
+  const observaciones = (formData.get("observaciones") as string)?.trim() || null;
+  const driveFolderRaw = (formData.get("drive_folder_id") as string)?.trim() || null;
+  const drive_folder_id = driveFolderRaw
+    ? (driveFolderRaw.match(/\/folders\/([-\w]+)/)?.[1] ?? driveFolderRaw)
+    : null;
 
   if (!id || !nombre || !cuitRaw) {
     return { error: "Nombre y CUIT son obligatorios." };
@@ -390,6 +400,9 @@ export async function editarClienteConServicios(formData: FormData) {
       jurisdiccion_legal,
       tiene_locales,
       locales,
+      claves_acceso,
+      observaciones,
+      drive_folder_id,
       fecha_modificacion: new Date().toISOString(),
     })
     .eq("id", id);
@@ -498,13 +511,6 @@ export async function editarClienteConServicios(formData: FormData) {
     const art = (formData.get("sueldos_art") as string)?.trim() || null;
     const red_bancaria = (formData.get("sueldos_red_bancaria") as string)?.trim() || null;
     const fecha_alta_empleador = (formData.get("sueldos_fecha_alta_empleador") as string)?.trim() || null;
-    let claves_acceso: unknown = [];
-    try { claves_acceso = JSON.parse((formData.get("sueldos_claves_acceso") as string) || "[]"); } catch { /* keep [] */ }
-    const observaciones = (formData.get("sueldos_observaciones") as string)?.trim() || null;
-    const driveFolderRaw = (formData.get("sueldos_drive_folder_id") as string)?.trim() || null;
-    const drive_folder_id = driveFolderRaw
-      ? (driveFolderRaw.match(/\/folders\/([-\w]+)/)?.[1] ?? driveFolderRaw)
-      : null;
 
     const update: Record<string, unknown> = {
       fecha_inicio_liquidacion,
@@ -518,9 +524,6 @@ export async function editarClienteConServicios(formData: FormData) {
       art,
       red_bancaria,
       fecha_alta_empleador,
-      claves_acceso,
-      observaciones,
-      drive_folder_id,
     };
     // Ojo: antes esto era "if (sueldos.responsable_id) update.liquidador_id = ..."
     // — un guard que solo propagaba cuando SE ELEGÍA alguien, y nunca cuando
@@ -531,7 +534,7 @@ export async function editarClienteConServicios(formData: FormData) {
     update.liquidador_id = sueldos.responsable_id || null;
 
     const { error: sueldosError } = await supabase.from("clientes").update(update).eq("id", id);
-    if (sueldosError && !sueldosError.message.includes("claves_acceso")) {
+    if (sueldosError) {
       return { error: sueldosError.message };
     }
 
@@ -636,6 +639,20 @@ export async function darDeBajaCliente(clienteId: string) {
     .eq("id", clienteId);
 
   if (error) return { error: error.message };
+
+  // Ítem 87: antes esto dejaba todos los servicios activos — el cliente
+  // desaparecía de Panel General pero seguía apareciendo asignado en
+  // Contable/Impuestos/Monotributo/Sueldos, sin que su responsable se
+  // enterara. Se da de baja cada servicio activo igual que si se hiciera
+  // uno por uno (mismo aviso por mail al responsable).
+  const { data: activos } = await supabase
+    .from("servicios_cliente")
+    .select("servicio, subtipo")
+    .eq("cliente_id", clienteId)
+    .eq("estado", true);
+  for (const s of activos ?? []) {
+    await darDeBajaServicio(clienteId, s.servicio, s.subtipo);
+  }
 
   revalidatePath("/", "layout");
   return { success: true };
