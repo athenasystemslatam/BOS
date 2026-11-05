@@ -103,6 +103,7 @@ export function LiquidadorasClient({
                   <th className="px-6 py-3 text-center font-medium">Rol</th>
                   <th className="px-6 py-3 text-left font-medium">Áreas</th>
                   <th className="px-6 py-3 text-center font-medium">Estado</th>
+                  <th className="px-6 py-3 text-center font-medium">Acceso</th>
                   <th className="px-6 py-3 text-left font-medium">Alta</th>
                   {isAdmin && <th className="px-6 py-3 text-center font-medium">Acciones</th>}
                 </tr>
@@ -169,6 +170,22 @@ export function LiquidadorasClient({
                         >
                           {liq.activa ? "Activa" : "Inactiva"}
                         </span>
+                      </td>
+                      <td className="px-6 py-3.5 text-center">
+                        {!liq.activa ? (
+                          <span className="text-gray-300 text-xs">—</span>
+                        ) : liq.user_id ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-success">
+                            Con acceso
+                          </span>
+                        ) : (
+                          <span
+                            title="No puede loguearse: usar 'Reenviar acceso' desde Editar"
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-600"
+                          >
+                            Sin acceso
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-3.5 text-[13px] text-gray-400">
                         {new Date(liq.fecha_alta).toLocaleDateString("es-AR", {
