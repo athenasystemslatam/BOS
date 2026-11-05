@@ -290,7 +290,19 @@ export async function fetchPeriodo(
     .eq("mes", mes)
     .maybeSingle();
 
+  // Ítem 86: los selectores de mes (Dashboard/Seguimiento) ofrecen hasta 2
+  // meses adelante para poder mirarlos, pero mirar un mes futuro no tiene
+  // que crear su período — si no, Productividad lo muestra con 0% aunque
+  // nadie haya trabajado nada todavía. Si ya existe (se creó antes de este
+  // fix, o lo crea a propósito el cron de fin de mes) se sigue devolviendo
+  // normal; solo se frena la creación hacia adelante.
+  const { mes: mesTrabajo, anio: anioTrabajo } = getMesTrabajoActual();
+  const esFuturo = anio * 100 + mes > anioTrabajo * 100 + mesTrabajo;
+
   let recienCreado = false;
+  if (!data && esFuturo) {
+    return null;
+  }
   if (!data) {
     recienCreado = true;
     const { data: nuevo } = await admin

@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { getObjetivoSueldos } from "@/lib/objetivos";
 import { clasificar, objetivoLimiteF931, objetivoRecibos, limiteRecibos, diffDias } from "@/lib/objetivoSueldos";
 import { ProductividadClient, FilaLiquidadora } from "./ProductividadClient";
@@ -48,11 +49,19 @@ export default async function ProductividadPage() {
     getObjetivoSueldos(),
   ]);
 
-  if (!periodos || periodos.length === 0) {
+  // Ítem 86: los selectores de Dashboard/Seguimiento ofrecen hasta 2 meses
+  // adelante solo para poder mirarlos — si alguno llegó a crearse como
+  // período real (antes de ese fix), no tiene que aparecer acá con 0%.
+  const { mes: mesTrabajo, anio: anioTrabajo } = getMesTrabajoActual();
+  const periodosValidos = (periodos ?? []).filter(
+    (p) => p.anio * 100 + p.mes <= anioTrabajo * 100 + mesTrabajo
+  );
+
+  if (periodosValidos.length === 0) {
     return <div className="p-8 text-gray-400 text-sm">Sin períodos registrados.</div>;
   }
 
-  const periodoIds = periodos.map((p) => p.id);
+  const periodoIds = periodosValidos.map((p) => p.id);
 
   // Tareas con timestamps y cliente (de a 1000: crecen cada mes)
   const tareas = await traerTodas<{
@@ -137,7 +146,7 @@ export default async function ProductividadPage() {
     preliquidadoPorCliente.set(liq.id, new Map());
   }
 
-  for (const periodo of periodos) {
+  for (const periodo of periodosValidos) {
     // Agrupar clientes por liquidadora en este período
     const porLiq = new Map<string, { terminacion: number; clienteId: string; nombre: string; tarea: typeof tareas[0] | null }[]>();
 
