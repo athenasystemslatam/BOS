@@ -26,7 +26,7 @@ export default async function ProductividadPage() {
   type Asignacion = { cliente_id: string; liquidador_id: string; desde_anio: number; desde_mes: number; creado_en: string };
 
   // Todo lo que no depende de los períodos va en paralelo.
-  const [{ data: periodos }, { data: clientes }, asignaciones, { data: liquidadoras }, objetivoGeneral] = await Promise.all([
+  const [{ data: periodos }, { data: clientesRaw }, { data: serviciosSueldos }, asignaciones, { data: liquidadoras }, objetivoGeneral] = await Promise.all([
     // Períodos desde junio 2026 en adelante (antes no se usaba el sistema)
     admin
       .from("periodos")
@@ -36,6 +36,9 @@ export default async function ProductividadPage() {
       .order("mes", { ascending: true }),
     // Clientes activos con liquidadora
     admin.from("clientes").select("id, nombre, liquidador_id, terminacion_cuit").eq("estado", "activo"),
+    // Ítem 84: sin esto se contaban acá clientes activos que nunca tuvieron
+    // Sueldos contratado (solo Contable/Impuestos/Monotributo, por ej.).
+    admin.from("servicios_cliente").select("cliente_id").eq("servicio", "sueldos").eq("estado", true),
     // Asignaciones para resolver liquidadora histórica
     traerTodas<Asignacion>((desde, hasta) =>
       admin
@@ -48,6 +51,9 @@ export default async function ProductividadPage() {
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     getObjetivoSueldos(),
   ]);
+
+  const idsSueldos = new Set((serviciosSueldos ?? []).map((s) => s.cliente_id));
+  const clientes = (clientesRaw ?? []).filter((c) => idsSueldos.has(c.id));
 
   // Ítem 86: los selectores de Dashboard/Seguimiento ofrecen hasta 2 meses
   // adelante solo para poder mirarlos — si alguno llegó a crearse como

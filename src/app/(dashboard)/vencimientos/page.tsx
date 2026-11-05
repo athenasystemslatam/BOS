@@ -15,12 +15,17 @@ export default async function VencimientosPage({ searchParams }: { searchParams:
   const oficial = tieneFechasOficialesF931(anio);
   const calendario = getCalendarioF931(anio);
 
-  const { data: clientes } = await supabase
-    .from("clientes")
-    .select("id, terminacion_cuit")
-    .eq("estado", "activo");
+  const [{ data: clientes }, { data: serviciosSueldos }] = await Promise.all([
+    supabase.from("clientes").select("id, terminacion_cuit").eq("estado", "activo"),
+    // Ítem 84: sin esto se contaban acá clientes activos que nunca tuvieron
+    // Sueldos contratado (solo Contable/Impuestos/Monotributo, por ej.).
+    supabase.from("servicios_cliente").select("cliente_id").eq("servicio", "sueldos").eq("estado", true),
+  ]);
 
-  const clientesList = (clientes as Pick<Cliente, "id" | "terminacion_cuit">[]) ?? [];
+  const idsSueldos = new Set((serviciosSueldos ?? []).map((s) => s.cliente_id));
+  const clientesList = ((clientes as Pick<Cliente, "id" | "terminacion_cuit">[]) ?? []).filter((c) =>
+    idsSueldos.has(c.id)
+  );
 
   // Contar empresas por grupo de terminación
   const countGrupo = (min: number, max: number) =>
