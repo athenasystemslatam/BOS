@@ -290,9 +290,13 @@ export async function getEmpresaCompleta(clienteId: string) {
   const supabase = createAdminClient();
   const [{ data: cliente }, { data: servicios }] = await Promise.all([
     supabase.from("clientes").select("*").eq("id", clienteId).maybeSingle(),
+    // Ítem 89: responsable.nombre hace falta para poder mostrar, aunque esté
+    // inactivo o fuera del equipo del módulo, a quién tiene asignado ahora
+    // (si no, el <select> no encuentra su value entre las opciones activas
+    // y el navegador lo muestra como "Sin asignar" sin serlo).
     supabase
       .from("servicios_cliente")
-      .select("servicio, subtipo, estado, responsable_id")
+      .select("servicio, subtipo, estado, responsable_id, responsable:liquidadoras(id, nombre)")
       .eq("cliente_id", clienteId),
   ]);
 

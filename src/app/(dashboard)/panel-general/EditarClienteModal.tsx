@@ -46,6 +46,10 @@ export function EditarClienteModal({
 
   // serviciosActivos: key "servicio:subtipo" → responsable_id | ""
   const [serviciosActivos, setServiciosActivos] = useState<Record<ServicioKey, string>>({});
+  // Ítem 89: nombre del responsable actual de cada servicio, aunque esté
+  // inactivo o fuera del equipo del módulo — para poder mostrarlo en el
+  // <select> en vez de que se vea como "Sin asignar" sin serlo.
+  const [responsablesActuales, setResponsablesActuales] = useState<Record<ServicioKey, string>>({});
 
   const [fechaInicioLiquidacion, setFechaInicioLiquidacion] = useState("");
   const [esQuincenal, setEsQuincenal] = useState(false);
@@ -100,11 +104,16 @@ export function EditarClienteModal({
       );
 
       const activos: Record<ServicioKey, string> = {};
+      const nombresActuales: Record<ServicioKey, string> = {};
       for (const s of servicios) {
         if (!s.estado) continue;
-        activos[`${s.servicio}:${s.subtipo}` as ServicioKey] = s.responsable_id ?? "";
+        const key = `${s.servicio}:${s.subtipo}` as ServicioKey;
+        activos[key] = s.responsable_id ?? "";
+        const responsable = Array.isArray(s.responsable) ? s.responsable[0] : s.responsable;
+        if (responsable?.nombre) nombresActuales[key] = responsable.nombre;
       }
       setServiciosActivos(activos);
+      setResponsablesActuales(nombresActuales);
 
       setFechaInicioLiquidacion(cliente.fecha_inicio_liquidacion ?? "");
       setEsQuincenal(!!cliente.es_quincenal);
@@ -411,6 +420,11 @@ export function EditarClienteModal({
                             className="w-full text-[12.5px] text-ink border border-line-input rounded-lg px-3 py-2 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow]"
                           >
                             <option value="">Sin asignar</option>
+                            {serviciosActivos[key] && !opciones.some((p) => p.id === serviciosActivos[key]) && (
+                              <option value={serviciosActivos[key]} disabled>
+                                {responsablesActuales[key] ?? "Responsable"} (inactivo)
+                              </option>
+                            )}
                             {opciones.map((p) => (
                               <option key={p.id} value={p.id}>
                                 {p.nombre}
