@@ -47,7 +47,7 @@ export async function obtenerSeguimientoSueldos() {
     .eq("estado", "activo")
     .in("id", idsSueldos)
     .order("terminacion_cuit");
-  if (!yo?.isAdmin && !yo?.esCobranzas && yo) {
+  if (!yo?.isAdmin && !yo?.esCobranzas && !yo?.esAdministrativo && yo) {
     clientesQuery = clientesQuery.eq("liquidador_id", yo.id);
   }
   const [{ data: clientesRaw }, { data: tareas }, recordatoriosPrevios] = await Promise.all([
@@ -88,7 +88,7 @@ export async function obtenerSeguimientoSueldos() {
   const filasFal = await getFilasFal(clientes.map((c) => c.id));
 
   const clienteLiqIds = new Set((clientes ?? []).map((c) => c.liquidador_id).filter(Boolean));
-  const liquidadoras = yo?.isAdmin || yo?.esCobranzas
+  const liquidadoras = yo?.isAdmin || yo?.esCobranzas || yo?.esAdministrativo
     ? (liquidadorasActivas ?? []).filter((l) => clienteLiqIds.has(l.id))
     : [];
 
