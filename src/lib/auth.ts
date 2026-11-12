@@ -86,7 +86,7 @@ export async function requireAdminOrAdministrativo(): Promise<CurrentLiquidadora
  * seguimiento — marcar tareas, sync de Drive, etc. */
 export async function requireLiquidadoraOrAdmin(): Promise<CurrentLiquidadora> {
   const liquidadora = await getCurrentLiquidadora();
-  if (!liquidadora || liquidadora.esCobranzas) {
+  if (!liquidadora || liquidadora.esCobranzas || liquidadora.esAdministrativo) {
     throw new Error("No tenés permiso para editar — estás en modo consulta.");
   }
   return liquidadora;
@@ -101,10 +101,11 @@ export const getAreasDelUsuario = cache(async (): Promise<string[]> => {
   const liq = await getCurrentLiquidadora();
   if (!liq) return [];
 
-  // Cobranzas ve todos los módulos sin que haga falta anotarla módulo por
-  // módulo en equipo_modulos — no puede editar nada de todos modos
-  // (requireLiquidadoraOrAdmin/requireAreaOrAdmin la rechazan).
-  if (liq.rol === "cobranzas") return [...MODULOS_VALIDOS];
+  // Cobranzas y administrativo ven todos los módulos sin que haga falta
+  // anotarlos módulo por módulo en equipo_modulos — ninguno de los dos puede
+  // editar fuera de lo que le corresponde de todos modos
+  // (requireLiquidadoraOrAdmin/requireAreaOrAdmin los rechazan).
+  if (liq.rol === "cobranzas" || liq.rol === "administrativo") return [...MODULOS_VALIDOS];
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -123,11 +124,12 @@ export async function requireAreaOrAdmin(modulo: string): Promise<CurrentLiquida
   if (!liquidadora || liquidadora.esCobranzas) {
     throw new Error("No tenés permiso para editar — estás en modo consulta.");
   }
-  // Ítem 119: administrativo tiene consulta (solo lectura) específicamente
-  // en Contable, a diferencia del resto de los módulos donde si tiene el
-  // área asignada edita como cualquiera (ej. Libros).
-  if (liquidadora.esAdministrativo && modulo === "contable") {
-    throw new Error("No tenés permiso para editar — tu rol es de consulta en Contable.");
+  // Ítem 119/154: administrativo ve todos los módulos (ver
+  // getAreasDelUsuario) pero solo edita Libros y Panel General — no es
+  // liquidador/contador de ningún otro módulo, así que en todos los demás
+  // (Contable, Impuestos, Monotributo, Sueldos) queda en consulta.
+  if (liquidadora.esAdministrativo && modulo !== "libros") {
+    throw new Error("No tenés permiso para editar — tu rol es de consulta en este módulo.");
   }
   if (liquidadora.isAdmin) return liquidadora;
 

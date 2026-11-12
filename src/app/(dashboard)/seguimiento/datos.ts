@@ -99,7 +99,7 @@ export async function obtenerSeguimientoSueldos() {
     periodo: periodo as Periodo | null,
     liquidadoras: (liquidadoras as Pick<Liquidadora, "id" | "nombre">[]) ?? [],
     isAdmin: yo?.isAdmin ?? false,
-    puedeEditar: !!yo && !yo.esCobranzas,
+    puedeEditar: !!yo && !yo.esCobranzas && !yo.esAdministrativo,
     recordatoriosPrevios,
     fal: { fechaCorte: objetivoSueldos.fal_fecha_corte, filas: filasFal },
   };

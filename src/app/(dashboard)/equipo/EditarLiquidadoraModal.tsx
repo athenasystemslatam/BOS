@@ -145,9 +145,11 @@ export function EditarLiquidadoraModal({
             </select>
           </div>
 
-          {rol === "cobranzas" ? (
+          {rol === "cobranzas" || rol === "administrativo" ? (
             <p className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
-              Cobranzas ve todos los módulos automáticamente — no hace falta marcarle áreas.
+              {rol === "cobranzas"
+                ? "Cobranzas ve todos los módulos automáticamente — no hace falta marcarle áreas."
+                : "Administrativo/a ve todos los módulos automáticamente — no hace falta marcarle áreas. Solo puede editar Panel General y Libros; en el resto queda en consulta."}
             </p>
           ) : (
             <div>
