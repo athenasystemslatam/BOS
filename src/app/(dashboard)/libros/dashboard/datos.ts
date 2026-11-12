@@ -49,6 +49,7 @@ type TareaRaw = Pick<
   | "fecha_fin"
   | "creado_en"
   | "observaciones"
+  | "quitada_en"
 >;
 
 // Extraído de dashboard/page.tsx (antes todo esto vivía ahí adentro) para que
@@ -88,7 +89,7 @@ export async function obtenerDatosTablero(): Promise<DatosTablero> {
     admin
       .from("libros_tareas")
       .select(
-        "id, cliente_id, libro_id, origen, balance_id, pedido_id, fecha_limite, material_listo, prioridad_manual, estado_id, fecha_fin, creado_en, observaciones"
+        "id, cliente_id, libro_id, origen, balance_id, pedido_id, fecha_limite, material_listo, prioridad_manual, estado_id, fecha_fin, creado_en, observaciones, quitada_en"
       ),
     admin.from("libros_estados").select("id, es_final"),
     admin.from("balances").select("id, estado"),
@@ -172,7 +173,7 @@ export async function obtenerDatosTablero(): Promise<DatosTablero> {
   // ── Logrado: copiados del historial del sheet + registrados en BOS ─────────
   const finales = new Set((estadosRaw ?? []).filter((e) => e.es_final).map((e) => e.id as string));
   const tareas = (tareasRaw ?? []) as TareaRaw[];
-  const copiados = tareas.filter((t) => finales.has(t.estado_id));
+  const copiados = tareas.filter((t) => finales.has(t.estado_id) && !t.quitada_en);
   const hace30 = restarDias(hoy, 30);
   const contarLogrado = (
     clave: (t: TareaRaw) => string | null,

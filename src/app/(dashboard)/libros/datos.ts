@@ -179,6 +179,7 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
       sugerida: sugerida.prioridad,
       motivoSugerido: sugerida.motivo,
       responsableNombre: t.responsable_id ? nombrePersona.get(t.responsable_id) ?? null : null,
+      quitadaPorNombre: t.quitada_por ? nombrePersona.get(t.quitada_por) ?? null : null,
       ultimaCopiadaActa: t.libro_id ? (ultimaActaPorLibroId.get(t.libro_id) ?? null) : null,
     };
   });

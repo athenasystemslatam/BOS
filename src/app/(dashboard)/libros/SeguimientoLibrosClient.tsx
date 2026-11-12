@@ -11,6 +11,7 @@ import {
   DEFINICION_PRIORIDAD,
   UMBRAL_FOLIOS,
   fmtFecha,
+  fmtFechaHora,
 } from "@/lib/libros";
 import type { LibroEstado, LibroTarea, PrioridadLibro, TipoSocietario } from "@/types";
 import { actualizarTarea, reordenarBloques } from "./actions";
@@ -54,6 +55,7 @@ export type TareaVista = LibroTarea & {
   sugerida: PrioridadLibro;
   motivoSugerido: string;
   responsableNombre: string | null;
+  quitadaPorNombre: string | null;
   ultimaCopiadaActa: { acta: string; fecha: string } | null;
 };
 
@@ -830,6 +832,10 @@ function PuestaAlDia({
   );
 }
 
+function textoQuitada(t: TareaVista): string {
+  return `Sacada por ${t.quitadaPorNombre ?? "—"}${t.quitada_motivo ? ` · ${t.quitada_motivo}` : ""}`;
+}
+
 function Historial({
   tareas,
   busqueda,
@@ -842,15 +848,23 @@ function Historial({
   onIrCola: () => void;
 }) {
   const todas = tareas.filter((t) => t.esFinal);
+  const fecha = (t: TareaVista) => t.fecha_fin ?? t.quitada_en?.slice(0, 10) ?? "";
   const terminadas = todas
     .filter((t) => coincide(busqueda, t.clienteNombre, t.clienteCuit))
-    .sort((a, b) => (b.fecha_fin ?? "").localeCompare(a.fecha_fin ?? ""));
+    .sort((a, b) => fecha(b).localeCompare(fecha(a)));
+  const copiados = terminadas.filter((t) => !t.quitada_en).length;
+  const quitadas = terminadas.length - copiados;
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-[13px] text-ink-muted">
-          <b className="font-archivo text-[17px] text-ink tabular-nums">{terminadas.length}</b> copiados registrados
+          <b className="font-archivo text-[17px] text-ink tabular-nums">{copiados}</b> copiados registrados
+          {quitadas > 0 && (
+            <>
+              {" "}· <span className="tabular-nums">{quitadas}</span> {quitadas === 1 ? "sacada" : "sacadas"} de la cola sin copiar
+            </>
+          )}
         </p>
       </div>
       <div className={clsx(PANEL, "overflow-x-auto")}>
@@ -891,8 +905,10 @@ function Historial({
             </thead>
             <tbody>
               {terminadas.map((t) => (
-                <tr key={t.id} className="border-t border-line-row hover:bg-paper-hover">
-                  <td className={clsx("px-3 py-2 pl-4", NUM)}>{fmtFecha(t.fecha_fin)}</td>
+                <tr key={t.id} className={clsx("border-t border-line-row hover:bg-paper-hover", t.quitada_en && "bg-paper-alt")}>
+                  <td className={clsx("px-3 py-2 pl-4", NUM)}>
+                    {t.quitada_en ? fmtFechaHora(t.quitada_en) : fmtFecha(t.fecha_fin)}
+                  </td>
                   <td className="px-3 py-2">
                     <Link
                       href={`/libros/clientes/${t.cliente_id}`}
@@ -905,16 +921,22 @@ function Historial({
                     {t.libroNombre}
                     {t.tomo > 1 && <span className="text-ink-subtle"> · tomo {t.tomo}</span>}
                   </td>
-                  <td className={clsx("px-3 py-2", NUM)}>{fmtFecha(t.periodo_hasta)}</td>
+                  <td className={clsx("px-3 py-2", NUM)}>
+                    {t.quitada_en ? (
+                      <span className={clsx(CHIP, SEMAFORO.sinDato)}>Sacada de la cola</span>
+                    ) : (
+                      fmtFecha(t.periodo_hasta)
+                    )}
+                  </td>
                   <td className="hidden md:table-cell px-3 py-2 text-[12px] text-ink-muted">{ORIGEN_TAREA_LABEL[t.origen]}</td>
                   <td className={clsx("hidden md:table-cell px-3 py-2", NUM)}>{fmtFecha(t.fecha_envio_copiar)}</td>
                   <td className={clsx("hidden md:table-cell px-3 py-2", NUM)}>{fmtFecha(t.fecha_retiro)}</td>
                   <td className={clsx("hidden md:table-cell px-3 py-2", NUM)}>{t.folios_usados ?? "—"}</td>
                   <td
                     className="hidden lg:table-cell px-3 py-2 text-[12px] text-ink-muted max-w-[320px] truncate"
-                    title={t.observaciones ?? ""}
+                    title={t.quitada_en ? textoQuitada(t) : t.observaciones ?? ""}
                   >
-                    {t.observaciones ?? ""}
+                    {t.quitada_en ? textoQuitada(t) : t.observaciones ?? ""}
                   </td>
                 </tr>
               ))}

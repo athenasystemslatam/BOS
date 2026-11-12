@@ -32,7 +32,7 @@ import type {
   TipoSocietario,
 } from "@/types";
 import { ESTADO_BALANCE } from "../../../contable/semaforo";
-import { getAutoridades, guardarAutoridades, guardarSocietario } from "../../actions";
+import { getAutoridades, guardarAutoridades, guardarSocietario, sacarDeLaCola } from "../../actions";
 import { Modal, Pie, INPUT, LABEL } from "../../ModalBase";
 import {
   AVISO,
@@ -300,6 +300,7 @@ function FilaLibro({
   onNuevoTomo,
   onHistorial,
   onNuevaTarea,
+  onSacarDeCola,
 }: {
   grupo: GrupoLibro;
   libro: Libro | null;
@@ -315,6 +316,7 @@ function FilaLibro({
   onNuevoTomo: (l: Libro) => void;
   onHistorial?: (l: Libro) => void;
   onNuevaTarea?: (l: Libro) => void;
+  onSacarDeCola?: (l: Libro) => void;
 }) {
   const item = grupo.item;
   const libres = libro ? foliosLibres(libro.folios_totales, libro.folios_usados) : null;
@@ -377,6 +379,15 @@ function FilaLibro({
               <Link href="/libros" className={clsx(CHIP, SEMAFORO.verdeClaro)}>
                 En cola
               </Link>
+            )}
+            {puedeEditar && !esAnterior && libro.estado !== "cerrado" && enCola && onSacarDeCola && (
+              <button
+                onClick={() => onSacarDeCola(libro)}
+                className={clsx(BOTON_TEXTO, "hover:text-red-700")}
+                title="Sacar de la cola sin registrar un copiado"
+              >
+                <X size={12} /> Sacar de la cola
+              </button>
             )}
             {puedeEditar && !esAnterior && libro.estado !== "cerrado" && !enCola && onNuevaTarea && (
               <button onClick={() => onNuevaTarea(libro)} className={BOTON_TEXTO} title="Agregar a la cola de trabajo">
@@ -516,6 +527,46 @@ function AutoridadesModal({
   );
 }
 
+function SacarDeColaModal({ titulo, libroId, onClose }: { titulo: string; libroId: string; onClose: () => void }) {
+  const [motivo, setMotivo] = useState("");
+  const [pendiente, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function confirmar(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      const res = await sacarDeLaCola(libroId, motivo);
+      if (res.error) return setError(res.error);
+      onClose();
+    });
+  }
+
+  return (
+    <Modal titulo={titulo} subtitulo="Sacar de la cola" onClose={onClose}>
+      <form onSubmit={confirmar} className="flex flex-col min-h-0">
+        <div className="px-6 py-5 space-y-4">
+          <p className="text-[13px] text-ink">
+            ¿Sacar este libro de la cola? No se registra ningún copiado y el &ldquo;copiado hasta&rdquo; queda como
+            está. En el historial del libro queda anotado quién lo sacó y cuándo.
+          </p>
+          <div>
+            <label className={LABEL}>Motivo (opcional)</label>
+            <input
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ej.: error, no se van a actualizar los libros"
+              className={INPUT}
+              autoFocus
+            />
+          </div>
+        </div>
+        <Pie error={error} pendiente={pendiente} onClose={onClose} textoGuardar="Sacar de la cola" />
+      </form>
+    </Modal>
+  );
+}
+
 export function FichaSocietarioClient({
   cliente,
   responsable,
@@ -555,6 +606,7 @@ export function FichaSocietarioClient({
   const [nuevoTomo, setNuevoTomo] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
   const [historialDe, setHistorialDe] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
   const [tareaPara, setTareaPara] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
+  const [sacarDe, setSacarDe] = useState<{ item: LibroCatalogo; libro: Libro } | null>(null);
   const librosEnCola = new Set(enCola);
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set());
 
@@ -617,6 +669,7 @@ export function FichaSocietarioClient({
           onNuevoTomo={(libro) => setNuevoTomo({ item: g.item, libro })}
           onHistorial={(libro) => setHistorialDe({ item: g.item, libro })}
           onNuevaTarea={(libro) => setTareaPara({ item: g.item, libro })}
+          onSacarDeCola={(libro) => setSacarDe({ item: g.item, libro })}
         />
         {abierto &&
           g.anteriores.map((l) => (
@@ -894,6 +947,13 @@ export function FichaSocietarioClient({
           responsableDefault={responsableId}
           equipo={equipo}
           onClose={() => setTareaPara(null)}
+        />
+      )}
+      {sacarDe && (
+        <SacarDeColaModal
+          titulo={`${sacarDe.item.nombre} (T${sacarDe.libro.tomo}) · ${cliente.nombre}`}
+          libroId={sacarDe.libro.id}
+          onClose={() => setSacarDe(null)}
         />
       )}
       {editandoAutoridades && (

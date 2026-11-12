@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { ORIGEN_TAREA_LABEL, fmtFecha } from "@/lib/libros";
+import { ORIGEN_TAREA_LABEL, fmtFecha, fmtFechaHora } from "@/lib/libros";
 import { historialLibro, type FilaHistorial } from "../../actions";
 import { Modal } from "../../ModalBase";
 import { NUM, TH } from "../../ui";
@@ -45,7 +45,17 @@ export function HistorialLibroModal({
               </tr>
             </thead>
             <tbody>
-              {filas.map((f) => (
+              {filas.map((f) =>
+                f.quitada_en ? (
+                  <tr key={f.id} className="border-t border-line-row bg-paper-alt">
+                    <td className={clsx(NUM, "py-2 pl-0 pr-3")}>{fmtFechaHora(f.quitada_en)}</td>
+                    <td className={clsx(NUM, "py-2 px-3")}>{f.tomo}</td>
+                    <td colSpan={4} className="py-2 px-3 text-[12px] text-ink-muted whitespace-normal">
+                      <b className="text-ink">Sacada de la cola</b> por {f.quitadaPor ?? "—"} (sin copiado)
+                      {f.quitada_motivo && <> · {f.quitada_motivo}</>}
+                    </td>
+                  </tr>
+                ) : (
                 <tr key={f.id} title={f.observaciones ?? ""} className="border-t border-line-row">
                   <td className={clsx(NUM, "py-2 pl-0 pr-3")}>{fmtFecha(f.fecha_fin)}</td>
                   <td className={clsx(NUM, "py-2 px-3")}>{f.tomo}</td>
@@ -54,7 +64,8 @@ export function HistorialLibroModal({
                   <td className={clsx(NUM, "py-2 px-3")}>{f.folios_usados ?? "—"}</td>
                   <td className="py-2 px-3 text-[12px] text-ink-muted hidden sm:table-cell">{f.responsable ?? "—"}</td>
                 </tr>
-              ))}
+                )
+              )}
             </tbody>
           </table>
         )}

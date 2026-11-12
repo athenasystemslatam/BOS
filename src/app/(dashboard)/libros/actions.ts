@@ -795,6 +795,42 @@ export async function registrarCopiado(
   return { alertas, facturaPendiente: porFacturar.size > 0 };
 }
 
+// Saca de la cola una tarea que no se va a copiar. No toca el libro (ni
+// folios ni "copiado hasta"): solo cierra la tarea en el estado "Sacada de
+// la cola" con quién, cuándo y el motivo, que se ven en el historial.
+export async function sacarDeLaCola(libroId: string, motivo: string): Promise<Resultado> {
+  const yo = await autorizar();
+  if ("error" in yo) return yo;
+
+  const admin = createAdminClient();
+  const [finales, { data: quitada }] = await Promise.all([
+    estadosFinales(admin),
+    admin.from("libros_estados").select("id").eq("codigo", "quitada").maybeSingle(),
+  ]);
+  if (!quitada) return { error: "Falta el estado \"Sacada de la cola\" en libros_estados." };
+
+  let q = admin.from("libros_tareas").select("id").eq("libro_id", libroId);
+  if (finales.length) q = q.not("estado_id", "in", listaIn(finales));
+  const { data: abiertas, error: errLeer } = await q;
+  if (errLeer) return { error: errLeer.message };
+  if (!abiertas?.length) return { error: "Ese libro ya no está en la cola." };
+
+  const ahora = new Date().toISOString();
+  const { error } = await admin
+    .from("libros_tareas")
+    .update({
+      estado_id: quitada.id,
+      quitada_en: ahora,
+      quitada_por: yo.id,
+      quitada_motivo: motivo.trim() || null,
+      actualizado_en: ahora,
+    })
+    .in("id", abiertas.map((t) => t.id as string));
+  if (error) return { error: error.message };
+  refrescarLibros();
+  return {};
+}
+
 export type FilaHistorial = {
   id: string;
   tomo: number;
@@ -804,14 +840,18 @@ export type FilaHistorial = {
   fecha_fin: string | null;
   responsable: string | null;
   observaciones: string | null;
+  quitada_en: string | null;
+  quitada_motivo: string | null;
+  quitadaPor: string | null;
 };
 
-type TareaHistorialRaw = Omit<FilaHistorial, "tomo" | "responsable"> & {
+type TareaHistorialRaw = Omit<FilaHistorial, "tomo" | "responsable" | "quitadaPor"> & {
   libros: { tomo: number } | null;
   responsable: { nombre: string } | null;
+  quitador: { nombre: string } | null;
 };
 
-/** Copiados terminados del libro, de todos sus tomos. */
+/** Copiados terminados del libro, de todos sus tomos, y las veces que se sacó de la cola. */
 export async function historialLibro(libroId: string): Promise<FilaHistorial[]> {
   const admin = createAdminClient();
   const { data: libro } = await admin.from("libros").select("cliente_id, catalogo_id").eq("id", libroId).maybeSingle();
@@ -825,23 +865,29 @@ export async function historialLibro(libroId: string): Promise<FilaHistorial[]> 
   const { data } = await admin
     .from("libros_tareas")
     .select(
-      "id, origen, periodo_hasta, folios_usados, fecha_fin, observaciones, libros(tomo), " +
-        "responsable:liquidadoras!libros_tareas_responsable_id_fkey(nombre)"
+      "id, origen, periodo_hasta, folios_usados, fecha_fin, observaciones, quitada_en, quitada_motivo, libros(tomo), " +
+        "responsable:liquidadoras!libros_tareas_responsable_id_fkey(nombre), " +
+        "quitador:liquidadoras!libros_tareas_quitada_por_fkey(nombre)"
     )
     .in("libro_id", (tomos ?? []).map((t) => t.id as string))
-    .in("estado_id", finales)
-    .order("fecha_fin", { ascending: false });
+    .in("estado_id", finales);
 
-  return ((data ?? []) as unknown as TareaHistorialRaw[]).map((t) => ({
-    id: t.id,
-    tomo: t.libros?.tomo ?? 1,
-    origen: t.origen,
-    periodo_hasta: t.periodo_hasta,
-    folios_usados: t.folios_usados,
-    fecha_fin: t.fecha_fin,
-    responsable: t.responsable?.nombre ?? null,
-    observaciones: t.observaciones,
-  }));
+  const fecha = (t: TareaHistorialRaw) => t.fecha_fin ?? t.quitada_en?.slice(0, 10) ?? "";
+  return ((data ?? []) as unknown as TareaHistorialRaw[])
+    .sort((a, b) => fecha(b).localeCompare(fecha(a)))
+    .map((t) => ({
+      id: t.id,
+      tomo: t.libros?.tomo ?? 1,
+      origen: t.origen,
+      periodo_hasta: t.periodo_hasta,
+      folios_usados: t.folios_usados,
+      fecha_fin: t.fecha_fin,
+      responsable: t.responsable?.nombre ?? null,
+      observaciones: t.observaciones,
+      quitada_en: t.quitada_en,
+      quitada_motivo: t.quitada_motivo,
+      quitadaPor: t.quitador?.nombre ?? null,
+    }));
 }
 
 // ── Pedidos ──────────────────────────────────────────────────────────────────

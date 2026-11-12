@@ -20,6 +20,7 @@ type TareaRaw = {
   estado_id: string;
   fecha_fin: string | null;
   periodo_hasta: string | null;
+  quitada_en: string | null;
 };
 
 export default async function FacturasPage() {
@@ -52,7 +53,7 @@ export default async function FacturasPage() {
       .eq("clientes.estado", "activo")
       .eq("estado", true),
     admin.from("copiadora_facturas_tareas").select("factura_id, tarea_id"),
-    admin.from("libros_tareas").select("id, cliente_id, libro_id, estado_id, fecha_fin, periodo_hasta"),
+    admin.from("libros_tareas").select("id, cliente_id, libro_id, estado_id, fecha_fin, periodo_hasta, quitada_en"),
     admin.from("libros_estados").select("id, es_final"),
     admin.from("libros").select("id, catalogo_id, tomo"),
     admin.from("libros_catalogo").select("id, nombre"),
@@ -83,7 +84,7 @@ export default async function FacturasPage() {
   const vinculadas = new Set((vinculosRaw ?? []).map((v) => v.tarea_id as string));
   const itemPorTarea = new Map<string, CopiadoItem & { clienteId: string }>();
   for (const t of (tareasRaw ?? []) as TareaRaw[]) {
-    if (!finales.has(t.estado_id)) continue;
+    if (!finales.has(t.estado_id) || t.quitada_en) continue;
     itemPorTarea.set(t.id, {
       tareaId: t.id,
       clienteId: t.cliente_id,

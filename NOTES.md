@@ -73,7 +73,9 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
-Ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).
+- `add_libros_sacar_de_cola.sql` (12-nov, Libros "Sacar de la cola": estado final `quitada` + columnas `quitada_en/por/motivo` en `libros_tareas`).
+
+Antes de eso, ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).
 
 ### Objetivo "0 en término" — ítem 124 (23-oct, Matías)
 

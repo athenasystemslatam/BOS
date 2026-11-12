@@ -30,7 +30,7 @@ export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Pr
       admin.from("clientes_societario").select("*"),
       admin.from("libros_pedidos").select("*").eq("tipo", "renovacion_autoridades"),
       admin.from("libros").select("cliente_id, estado, ultimo_periodo_copiado, folios_totales").eq("estado", "activo"),
-      admin.from("libros_tareas").select("cliente_id, balance_id, estado_id, fecha_fin, creado_en").eq("origen", "balance"),
+      admin.from("libros_tareas").select("cliente_id, balance_id, estado_id, fecha_fin, creado_en, quitada_en").eq("origen", "balance"),
       admin.from("libros_estados").select("id, es_final"),
       admin.from("libros_relevamiento").select("cliente_id, estado"),
     ]);
@@ -80,8 +80,8 @@ export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Pr
   // siguen abiertos dentro del plazo todavía no se miden.
   const finales = new Set((estadosRaw ?? []).filter((e) => e.es_final).map((e) => e.id as string));
   const envios = new Map<string, { inicio: string; fin: string | null; abiertas: boolean }>();
-  for (const t of (tareasRaw ?? []) as { cliente_id: string; balance_id: string | null; estado_id: string; fecha_fin: string | null; creado_en: string }[]) {
-    if (!t.balance_id || !clientes.has(t.cliente_id)) continue;
+  for (const t of (tareasRaw ?? []) as { cliente_id: string; balance_id: string | null; estado_id: string; fecha_fin: string | null; creado_en: string; quitada_en: string | null }[]) {
+    if (!t.balance_id || !clientes.has(t.cliente_id) || t.quitada_en) continue;
     const e = envios.get(t.balance_id) ?? { inicio: t.creado_en.slice(0, 10), fin: null, abiertas: false };
     if (t.creado_en.slice(0, 10) < e.inicio) e.inicio = t.creado_en.slice(0, 10);
     if (finales.has(t.estado_id)) {

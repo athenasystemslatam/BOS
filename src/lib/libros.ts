@@ -108,6 +108,19 @@ export function fmtFecha(v: string | null | undefined): string {
   return `${d}/${m}/${y}`;
 }
 
+/** Timestamp → "dd/mm/aaaa hh:mm" en hora de Argentina. */
+export function fmtFechaHora(v: string | null | undefined): string {
+  if (!v) return "—";
+  return new Date(v).toLocaleString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export const ORIGEN_TAREA_LABEL: Record<OrigenTareaLibro, string> = {
   puesta_al_dia: "Puesta al día",
   balance: "Envío anual",

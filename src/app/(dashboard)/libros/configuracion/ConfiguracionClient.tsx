@@ -16,7 +16,7 @@ import {
 } from "../actions";
 import { BOTON_PRIMARIO, ENCABEZADO, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO, SUBTITULO, TITULO } from "../ui";
 
-const CODIGOS_PROTEGIDOS = new Set(["pendiente", "en_proceso", "en_espera", "para_copiar", "copiandose", "copiado"]);
+const CODIGOS_PROTEGIDOS = new Set(["pendiente", "en_proceso", "en_espera", "para_copiar", "copiandose", "copiado", "quitada"]);
 const INPUT = "text-sm text-ink border border-line-input rounded-[9px] px-3 py-2 focus:outline-none focus:border-bordo bg-paper w-full font-plex tabular-nums";
 const TH = "px-3 py-2 text-[10.5px] font-semibold text-ink-subtle uppercase tracking-[0.08em]";
 

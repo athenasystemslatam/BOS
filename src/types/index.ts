@@ -373,6 +373,9 @@ export interface LibroTarea {
   folios_usados: number | null;
   requiere_reformateo: boolean;
   observaciones: string | null;
+  quitada_en: string | null;
+  quitada_por: string | null;
+  quitada_motivo: string | null;
   creado_en: string;
 }
 
