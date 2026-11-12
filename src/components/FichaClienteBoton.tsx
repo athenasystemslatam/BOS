@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { IdCard, X, Eye, EyeOff, ExternalLink, Pencil } from "lucide-react";
 import type { Cliente, FichaLibrosSocietario, ModuloClave } from "@/types";
@@ -187,7 +188,7 @@ export function FichaClienteBoton({
         <IdCard size={14} />
       </button>
 
-      {abierto && (
+      {abierto && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
@@ -368,7 +369,8 @@ export function FichaClienteBoton({
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
