@@ -32,7 +32,8 @@ import type {
   TipoSocietario,
 } from "@/types";
 import { ESTADO_BALANCE } from "../../../contable/semaforo";
-import { getAutoridades, guardarAutoridades, guardarSocietario, sacarDeLaCola } from "../../actions";
+import { getAutoridades, guardarAutoridades, guardarSocietario } from "../../actions";
+import { SacarDeColaModal } from "../../SacarDeColaModal";
 import { Modal, Pie, INPUT, LABEL } from "../../ModalBase";
 import {
   AVISO,
@@ -522,46 +523,6 @@ function AutoridadesModal({
           </button>
         </div>
         <Pie error={error} pendiente={pendiente} onClose={onClose} textoGuardar="Guardar autoridades" />
-      </form>
-    </Modal>
-  );
-}
-
-function SacarDeColaModal({ titulo, libroId, onClose }: { titulo: string; libroId: string; onClose: () => void }) {
-  const [motivo, setMotivo] = useState("");
-  const [pendiente, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  function confirmar(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    startTransition(async () => {
-      const res = await sacarDeLaCola(libroId, motivo);
-      if (res.error) return setError(res.error);
-      onClose();
-    });
-  }
-
-  return (
-    <Modal titulo={titulo} subtitulo="Sacar de la cola" onClose={onClose}>
-      <form onSubmit={confirmar} className="flex flex-col min-h-0">
-        <div className="px-6 py-5 space-y-4">
-          <p className="text-[13px] text-ink">
-            ¿Sacar este libro de la cola? No se registra ningún copiado y el &ldquo;copiado hasta&rdquo; queda como
-            está. En el historial del libro queda anotado quién lo sacó y cuándo.
-          </p>
-          <div>
-            <label className={LABEL}>Motivo (opcional)</label>
-            <input
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Ej.: error, no se van a actualizar los libros"
-              className={INPUT}
-              autoFocus
-            />
-          </div>
-        </div>
-        <Pie error={error} pendiente={pendiente} onClose={onClose} textoGuardar="Sacar de la cola" />
       </form>
     </Modal>
   );

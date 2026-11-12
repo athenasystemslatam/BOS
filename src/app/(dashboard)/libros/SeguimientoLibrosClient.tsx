@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { GripVertical, Plus, Search, Send } from "lucide-react";
+import { GripVertical, Plus, Search, Send, X } from "lucide-react";
 import {
   ORIGEN_TAREA_LABEL,
   PRIORIDADES,
@@ -17,6 +17,7 @@ import type { LibroEstado, LibroTarea, PrioridadLibro, TipoSocietario } from "@/
 import { actualizarTarea, reordenarBloques } from "./actions";
 import { NuevaTareaModal, type Persona } from "./NuevaTareaModal";
 import { AgregarTareaModal } from "./AgregarTareaModal";
+import { SacarDeColaModal } from "./SacarDeColaModal";
 import { DescargarExcelButton } from "@/components/DescargarExcelButton";
 import { EnviarACopiarModal, PrioridadModal, RegistrarCopiadoModal } from "./SeguimientoModales";
 import {
@@ -247,12 +248,14 @@ function FilaTarea({
   estados,
   puedeEditar,
   onPrioridad,
+  onSacar,
   onError,
 }: {
   t: TareaVista;
   estados: LibroEstado[];
   puedeEditar: boolean;
   onPrioridad: () => void;
+  onSacar: () => void;
   onError: (e: string) => void;
 }) {
   const [pendiente, startTransition] = useTransition();
@@ -288,6 +291,16 @@ function FilaTarea({
                 <span className="ml-1.5 align-middle text-[11px] font-semibold rounded-md px-1.5 py-px bg-bordo-tint2 text-bordo">
                   Tomo {t.tomo}
                 </span>
+              )}
+              {puedeEditar && (
+                <button
+                  onClick={onSacar}
+                  title="Sacar de la cola sin registrar un copiado"
+                  aria-label={`Sacar ${t.libroNombre} de la cola`}
+                  className="ml-1.5 align-middle text-ink-ghost hover:text-red-700"
+                >
+                  <X size={13} />
+                </button>
               )}
             </p>
             <p className="text-[11px] text-ink-subtle">
@@ -400,6 +413,7 @@ function Cola({
   const [prioridadDe, setPrioridadDe] = useState<TareaVista | null>(null);
   const [envioDe, setEnvioDe] = useState<Bloque | null>(null);
   const [copiadoDe, setCopiadoDe] = useState<Bloque | null>(null);
+  const [sacarDe, setSacarDe] = useState<TareaVista | null>(null);
 
   // Orden por arrastrar y soltar (como Sueldos), guardado en orden_manual:
   // lo ve igual todo el equipo. ordenLocal evita el salto hasta que vuelve el
@@ -602,6 +616,7 @@ function Cola({
                             estados={estados}
                             puedeEditar={puedeEditar}
                             onPrioridad={() => setPrioridadDe(t)}
+                            onSacar={() => setSacarDe(t)}
                             onError={setError}
                           />
                         ))}
@@ -616,6 +631,13 @@ function Cola({
       })}
 
       {prioridadDe && <PrioridadModal tarea={prioridadDe} onClose={() => setPrioridadDe(null)} />}
+      {sacarDe && (
+        <SacarDeColaModal
+          titulo={`${sacarDe.libroNombre} (T${sacarDe.tomo}) · ${sacarDe.clienteNombre}`}
+          libroId={sacarDe.libro_id}
+          onClose={() => setSacarDe(null)}
+        />
+      )}
       {envioDe && (
         <EnviarACopiarModal
           clienteNombre={envioDe.cliente.nombre}
