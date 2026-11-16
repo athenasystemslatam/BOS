@@ -1,0 +1,32 @@
+name: Chequeo de Crecimiento
+
+on:
+  schedule:
+    - cron: '0 11 * * 1'   # 11:00 UTC = 8:00 AM ART, todos los lunes
+  workflow_dispatch:         # disparo manual desde GitHub Actions
+
+permissions:
+  issues: write
+
+jobs:
+  chequeo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chequear crecimiento de la base
+        run: |
+          curl -sf \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "https://bos-plum.vercel.app/api/cron/chequeo-crecimiento"
+
+      # El route ya manda mail si falla algo DESPUÉS de entrar (ver
+      # avisarFalla en chequeo-crecimiento/route.ts) — esto cubre que el
+      # cron no corra o el curl no llegue a Vercel.
+      - name: Avisar si falló
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "⚠ Chequeo de crecimiento falló — $(date -u +'%Y-%m-%d')" \
+            --body "El workflow de chequeo de crecimiento de BOS no se completó. Ver el log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
