@@ -2,6 +2,20 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Pendientes al cerrar la sesión del 16-nov (Giuliana) — Módulo Monotributo
+
+Hecho y en producción (directo en `main`, decisión de Giuliana): etapas 1, 2, 2b, 3, 4 y 7 (detalle en los bloques de abajo). SQL corridos: `add_monotributo_etapa1.sql`, `importar_monotributo_planilla.sql` (fuera del repo) y `add_monotributo_etapa7.sql`. Ningún SQL pendiente de Monotributo.
+
+Queda pendiente:
+- **Accesos (admin en `/equipo`):** Sofia P. y Candela R. no tienen login → completar mail + "Reenviar acceso". A Candela R. tildarle el área Monotributo. Hasta eso, solo Candela P. puede editar. Opcional: destildarle Monotributo (y Contable) a Janina; el código ya la excluye.
+- **Prueba en pantalla real:** nadie probó todavía las etapas en producción (se subieron sin deploy de prueba). Pasada sugerida: estado del mes, ventana de deuda, ficha (forma de pago → la marca roja se resuelve sola), "Está bien así" en A revisar, números de Alertas (esperado nov-2026: 57 sin avisar, 28 deuda sin avisar, 18 VEP sin enviar, 10 sin responsable, 7 intimaciones) y Excel del Dashboard.
+- **Corna Hayes:** el registro viejo "CORNA HAYES FACUNDO" quedó con CUIT vacío (era el de Florencia) y marcado "posible duplicado". Definir si se da de baja o se le carga el CUIT correcto.
+- **Revisar a mano:** Moltato Gaston (planilla) vs Montalto Andres (BOS) con el mismo CUIT; Prieto Graciela y Jodra Micaela (activas en la planilla, inactivas en BOS); los 4 "inactivo con movimientos" (Martinez Alan, Veron Diego, Acosta Daniel, Rodriguez Carlos).
+- **Resolución ARBA:** importada como texto; Giuliana tiene que contar qué es antes de modelarla.
+- **Categoría:** vacía en todos. Más adelante: sugerirla desde el importe del VEP contra la tabla de cuotas vigente, siempre a confirmar.
+- **Etapa 5 (Drive)** y **etapa 6 (borradores IMAP)**: para después, a pedido de Giuliana. La 6 sigue bloqueada hasta que Mati confirme la prueba IMAP desde Vercel (ítem 141).
+- **Hueco general de permisos (no tocado fuera de Monotributo):** el rol "Solo lectura" (viewer) no se aplica en `requireAreaOrAdmin`/`requireLiquidadoraOrAdmin`; en los demás módulos un viewer con área puede editar. En Monotributo ya está cerrado.
+
 ## Sesión del 16-nov (Giuliana) — Monotributo etapa 3: Seguimiento mensual
 
 - SQL de la etapa 7 (`add_monotributo_etapa7.sql`) **corrido** por Giuliana el 16-nov.
