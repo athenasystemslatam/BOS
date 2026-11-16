@@ -5,6 +5,9 @@ on:
     - cron: '0 10 * * 0'   # 10:00 UTC = 7:00 AM ART, todos los domingos
   workflow_dispatch:         # disparo manual desde GitHub Actions
 
+permissions:
+  issues: write
+
 jobs:
   backup:
     runs-on: ubuntu-latest
@@ -14,3 +17,18 @@ jobs:
           curl -sf \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "https://bos-plum.vercel.app/api/cron/backup-semanal"
+
+      # El route ya manda mail si falla algo DESPUÉS de entrar (ver
+      # avisarFalla en backup-semanal/route.ts). Esto cubre lo que ese mail
+      # no puede: que el cron de GitHub no corra, que el curl no llegue a
+      # Vercel, o que la función truene antes de poder mandar nada — en
+      # cualquiera de esos casos el paso de arriba falla y se abre este issue.
+      - name: Avisar si falló
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "⚠ Backup semanal falló — $(date -u +'%Y-%m-%d')" \
+            --body "El workflow de backup semanal de BOS no se completó. Ver el log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

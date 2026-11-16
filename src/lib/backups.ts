@@ -160,3 +160,42 @@ export function stampArchivoBackup(d: Date) {
     .replace(" ", "_")
     .replace(":", "-");
 }
+
+// Bucket privado (ver supabase/crear_bucket_backups.sql) donde el cron
+// semanal guarda una copia además de mandarla por mail — así queda un
+// historial real que no depende de que alguien archive los correos.
+export const BACKUP_BUCKET = "backups";
+
+// Cuántas copias semanales conservar en el bucket (12 ≈ 3 meses). Las más
+// viejas se borran después de subir la nueva — ver limpiarBackupsViejos.
+export const BACKUPS_A_CONSERVAR = 12;
+
+export async function subirBackupAStorage(
+  admin: ReturnType<typeof createAdminClient>,
+  nombreArchivo: string,
+  buffer: ExcelJS.Buffer
+): Promise<void> {
+  const { error } = await admin.storage.from(BACKUP_BUCKET).upload(nombreArchivo, buffer, {
+    contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  if (error) throw new Error(`No se pudo subir el backup a Storage: ${error.message}`);
+}
+
+/** Borra las copias más viejas del bucket, dejando como mucho
+ * BACKUPS_A_CONSERVAR (los nombres son `backup-completo_<fecha>.xlsx` con
+ * fecha en formato ordenable YYYY-MM-DD_HH-mm, así que ordenar por nombre
+ * alcanza — no hace falta leer metadata). */
+export async function limpiarBackupsViejos(admin: ReturnType<typeof createAdminClient>): Promise<void> {
+  const { data, error } = await admin.storage.from(BACKUP_BUCKET).list("", {
+    sortBy: { column: "name", order: "desc" },
+  });
+  if (error) throw new Error(`No se pudo listar el bucket de backups: ${error.message}`);
+
+  const sobrantes = (data ?? []).slice(BACKUPS_A_CONSERVAR);
+  if (sobrantes.length === 0) return;
+
+  const { error: errorBorrado } = await admin.storage
+    .from(BACKUP_BUCKET)
+    .remove(sobrantes.map((f) => f.name));
+  if (errorBorrado) throw new Error(`No se pudieron borrar backups viejos: ${errorBorrado.message}`);
+}
