@@ -205,6 +205,8 @@ export async function sincronizarRevisionesModulo(admin: Admin): Promise<{ cread
   const aCrear: Record<string, unknown>[] = [];
   hallazgos.forEach((h, k) => {
     if (pendientes.has(k)) return;
+    // "Verificar pago" vive en Alertas (etapa 7): acá solo se resuelven las marcas que ya existían.
+    if (h.campo === "pago") return;
     if (confirmadas.get(k)?.has(h.valor)) return;
     aCrear.push({ cliente_id: h.cliente_id, anio: h.anio, mes: h.mes, campo: h.campo, motivo: h.motivo, gravedad: h.gravedad, origen: "regla_automatica" });
   });

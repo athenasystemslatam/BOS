@@ -64,6 +64,7 @@ export function MonotributoClient({
   creadoPor,
   revisiones,
   totalARevisar,
+  totalAlertas,
 }: {
   servicios: Servicio[];
   tareas: Tarea[];
@@ -75,6 +76,7 @@ export function MonotributoClient({
   creadoPor: string | null;
   revisiones: Record<string, { rojo: number; amarillo: number }>;
   totalARevisar: number;
+  totalAlertas: number | null;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -233,6 +235,19 @@ export function MonotributoClient({
           >
             A revisar ({totalARevisar})
           </Link>
+          {totalAlertas !== null && (
+            <Link
+              href={`/monotributo/alertas?mes=${mes}&anio=${anio}`}
+              className={clsx(
+                "text-xs px-3 py-2 rounded-lg border font-medium transition-colors",
+                totalAlertas > 0
+                  ? "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100"
+                  : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+              )}
+            >
+              Alertas ({totalAlertas})
+            </Link>
+          )}
           <EquipoModuloBoton
             cantidad={equipoMonotributo.length}
             accent={ACCENT_MONOTRIBUTO}

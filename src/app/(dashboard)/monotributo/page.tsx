@@ -4,6 +4,7 @@ import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
 import { puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
 import { sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
+import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { MonotributoClient } from "./MonotributoClient";
 
 export default async function MonotributoPage({
@@ -31,6 +32,7 @@ export default async function MonotributoPage({
     { data: equipoRaw },
     { data: modulosRaw },
     pendientes,
+    alertasMes,
   ] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
@@ -51,6 +53,7 @@ export default async function MonotributoPage({
       admin.from("monotributo_revisiones").select("cliente_id, gravedad, anio, mes")
         .eq("estado", "pendiente").order("id").range(d, h)
     ),
+    calcularAlertasMonotributo(anio, mes).catch(() => null),
   ]);
 
   // Marcas que se ven en este mes: las del cliente y las de este mes puntual.
@@ -92,6 +95,7 @@ export default async function MonotributoPage({
       creadoPor={yo?.id ?? null}
       revisiones={revisiones}
       totalARevisar={pendientes.length}
+      totalAlertas={alertasMes?.alertas.length ?? null}
     />
   );
 }

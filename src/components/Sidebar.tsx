@@ -23,6 +23,7 @@ import {
   Printer,
   Settings,
   ListChecks,
+  Bell,
 } from "lucide-react";
 import clsx from "clsx";
 import { ModuloId, MODULO_LABELS } from "@/lib/modulos";
@@ -93,6 +94,7 @@ const SECTIONS: {
     items: [
       { href: "/monotributo",                label: "Seguimiento",   icon: FileText,        adminOnly: false },
       { href: "/monotributo/revisar",        label: "A revisar",     icon: ListChecks,      adminOnly: false },
+      { href: "/monotributo/alertas",        label: "Alertas",       icon: Bell,            adminOnly: false },
       { href: "/monotributo/dashboard",      label: "Dashboard",     icon: LayoutDashboard, adminOnly: false },
       { href: "/monotributo/vencimientos",   label: "Vencimientos",  icon: Calendar,        adminOnly: false },
       { href: "/monotributo/equipo",         label: "Equipo",        icon: Users,           adminOnly: false },
