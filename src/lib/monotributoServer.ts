@@ -231,3 +231,90 @@ export async function requireEditorMonotributo() {
   if (yo.rol === "viewer") throw new Error("No tenés permiso para editar — tu rol es de solo lectura.");
   return yo;
 }
+
+/** Datos que pasan de un mes al siguiente (como legajos en Sueldos): la deuda,
+ * la intimación y la categoría siguen valiendo hasta que alguien las cambie.
+ * El estado de la cuota NO se arrastra: cada mes arranca en Pendiente. */
+export const CAMPOS_ARRASTRE = [
+  "categoria",
+  "deuda_estado",
+  "deuda_periodos",
+  "deuda_texto_original",
+  "deuda_monto",
+  "deuda_aviso",
+  "deuda_aviso_fecha",
+  "deuda_resuelta",
+  "deuda_resuelta_fecha",
+  "intimacion_estado",
+  "intimacion_fecha",
+] as const;
+
+type FilaArrastre = { [K in (typeof CAMPOS_ARRASTRE)[number]]?: unknown } & { cliente_id: string; anio: number; mes: number };
+
+/** Lo que se copia de la fila anterior, o null si no hay nada que valga la pena arrastrar. */
+export function arrastreDesde(prev: FilaArrastre | null | undefined): Record<string, unknown> | null {
+  if (!prev) return null;
+  const tieneAlgo = !!prev.categoria || (prev.deuda_estado && prev.deuda_estado !== "sin_verificar") || !!prev.intimacion_estado;
+  if (!tieneAlgo) return null;
+  const copia: Record<string, unknown> = Object.fromEntries(CAMPOS_ARRASTRE.map((k) => [k, prev[k] ?? null]));
+  // Columnas NOT NULL de la tabla
+  copia.deuda_estado = prev.deuda_estado ?? "sin_verificar";
+  copia.deuda_aviso = !!prev.deuda_aviso;
+  copia.deuda_resuelta = !!prev.deuda_resuelta;
+  return copia;
+}
+
+/** Última fila anterior a (anio, mes) de cada cliente pedido. */
+export async function ultimaFilaAnterior(admin: Admin, clienteIds: string[], anio: number, mes: number) {
+  const ultima = new Map<string, FilaArrastre>();
+  for (const tanda of enTandas(clienteIds)) {
+    const { data, error } = await admin
+      .from("monotributo_tareas")
+      .select(["cliente_id", "anio", "mes", ...CAMPOS_ARRASTRE].join(", "))
+      .in("cliente_id", tanda)
+      .or(`anio.lt.${anio},and(anio.eq.${anio},mes.lt.${mes})`);
+    if (error) throw new Error(error.message);
+    for (const f of (data ?? []) as unknown as FilaArrastre[]) {
+      const u = ultima.get(f.cliente_id);
+      if (!u || f.anio * 100 + f.mes > u.anio * 100 + u.mes) ultima.set(f.cliente_id, f);
+    }
+  }
+  return ultima;
+}
+
+/** Crea la fila del mes (en Pendiente) a los clientes activos que no la tienen
+ * y traen deuda/intimación/categoría del mes anterior. Solo hasta el mes
+ * siguiente al actual: no se generan meses lejanos por mirar el selector. */
+export async function arrastrarMes(admin: Admin, anio: number, mes: number): Promise<number> {
+  const [hy, hm] = hoyArgentina().split("-").map(Number);
+  if (anio * 12 + mes > hy * 12 + hm + 1) return 0;
+
+  const [servicios, delMes] = await Promise.all([
+    traerPaginado<{ cliente_id: string }>((d, h) =>
+      admin.from("servicios_cliente").select("cliente_id")
+        .eq("servicio", "monotributo").eq("subtipo", "general").eq("estado", true).order("id").range(d, h)
+    ),
+    traerPaginado<{ cliente_id: string }>((d, h) =>
+      admin.from("monotributo_tareas").select("cliente_id").eq("anio", anio).eq("mes", mes).order("id").range(d, h)
+    ),
+  ]);
+  const conFila = new Set(delMes.map((t) => t.cliente_id));
+  const faltan = servicios.map((s) => s.cliente_id).filter((id) => !conFila.has(id));
+  if (!faltan.length) return 0;
+
+  const previas = await ultimaFilaAnterior(admin, faltan, anio, mes);
+  const nuevas: Record<string, unknown>[] = [];
+  previas.forEach((prev, clienteId) => {
+    const copia = arrastreDesde(prev);
+    if (!copia) return;
+    nuevas.push({
+      cliente_id: clienteId, anio, mes, cuota_estado: "pendiente", origen: "automatico",
+      recategorizacion: mes === 2 || mes === 8 ? "pendiente" : "no_corresponde",
+      ...copia,
+    });
+  });
+  for (const tanda of enTandas(nuevas, 200)) {
+    await admin.from("monotributo_tareas").upsert(tanda, { onConflict: "cliente_id,anio,mes", ignoreDuplicates: true });
+  }
+  return nuevas.length;
+}

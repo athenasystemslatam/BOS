@@ -28,8 +28,8 @@ export const TIPO_ALERTA_CIERRE: Record<TipoAlerta, string> = {
   verificar_pago: "Se cierra al marcar Pagado o No pagó.",
   sin_enviar: "Se cierra al marcar Enviado (o Pagado / No pagó).",
   sin_avisar: "Se cierra al marcar Avisado (o Enviado / Pagado / No pagó).",
-  deuda_sin_avisar: "Se cierra al marcar el aviso de deuda en Seguimiento.",
-  intimacion: "Se cierra con \"Resuelta\" (o si la intimación cambia).",
+  deuda_sin_avisar: "Se cierra al marcar la deuda como avisada o resuelta (Seguimiento → Deuda).",
+  intimacion: "Se cierra al cambiar la intimación en Seguimiento, o con \"Resuelta\".",
   debito_sin_verificar: "Se cierra al marcar Pagado (o No pagó).",
   sin_responsable: "Se cierra al asignarle responsable.",
 };

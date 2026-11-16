@@ -8,6 +8,8 @@ import { DescargarExcelButton } from "@/components/DescargarExcelButton";
 import { ESTADOS_MES, ESTADO_MES_LABEL, type EstadoMes } from "@/lib/monotributo";
 import { armarTableroMonotributo, type Conteo } from "@/lib/monotributoTablero";
 import { FiltrosTablero } from "./FiltrosTablero";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { arrastrarMes } from "@/lib/monotributoServer";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 
@@ -55,6 +57,11 @@ export default async function MonotributoDashboardPage({
   const resp = searchParams.resp ?? "";
   const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
+  try {
+    await arrastrarMes(createAdminClient(), anio, mes);
+  } catch {
+    // Si falla, el mes se muestra sin lo arrastrado.
+  }
   const [yo, t] = await Promise.all([getCurrentLiquidadora(), armarTableroMonotributo(anio, mes, resp || null)]);
 
   const pagadas = t.estados.pagado;

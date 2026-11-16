@@ -38,7 +38,7 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
 }> {
   const admin = createAdminClient();
   type Serv = { cliente_id: string; responsable_id: string | null; clientes: { nombre: string } | null };
-  type Tarea = { cliente_id: string; cuota_estado: EstadoMes; deuda_estado: string; deuda_aviso: boolean; intimacion_estado: string | null };
+  type Tarea = { cliente_id: string; cuota_estado: EstadoMes; deuda_estado: string; deuda_aviso: boolean; deuda_resuelta: boolean; intimacion_estado: string | null };
 
   const [vigentes, servicios, fichas, tareas, personas, resueltasRes] = await Promise.all([
     resolverResponsablesVigentes("monotributo", "general", anio, mes),
@@ -50,7 +50,7 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
       admin.from("monotributo_clientes").select("*").order("id").range(d, h)
     ),
     traerPaginado<Tarea>((d, h) =>
-      admin.from("monotributo_tareas").select("cliente_id, cuota_estado, deuda_estado, deuda_aviso, intimacion_estado")
+      admin.from("monotributo_tareas").select("cliente_id, cuota_estado, deuda_estado, deuda_aviso, deuda_resuelta, intimacion_estado")
         .eq("anio", anio).eq("mes", mes).order("id").range(d, h)
     ),
     traerPaginado<{ id: string; nombre: string; rol: string }>((d, h) =>
@@ -103,7 +103,7 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
     if (ficha.avisa && !CERRADO_AVISO.includes(estado)) {
       agregar("sin_avisar", vencido ? "rojo" : "amarillo", `Cliente de AVISAR sin marcar Avisado (estado: ${estadoTxt}).`);
     }
-    if (t?.deuda_estado === "si" && !t.deuda_aviso) {
+    if (t?.deuda_estado === "si" && !t.deuda_aviso && !t.deuda_resuelta) {
       agregar("deuda_sin_avisar", "rojo", "Tiene deuda y no figura avisada al cliente.");
     }
     if (t?.intimacion_estado === "si" || t?.intimacion_estado === "fijarse") {

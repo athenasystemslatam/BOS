@@ -2,11 +2,18 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 16-nov (Giuliana) — Monotributo etapa 3: Seguimiento mensual
+
+- SQL de la etapa 7 (`add_monotributo_etapa7.sql`) **corrido** por Giuliana el 16-nov.
+- Seguimiento: el estado del mes es un desplegable con los 7 estados (Pendiente, VEP generado, En borrador, Enviado, Avisado, Pagado, No pagó), con fecha y persona del último cambio (todo cambio queda en `monotributo_eventos`); Pagado completa la fecha de pago si no estaba. Columna "Pago y envío" con los datos fijos de la ficha (forma de pago, enviar/avisar, medio, destinatario). Filtros por estado (chips), sin pagar, con deuda, a revisar, y responsable (incluye "Sin responsable"). Si un guardado falla, la fila vuelve atrás y avisa (`AvisoErrorGuardado`).
+- Deuda: ventana por cliente y mes con estado (Sin verificar / No / Sí), períodos, importe, avisada (+fecha), resuelta (+fecha), intimación (+fecha) y el texto original de la planilla. Intimación también editable directo en la tabla. Una deuda resuelta deja de contar como deuda (Seguimiento, Dashboard, Alertas).
+- Arrastre (`arrastrarMes` / `arrastreDesde` en `lib/monotributoServer.ts`): deuda, intimación y categoría pasan al mes siguiente hasta que se cambien; el estado de la cuota no (cada mes arranca Pendiente). Corre al abrir Seguimiento, Dashboard y Alertas, y al crear la fila del mes desde la acción. Solo hasta el mes siguiente al actual.
+
 ## Sesión del 16-nov (Giuliana) — Monotributo etapa 7: alertas internas
 
 - `/monotributo/alertas` (ítem "Alertas" en el menú + botón "Alertas (N)" en Seguimiento): solo internas, no se manda nada a clientes ni se usa Resend. Se calculan en el momento (`lib/monotributoAlertas.ts`) para el mes elegido, así que se cierran solas cuando cambia el estado: verificar pago (pasado el vencimiento, Enviado sin Pagado; nunca pasa solo a No pagó), VEP sin enviar (clientes con envío; amarillo antes del vencimiento, rojo después), sin avisar (clientes AVISAR sin Avisado), deuda sin avisar, intimación Sí/Fijarse, débito automático/tarjeta sin verificar (pasado el vencimiento, sin Pagado) y sin responsable. Cada una al responsable; las sin responsable, al admin ("Mis clientes" por defecto para quien tiene clientes).
 - Botón "Resuelta" solo en Intimación (no hay estado en BOS que la cierre todavía): guarda quién/cuándo en `monotributo_alertas_resueltas`; si la intimación cambia, vuelve a aparecer.
-- **SQL `supabase/add_monotributo_etapa7.sql` — PENDIENTE de correr** (solo agrega esa tabla). Sin correrlo, las alertas se ven igual; solo "Resuelta" avisa que falta el SQL.
+- SQL `supabase/add_monotributo_etapa7.sql` — **corrido** el 16-nov.
 - "Verificar pago" pasa a vivir en Alertas: la cola "A revisar" ya no crea marcas nuevas de pago (las que existían se siguen resolviendo solas).
 
 ## Sesión del 16-nov (Giuliana) — Monotributo etapa 4: Dashboard de cartera
@@ -114,7 +121,6 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
-- `add_monotributo_etapa7.sql` (16-nov, Monotributo: tabla de alertas marcadas Resuelta).
 - `add_libros_sacar_de_cola.sql` (12-nov, Libros "Sacar de la cola": estado final `quitada` + columnas `quitada_en/por/motivo` en `libros_tareas`).
 
 Antes de eso, ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).

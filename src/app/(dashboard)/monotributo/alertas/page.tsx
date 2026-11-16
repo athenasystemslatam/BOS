@@ -2,6 +2,8 @@ import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { AlertasClient } from "./AlertasClient";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { arrastrarMes } from "@/lib/monotributoServer";
 
 export default async function MonotributoAlertasPage({
   searchParams,
@@ -12,6 +14,11 @@ export default async function MonotributoAlertasPage({
   const mes = Number(searchParams.mes) || def.mes;
   const anio = Number(searchParams.anio) || def.anio;
 
+  try {
+    await arrastrarMes(createAdminClient(), anio, mes);
+  } catch {
+    // Si falla, el mes se muestra sin lo arrastrado.
+  }
   const [yo, areas, datos] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),

@@ -133,7 +133,7 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
   type Serv = { cliente_id: string; responsable_id: string | null; clientes: { nombre: string; cuit: string; tipo_contribuyente: string | null } | null };
   type Tarea = {
     cliente_id: string; cuota_estado: EstadoMes; recategorizacion: string; categoria: string | null;
-    deuda_estado: string; deuda_monto: number | null; deuda_aviso: boolean; intimacion_estado: string | null;
+    deuda_estado: string; deuda_monto: number | null; deuda_aviso: boolean; deuda_resuelta: boolean; intimacion_estado: string | null;
   };
 
   const [vigentes, servicios, fichas, tareas, revisiones, personas] = await Promise.all([
@@ -147,7 +147,7 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
     ),
     traerPaginado<Tarea>((d, h) =>
       admin.from("monotributo_tareas")
-        .select("cliente_id, cuota_estado, recategorizacion, categoria, deuda_estado, deuda_monto, deuda_aviso, intimacion_estado")
+        .select("cliente_id, cuota_estado, recategorizacion, categoria, deuda_estado, deuda_monto, deuda_aviso, deuda_resuelta, intimacion_estado")
         .eq("anio", anio).eq("mes", mes).order("id").range(d, h)
     ),
     traerPaginado<{ cliente_id: string; gravedad: Gravedad; campo: CampoRevision }>((d, h) =>
@@ -223,7 +223,8 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
     formas.push(formaLabel); medios.push(medioLabel); envios.push(envioLabel); categorias.push(categoria); tipos.push(tipo);
     if (ficha.empresa_grupo) grupos.push(ficha.empresa_grupo.trim().toUpperCase()); else sinGrupo++;
 
-    const deudaEstado = t?.deuda_estado ?? "sin_verificar";
+    // Una deuda marcada resuelta ya no cuenta como deuda.
+    const deudaEstado = t?.deuda_estado === "si" && t.deuda_resuelta ? "no" : (t?.deuda_estado ?? "sin_verificar");
     if (deudaEstado === "si") {
       deuda.conDeuda++;
       if (t?.deuda_monto) { deuda.importeTotal += Number(t.deuda_monto); deuda.conImporte++; }

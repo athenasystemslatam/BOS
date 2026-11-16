@@ -3,9 +3,9 @@ import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
 import { puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
-import { sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
+import { arrastrarMes, sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
-import { MonotributoClient } from "./MonotributoClient";
+import { MonotributoClient, type FichaResumen } from "./MonotributoClient";
 
 export default async function MonotributoPage({
   searchParams,
@@ -17,6 +17,12 @@ export default async function MonotributoPage({
   const anio = Number(searchParams.anio) || anioDefault;
 
   const admin = createAdminClient();
+  // Primero el arrastre de deuda/intimación/categoría al mes, después las reglas de revisión.
+  try {
+    await arrastrarMes(admin, anio, mes);
+  } catch {
+    // Si falla, el mes se muestra sin lo arrastrado.
+  }
   try {
     await sincronizarRevisionesModulo(admin);
   } catch {
@@ -33,6 +39,7 @@ export default async function MonotributoPage({
     { data: modulosRaw },
     pendientes,
     alertasMes,
+    fichas,
   ] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
@@ -54,7 +61,11 @@ export default async function MonotributoPage({
         .eq("estado", "pendiente").order("id").range(d, h)
     ),
     calcularAlertasMonotributo(anio, mes).catch(() => null),
+    traerPaginado<FichaResumen & { cliente_id: string }>((d, h) =>
+      admin.from("monotributo_clientes").select("cliente_id, forma_pago, medio, avisa, envia_vep, destinatario").order("id").range(d, h)
+    ),
   ]);
+  const fichaPor = new Map(fichas.map(({ cliente_id, ...f }) => [cliente_id, f]));
 
   // Marcas que se ven en este mes: las del cliente y las de este mes puntual.
   const revisiones: Record<string, { rojo: number; amarillo: number }> = {};
@@ -74,9 +85,11 @@ export default async function MonotributoPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const servicios = (serviciosRaw ?? []).map((s: any) => {
     const vigente = vigentes.get(s.cliente_id);
-    if (vigente) return { ...s, responsable_id: vigente.id, responsable_nombre: vigente.nombre };
+    const ficha = fichaPor.get(s.cliente_id) ?? null;
+    if (vigente) return { ...s, ficha, responsable_id: vigente.id, responsable_nombre: vigente.nombre };
     return {
       ...s,
+      ficha,
       responsable_nombre: s.responsable_id ? (equipoMap.get(s.responsable_id) ?? null) : null,
     };
   });
@@ -96,6 +109,7 @@ export default async function MonotributoPage({
       revisiones={revisiones}
       totalARevisar={pendientes.length}
       totalAlertas={alertasMes?.alertas.length ?? null}
+      nombres={Object.fromEntries(equipoMap)}
     />
   );
 }
