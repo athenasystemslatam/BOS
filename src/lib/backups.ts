@@ -15,18 +15,34 @@ export type BackupModulo =
   | "impuestos"
   | "contable"
   | "monotributo"
-  | "libros";
+  | "libros"
+  | "productividad";
 
 export const BACKUPS: Record<BackupModulo, { label: string; tablas: string[] }> = {
   "panel-general": {
     label: "Panel General",
     // "equipo" se unificó en "liquidadoras" (ver supabase/unificar_equipo.sql)
     // — no existe como tabla propia en la base.
-    tablas: ["clientes", "servicios_cliente", "asignaciones_servicio", "equipo_modulos", "liquidadoras"],
+    tablas: [
+      "clientes",
+      "servicios_cliente",
+      "asignaciones_servicio",
+      "equipo_modulos",
+      "liquidadoras",
+      "accesos_bloqueados",
+    ],
   },
   sueldos: {
     label: "Sueldos",
-    tablas: ["periodos", "tareas", "asignaciones", "historial_asignaciones", "sueldos_notas"],
+    tablas: [
+      "periodos",
+      "tareas",
+      "asignaciones",
+      "historial_asignaciones",
+      "sueldos_notas",
+      "clientes_fal",
+      "drive_log",
+    ],
   },
   impuestos: {
     label: "Impuestos",
@@ -34,7 +50,13 @@ export const BACKUPS: Record<BackupModulo, { label: string; tablas: string[] }> 
   },
   contable: {
     label: "Contable",
-    tablas: ["balances", "balance_frenados"],
+    tablas: [
+      "balances",
+      "balance_frenados",
+      "contable_vto_prorrogas",
+      "contable_vto_manual",
+      "clientes_cierre_cambios",
+    ],
   },
   monotributo: {
     label: "Monotributo",
@@ -59,7 +81,13 @@ export const BACKUPS: Record<BackupModulo, { label: string; tablas: string[] }> 
       "libros_objetivos",
       "libros_snapshot",
       "libros_preferencias",
+      "clientes_autoridades",
+      "libros_relevamiento",
     ],
+  },
+  productividad: {
+    label: "Productividad",
+    tablas: ["objetivos_area", "objetivos_excepcion_cliente"],
   },
 };
 
