@@ -8,6 +8,8 @@ import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
+import { FichaClienteBoton } from "@/components/FichaClienteBoton";
+import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
 import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea } from "./actions";
 
@@ -357,6 +359,7 @@ export function MonotributoClient({
                         {s.clientes?.nombre ?? "—"}
                       </p>
                       <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="monotributo" />
+                      <FichaClienteBoton clienteId={s.cliente_id} nombre={s.clientes?.nombre ?? ""} fetchAction={getFichaCliente} />
                     </div>
                     <p className="text-[11px] text-gray-400 mt-0.5 capitalize">
                       {s.clientes?.tipo_contribuyente ?? ""}

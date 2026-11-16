@@ -7,6 +7,7 @@ import { IdCard, X, Eye, EyeOff, ExternalLink, Pencil } from "lucide-react";
 import type { Cliente, FichaLibrosSocietario, ModuloClave } from "@/types";
 import { vencimientoFinal } from "@/lib/libros";
 import { FalSeccion } from "@/components/FalSeccion";
+import { MonotributoSeccion } from "@/components/MonotributoSeccion";
 
 const MODULO_LABEL: Record<ModuloClave, string> = {
   "": "General",
@@ -284,6 +285,8 @@ export function FichaClienteBoton({
                   </Seccion>
 
                   <FalSeccion clienteId={cliente.id} />
+
+                  <MonotributoSeccion clienteId={cliente.id} />
 
                   {claves.length > 0 && (
                     <Seccion titulo="Claves de acceso">

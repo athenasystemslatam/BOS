@@ -2,6 +2,15 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 16-nov (Giuliana) — Monotributo etapa 1, rama `monotributo/modulo`
+
+- Guía del módulo: `modulo-monotributo-arranque.md` (Descargas de Giuliana) + `monotributistas-revision.xlsx` (datos a importar en la etapa 2; fuera del repo).
+- **SQL `supabase/add_monotributo_etapa1.sql` — PENDIENTE de correr** (antes: Backup desde Monotributo → Dashboard). Amplía el CHECK de `monotributo_tareas.cuota_estado` (pendiente / vep_generado / en_borrador / enviado / avisado / pagado / no_pago; lo cargado sigue valiendo), agrega columnas de estado/VEP/deuda/intimación y crea `monotributo_clientes`, `monotributo_revisiones`, `monotributo_eventos`.
+- Ficha del cliente: sección "Monotributo" editable (`MonotributoSeccion.tsx`, acciones en `monotributo/fichaActions.ts`), marcas rojo/amarillo y su historial. La ficha se abre ahora también desde Seguimiento de Monotributo. Reglas en `lib/monotributo.ts`, sincronización de marcas en `lib/monotributoServer.ts`.
+- Decisiones de Giuliana: contacto propio del módulo (no se toca `clientes.emails_contacto`); AVISAR con QR/PMC = avisa + envía; Resolución ARBA como texto sin lógica; categoría vacía (más adelante, sugerencia desde el importe del VEP); se importan septiembre y octubre como historial (sin los PENDIENTE de clientes AVISAR); "Pagado" a mano, y pasado el vencimiento del 20 un VEP enviado sin pagar va a "A revisar" en amarillo ("verificar pago"), nunca a "No pagó" solo.
+- Altas de clientes que no están en BOS: solo con OK de Giuliana sobre la lista completa; quedan con el servicio monotributo y nada más.
+- **Janina** (administrativa): en Monotributo tiene que quedar en solo lectura y fuera de las métricas de responsables. Sin cambios todavía: propuesta pendiente de OK.
+
 ## Sesión del 04-nov (Matías) — vencimiento F.931 corrido por feriados (visita del Papa)
 
 - ARCA corrió el vencimiento de la liquidación de octubre 2026 de 9-10-11/11 a 11-12-13/11 (DNU 1103/2026: feriados por la visita del Papa León XIV). Corregido a mano en `FECHAS_2026` (`src/lib/vencimientos.ts`), confirmado por Matías. Pusheado (`ac35448`).
@@ -73,6 +82,7 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
+- `add_monotributo_etapa1.sql` (16-nov, Monotributo etapa 1, rama `monotributo/modulo`; backup antes).
 - `add_libros_sacar_de_cola.sql` (12-nov, Libros "Sacar de la cola": estado final `quitada` + columnas `quitada_en/por/motivo` en `libros_tareas`).
 
 Antes de eso, ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).
