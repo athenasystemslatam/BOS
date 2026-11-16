@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ChevronDown, CheckCircle2, Circle, History } from "lucide-react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
@@ -12,6 +13,7 @@ import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
 import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea } from "./actions";
+import { ESTADO_MES_LABEL, type EstadoMes } from "@/lib/monotributo";
 
 const ACCENT_MONOTRIBUTO = { dot: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-700" };
 
@@ -22,7 +24,7 @@ type Tarea = {
   cliente_id: string;
   anio: number;
   mes: number;
-  cuota_estado: "pendiente" | "pagado";
+  cuota_estado: EstadoMes;
   cuota_fecha: string | null;
   recategorizacion: "no_corresponde" | "pendiente" | "realizada";
   categoria: string | null;
@@ -60,6 +62,8 @@ export function MonotributoClient({
   isAdmin,
   puedeEditar,
   creadoPor,
+  revisiones,
+  totalARevisar,
 }: {
   servicios: Servicio[];
   tareas: Tarea[];
@@ -69,11 +73,14 @@ export function MonotributoClient({
   isAdmin: boolean;
   puedeEditar: boolean;
   creadoPor: string | null;
+  revisiones: Record<string, { rojo: number; amarillo: number }>;
+  totalARevisar: number;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [filterResp, setFilterResp] = useState("");
   const [soloPendientes, setSoloPendientes] = useState(false);
+  const [soloARevisar, setSoloARevisar] = useState(false);
   const [reasignando, setReasignando] = useState<Servicio | null>(null);
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
 
@@ -126,7 +133,8 @@ export function MonotributoClient({
 
   async function toggleCuota(clienteId: string) {
     const t = getTarea(clienteId);
-    const nuevoEstado = t.cuota_estado === "pendiente" ? "pagado" : "pendiente";
+    // Cualquier estado sin pagar (Pendiente, Enviado, Avisado, No pagó…) pasa a Pagado; Pagado vuelve a Pendiente.
+    const nuevoEstado: EstadoMes = t.cuota_estado === "pagado" ? "pendiente" : "pagado";
     const nuevaFecha = nuevoEstado === "pagado" ? new Date().toISOString().slice(0, 10) : null;
     patchTarea(clienteId, { cuota_estado: nuevoEstado, cuota_fecha: nuevaFecha });
     startTransition(async () => {
@@ -168,11 +176,12 @@ export function MonotributoClient({
   const filas = useMemo(() => {
     let list = servicios;
     if (filterResp) list = list.filter((s) => s.responsable_nombre === filterResp);
+    if (soloARevisar) list = list.filter((s) => !!revisiones[s.cliente_id]);
     if (soloPendientes) {
       list = list.filter((s) => {
         const t = getTarea(s.cliente_id);
         return (
-          t.cuota_estado === "pendiente" ||
+          t.cuota_estado !== "pagado" ||
           (esRecategorizacion && t.recategorizacion === "pendiente")
         );
       });
@@ -181,7 +190,7 @@ export function MonotributoClient({
       (a.clientes?.nombre ?? "").localeCompare(b.clientes?.nombre ?? "")
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicios, filterResp, soloPendientes, tareasMap]);
+  }, [servicios, filterResp, soloPendientes, soloARevisar, revisiones, tareasMap]);
 
   const stats = useMemo(() => {
     const total = servicios.length;
@@ -213,6 +222,17 @@ export function MonotributoClient({
           </div>
 
           <div className="flex items-center gap-2">
+          <Link
+            href="/monotributo/revisar"
+            className={clsx(
+              "text-xs px-3 py-2 rounded-lg border font-medium transition-colors",
+              totalARevisar > 0
+                ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+            )}
+          >
+            A revisar ({totalARevisar})
+          </Link>
           <EquipoModuloBoton
             cantidad={equipoMonotributo.length}
             accent={ACCENT_MONOTRIBUTO}
@@ -296,6 +316,18 @@ export function MonotributoClient({
           >
             Solo pendientes
           </button>
+
+          <button
+            onClick={() => setSoloARevisar((v) => !v)}
+            className={clsx(
+              "text-xs px-3 py-1.5 rounded-lg border font-medium transition-all",
+              soloARevisar
+                ? "bg-red-50 border-red-300 text-red-700"
+                : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+            )}
+          >
+            Solo a revisar
+          </button>
         </div>
       </div>
 
@@ -355,6 +387,15 @@ export function MonotributoClient({
                   {/* Cliente */}
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-1.5">
+                      {revisiones[s.cliente_id] && (
+                        <span
+                          title={`A revisar: ${revisiones[s.cliente_id].rojo} en rojo, ${revisiones[s.cliente_id].amarillo} en amarillo (ver la ficha)`}
+                          className={clsx(
+                            "w-2 h-2 rounded-full shrink-0",
+                            revisiones[s.cliente_id].rojo > 0 ? "bg-red-500" : "bg-amber-400"
+                          )}
+                        />
+                      )}
                       <p className="text-[13px] font-medium text-gray-800 leading-tight truncate" title={s.clientes?.nombre}>
                         {s.clientes?.nombre ?? "—"}
                       </p>
@@ -430,7 +471,7 @@ export function MonotributoClient({
                         ? <CheckCircle2 size={13} strokeWidth={2} />
                         : <Circle size={13} strokeWidth={1.75} />
                       }
-                      {pagado ? "Pagado" : "Pendiente"}
+                      {ESTADO_MES_LABEL[t.cuota_estado] ?? "Pendiente"}
                     </button>
                   </td>
 

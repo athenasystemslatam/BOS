@@ -2,7 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
-import { puedeSerResponsable } from "@/lib/monotributo";
+import { puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
+import { sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
 import { MonotributoClient } from "./MonotributoClient";
 
 export default async function MonotributoPage({
@@ -15,6 +16,11 @@ export default async function MonotributoPage({
   const anio = Number(searchParams.anio) || anioDefault;
 
   const admin = createAdminClient();
+  try {
+    await sincronizarRevisionesModulo(admin);
+  } catch {
+    // Si falla, se muestra igual lo que ya está marcado.
+  }
   const [
     yo,
     areas,
@@ -24,6 +30,7 @@ export default async function MonotributoPage({
     { data: tareas },
     { data: equipoRaw },
     { data: modulosRaw },
+    pendientes,
   ] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
@@ -40,7 +47,19 @@ export default async function MonotributoPage({
       .eq("mes", mes),
     admin.from("liquidadoras").select("id, nombre, rol").eq("activa", true),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "monotributo"),
+    traerPaginado<{ cliente_id: string; gravedad: Gravedad; anio: number | null; mes: number | null }>((d, h) =>
+      admin.from("monotributo_revisiones").select("cliente_id, gravedad, anio, mes")
+        .eq("estado", "pendiente").order("id").range(d, h)
+    ),
   ]);
+
+  // Marcas que se ven en este mes: las del cliente y las de este mes puntual.
+  const revisiones: Record<string, { rojo: number; amarillo: number }> = {};
+  for (const p of pendientes) {
+    if (p.anio !== null && (p.anio !== anio || p.mes !== mes)) continue;
+    const r = (revisiones[p.cliente_id] ??= { rojo: 0, amarillo: 0 });
+    r[p.gravedad]++;
+  }
 
   const equipoIdsMonotributo = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipoMonotributo = (equipoRaw ?? [])
@@ -69,8 +88,10 @@ export default async function MonotributoPage({
       mes={mes}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!yo?.esCobranzas && !yo?.esAdministrativo && (!!yo?.isAdmin || areas.includes("monotributo"))}
+      puedeEditar={!!yo && !yo.esCobranzas && !yo.esAdministrativo && yo.rol !== "viewer" && (yo.isAdmin || areas.includes("monotributo"))}
       creadoPor={yo?.id ?? null}
+      revisiones={revisiones}
+      totalARevisar={pendientes.length}
     />
   );
 }

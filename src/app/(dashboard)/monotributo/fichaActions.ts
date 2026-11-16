@@ -2,14 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAreasDelUsuario, getCurrentLiquidadora, requireAreaOrAdmin } from "@/lib/auth";
+import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import {
   FORMAS_PAGO,
   MEDIOS,
   type DatosMonotributoCliente,
   type Revision,
 } from "@/lib/monotributo";
-import { leerDatosCliente, sincronizarRevisionesCliente, traerPaginado } from "@/lib/monotributoServer";
+import {
+  leerDatosCliente,
+  requireEditorMonotributo,
+  sincronizarRevisionesCliente,
+  traerPaginado,
+} from "@/lib/monotributoServer";
 
 export interface FichaMonotributo {
   mostrar: boolean;
@@ -18,14 +23,6 @@ export interface FichaMonotributo {
   responsable: string | null;
   revisiones: (Revision & { resuelta_por_nombre: string | null })[];
   opcionesPagaDesde: { id: string; nombre: string }[];
-}
-
-/** "Solo lectura" (viewer), Cobranzas y Administrativo consultan pero no
- * editan Monotributo; requireAreaOrAdmin ya rechaza a los dos últimos. */
-async function requireEditorMonotributo() {
-  const yo = await requireAreaOrAdmin("monotributo");
-  if (yo.rol === "viewer") throw new Error("No tenés permiso para editar — tu rol es de solo lectura.");
-  return yo;
 }
 
 export async function obtenerFichaMonotributo(clienteId: string): Promise<FichaMonotributo | null> {

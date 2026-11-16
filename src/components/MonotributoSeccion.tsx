@@ -9,6 +9,7 @@ import {
   type CambiosMonotributo,
   type FichaMonotributo,
 } from "@/app/(dashboard)/monotributo/fichaActions";
+import { confirmarRevisiones } from "@/app/(dashboard)/monotributo/revisionesActions";
 import {
   CAMPO_REVISION_LABEL,
   FORMAS_PAGO,
@@ -33,6 +34,8 @@ export function MonotributoSeccion({ clienteId }: { clienteId: string }) {
   const [ficha, setFicha] = useState<FichaMonotributo | null | undefined>(undefined);
   const [err, setErr] = useState<string | null>(null);
   const [verHistorial, setVerHistorial] = useState(false);
+  const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [nota, setNota] = useState("");
   const [guardando, startGuardar] = useTransition();
 
   useEffect(() => {
@@ -65,6 +68,16 @@ export function MonotributoSeccion({ clienteId }: { clienteId: string }) {
     });
   }
 
+  function confirmar(id: string) {
+    startGuardar(async () => {
+      const r = await confirmarRevisiones([id], nota);
+      if ("error" in r) return setErr(r.error);
+      setErr(null);
+      setConfirmando(null);
+      setFicha(await obtenerFichaMonotributo(clienteId));
+    });
+  }
+
   const deshabilitado = !puedeEditar || guardando;
 
   return (
@@ -82,16 +95,48 @@ export function MonotributoSeccion({ clienteId }: { clienteId: string }) {
       {pendientes.length > 0 && (
         <div className="space-y-1">
           {pendientes.map((r) => (
-            <p
+            <div
               key={r.id}
               className={clsx(
                 "text-[12px] rounded-md border px-2 py-1",
                 r.gravedad === "rojo" ? "bg-red-50 border-red-200 text-red-700" : "bg-amber-50 border-amber-200 text-amber-800"
               )}
             >
-              <span className="font-semibold">A revisar · {CAMPO_REVISION_LABEL[r.campo]}</span>
-              {r.anio && r.mes ? ` (${String(r.mes).padStart(2, "0")}/${r.anio})` : ""}: {r.motivo}
-            </p>
+              <div className="flex items-start gap-2">
+                <p className="flex-1">
+                  <span className="font-semibold">A revisar · {CAMPO_REVISION_LABEL[r.campo]}</span>
+                  {r.anio && r.mes ? ` (${String(r.mes).padStart(2, "0")}/${r.anio})` : ""}: {r.motivo}
+                </p>
+                {puedeEditar && confirmando !== r.id && (
+                  <button
+                    type="button"
+                    disabled={guardando}
+                    onClick={() => { setConfirmando(r.id); setNota(""); }}
+                    className="shrink-0 text-[11px] underline underline-offset-2 opacity-80 hover:opacity-100"
+                  >
+                    Está bien así
+                  </button>
+                )}
+              </div>
+              {confirmando === r.id && (
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={nota}
+                    onChange={(e) => setNota(e.target.value)}
+                    placeholder="Nota opcional"
+                    className="flex-1 min-w-0 text-[11.5px] text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 bg-white"
+                  />
+                  <button type="button" disabled={guardando} onClick={() => confirmar(r.id)}
+                    className="text-[11px] font-semibold text-gray-900 bg-white border border-gray-300 rounded px-2 py-0.5">
+                    Confirmar
+                  </button>
+                  <button type="button" onClick={() => setConfirmando(null)} className="text-[11px] text-gray-500">
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}

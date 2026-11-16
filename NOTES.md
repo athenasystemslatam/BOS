@@ -2,9 +2,18 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 16-nov (Giuliana) — Monotributo etapa 2b: cola "A revisar"
+
+- Importación de la planilla **corrida** el 16-nov (180 fichas, 43 altas, 63 cambios de responsable en historial, 299 marcas). La primera versión del SQL falló en el SQL Editor por usar tablas temporales entre sentencias (el editor puede ir por conexiones distintas): se rehízo como un único bloque `DO`. Si se vuelve a correr, la frena el control de CUIT vacío (a propósito).
+- `/monotributo/revisar` (ítem "A revisar" en el menú): cola de marcas pendientes con filtros (responsable / "Mis clientes" / sin responsable, rojo/amarillo, campo, búsqueda), "Está bien así" por fila o en lote con nota, y "Confirmar sin deuda" en lote (carga Deuda = No en el último mes del cliente). Acciones en `monotributo/revisionesActions.ts`.
+- `sincronizarRevisionesModulo` (`lib/monotributoServer.ts`) corre al abrir Seguimiento y la cola: crea/resuelve marcas de responsable, forma de pago, medio de contacto y "verificar pago" (VEP enviado sin Pagado pasado el 20), y resuelve "deuda sin verificar" cuando el último mes tiene Sí/No. No vuelve a marcar lo confirmado con el mismo valor. Nunca pasa nada solo a "No pagó".
+- Seguimiento: botón "A revisar (N)", filtro "Solo a revisar", punto rojo/amarillo junto al cliente. Ficha: "Está bien así" por marca. Dashboard: tarjeta "Datos a revisar" por responsable.
+- Fix: el botón de cuota de Seguimiento solo conocía Pendiente/Pagado — con los estados importados (Enviado, No pagó) un clic los pasaba a Pendiente. Ahora cualquier estado sin pagar pasa a Pagado y muestra su nombre. Cada cambio de estado queda en `monotributo_eventos` con quién y cuándo.
+- Permisos: en Monotributo, el rol "Solo lectura" (viewer) tampoco edita (antes no se aplicaba en ningún módulo; en los demás sigue igual).
+
 ## Sesión del 16-nov (Giuliana) — Monotributo etapa 2: importación de la planilla
 
-- **SQL `supabase/importar_monotributo_planilla.sql` — PENDIENTE de correr** (antes: Backup de Panel General y de Monotributo). **Fuera del repo** (datos de clientes, en `.git/info/exclude`); lo genera un script desde `monotributistas-revision.xlsx`. Todo en una transacción con controles: si BOS cambió desde el control (cantidad de altas ≠ 43 o cruces ≠ 180) se deshace solo. Probado contra una base en memoria que replica el estado del control.
+- **SQL `supabase/importar_monotributo_planilla.sql` — corrida** el 16-nov. **Fuera del repo** (datos de clientes, en `.git/info/exclude`); lo genera un script desde `monotributistas-revision.xlsx`. Todo en una transacción con controles: si BOS cambió desde el control (cantidad de altas ≠ 43 o cruces ≠ 180) se deshace solo. Probado contra una base en memoria que replica el estado del control.
 - Qué hace: 43 altas (41 de la lista + Corna Hayes Facundo 20344352934 + Corna Hayes Florencia 27399116649); el "CORNA HAYES FACUNDO" que ya existía tenía el CUIT de Florencia → CUIT vacío (sin renombrar) y dos marcas rojas (CUIT y posible duplicado); 58 reasignaciones (57 Candela R. → Candela P. + Demb → Candela R.), 5 responsables asignados, 7 quitados ("Candela" sin inicial), todo con historial desde 11/2026, motivo "Importación planilla monotributo", sin mails; Monotributo agregado a Barraza, Miguez, Aristizabal Natalia y Medeot; 20 bajas del servicio (Martinez Alan, Veron Diego, Acosta Daniel y Rodriguez Carlos quedan activos y en rojo); fichas de los 180 clientes; estados sep-nov 2026 (origen importado, sin los PENDIENTE de AVISAR en sep/oct, no pisa meses ya marcados); deuda e intimación en noviembre; marcas de revisión.
 - Código: administrativo/cobranzas nunca aparecen como responsables ni en métricas de Monotributo (`puedeSerResponsable` en `lib/monotributo.ts`: Seguimiento, Equipo, Dashboard, Productividad).
 - **Pendiente fuera de código (admin en `/equipo`):** Candela R. no tiene el área Monotributo ni login; Sofia P. no tiene login (completar mail + "Reenviar acceso"). Janina: destildarle Monotributo (y Contable).
@@ -90,7 +99,6 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
-- `importar_monotributo_planilla.sql` (16-nov, fuera del repo; backup de Panel General y Monotributo antes).
 - `add_libros_sacar_de_cola.sql` (12-nov, Libros "Sacar de la cola": estado final `quitada` + columnas `quitada_en/por/motivo` en `libros_tareas`).
 
 Antes de eso, ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).

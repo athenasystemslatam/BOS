@@ -5,7 +5,9 @@ import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
-import { puedeSerResponsable } from "@/lib/monotributo";
+import Link from "next/link";
+import { puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
+import { traerPaginado } from "@/lib/monotributoServer";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 
@@ -33,7 +35,7 @@ export default async function MonotributoDashboardPage({
   const admin = createAdminClient();
   const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
-  const [{ data: serviciosRaw }, { data: tareasRaw }, { data: equipoRaw }, yo] = await Promise.all([
+  const [{ data: serviciosRaw }, { data: tareasRaw }, { data: equipoRaw }, yo, revisiones, serviciosTodos] = await Promise.all([
     admin
       .from("servicios_cliente")
       .select("cliente_id, responsable_id")
@@ -46,7 +48,29 @@ export default async function MonotributoDashboardPage({
       .eq("mes", mes),
     admin.from("liquidadoras").select("id, nombre, rol").eq("activa", true),
     getCurrentLiquidadora(),
+    traerPaginado<{ cliente_id: string; gravedad: Gravedad }>((d, h) =>
+      admin.from("monotributo_revisiones").select("cliente_id, gravedad").eq("estado", "pendiente").order("id").range(d, h)
+    ),
+    traerPaginado<{ cliente_id: string; responsable_id: string | null }>((d, h) =>
+      admin.from("servicios_cliente").select("cliente_id, responsable_id")
+        .eq("servicio", "monotributo").eq("subtipo", "general").order("id").range(d, h)
+    ),
   ]);
+
+  // Datos a revisar: total y por responsable (lo sin responsable le llega al admin)
+  const equipoNombres = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
+  const respDeCliente = new Map(serviciosTodos.map((s) => [s.cliente_id, s.responsable_id]));
+  const revPorResp = new Map<string, { nombre: string; rojo: number; amarillo: number }>();
+  for (const r of revisiones) {
+    const rid = respDeCliente.get(r.cliente_id) ?? null;
+    const key = rid ?? "__sin__";
+    if (!revPorResp.has(key)) {
+      revPorResp.set(key, { nombre: rid ? ((equipoNombres.get(rid) as string | undefined) ?? "—") : "Sin responsable", rojo: 0, amarillo: 0 });
+    }
+    revPorResp.get(key)![r.gravedad]++;
+  }
+  const revResumen = Array.from(revPorResp.values()).sort((a, b) => b.rojo + b.amarillo - (a.rojo + a.amarillo));
+  const revRojo = revisiones.filter((r) => r.gravedad === "rojo").length;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const servicios = (serviciosRaw as any[]) ?? [];
@@ -162,6 +186,32 @@ export default async function MonotributoDashboardPage({
             />
           </div>
         </div>
+      </div>
+
+      {/* Datos a revisar */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-[14px] font-semibold text-gray-900">Datos a revisar</h2>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {revisiones.length} marcas pendientes · <span className="text-red-600">{revRojo} en rojo</span> ·{" "}
+              <span className="text-amber-700">{revisiones.length - revRojo} en amarillo</span>
+            </p>
+          </div>
+          <Link href="/monotributo/revisar" className="text-[12px] font-medium text-amber-700 hover:text-amber-900">
+            Ver la cola →
+          </Link>
+        </div>
+        {revResumen.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {revResumen.map((r) => (
+              <span key={r.nombre} className="text-[12px] bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
+                <span className="font-medium text-gray-800">{r.nombre}</span>{" "}
+                <span className="text-red-600">{r.rojo}</span> / <span className="text-amber-700">{r.amarillo}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Por responsable */}
