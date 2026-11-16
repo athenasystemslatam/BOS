@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Cloud,
   Check,
+  Square,
   ChevronLeft,
   ChevronRight,
   Building2,
@@ -205,7 +206,7 @@ function FechaMarcaCell({
           : "border-dashed border-gray-300 text-gray-300 hover:border-gray-400 hover:bg-gray-50"
       )}
     >
-      {marcado ? <Check size={12} strokeWidth={3} /> : <span className="text-[13px] leading-none">·</span>}
+      {marcado ? <Check size={12} strokeWidth={3} /> : <Square size={12} strokeWidth={2} />}
       {marcado && fecha && (
         <span className="text-[8px] font-medium leading-none tabular-nums">{fmtCortaSeguimiento(fecha)}</span>
       )}
@@ -1433,7 +1434,7 @@ export function SeguimientoClient({
                     >
                       <span className="text-[9px] font-semibold uppercase tracking-wide leading-none">{label}</span>
                       <span className="text-[13px] leading-none">
-                        {marcado ? <Check size={13} strokeWidth={3} /> : "·"}
+                        {marcado ? <Check size={13} strokeWidth={3} /> : <Square size={13} strokeWidth={2} />}
                       </span>
                     </button>
                   ))}
@@ -1460,7 +1461,7 @@ export function SeguimientoClient({
                           {manual && drive ? <Check size={13} strokeWidth={3} />
                             : manual ? <AlertTriangle size={12} strokeWidth={2.5} />
                             : drive ? <Cloud size={12} strokeWidth={2.5} />
-                            : "·"}
+                            : <Square size={13} strokeWidth={2} />}
                         </span>
                       </button>
                     ) : null
