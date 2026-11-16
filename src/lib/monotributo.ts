@@ -26,6 +26,13 @@ export const FORMA_PAGO_LABEL: Record<FormaPago, string> = {
   reafectar_saldo: "Reafectar saldo",
 };
 
+/** Administrativo y Cobranzas ven el módulo pero nunca son responsables de
+ * clientes: no aparecen en Equipo, en el desplegable de responsable ni en las
+ * métricas por responsable, aunque les quede el área tildada. */
+export function puedeSerResponsable(rol: string | null | undefined): boolean {
+  return rol !== "administrativo" && rol !== "cobranzas";
+}
+
 export const MEDIOS = ["mail", "whatsapp"] as const;
 export type Medio = (typeof MEDIOS)[number];
 export const MEDIO_LABEL: Record<Medio, string> = { mail: "Mail", whatsapp: "WhatsApp" };

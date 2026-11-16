@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
+import { puedeSerResponsable } from "@/lib/monotributo";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 
@@ -43,7 +44,7 @@ export default async function MonotributoDashboardPage({
       .select("*")
       .eq("anio", anio)
       .eq("mes", mes),
-    admin.from("liquidadoras").select("id, nombre").eq("activa", true),
+    admin.from("liquidadoras").select("id, nombre, rol").eq("activa", true),
     getCurrentLiquidadora(),
   ]);
 
@@ -52,6 +53,7 @@ export default async function MonotributoDashboardPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tareas = (tareasRaw as any[]) ?? [];
   const equipoMap = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
+  const noResponsables = new Set((equipoRaw ?? []).filter((e) => !puedeSerResponsable(e.rol)).map((e) => e.id));
 
   const tareasMap = new Map(tareas.map((t) => [t.cliente_id, t]));
 
@@ -79,7 +81,7 @@ export default async function MonotributoDashboardPage({
   const respMap = new Map<string, { nombre: string; total: number; cuotasOk: number; recatOk: number }>();
   for (const s of servicios) {
     const rId = s.responsable_id;
-    if (!rId) continue;
+    if (!rId || noResponsables.has(rId)) continue;
     const nombre = equipoMap.get(rId) ?? rId;
     if (!respMap.has(rId)) respMap.set(rId, { nombre, total: 0, cuotasOk: 0, recatOk: 0 });
     const entry = respMap.get(rId)!;

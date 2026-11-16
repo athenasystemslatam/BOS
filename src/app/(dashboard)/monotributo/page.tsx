@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
+import { puedeSerResponsable } from "@/lib/monotributo";
 import { MonotributoClient } from "./MonotributoClient";
 
 export default async function MonotributoPage({
@@ -37,12 +38,14 @@ export default async function MonotributoPage({
       .select("*")
       .eq("anio", anio)
       .eq("mes", mes),
-    admin.from("liquidadoras").select("id, nombre").eq("activa", true),
+    admin.from("liquidadoras").select("id, nombre, rol").eq("activa", true),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "monotributo"),
   ]);
 
   const equipoIdsMonotributo = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
-  const equipoMonotributo = (equipoRaw ?? []).filter((e) => equipoIdsMonotributo.has(e.id));
+  const equipoMonotributo = (equipoRaw ?? [])
+    .filter((e) => equipoIdsMonotributo.has(e.id) && puedeSerResponsable(e.rol))
+    .map(({ id, nombre }) => ({ id, nombre }));
 
   const equipoMap = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
 

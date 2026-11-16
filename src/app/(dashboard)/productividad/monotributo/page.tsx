@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { puedeSerResponsable } from "@/lib/monotributo";
 import { MonotributoProductividadClient, FilaResponsableMono } from "./MonotributoProductividadClient";
 
 // Vencimiento cuota: día 20 del mismo mes.
@@ -29,7 +30,7 @@ export default async function ProductividadMonotributoPage() {
         .from("asignaciones_servicio")
         .select("cliente_id, desde_anio, desde_mes, responsable_id")
         .eq("servicio", "monotributo"),
-      admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+      admin.from("liquidadoras").select("id, nombre, rol").eq("activa", true).order("nombre"),
     ]);
 
   if (!servicios || !tareas || !liquidadoras) {
@@ -69,7 +70,7 @@ export default async function ProductividadMonotributoPage() {
   const tareasMap = new Map(tareas.map((t) => [`${t.cliente_id}:${t.anio}:${t.mes}`, t]));
 
   const filaMap = new Map<string, FilaResponsableMono>();
-  for (const l of liquidadoras) filaMap.set(l.id, { id: l.id, nombre: l.nombre, meses: [] });
+  for (const l of liquidadoras.filter((l) => puedeSerResponsable(l.rol))) filaMap.set(l.id, { id: l.id, nombre: l.nombre, meses: [] });
 
   for (const periodo of periodos) {
     const porResp = new Map<string, ((typeof tareas)[0] | null)[]>();

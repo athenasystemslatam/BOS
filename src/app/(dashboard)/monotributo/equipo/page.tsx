@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
+import { puedeSerResponsable } from "@/lib/monotributo";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 
@@ -17,7 +18,7 @@ export default async function MonotributoEquipoPage({
   const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
   const [{ data: equipoRaw }, { data: modulosRaw }, { data: serviciosRaw }, { data: tareasRaw }] = await Promise.all([
-    admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
+    admin.from("liquidadoras").select("id, nombre, rol").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "monotributo"),
     admin
       .from("servicios_cliente")
@@ -32,7 +33,7 @@ export default async function MonotributoEquipoPage({
   ]);
 
   const equipoIdsMonotributo = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
-  const equipo = (equipoRaw ?? []).filter((e) => equipoIdsMonotributo.has(e.id));
+  const equipo = (equipoRaw ?? []).filter((e) => equipoIdsMonotributo.has(e.id) && puedeSerResponsable(e.rol));
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const servicios = (serviciosRaw as any[]) ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
