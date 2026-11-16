@@ -588,7 +588,7 @@ export function ContableClient({
               return (
                 <tr key={b.id} className="hover:bg-emerald-50/30 transition-colors group">
                   {/* Cliente — columna fijada a la izquierda */}
-                  <td className="sticky left-0 z-10 bg-white group-hover:bg-emerald-50/50 px-6 py-2.5">
+                  <td className="sticky left-0 z-10 bg-white group-hover:bg-emerald-50 px-6 py-2.5">
                     <div className="flex items-center gap-1.5">
                       <p
                         title={b.clientes?.nombre ?? undefined}
