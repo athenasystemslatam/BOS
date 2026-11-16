@@ -2,6 +2,14 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 16-nov (Giuliana) — Monotributo etapa 4: Dashboard de cartera
+
+- Dashboard de Monotributo ampliado (no rehecho): filtro por mes y por responsable (incluye "Sin responsable"), avance del mes por estado (los clientes sin registro del mes cuentan como Pendiente), cuenta regresiva al vencimiento del 20 (corrido a día hábil), avance por responsable con los 7 estados, cartera (forma de pago, medio, envío, categoría con "Sin categoría", tipo, empresa/grupo), deuda (con deuda, importe, sin verificar, avisada/no avisada, intimaciones), automatización (% sin envío mensual, envíos VEP/QR y avisos por mes, destinatarios distintos y los compartidos) y Datos a revisar.
+- Un solo cálculo para pantalla y Excel: `lib/monotributoTablero.ts`. Excel: `/api/exportar/monotributo` (Resumen, Por responsable, Clientes).
+- Solo Monotributo activo; administrativo/cobranzas nunca cuentan como responsables (sus clientes van a "Sin responsable").
+- La deuda e intimación se importaron en noviembre 2026: en otros meses aparecen como "sin verificar" hasta que se arrastren (etapa 3).
+- Etapas 5 (Drive) y 6 (borradores IMAP) quedan para después, a pedido de Giuliana. Etapa 7 (alertas internas): pendiente, el pedido llegó cortado.
+
 ## Sesión del 16-nov (Giuliana) — Monotributo etapa 2b: cola "A revisar"
 
 - Importación de la planilla **corrida** el 16-nov (180 fichas, 43 altas, 63 cambios de responsable en historial, 299 marcas). La primera versión del SQL falló en el SQL Editor por usar tablas temporales entre sentencias (el editor puede ir por conexiones distintas): se rehízo como un único bloque `DO`. Si se vuelve a correr, la frena el control de CUIT vacío (a propósito).

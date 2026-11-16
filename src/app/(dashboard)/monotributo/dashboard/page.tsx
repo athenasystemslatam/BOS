@@ -1,121 +1,66 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
-import { TrendingUp, CheckCircle2, Circle } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 import clsx from "clsx";
-import { MesSelector } from "@/components/MesSelector";
+import Link from "next/link";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
-import Link from "next/link";
-import { puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
-import { traerPaginado } from "@/lib/monotributoServer";
+import { DescargarExcelButton } from "@/components/DescargarExcelButton";
+import { ESTADOS_MES, ESTADO_MES_LABEL, type EstadoMes } from "@/lib/monotributo";
+import { armarTableroMonotributo, type Conteo } from "@/lib/monotributoTablero";
+import { FiltrosTablero } from "./FiltrosTablero";
 
 const RECATEGORIZACION_MESES = new Set([2, 8]);
 
+const COLOR_ESTADO: Record<EstadoMes, string> = {
+  pendiente: "text-gray-500",
+  vep_generado: "text-sky-600",
+  en_borrador: "text-indigo-600",
+  enviado: "text-blue-600",
+  avisado: "text-violet-600",
+  pagado: "text-emerald-600",
+  no_pago: "text-red-600",
+};
+
+/** Meses para el selector: los 2 próximos y los 12 anteriores al mes de trabajo. */
 function generarOpciones(mesActual: number, anioActual: number) {
-  const result = [];
-  let m = mesActual;
+  const result: { mes: number; anio: number }[] = [];
+  let m = mesActual + 2;
   let a = anioActual;
-  for (let i = 0; i < 14; i++) {
-    result.push({ mes: m, anio: a, label: `${MESES_NOMBRES[m]} ${a}` });
+  while (m > 12) { m -= 12; a++; }
+  for (let i = 0; i < 15; i++) {
+    result.push({ mes: m, anio: a });
     m--;
     if (m === 0) { m = 12; a--; }
   }
   return result;
 }
 
+function fmtFecha(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function fmtPesos(n: number) {
+  return n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+}
+
 export default async function MonotributoDashboardPage({
   searchParams,
 }: {
-  searchParams: { mes?: string; anio?: string };
+  searchParams: { mes?: string; anio?: string; resp?: string };
 }) {
   const { mes: mesDefault, anio: anioDefault } = getMesTrabajoActual();
   const mes = Number(searchParams.mes) || mesDefault;
   const anio = Number(searchParams.anio) || anioDefault;
-
-  const admin = createAdminClient();
+  const resp = searchParams.resp ?? "";
   const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
-  const [{ data: serviciosRaw }, { data: tareasRaw }, { data: equipoRaw }, yo, revisiones, serviciosTodos] = await Promise.all([
-    admin
-      .from("servicios_cliente")
-      .select("cliente_id, responsable_id")
-      .eq("servicio", "monotributo")
-      .eq("estado", true),
-    admin
-      .from("monotributo_tareas")
-      .select("*")
-      .eq("anio", anio)
-      .eq("mes", mes),
-    admin.from("liquidadoras").select("id, nombre, rol").eq("activa", true),
-    getCurrentLiquidadora(),
-    traerPaginado<{ cliente_id: string; gravedad: Gravedad }>((d, h) =>
-      admin.from("monotributo_revisiones").select("cliente_id, gravedad").eq("estado", "pendiente").order("id").range(d, h)
-    ),
-    traerPaginado<{ cliente_id: string; responsable_id: string | null }>((d, h) =>
-      admin.from("servicios_cliente").select("cliente_id, responsable_id")
-        .eq("servicio", "monotributo").eq("subtipo", "general").order("id").range(d, h)
-    ),
-  ]);
+  const [yo, t] = await Promise.all([getCurrentLiquidadora(), armarTableroMonotributo(anio, mes, resp || null)]);
 
-  // Datos a revisar: total y por responsable (lo sin responsable le llega al admin)
-  const equipoNombres = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
-  const respDeCliente = new Map(serviciosTodos.map((s) => [s.cliente_id, s.responsable_id]));
-  const revPorResp = new Map<string, { nombre: string; rojo: number; amarillo: number }>();
-  for (const r of revisiones) {
-    const rid = respDeCliente.get(r.cliente_id) ?? null;
-    const key = rid ?? "__sin__";
-    if (!revPorResp.has(key)) {
-      revPorResp.set(key, { nombre: rid ? ((equipoNombres.get(rid) as string | undefined) ?? "—") : "Sin responsable", rojo: 0, amarillo: 0 });
-    }
-    revPorResp.get(key)![r.gravedad]++;
-  }
-  const revResumen = Array.from(revPorResp.values()).sort((a, b) => b.rojo + b.amarillo - (a.rojo + a.amarillo));
-  const revRojo = revisiones.filter((r) => r.gravedad === "rojo").length;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const servicios = (serviciosRaw as any[]) ?? [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tareas = (tareasRaw as any[]) ?? [];
-  const equipoMap = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
-  const noResponsables = new Set((equipoRaw ?? []).filter((e) => !puedeSerResponsable(e.rol)).map((e) => e.id));
-
-  const tareasMap = new Map(tareas.map((t) => [t.cliente_id, t]));
-
-  const total = servicios.length;
-  const cuotasPagadas = servicios.filter(
-    (s) => tareasMap.get(s.cliente_id)?.cuota_estado === "pagado"
-  ).length;
-  const recatPendientes = esRecategorizacion
-    ? servicios.filter((s) => {
-        const t = tareasMap.get(s.cliente_id);
-        return !t || t.recategorizacion === "pendiente";
-      }).length
-    : 0;
-  const recatRealizadas = esRecategorizacion
-    ? servicios.filter((s) => tareasMap.get(s.cliente_id)?.recategorizacion === "realizada").length
-    : 0;
-  const conDeuda = servicios.filter((s) => {
-    const t = tareasMap.get(s.cliente_id);
-    return t?.deuda_monto && t.deuda_monto > 0;
-  }).length;
-
-  const pctCuotas = total > 0 ? Math.round((cuotasPagadas / total) * 100) : 0;
-
-  // Por responsable
-  const respMap = new Map<string, { nombre: string; total: number; cuotasOk: number; recatOk: number }>();
-  for (const s of servicios) {
-    const rId = s.responsable_id;
-    if (!rId || noResponsables.has(rId)) continue;
-    const nombre = equipoMap.get(rId) ?? rId;
-    if (!respMap.has(rId)) respMap.set(rId, { nombre, total: 0, cuotasOk: 0, recatOk: 0 });
-    const entry = respMap.get(rId)!;
-    entry.total++;
-    if (tareasMap.get(s.cliente_id)?.cuota_estado === "pagado") entry.cuotasOk++;
-    if (esRecategorizacion && tareasMap.get(s.cliente_id)?.recategorizacion === "realizada") entry.recatOk++;
-  }
-  const porResponsable = Array.from(respMap.values()).sort((a, b) => b.total - a.total);
-
-  const opciones = generarOpciones(mesDefault, anioDefault);
+  const pagadas = t.estados.pagado;
+  const pctCuotas = t.total > 0 ? Math.round((pagadas / t.total) * 100) : 0;
+  const dias = t.diasAlVencimiento;
+  const exportHref = `/api/exportar/monotributo?mes=${mes}&anio=${anio}${resp ? `&resp=${encodeURIComponent(resp)}` : ""}`;
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
@@ -125,6 +70,7 @@ export default async function MonotributoDashboardPage({
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Monotributo</p>
           <h1 className="text-[20px] font-semibold text-gray-900">
             Dashboard — {MESES_NOMBRES[mes]} {anio}
+            {t.respFiltroNombre && <span className="text-gray-400 font-normal"> · {t.respFiltroNombre}</span>}
           </h1>
           {esRecategorizacion && (
             <span className="inline-block mt-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5">
@@ -132,61 +78,58 @@ export default async function MonotributoDashboardPage({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <MesSelector
-            basePath="/monotributo/dashboard"
-            options={opciones}
-            currentMes={mes}
-            currentAnio={anio}
-            className="text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
-          />
+        <div className="flex items-center gap-3 flex-wrap">
+          <FiltrosTablero opciones={generarOpciones(mesDefault, anioDefault)} mes={mes} anio={anio} resp={resp} responsables={t.responsables} />
+          <DescargarExcelButton href={exportHref} />
           {yo?.isAdmin && <BackupButton modulo="monotributo" />}
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Total clientes</p>
-          <p className="text-[28px] font-bold leading-none text-gray-900">{total}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Cuotas pagadas</p>
-          <p className={clsx("text-[28px] font-bold leading-none", pctCuotas === 100 ? "text-emerald-600" : "text-amber-600")}>
-            {cuotasPagadas}
-          </p>
+        <Tarjeta titulo="Clientes activos">
+          <p className="text-[28px] font-bold leading-none text-gray-900">{t.total}</p>
+        </Tarjeta>
+        <Tarjeta titulo="Cuotas pagadas">
+          <p className={clsx("text-[28px] font-bold leading-none", pctCuotas === 100 ? "text-emerald-600" : "text-amber-600")}>{pagadas}</p>
           <p className="text-[11px] text-gray-400 mt-1">{pctCuotas}% del total</p>
-        </div>
+        </Tarjeta>
         {esRecategorizacion ? (
-          <div className="bg-white rounded-xl border border-amber-100 shadow-sm px-5 py-4">
-            <p className="text-[11px] font-semibold text-amber-500 uppercase tracking-wider mb-3">Recategorización</p>
-            <p className="text-[28px] font-bold leading-none text-amber-600">{recatRealizadas}</p>
-            <p className="text-[11px] text-gray-400 mt-1">{recatPendientes} pendientes</p>
-          </div>
+          <Tarjeta titulo="Recategorización">
+            <p className="text-[28px] font-bold leading-none text-amber-600">{t.recategorizacion.realizadas}</p>
+            <p className="text-[11px] text-gray-400 mt-1">{t.recategorizacion.pendientes} pendientes</p>
+          </Tarjeta>
         ) : (
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Con deuda</p>
-            <p className={clsx("text-[28px] font-bold leading-none", conDeuda > 0 ? "text-red-500" : "text-gray-400")}>
-              {conDeuda}
+          <Tarjeta titulo="Vencimiento cuota">
+            <p className={clsx("text-[28px] font-bold leading-none", dias < 0 ? "text-gray-400" : dias <= 3 ? "text-red-600" : "text-gray-900")}>
+              {dias > 0 ? `${dias} días` : dias === 0 ? "Hoy" : "Vencido"}
             </p>
-          </div>
+            <p className="text-[11px] text-gray-400 mt-1">
+              {dias < 0 ? `venció el ${fmtFecha(t.vencimiento)} (hace ${-dias} días)` : `vence el ${fmtFecha(t.vencimiento)}`}
+            </p>
+          </Tarjeta>
         )}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Avance cuotas</p>
-            <TrendingUp size={16} className="text-amber-500" />
-          </div>
+        <Tarjeta titulo="Avance cuotas" icono={<TrendingUp size={16} className="text-amber-500" />}>
           <p className={clsx("text-[28px] font-bold leading-none", pctCuotas === 100 ? "text-emerald-600" : pctCuotas >= 50 ? "text-amber-600" : "text-gray-500")}>
             {pctCuotas}%
           </p>
           <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={clsx("h-full rounded-full", pctCuotas === 100 ? "bg-emerald-500" : "bg-amber-400")}
-              style={{ width: `${pctCuotas}%` }}
-            />
+            <div className={clsx("h-full rounded-full", pctCuotas === 100 ? "bg-emerald-500" : "bg-amber-400")} style={{ width: `${pctCuotas}%` }} />
           </div>
-        </div>
+        </Tarjeta>
       </div>
+
+      {/* Avance del mes por estado */}
+      <Bloque titulo="Avance del mes" subtitulo={`${MESES_NOMBRES[mes]} ${anio} · vence el ${fmtFecha(t.vencimiento)}${t.sinRegistro ? ` · ${t.sinRegistro} sin registro del mes cuentan como Pendiente` : ""}`}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          {ESTADOS_MES.map((e) => (
+            <div key={e} className="rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2.5">
+              <p className="text-[10.5px] font-semibold text-gray-400 uppercase tracking-wide">{ESTADO_MES_LABEL[e]}</p>
+              <p className={clsx("text-[22px] font-bold leading-tight", t.estados[e] ? COLOR_ESTADO[e] : "text-gray-300")}>{t.estados[e]}</p>
+            </div>
+          ))}
+        </div>
+      </Bloque>
 
       {/* Datos a revisar */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-6">
@@ -194,17 +137,17 @@ export default async function MonotributoDashboardPage({
           <div>
             <h2 className="text-[14px] font-semibold text-gray-900">Datos a revisar</h2>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              {revisiones.length} marcas pendientes · <span className="text-red-600">{revRojo} en rojo</span> ·{" "}
-              <span className="text-amber-700">{revisiones.length - revRojo} en amarillo</span>
+              {t.revisiones.total} marcas pendientes · <span className="text-red-600">{t.revisiones.rojo} en rojo</span> ·{" "}
+              <span className="text-amber-700">{t.revisiones.amarillo} en amarillo</span>
             </p>
           </div>
           <Link href="/monotributo/revisar" className="text-[12px] font-medium text-amber-700 hover:text-amber-900">
             Ver la cola →
           </Link>
         </div>
-        {revResumen.length > 0 && (
+        {t.revisiones.porResponsable.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {revResumen.map((r) => (
+            {t.revisiones.porResponsable.map((r) => (
               <span key={r.nombre} className="text-[12px] bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
                 <span className="font-medium text-gray-800">{r.nombre}</span>{" "}
                 <span className="text-red-600">{r.rojo}</span> / <span className="text-amber-700">{r.amarillo}</span>
@@ -215,65 +158,182 @@ export default async function MonotributoDashboardPage({
       </div>
 
       {/* Por responsable */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-[14px] font-semibold text-gray-900">Avance por responsable</h2>
           <p className="text-[11px] text-gray-400 mt-0.5">{MESES_NOMBRES[mes]} {anio}</p>
         </div>
-        {porResponsable.length === 0 ? (
-          <div className="py-12 text-center text-[13px] text-gray-400">Sin responsables asignados</div>
+        {t.porResponsable.length === 0 ? (
+          <div className="py-12 text-center text-[13px] text-gray-400">Sin clientes</div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                <th className="px-6 py-3 text-left">Responsable</th>
-                <th className="px-4 py-3 text-center">Total</th>
-                <th className="px-4 py-3 text-center">Cuotas pagas</th>
-                {esRecategorizacion && <th className="px-4 py-3 text-center">Recateg.</th>}
-                <th className="px-4 py-3 text-center">%</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {porResponsable.map((r) => {
-                const pct = r.total > 0 ? Math.round((r.cuotasOk / r.total) * 100) : 0;
-                return (
-                  <tr key={r.nombre} className="hover:bg-gray-50/60 transition-colors">
-                    <td className="px-6 py-3.5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center text-[11px] font-bold text-amber-700 shrink-0">
-                          {r.nombre.charAt(0).toUpperCase()}
+          <div className="overflow-x-auto">
+            <table className="w-full whitespace-nowrap">
+              <thead>
+                <tr className="border-b border-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left">Responsable</th>
+                  <th className="px-3 py-3 text-center">Total</th>
+                  {ESTADOS_MES.map((e) => <th key={e} className="px-3 py-3 text-center">{ESTADO_MES_LABEL[e]}</th>)}
+                  <th className="px-3 py-3 text-center">% pagado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {t.porResponsable.map((r) => {
+                  const pct = r.total > 0 ? Math.round((r.estados.pagado / r.total) * 100) : 0;
+                  const sin = r.nombre === "Sin responsable";
+                  return (
+                    <tr key={r.nombre} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={clsx("w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0",
+                            sin ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700")}>
+                            {sin ? "!" : r.nombre.charAt(0).toUpperCase()}
+                          </div>
+                          <span className={clsx("text-[13px] font-medium", sin ? "text-red-600" : "text-gray-800")}>{r.nombre}</span>
                         </div>
-                        <span className="text-[13px] font-medium text-gray-800">{r.nombre}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-center text-[13px] text-gray-600">{r.total}</td>
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {r.cuotasOk === r.total && r.total > 0
-                          ? <CheckCircle2 size={13} className="text-emerald-500" />
-                          : <Circle size={13} className="text-gray-300" />
-                        }
-                        <span className="text-[12px] text-gray-700">{r.cuotasOk}/{r.total}</span>
-                      </div>
-                    </td>
-                    {esRecategorizacion && (
-                      <td className="px-4 py-3.5 text-center text-[12px] text-gray-600">{r.recatOk}</td>
-                    )}
-                    <td className="px-4 py-3.5 text-center">
-                      <span className={clsx(
-                        "text-[12px] font-semibold",
-                        pct === 100 ? "text-emerald-600" : pct >= 50 ? "text-amber-600" : "text-gray-400"
-                      )}>
+                      </td>
+                      <td className="px-3 py-3 text-center text-[13px] text-gray-700 font-medium">{r.total}</td>
+                      {ESTADOS_MES.map((e) => (
+                        <td key={e} className={clsx("px-3 py-3 text-center text-[12.5px]", r.estados[e] ? COLOR_ESTADO[e] : "text-gray-300")}>
+                          {r.estados[e]}
+                        </td>
+                      ))}
+                      <td className={clsx("px-3 py-3 text-center text-[12px] font-semibold",
+                        pct === 100 ? "text-emerald-600" : pct >= 50 ? "text-amber-600" : "text-gray-400")}>
                         {pct}%
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
+
+      {/* Cartera */}
+      <Bloque titulo="Cartera" subtitulo="Clientes activos según la ficha de Monotributo">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          <Distribucion titulo="Forma de pago" datos={t.cartera.formaPago} total={t.total} alerta="Sin forma de pago" />
+          <Distribucion titulo="Medio" datos={t.cartera.medio} total={t.total} alerta="Sin medio" />
+          <Distribucion titulo="Envío" datos={t.cartera.envio} total={t.total} />
+          <Distribucion titulo="Categoría" datos={t.cartera.categoria} total={t.total} />
+          <Distribucion titulo="Tipo" datos={t.cartera.tipo} total={t.total} />
+          <Distribucion
+            titulo="Empresa o grupo (los más grandes)"
+            datos={t.cartera.grupos}
+            total={t.total}
+            pie={`${t.cartera.sinGrupo} sin empresa/grupo`}
+          />
+        </div>
+      </Bloque>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Deuda */}
+        <Bloque titulo="Deuda" subtitulo={`${MESES_NOMBRES[mes]} ${anio}`} sinMargen>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <Mini label="Con deuda" valor={t.deuda.conDeuda} color={t.deuda.conDeuda ? "text-red-600" : "text-gray-300"} />
+            <Mini label="Sin deuda" valor={t.deuda.sinDeuda} color="text-emerald-600" />
+            <Mini label="Sin verificar" valor={t.deuda.sinVerificar} color={t.deuda.sinVerificar ? "text-amber-600" : "text-gray-300"} />
+          </div>
+          <div className="text-[12.5px] text-gray-600 space-y-1 mb-4">
+            <p>
+              Importe total cargado: <span className="font-semibold text-gray-900">{fmtPesos(t.deuda.importeTotal)}</span>
+              <span className="text-gray-400"> ({t.deuda.conImporte} de {t.deuda.conDeuda} con importe)</span>
+            </p>
+            <p>
+              Deuda avisada: <span className="font-semibold text-gray-900">{t.deuda.avisados}</span> · no avisada:{" "}
+              <span className={clsx("font-semibold", t.deuda.noAvisados ? "text-red-600" : "text-gray-900")}>{t.deuda.noAvisados}</span>
+            </p>
+          </div>
+          <Distribucion titulo="Intimaciones" datos={t.deuda.intimaciones} total={t.total} />
+        </Bloque>
+
+        {/* Automatización */}
+        <Bloque titulo="Automatización" subtitulo="Cuánto trabajo manual hay detrás de cada mes" sinMargen>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <Mini label="Sin envío mensual" valor={`${t.automatizacion.pctSinEnvio}%`} color="text-emerald-600" />
+            <Mini label="Envíos VEP/QR por mes" valor={t.automatizacion.enviosVep} color="text-gray-900" />
+            <Mini label="Destinatarios distintos" valor={t.automatizacion.destinatarios} color="text-gray-900" />
+          </div>
+          <p className="text-[12px] text-gray-500 mb-3">
+            {t.automatizacion.sinEnvio} de {t.total} clientes no requieren envío (débito automático, tarjeta o paga por su cuenta).{" "}
+            {t.automatizacion.avisos} se avisan por mes. Los envíos y avisos van a {t.automatizacion.destinatarios} destinatarios distintos.
+          </p>
+          {t.automatizacion.destinatariosCompartidos.length > 0 && (
+            <>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Destinatarios con varios clientes</p>
+              <div className="space-y-1">
+                {t.automatizacion.destinatariosCompartidos.map((d) => (
+                  <div key={d.label} className="flex items-center justify-between gap-3 text-[12px]">
+                    <span className="text-gray-700 truncate" title={d.label}>{d.label}</span>
+                    <span className="font-semibold text-gray-900 shrink-0">{d.n} clientes</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Bloque>
+      </div>
+    </div>
+  );
+}
+
+function Tarjeta({ titulo, icono, children }: { titulo: string; icono?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-5 py-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{titulo}</p>
+        {icono}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Bloque({ titulo, subtitulo, sinMargen, children }: { titulo: string; subtitulo?: string; sinMargen?: boolean; children: React.ReactNode }) {
+  return (
+    <div className={clsx("bg-white rounded-xl border border-gray-100 shadow-sm p-5", !sinMargen && "mb-6")}>
+      <h2 className="text-[14px] font-semibold text-gray-900">{titulo}</h2>
+      {subtitulo && <p className="text-[11px] text-gray-400 mt-0.5 mb-4">{subtitulo}</p>}
+      {children}
+    </div>
+  );
+}
+
+function Mini({ label, valor, color }: { label: string; valor: number | string; color: string }) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2.5">
+      <p className="text-[10.5px] font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className={clsx("text-[22px] font-bold leading-tight", color)}>{valor}</p>
+    </div>
+  );
+}
+
+function Distribucion({ titulo, datos, total, alerta, pie }: { titulo: string; datos: Conteo[]; total: number; alerta?: string; pie?: string }) {
+  const max = Math.max(1, ...datos.map((d) => d.n));
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">{titulo}</p>
+      {datos.length === 0 ? (
+        <p className="text-[12px] text-gray-400">Sin datos</p>
+      ) : (
+        <div className="space-y-1.5">
+          {datos.map((d) => (
+            <div key={d.label} className="flex items-center gap-2 text-[12px]">
+              <span className={clsx("w-40 shrink-0 truncate", d.label === alerta ? "text-red-600 font-medium" : "text-gray-700")} title={d.label}>
+                {d.label}
+              </span>
+              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className={clsx("h-full rounded-full", d.label === alerta ? "bg-red-400" : "bg-amber-400")} style={{ width: `${(d.n / max) * 100}%` }} />
+              </div>
+              <span className="w-16 shrink-0 text-right text-gray-600">
+                {d.n} <span className="text-gray-400">({total ? Math.round((d.n / total) * 100) : 0}%)</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {pie && <p className="text-[11px] text-gray-400 mt-1.5">{pie}</p>}
     </div>
   );
 }
