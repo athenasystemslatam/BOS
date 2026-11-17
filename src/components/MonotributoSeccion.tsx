@@ -10,6 +10,10 @@ import {
   type FichaMonotributo,
 } from "@/app/(dashboard)/monotributo/fichaActions";
 import { confirmarRevisiones } from "@/app/(dashboard)/monotributo/revisionesActions";
+import { upsertMonotributoTarea } from "@/app/(dashboard)/monotributo/actions";
+import { MESES_NOMBRES } from "@/lib/vencimientos";
+
+const CATEGORIAS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 import {
   CAMPO_REVISION_LABEL,
   FORMAS_PAGO,
@@ -30,7 +34,13 @@ const MARCA: Record<Gravedad, string> = {
 /** Sección "Monotributo" de la ficha del cliente: datos fijos del módulo
  * (no dependen del mes) y sus marcas de revisión. Se carga sola al abrir la
  * ficha y no aparece si el cliente nunca tuvo el servicio. */
-export function MonotributoSeccion({ clienteId }: { clienteId: string }) {
+export function MonotributoSeccion({
+  clienteId,
+  onInfo,
+}: {
+  clienteId: string;
+  onInfo?: (info: { soloMonotributo: boolean; puedeEditar: boolean }) => void;
+}) {
   const [ficha, setFicha] = useState<FichaMonotributo | null | undefined>(undefined);
   const [err, setErr] = useState<string | null>(null);
   const [verHistorial, setVerHistorial] = useState(false);
@@ -39,7 +49,11 @@ export function MonotributoSeccion({ clienteId }: { clienteId: string }) {
   const [guardando, startGuardar] = useTransition();
 
   useEffect(() => {
-    obtenerFichaMonotributo(clienteId).then(setFicha);
+    obtenerFichaMonotributo(clienteId).then((f) => {
+      setFicha(f);
+      if (f?.mostrar) onInfo?.({ soloMonotributo: f.soloMonotributo, puedeEditar: f.puedeEditar });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId]);
 
   if (ficha === undefined) {
@@ -74,6 +88,18 @@ export function MonotributoSeccion({ clienteId }: { clienteId: string }) {
       if ("error" in r) return setErr(r.error);
       setErr(null);
       setConfirmando(null);
+      setFicha(await obtenerFichaMonotributo(clienteId));
+    });
+  }
+
+  /** La categoría es del mes (pasa sola a los meses siguientes): se guarda en el mes de trabajo. */
+  function guardarCategoria(categoria: string | null) {
+    if (!ficha?.mostrar) return;
+    const { anio, mes } = ficha.mesTrabajo;
+    startGuardar(async () => {
+      const r = await upsertMonotributoTarea(clienteId, anio, mes, { categoria });
+      if (r && "error" in r && r.error) return setErr(r.error);
+      setErr(null);
       setFicha(await obtenerFichaMonotributo(clienteId));
     });
   }
@@ -142,6 +168,20 @@ export function MonotributoSeccion({ clienteId }: { clienteId: string }) {
       )}
 
       <div className="grid grid-cols-2 gap-3">
+        <Fila label={`Categoría (${MESES_NOMBRES[ficha.mesTrabajo.mes]})`}>
+          <select
+            value={ficha.categoria ?? ""}
+            disabled={deshabilitado}
+            onChange={(e) => guardarCategoria(e.target.value || null)}
+            className={inputCls}
+          >
+            <option value="">Sin categoría</option>
+            {CATEGORIAS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </Fila>
+
         <Fila label="Responsable" marca={marcaDe("responsable")}>
           <span className="text-[12.5px] text-gray-800">{ficha.responsable ?? "Sin responsable"}</span>
         </Fila>

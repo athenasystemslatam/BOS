@@ -162,11 +162,14 @@ export function FichaClienteBoton({
   const [cargando, setCargando] = useState(false);
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [verPass, setVerPass] = useState<Record<number, boolean>>({});
+  // Lo informa la sección Monotributo al cargar: si el cliente es solo de Monotributo y si esa sección se edita acá.
+  const [mono, setMono] = useState<{ soloMonotributo: boolean; puedeEditar: boolean } | null>(null);
 
   // Ítem 88: siempre vuelve a pedir los datos al abrir, no solo la primera
   // vez — si no, muestra lo que había cuando se abrió por primera vez,
   // aunque se haya editado el cliente desde otro módulo en el medio.
   function abrir() {
+    setMono(null);
     setAbierto(true);
     setCargando(true);
     fetchAction(clienteId).then((c) => {
@@ -225,6 +228,8 @@ export function FichaClienteBoton({
                 <p className="text-sm text-gray-400 text-center py-10">No se pudo cargar la ficha.</p>
               ) : (
                 <>
+                  <MonotributoSeccion clienteId={cliente.id} onInfo={setMono} />
+
                   <Seccion titulo="Datos básicos">
                     <div className="grid grid-cols-2 gap-3">
                       <Campo label="CUIT" value={cliente.cuit?.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")} />
@@ -245,6 +250,7 @@ export function FichaClienteBoton({
                     )}
                   </Seccion>
 
+                  {!mono?.soloMonotributo && (<>
                   <Seccion titulo="Domicilios">
                     <div className="grid grid-cols-[1fr_90px] gap-3">
                       <Campo label="Fiscal" value={cliente.domicilio_fiscal} />
@@ -285,8 +291,7 @@ export function FichaClienteBoton({
                   </Seccion>
 
                   <FalSeccion clienteId={cliente.id} />
-
-                  <MonotributoSeccion clienteId={cliente.id} />
+                  </>)}
 
                   {claves.length > 0 && (
                     <Seccion titulo="Claves de acceso">
@@ -368,7 +373,9 @@ export function FichaClienteBoton({
 
             {!puedeEditar && (
               <div className="px-6 py-3.5 border-t border-gray-100 text-[11px] text-gray-400 shrink-0">
-                Para editar, ir a Clientes → {nombre} → Editar
+                {mono?.puedeEditar
+                  ? <>Los datos de Monotributo se editan acá mismo. El resto: Clientes → {nombre} → Editar</>
+                  : <>Para editar, ir a Clientes → {nombre} → Editar</>}
               </div>
             )}
           </div>
