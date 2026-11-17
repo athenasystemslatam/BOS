@@ -461,9 +461,6 @@ export function MonotributoClient({
                       <span className="text-[13px] font-medium text-gray-800 truncate max-w-[230px]" title={s.clientes?.nombre}>
                         {s.clientes?.nombre ?? "—"}
                       </span>
-                      {s.clientes?.tipo_contribuyente === "empresa" && (
-                        <span className="text-[10px] font-medium text-gray-500 bg-gray-100 rounded px-1">Empresa</span>
-                      )}
                       <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="monotributo" />
                       <FichaClienteBoton clienteId={s.cliente_id} nombre={s.clientes?.nombre ?? ""} fetchAction={getFichaCliente} />
                     </div>

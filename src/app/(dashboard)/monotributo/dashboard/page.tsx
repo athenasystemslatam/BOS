@@ -243,19 +243,10 @@ export default async function MonotributoDashboardPage({
           <Distribucion titulo="Forma de pago" datos={t.cartera.formaPago} total={t.total} alerta="Sin forma de pago" />
           <Distribucion titulo="Medio" datos={t.cartera.medio} total={t.total} alerta="Sin medio" />
           <Distribucion titulo="Envío" datos={t.cartera.envio} total={t.total} />
-          <Distribucion
-            titulo={`Categoría · ${t.conCategoria} de ${t.total} con categoría`}
-            datos={t.conCategoria ? t.cartera.categoria : []}
-            total={t.total}
-            pie={t.conCategoria ? undefined : "Todavía no hay categorías cargadas (se cargan en Seguimiento o en la ficha)."}
-          />
-          <Distribucion titulo="Tipo" datos={t.cartera.tipo} total={t.total} />
-          <Distribucion
-            titulo="Empresa o grupo (los más grandes)"
-            datos={t.cartera.grupos}
-            total={t.total}
-            pie={`${t.cartera.sinGrupo} sin empresa/grupo`}
-          />
+          {/* Categoría: se muestra recién cuando hay al menos una cargada. */}
+          {t.conCategoria > 0 && (
+            <Distribucion titulo={`Categoría · ${t.conCategoria} de ${t.total} con categoría`} datos={t.cartera.categoria} total={t.total} />
+          )}
         </div>
       </Bloque>
 
@@ -345,7 +336,6 @@ function Mini({ label, valor, color }: { label: string; valor: number | string; 
 }
 
 function Distribucion({ titulo, datos, total, alerta, pie }: { titulo: string; datos: Conteo[]; total: number; alerta?: string; pie?: string }) {
-  const max = Math.max(1, ...datos.map((d) => d.n));
   return (
     <div>
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">{titulo}</p>
@@ -359,7 +349,7 @@ function Distribucion({ titulo, datos, total, alerta, pie }: { titulo: string; d
                 {d.label}
               </span>
               <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div className={clsx("h-full rounded-full", d.label === alerta ? "bg-red-400" : "bg-amber-400")} style={{ width: `${(d.n / max) * 100}%` }} />
+                <div className={clsx("h-full rounded-full", d.label === alerta ? "bg-red-400" : "bg-amber-400")} style={{ width: `${total ? (d.n / total) * 100 : 0}%` }} />
               </div>
               <span className="w-16 shrink-0 text-right text-gray-600">
                 {d.n} <span className="text-gray-400">({total ? Math.round((d.n / total) * 100) : 0}%)</span>

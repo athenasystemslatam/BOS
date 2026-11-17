@@ -64,9 +64,7 @@ export async function GET(req: NextRequest) {
   seccion("Forma de pago", t.cartera.formaPago);
   seccion("Medio", t.cartera.medio);
   seccion("Envío", t.cartera.envio);
-  seccion("Categoría", t.cartera.categoria);
-  seccion("Tipo", t.cartera.tipo);
-  seccion("Empresa o grupo (los más grandes)", [...t.cartera.grupos, { label: "Sin empresa/grupo", n: t.cartera.sinGrupo }]);
+  if (t.conCategoria) seccion("Categoría", t.cartera.categoria);
   seccion("Deuda", [
     ["Con deuda", t.deuda.conDeuda], ["Sin deuda", t.deuda.sinDeuda], ["Sin verificar", t.deuda.sinVerificar],
     ["Deuda avisada", t.deuda.avisados], ["Deuda no avisada", t.deuda.noAvisados],
