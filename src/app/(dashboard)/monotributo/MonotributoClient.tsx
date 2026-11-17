@@ -28,7 +28,6 @@ import {
 
 const ACCENT_MONOTRIBUTO = { dot: "bg-amber-500", bg: "bg-amber-50", text: "text-amber-700" };
 
-const RECATEGORIZACION_MESES = new Set([2, 8]);
 const CATEGORIAS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 
 const ESTILO_ESTADO: Record<EstadoMes, string> = {
@@ -127,6 +126,8 @@ export function MonotributoClient({
   totalARevisar,
   totalAlertas,
   nombres,
+  yoId,
+  esRecategorizacion,
 }: {
   servicios: Servicio[];
   tareas: Tarea[];
@@ -140,11 +141,17 @@ export function MonotributoClient({
   totalARevisar: number;
   totalAlertas: number | null;
   nombres: Record<string, string>;
+  yoId: string | null;
+  /** El mes cae en una ventana de recategorización del calendario ARCA. */
+  esRecategorizacion: boolean;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { avisar, aviso } = useAvisoErrorGuardado();
-  const [filterResp, setFilterResp] = useState("");
+  // Al entrar: "Mis clientes" para quien tiene clientes; los administradores ven todos.
+  const [filterResp, setFilterResp] = useState(() =>
+    !isAdmin && yoId && servicios.some((s) => s.responsable_id === yoId) ? "__mios__" : ""
+  );
   const [filterEstado, setFilterEstado] = useState<"" | EstadoMes | "sin_pagar">("");
   const [soloARevisar, setSoloARevisar] = useState(false);
   const [soloConDeuda, setSoloConDeuda] = useState(false);
@@ -152,7 +159,6 @@ export function MonotributoClient({
   const [editandoDeuda, setEditandoDeuda] = useState<Servicio | null>(null);
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
 
-  const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
 
   const vacia = (clienteId: string): Tarea => ({
     cliente_id: clienteId,
@@ -251,7 +257,8 @@ export function MonotributoClient({
 
   const filas = useMemo(() => {
     let list = servicios;
-    if (filterResp === "__sin__") list = list.filter((s) => !s.responsable_nombre);
+    if (filterResp === "__mios__") list = list.filter((s) => s.responsable_id === yoId);
+    else if (filterResp === "__sin__") list = list.filter((s) => !s.responsable_nombre);
     else if (filterResp) list = list.filter((s) => s.responsable_nombre === filterResp);
     if (soloARevisar) list = list.filter((s) => !!revisiones[s.cliente_id]);
     if (soloConDeuda) list = list.filter((s) => { const t = getTarea(s.cliente_id); return t.deuda_estado === "si" && !t.deuda_resuelta; });
@@ -370,6 +377,7 @@ export function MonotributoClient({
               className="appearance-none text-xs text-gray-600 bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
             >
               <option value="">Todos los responsables</option>
+              {yoId && <option value="__mios__">Mis clientes</option>}
               {responsables.map((r) => <option key={r} value={r}>{r}</option>)}
               <option value="__sin__">Sin responsable</option>
             </select>
@@ -383,22 +391,21 @@ export function MonotributoClient({
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="overflow-x-auto pb-2">
+      {/* Tabla: una sola caja con scroll en los dos sentidos, así la barra horizontal queda siempre al pie de la pantalla */}
+      <div className="flex-1 min-h-0 overflow-auto" style={{ overflowX: "scroll" }}>
         <table className="w-full text-sm whitespace-nowrap">
-          <thead className="sticky top-0 bg-gray-50 z-10">
+          <thead className="sticky top-0 bg-gray-50 z-20">
             <tr className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
-              <th className="px-6 py-3 w-64">Cliente</th>
-              <th className="px-4 py-3">Responsable</th>
-              <th className="px-4 py-3">Pago y envío</th>
-              <th className="px-4 py-3">Estado del mes</th>
-              <th className="px-4 py-3">Fecha pago</th>
-              <th className="px-4 py-3">Categ.</th>
-              <th className="px-4 py-3">Recategorización</th>
-              <th className="px-4 py-3">Deuda</th>
-              <th className="px-4 py-3">Intimación</th>
-              <th className="px-4 py-3">Observaciones</th>
+              <th className="sticky left-0 z-30 bg-gray-50 px-6 py-2.5 min-w-[280px]">Cliente</th>
+              <th className="px-3 py-2.5">Responsable</th>
+              <th className="px-3 py-2.5">Pago y envío</th>
+              <th className="px-3 py-2.5">Estado del mes</th>
+              <th className="px-3 py-2.5">Deuda</th>
+              <th className="px-3 py-2.5">Intimación</th>
+              <th className="px-3 py-2.5">Categ.</th>
+              <th className="px-3 py-2.5 w-28">Fecha pago</th>
+              {esRecategorizacion && <th className="px-3 py-2.5">Recategorización</th>}
+              <th className="px-3 py-2.5">Observaciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
@@ -413,10 +420,14 @@ export function MonotributoClient({
               const t = getTarea(s.cliente_id);
               const f = s.ficha;
               const envio = textoEnvio(f);
+              const conDeuda = t.deuda_estado === "si" && !t.deuda_resuelta;
+              const cambio = t.estado_cambiado_en
+                ? `Último cambio: ${fmtFechaHoraAR(t.estado_cambiado_en)}${t.estado_cambiado_por && nombres[t.estado_cambiado_por] ? ` · ${nombres[t.estado_cambiado_por]}` : ""}`
+                : undefined;
               return (
-                <tr key={s.cliente_id} className={clsx("transition-colors", t.deuda_estado === "si" ? "bg-red-50/30 hover:bg-red-50/60" : "hover:bg-amber-50/20")}>
-                  {/* Cliente */}
-                  <td className="px-6 py-3">
+                <tr key={s.cliente_id} className={clsx("group transition-colors", conDeuda ? "bg-red-50/40 hover:bg-amber-50" : "hover:bg-amber-50")}>
+                  {/* Cliente (fija al scrollear de costado) */}
+                  <td className={clsx("sticky left-0 z-10 px-6 py-1.5 group-hover:bg-amber-50", conDeuda ? "bg-red-50" : "bg-white")}>
                     <div className="flex items-center gap-1.5">
                       {revisiones[s.cliente_id] && (
                         <span
@@ -424,17 +435,19 @@ export function MonotributoClient({
                           className={clsx("w-2 h-2 rounded-full shrink-0", revisiones[s.cliente_id].rojo > 0 ? "bg-red-500" : "bg-amber-400")}
                         />
                       )}
-                      <p className="text-[13px] font-medium text-gray-800 leading-tight truncate max-w-[220px]" title={s.clientes?.nombre}>
+                      <span className="text-[13px] font-medium text-gray-800 truncate max-w-[230px]" title={s.clientes?.nombre}>
                         {s.clientes?.nombre ?? "—"}
-                      </p>
+                      </span>
+                      {s.clientes?.tipo_contribuyente === "empresa" && (
+                        <span className="text-[10px] font-medium text-gray-500 bg-gray-100 rounded px-1">Empresa</span>
+                      )}
                       <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="monotributo" />
                       <FichaClienteBoton clienteId={s.cliente_id} nombre={s.clientes?.nombre ?? ""} fetchAction={getFichaCliente} />
                     </div>
-                    <p className="text-[11px] text-gray-400 mt-0.5 capitalize">{s.clientes?.tipo_contribuyente ?? ""}</p>
                   </td>
 
                   {/* Responsable */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-1.5">
                     <div className="flex items-center gap-1.5">
                       <span className={clsx("text-[12px]", s.responsable_nombre ? "text-gray-600" : "text-red-600 font-medium")}>
                         {s.responsable_nombre ?? "Sin responsable"}
@@ -447,25 +460,23 @@ export function MonotributoClient({
                     </div>
                   </td>
 
-                  {/* Pago y envío (datos fijos del cliente: se editan en la ficha) */}
-                  <td className="px-4 py-3">
-                    <p className={clsx("text-[12px]", f?.forma_pago ? "text-gray-700" : "text-red-600")}>
+                  {/* Pago y envío (datos fijos: se editan en la ficha) */}
+                  <td className="px-3 py-1.5" title={[f?.medio ? MEDIO_LABEL[f.medio] : null, f?.destinatario].filter(Boolean).join(" · ") || undefined}>
+                    <span className={clsx("text-[12px]", f?.forma_pago ? "text-gray-700" : "text-red-600")}>
                       {f?.forma_pago ? FORMA_PAGO_LABEL[f.forma_pago] : "Sin forma de pago"}
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-0.5 truncate max-w-[200px]" title={f?.destinatario ?? ""}>
-                      {[envio, f?.medio ? MEDIO_LABEL[f.medio] : null, f?.destinatario].filter(Boolean).join(" · ") || "—"}
-                    </p>
+                    </span>
+                    {envio && <span className="text-[11px] text-gray-400"> · {envio}</span>}
                   </td>
 
                   {/* Estado del mes */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-1.5" title={cambio}>
                     {puedeEditar ? (
                       <div className="relative inline-block">
                         <select
                           value={t.cuota_estado}
                           onChange={(e) => cambiarEstado(s.cliente_id, e.target.value as EstadoMes)}
                           className={clsx(
-                            "appearance-none text-[12px] font-medium rounded-full pl-2.5 pr-6 py-1 border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-300",
+                            "appearance-none text-[12px] font-medium rounded-full pl-2.5 pr-6 py-0.5 border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-300",
                             ESTILO_ESTADO[t.cuota_estado]
                           )}
                         >
@@ -474,104 +485,31 @@ export function MonotributoClient({
                         <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-60 pointer-events-none" />
                       </div>
                     ) : (
-                      <span className={clsx("text-[12px] font-medium rounded-full px-2.5 py-1", ESTILO_ESTADO[t.cuota_estado])}>
+                      <span className={clsx("text-[12px] font-medium rounded-full px-2.5 py-0.5", ESTILO_ESTADO[t.cuota_estado])}>
                         {ESTADO_MES_LABEL[t.cuota_estado]}
-                      </span>
-                    )}
-                    <p className="text-[10.5px] text-gray-400 mt-1">
-                      {t.estado_cambiado_en
-                        ? `${fmtFechaHoraAR(t.estado_cambiado_en)}${t.estado_cambiado_por && nombres[t.estado_cambiado_por] ? ` · ${nombres[t.estado_cambiado_por]}` : ""}`
-                        : t.origen === "importado" ? "importado de la planilla" : ""}
-                    </p>
-                  </td>
-
-                  {/* Fecha pago */}
-                  <td className="px-4 py-3">
-                    {t.cuota_estado === "pagado" && puedeEditar ? (
-                      <input
-                        type="date"
-                        defaultValue={t.cuota_fecha ?? ""}
-                        key={`${s.cliente_id}-${t.cuota_fecha}`}
-                        onBlur={(e) => {
-                          const val = e.target.value || null;
-                          if (val !== t.cuota_fecha) guardarCambio(s.cliente_id, { cuota_fecha: val });
-                        }}
-                        className="text-[12px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 w-32"
-                      />
-                    ) : (
-                      <span className="text-[12px] text-gray-400">{fmtFecha(t.cuota_fecha)}</span>
-                    )}
-                  </td>
-
-                  {/* Categoría */}
-                  <td className="px-4 py-3">
-                    {puedeEditar ? (
-                      <div className="relative inline-block">
-                        <select
-                          value={t.categoria ?? ""}
-                          onChange={(e) => guardarCambio(s.cliente_id, { categoria: e.target.value || null })}
-                          className="appearance-none text-[13px] font-semibold text-gray-700 bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 pr-5 cursor-pointer"
-                        >
-                          <option value="">—</option>
-                          {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <ChevronDown size={11} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                      </div>
-                    ) : (
-                      <span className="text-[13px] font-semibold text-gray-700">{t.categoria ?? <span className="text-gray-300">—</span>}</span>
-                    )}
-                  </td>
-
-                  {/* Recategorización */}
-                  <td className="px-4 py-3">
-                    {puedeEditar ? (
-                      <div className="relative inline-block">
-                        <select
-                          value={t.recategorizacion}
-                          onChange={(e) => guardarCambio(s.cliente_id, { recategorizacion: e.target.value as Tarea["recategorizacion"] })}
-                          className={clsx(
-                            "appearance-none text-[12px] bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 pr-5 cursor-pointer",
-                            t.recategorizacion === "realizada" ? "text-emerald-600 font-medium" : t.recategorizacion === "pendiente" ? "text-amber-600" : "text-gray-300"
-                          )}
-                        >
-                          <option value="no_corresponde">No corresponde</option>
-                          <option value="pendiente">Pendiente</option>
-                          <option value="realizada">Realizada</option>
-                        </select>
-                        <ChevronDown size={11} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                      </div>
-                    ) : (
-                      <span className={clsx("text-[12px]", t.recategorizacion === "realizada" ? "text-emerald-600 font-medium" : t.recategorizacion === "pendiente" ? "text-amber-600" : "text-gray-300")}>
-                        {t.recategorizacion === "realizada" ? "Realizada" : t.recategorizacion === "pendiente" ? "Pendiente" : "—"}
                       </span>
                     )}
                   </td>
 
                   {/* Deuda */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-1.5">
                     <button
                       onClick={() => setEditandoDeuda(s)}
                       title={puedeEditar ? "Ver / editar deuda e intimación" : "Ver deuda e intimación"}
-                      className="text-left"
-                    >
-                      <span className={clsx(
+                      className={clsx(
                         "text-[12px] font-medium rounded-full px-2 py-0.5",
                         t.deuda_estado === "si" ? (t.deuda_resuelta ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")
                           : t.deuda_estado === "no" ? "bg-gray-100 text-gray-600" : "bg-amber-50 text-amber-700"
-                      )}>
-                        {t.deuda_estado === "si" ? (t.deuda_resuelta ? "Resuelta" : "Sí") : DEUDA_LABEL[t.deuda_estado]}
-                        {t.deuda_estado === "si" && t.deuda_monto ? ` · $ ${Number(t.deuda_monto).toLocaleString("es-AR")}` : ""}
-                      </span>
-                      {t.deuda_estado === "si" && !t.deuda_resuelta && (
-                        <span className={clsx("block text-[10.5px] mt-1", t.deuda_aviso ? "text-emerald-600" : "text-red-500")}>
-                          {t.deuda_aviso ? `Avisada${t.deuda_aviso_fecha ? " " + fmtFecha(t.deuda_aviso_fecha) : ""}` : "Sin avisar"}
-                        </span>
                       )}
+                    >
+                      {t.deuda_estado === "si" ? (t.deuda_resuelta ? "Resuelta" : "Sí") : DEUDA_LABEL[t.deuda_estado]}
+                      {conDeuda && t.deuda_monto ? ` · $ ${Number(t.deuda_monto).toLocaleString("es-AR")}` : ""}
+                      {conDeuda ? (t.deuda_aviso ? " · avisada" : " · sin avisar") : ""}
                     </button>
                   </td>
 
                   {/* Intimación */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-1.5" title={t.intimacion_fecha ? `Desde ${fmtFecha(t.intimacion_fecha)}` : undefined}>
                     {puedeEditar ? (
                       <div className="relative inline-block">
                         <select
@@ -593,11 +531,74 @@ export function MonotributoClient({
                     ) : (
                       <span className="text-[12px] text-gray-500">{t.intimacion_estado ? INTIMACION_LABEL[t.intimacion_estado] : "—"}</span>
                     )}
-                    {t.intimacion_fecha && <p className="text-[10.5px] text-gray-400 mt-0.5">{fmtFecha(t.intimacion_fecha)}</p>}
                   </td>
 
+                  {/* Categoría */}
+                  <td className="px-3 py-1.5">
+                    {puedeEditar ? (
+                      <div className="relative inline-block">
+                        <select
+                          value={t.categoria ?? ""}
+                          onChange={(e) => guardarCambio(s.cliente_id, { categoria: e.target.value || null })}
+                          className="appearance-none text-[13px] font-semibold text-gray-700 bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 pr-5 cursor-pointer"
+                        >
+                          <option value="">—</option>
+                          {CATEGORIAS.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <ChevronDown size={11} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                      </div>
+                    ) : (
+                      <span className="text-[13px] font-semibold text-gray-700">{t.categoria ?? <span className="text-gray-300">—</span>}</span>
+                    )}
+                  </td>
+
+                  {/* Fecha de pago (se completa sola al marcar Pagado) */}
+                  <td className="px-3 py-1.5 w-28">
+                    {t.cuota_estado === "pagado" && puedeEditar ? (
+                      <input
+                        type="date"
+                        defaultValue={t.cuota_fecha ?? ""}
+                        key={`${s.cliente_id}-${t.cuota_fecha}`}
+                        onBlur={(e) => {
+                          const val = e.target.value || null;
+                          if (val !== t.cuota_fecha) guardarCambio(s.cliente_id, { cuota_fecha: val });
+                        }}
+                        className="text-[11.5px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-0.5 py-0 w-[104px]"
+                      />
+                    ) : (
+                      <span className="text-[11.5px] text-gray-400">{t.cuota_fecha ? fmtFecha(t.cuota_fecha) : "—"}</span>
+                    )}
+                  </td>
+
+                  {/* Recategorización: solo en la ventana del calendario ARCA */}
+                  {esRecategorizacion && (
+                    <td className="px-3 py-1.5">
+                      {puedeEditar ? (
+                        <div className="relative inline-block">
+                          <select
+                            value={t.recategorizacion}
+                            onChange={(e) => guardarCambio(s.cliente_id, { recategorizacion: e.target.value as Tarea["recategorizacion"] })}
+                            className={clsx(
+                              "appearance-none text-[12px] bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 pr-5 cursor-pointer",
+                              t.recategorizacion === "realizada" ? "text-emerald-600 font-medium" : t.recategorizacion === "pendiente" ? "text-amber-600" : "text-gray-300"
+                            )}
+                          >
+                            <option value="no_corresponde">No corresponde</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="realizada">Realizada</option>
+                          </select>
+                          <ChevronDown size={11} className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <span className={clsx("text-[12px]", t.recategorizacion === "realizada" ? "text-emerald-600 font-medium" : t.recategorizacion === "pendiente" ? "text-amber-600" : "text-gray-300")}>
+                          {t.recategorizacion === "realizada" ? "Realizada" : t.recategorizacion === "pendiente" ? "Pendiente" : "—"}
+                        </span>
+                      )}
+                    </td>
+                  )}
+
                   {/* Observaciones */}
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-1.5">
                     {puedeEditar ? (
                       <input
                         type="text"
@@ -607,7 +608,7 @@ export function MonotributoClient({
                           const val = e.target.value || null;
                           if (val !== t.observaciones) guardarCambio(s.cliente_id, { observaciones: val });
                         }}
-                        className="text-[12px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 w-full min-w-[120px] placeholder:text-gray-300"
+                        className="text-[12px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 w-full min-w-[160px] placeholder:text-gray-300"
                       />
                     ) : (
                       <span className="text-[12px] text-gray-500">{t.observaciones ?? "—"}</span>
@@ -618,7 +619,6 @@ export function MonotributoClient({
             })}
           </tbody>
         </table>
-        </div>
       </div>
     </div>
     {aviso}

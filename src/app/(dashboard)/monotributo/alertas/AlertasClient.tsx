@@ -16,6 +16,14 @@ import {
   type TipoAlerta,
 } from "@/lib/monotributoAlertasTipos";
 import { marcarAlertaResuelta } from "../alertasActions";
+import { upsertMonotributoTarea, type CambiosTarea } from "../actions";
+import { hoyArgentina } from "@/lib/monotributo";
+
+const ACCION_DIRECTA: Partial<Record<TipoAlerta, { label: string; cambios: CambiosTarea }>> = {
+  sin_avisar: { label: "Marcar Avisado", cambios: { cuota_estado: "avisado" } },
+  sin_enviar: { label: "Marcar Enviado", cambios: { cuota_estado: "enviado" } },
+  deuda_sin_avisar: { label: "Ya avisada", cambios: { deuda_aviso: true } },
+};
 
 const MIOS = "__mios__";
 const SIN = "__sin__";
@@ -63,6 +71,7 @@ export function AlertasClient({
   const [nota, setNota] = useState("");
   const [abierta, setAbierta] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [procesando, setProcesando] = useState<string | null>(null);
   const [guardando, startGuardar] = useTransition();
 
   const responsables = useMemo(() => {
@@ -91,6 +100,19 @@ export function AlertasClient({
       if ("error" in r) return setErr(r.error);
       setAbierta(null);
       setNota("");
+      router.refresh();
+    });
+  }
+
+  /** Botones directos por fila (de a una, sin lote). */
+  function accionDirecta(a: Alerta, cambios: CambiosTarea) {
+    setErr(null);
+    setProcesando(a.clave);
+    startGuardar(async () => {
+      const r = await upsertMonotributoTarea(a.cliente_id, anio, mes,
+        cambios.deuda_aviso ? { ...cambios, deuda_aviso_fecha: hoyArgentina() } : cambios);
+      setProcesando(null);
+      if (r && "error" in r && r.error) return setErr(r.error);
       router.refresh();
     });
   }
@@ -183,6 +205,15 @@ export function AlertasClient({
                   <td className="px-4 py-2.5 text-[12.5px] text-gray-800">{TIPO_ALERTA_LABEL[a.tipo]}</td>
                   <td className="px-4 py-2.5 text-[12.5px] text-gray-600 whitespace-normal min-w-[280px]">{a.detalle}</td>
                   <td className="px-4 py-2.5 text-right">
+                    {puedeEditar && ACCION_DIRECTA[a.tipo] && (
+                      <button
+                        disabled={guardando}
+                        onClick={() => accionDirecta(a, ACCION_DIRECTA[a.tipo]!.cambios)}
+                        className="text-[11.5px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-0.5 hover:bg-amber-100 disabled:opacity-50"
+                      >
+                        {procesando === a.clave ? <Loader2 size={11} className="animate-spin" /> : ACCION_DIRECTA[a.tipo]!.label}
+                      </button>
+                    )}
                     {puedeEditar && TIPOS_CON_RESUELTA.includes(a.tipo) && (
                       abierta === a.clave ? (
                         <div className="flex items-center gap-1.5 justify-end">

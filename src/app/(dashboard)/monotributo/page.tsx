@@ -110,6 +110,8 @@ export default async function MonotributoPage({
       totalARevisar={pendientes.length}
       totalAlertas={alertasMes?.alertas.length ?? null}
       nombres={Object.fromEntries(equipoMap)}
+      yoId={yo?.id ?? null}
+      esRecategorizacion={mes === 2 || mes === 8}
     />
   );
 }
