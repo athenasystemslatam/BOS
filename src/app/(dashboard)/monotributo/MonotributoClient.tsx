@@ -10,6 +10,7 @@ import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
+import { useFiltroGuardado } from "@/components/useFiltroGuardado";
 import { guardar, useAvisoErrorGuardado } from "@/components/AvisoErrorGuardado";
 import { useDeshacer } from "@/components/DeshacerAviso";
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
@@ -162,9 +163,9 @@ export function MonotributoClient({
   const [, startTransition] = useTransition();
   const { avisar, aviso } = useAvisoErrorGuardado();
   const { ofrecer, aviso: avisoDeshacer } = useDeshacer();
-  // Al entrar: "Mis clientes" para quien tiene clientes; los administradores ven todos.
-  const [filterResp, setFilterResp] = useState(() =>
-    !isAdmin && yoId && servicios.some((s) => s.responsable_id === yoId) ? "__mios__" : ""
+  // Todos ven todos los clientes; si alguien filtra por responsable, queda recordado.
+  const [filterResp, setFilterResp] = useFiltroGuardado("monotributo.seguimiento.responsable", (v) =>
+    v === "__mios__" ? !!yoId : v === "__sin__" || servicios.some((s) => s.responsable_nombre === v)
   );
   const [filterEstado, setFilterEstado] = useState<"" | EstadoMes | "sin_gestionar">("");
   const [soloARevisar, setSoloARevisar] = useState(false);
@@ -747,7 +748,7 @@ export function MonotributoClient({
         equipo={equipoMonotributo}
         conteos={conteosResp}
         filterResp={filterResp}
-        onSelect={(nombre) => setFilterResp((prev) => (prev === nombre ? "" : nombre))}
+        onSelect={(nombre) => setFilterResp(filterResp === nombre ? "" : nombre)}
         onClose={() => setMostrarEquipo(false)}
         accent={ACCENT_MONOTRIBUTO}
       />

@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
-import { puedeSerResponsable, type CampoRevision, type Revision } from "@/lib/monotributo";
+import { type CampoRevision, type Revision } from "@/lib/monotributo";
 import { sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
 import { RevisarClient, type FilaRevision } from "./RevisarClient";
 
@@ -79,8 +79,6 @@ export default async function MonotributoRevisarPage() {
       amarillas={amarillasRaw.map((a) => ({ ...a, responsable_id: servicioPor.get(a.cliente_id)?.responsable_id ?? null }))}
       responsables={responsablesConMarcas}
       yoId={yo?.id ?? null}
-      esAdmin={!!yo?.isAdmin}
-      esResponsable={!!yo && puedeSerResponsable(yo.rol) && servicios.some((s) => s.estado && s.responsable_id === yo.id)}
       puedeEditar={puedeEditar}
     />
   );

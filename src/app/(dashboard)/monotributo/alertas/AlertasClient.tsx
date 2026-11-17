@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
+import { useFiltroGuardado } from "@/components/useFiltroGuardado";
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import {
@@ -52,7 +53,6 @@ export function AlertasClient({
   mesDefault,
   anioDefault,
   yoId,
-  filtroInicialMios,
   puedeEditar,
 }: {
   alertas: Alerta[];
@@ -65,11 +65,13 @@ export function AlertasClient({
   mesDefault: number;
   anioDefault: number;
   yoId: string | null;
-  filtroInicialMios: boolean;
   puedeEditar: boolean;
 }) {
   const router = useRouter();
-  const [filtroResp, setFiltroResp] = useState(filtroInicialMios ? MIOS : "");
+  // Todos ven todo; si alguien filtra por responsable, queda recordado.
+  const [filtroResp, setFiltroResp] = useFiltroGuardado("monotributo.alertas.responsable", (v) =>
+    v === MIOS ? !!yoId : v === SIN || alertas.some((a) => a.responsable_id === v)
+  );
   const [filtroTipo, setFiltroTipo] = useState<"" | TipoAlerta>("");
   const [nota, setNota] = useState("");
   const [abierta, setAbierta] = useState<string | null>(null);

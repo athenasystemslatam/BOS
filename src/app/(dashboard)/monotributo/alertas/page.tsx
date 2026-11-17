@@ -33,7 +33,6 @@ export default async function MonotributoAlertasPage({
 
   const puedeEditar =
     !!yo && !yo.esCobranzas && !yo.esAdministrativo && yo.rol !== "viewer" && (yo.isAdmin || areas.includes("monotributo"));
-  const esResponsable = !!yo && datos.alertas.some((a) => a.responsable_id === yo.id);
 
   // Tiempo de armado en el servidor (se ve en los registros de Vercel).
   console.info(`[tiempo] /monotributo/alertas ${Date.now() - inicio} ms`);
@@ -45,7 +44,6 @@ export default async function MonotributoAlertasPage({
       mesDefault={def.mes}
       anioDefault={def.anio}
       yoId={yo?.id ?? null}
-      filtroInicialMios={esResponsable && !yo?.isAdmin}
       puedeEditar={puedeEditar}
     />
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
+import { useFiltroGuardado } from "@/components/useFiltroGuardado";
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
 import { CAMPO_REVISION_LABEL, type CampoRevision, type Gravedad } from "@/lib/monotributo";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
@@ -45,8 +46,6 @@ export function RevisarClient({
   amarillas,
   responsables,
   yoId,
-  esAdmin,
-  esResponsable,
   puedeEditar,
 }: {
   /** Marcas rojas (completas). Las amarillas vienen livianas y se muestran agrupadas. */
@@ -54,13 +53,13 @@ export function RevisarClient({
   amarillas: AmarillaMin[];
   responsables: { id: string; nombre: string }[];
   yoId: string | null;
-  esAdmin: boolean;
-  esResponsable: boolean;
   puedeEditar: boolean;
 }) {
   const router = useRouter();
-  // Quién revisa: el responsable del cliente; lo que no tiene responsable, el admin.
-  const [filtroResp, setFiltroResp] = useState(esResponsable && !esAdmin ? MIOS : "");
+  // Todos ven todo; si alguien filtra por responsable, queda recordado.
+  const [filtroResp, setFiltroResp] = useFiltroGuardado("monotributo.revisar.responsable", (v) =>
+    v === MIOS ? !!yoId : v === SIN_RESP || filas.some((f) => f.responsable_id === v) || amarillas.some((a) => a.responsable_id === v)
+  );
   // Por defecto solo ROJO; las amarillas se ven agrupadas por tipo.
   const [filtroGravedad, setFiltroGravedad] = useState<"" | Gravedad>("rojo");
   const [filtroCampo, setFiltroCampo] = useState<"" | CampoRevision>("");
