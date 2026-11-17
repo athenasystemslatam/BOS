@@ -12,8 +12,8 @@ Un commit por punto, directo en `main`:
 5. A revisar: por defecto solo rojas; amarillas agrupadas por tipo con "Confirmar todas" (y "Confirmar sin deuda" en el grupo Deuda). Dashboard: destinatarios de VEP/QR y de aviso por separado, adheridos a débito/tarjeta aparte de "paga por su cuenta", "X de N con categoría", "importe cargado en X de Y", "rojas / amarillas". Alertas: débito/tarjeta → "Verificar débito" en lugar de "Sin avisar". Sincronización de marcas reescrita para no leer todo el historial de meses en cada carga. Medición `[tiempo]` en los registros de Vercel para Seguimiento, Dashboard, A revisar y Alertas.
 
 - **Error de la etapa 2 corregido:** el lector de la planilla no tomaba la columna EMPRESA → `empresa_grupo` quedó vacío en la importación. Se completa con `supabase/monotributo_empresa_grupo.sql` (fuera del repo, por CUIT, sin pisar).
-- **SQL pendiente de correr (en este orden, con backup antes):** `add_calendario_arca.sql`, `add_monotributo_historial.sql`, `monotributo_resolver_pago_historico.sql` (resuelve las 128 marcas de pago de sep/oct con nota "historial importado, sin verificar" + índices), `monotributo_empresa_grupo.sql` (fuera del repo). El código funciona sin ellos (usa valores por defecto), pero el calendario, el historial y "Deshacer" se activan recién al correrlos.
-- Pendiente: sumar `calendario_arca`, `monotributo_historial` y `monotributo_alertas_resueltas` a la lista de backup de Monotributo (`lib/backups.ts`) **después** de correr los SQL (si no, el backup falla por tabla inexistente).
+- SQL de la ronda (ya corridos): `add_calendario_arca.sql`, `add_monotributo_historial.sql`, `monotributo_resolver_pago_historico.sql` (resuelve las 128 marcas de pago de sep/oct con nota "historial importado, sin verificar" + índices), `monotributo_empresa_grupo.sql` (fuera del repo). El código funciona sin ellos (usa valores por defecto), pero el calendario, el historial y "Deshacer" se activan recién al correrlos.
+- SQL de la ronda **corridos** por Giuliana el 17-nov (empresa_grupo: 132 completados). Tablas nuevas sumadas al backup de Monotributo.
 
 ## Pendientes al cerrar la sesión del 16-nov (Giuliana) — Módulo Monotributo
 
@@ -148,7 +148,6 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
-- Monotributo (17-nov, en este orden): `add_calendario_arca.sql`, `add_monotributo_historial.sql`, `monotributo_resolver_pago_historico.sql`, `monotributo_empresa_grupo.sql` (fuera del repo).
 - `add_libros_sacar_de_cola.sql` (12-nov, Libros "Sacar de la cola": estado final `quitada` + columnas `quitada_en/por/motivo` en `libros_tareas`).
 
 Antes de eso, ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).
