@@ -11,6 +11,7 @@ export default async function MonotributoAlertasPage({
 }: {
   searchParams: { mes?: string; anio?: string };
 }) {
+  const inicio = Date.now();
   const def = getMesTrabajoActual();
   const mes = Number(searchParams.mes) || def.mes;
   const anio = Number(searchParams.anio) || def.anio;
@@ -31,6 +32,8 @@ export default async function MonotributoAlertasPage({
     !!yo && !yo.esCobranzas && !yo.esAdministrativo && yo.rol !== "viewer" && (yo.isAdmin || areas.includes("monotributo"));
   const esResponsable = !!yo && datos.alertas.some((a) => a.responsable_id === yo.id);
 
+  // Tiempo de armado en el servidor (se ve en los registros de Vercel).
+  console.info(`[tiempo] /monotributo/alertas ${Date.now() - inicio} ms`);
   return (
     <AlertasClient
       {...datos}

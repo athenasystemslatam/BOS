@@ -2,6 +2,19 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 17-nov (Giuliana) — Monotributo: ronda de ajustes de uso diario (puntos 1 a 5)
+
+Un commit por punto, directo en `main`:
+1. Seguimiento compacto (un renglón por cliente, "Empresa" solo si lo es), columna Cliente fija y barra horizontal siempre al pie, orden de columnas por uso, Recategorización solo en su ventana, "Mis clientes" por defecto (admins ven todo), botones directos en Alertas ("Marcar Avisado", "Marcar Enviado", "Ya avisada").
+2. Ficha: Monotributo primero, categoría editable (se guarda en el mes de trabajo), solo-Monotributo oculta Domicilios/Sueldos/FAL, pie corregido.
+3. **Calendario ARCA por año** (tabla `calendario_arca`, pantalla Monotributo → Calendario ARCA, solo admins). Antes estaba hardcodeado en 7 archivos (día 20 y feb/ago). Todo lee el vencimiento y la ventana de recategorización del calendario; sin tabla o sin año cargado usa el día 20 corrido a hábil. Aviso a admins si falta el año (o el siguiente en diciembre). `lib/calendarioArca.ts` / `calendarioArcaUtil.ts`.
+4. **Historial y deshacer** (tabla `monotributo_historial`): antes/después de cada cambio; aviso "Deshacer"; ficha con "Historial de cambios" y "Revertir" (crea entrada nueva); "Reabrir" en A revisar y Alertas. El responsable se revierte desde "Historial de responsables". `lib/monotributoHistorial.ts`, `historialActions.ts`, `components/DeshacerAviso.tsx`.
+5. A revisar: por defecto solo rojas; amarillas agrupadas por tipo con "Confirmar todas" (y "Confirmar sin deuda" en el grupo Deuda). Dashboard: destinatarios de VEP/QR y de aviso por separado, adheridos a débito/tarjeta aparte de "paga por su cuenta", "X de N con categoría", "importe cargado en X de Y", "rojas / amarillas". Alertas: débito/tarjeta → "Verificar débito" en lugar de "Sin avisar". Sincronización de marcas reescrita para no leer todo el historial de meses en cada carga. Medición `[tiempo]` en los registros de Vercel para Seguimiento, Dashboard, A revisar y Alertas.
+
+- **Error de la etapa 2 corregido:** el lector de la planilla no tomaba la columna EMPRESA → `empresa_grupo` quedó vacío en la importación. Se completa con `supabase/monotributo_empresa_grupo.sql` (fuera del repo, por CUIT, sin pisar).
+- **SQL pendiente de correr (en este orden, con backup antes):** `add_calendario_arca.sql`, `add_monotributo_historial.sql`, `monotributo_resolver_pago_historico.sql` (resuelve las 128 marcas de pago de sep/oct con nota "historial importado, sin verificar" + índices), `monotributo_empresa_grupo.sql` (fuera del repo). El código funciona sin ellos (usa valores por defecto), pero el calendario, el historial y "Deshacer" se activan recién al correrlos.
+- Pendiente: sumar `calendario_arca`, `monotributo_historial` y `monotributo_alertas_resueltas` a la lista de backup de Monotributo (`lib/backups.ts`) **después** de correr los SQL (si no, el backup falla por tabla inexistente).
+
 ## Pendientes al cerrar la sesión del 16-nov (Giuliana) — Módulo Monotributo
 
 Hecho y en producción (directo en `main`, decisión de Giuliana): etapas 1, 2, 2b, 3, 4 y 7 (detalle en los bloques de abajo). SQL corridos: `add_monotributo_etapa1.sql`, `importar_monotributo_planilla.sql` (fuera del repo) y `add_monotributo_etapa7.sql`. Ningún SQL pendiente de Monotributo.
@@ -135,6 +148,7 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
+- Monotributo (17-nov, en este orden): `add_calendario_arca.sql`, `add_monotributo_historial.sql`, `monotributo_resolver_pago_historico.sql`, `monotributo_empresa_grupo.sql` (fuera del repo).
 - `add_libros_sacar_de_cola.sql` (12-nov, Libros "Sacar de la cola": estado final `quitada` + columnas `quitada_en/por/motivo` en `libros_tareas`).
 
 Antes de eso, ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).

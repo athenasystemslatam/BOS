@@ -96,9 +96,18 @@ export interface TableroMonotributo {
     pctSinEnvio: number;
     enviosVep: number;
     avisos: number;
-    destinatarios: number;
+    /** Destinatarios distintos de los envíos de VEP/QR y de los avisos, por separado. */
+    destinatariosVep: number;
+    destinatariosAviso: number;
     destinatariosCompartidos: Conteo[];
+    /** Adheridos a débito automático o tarjeta (aparte de "Paga por su cuenta"). */
+    adheridosDebito: number;
+    pctAdheridosDebito: number;
+    pagaPorSuCuenta: number;
+    pctPagaPorSuCuenta: number;
   };
+  /** Clientes con categoría cargada en el mes. */
+  conCategoria: number;
   revisiones: { total: number; rojo: number; amarillo: number; porResponsable: { nombre: string; rojo: number; amarillo: number }[] };
   clientes: FilaClienteTablero[];
 }
@@ -199,7 +208,8 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
   let sinGrupo = 0;
   const deuda = { conDeuda: 0, importeTotal: 0, conImporte: 0, sinDeuda: 0, sinVerificar: 0, avisados: 0, noAvisados: 0 };
   const intimaciones: string[] = [];
-  let sinEnvio = 0, enviosVep = 0, avisos = 0;
+  let sinEnvio = 0, enviosVep = 0, avisos = 0, adheridosDebito = 0, pagaPorSuCuenta = 0, conCategoria = 0;
+  const destinatariosAviso = new Set<string>();
   const destinatarios = new Map<string, { label: string; n: number }>();
   const revResp = new Map<string, { nombre: string; rojo: number; amarillo: number }>();
   let revRojo = 0, revAmarillo = 0;
@@ -242,12 +252,16 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
     if (ficha.forma_pago && FORMAS_SIN_ENVIO.includes(ficha.forma_pago)) sinEnvio++;
     if (ficha.envia_vep) enviosVep++;
     if (ficha.avisa) avisos++;
+    if (ficha.forma_pago === "debito_automatico" || ficha.forma_pago === "tarjeta_credito") adheridosDebito++;
+    if (ficha.forma_pago === "paga_por_su_cuenta") pagaPorSuCuenta++;
+    if (t?.categoria) conCategoria++;
     const dest = claveDestinatario(ficha, s.cliente_id);
-    if (ficha.envia_vep || ficha.avisa) {
+    if (ficha.envia_vep) {
       const d = destinatarios.get(dest.clave) ?? { label: dest.label, n: 0 };
       d.n++;
       destinatarios.set(dest.clave, d);
     }
+    if (ficha.avisa) destinatariosAviso.add(dest.clave);
 
     const rev = revPor.get(s.cliente_id);
     if (rev) {
@@ -317,13 +331,19 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
       pctSinEnvio: total ? Math.round((sinEnvio / total) * 100) : 0,
       enviosVep,
       avisos,
-      destinatarios: destinatarios.size,
+      destinatariosVep: destinatarios.size,
+      destinatariosAviso: destinatariosAviso.size,
+      adheridosDebito,
+      pctAdheridosDebito: total ? Math.round((adheridosDebito / total) * 100) : 0,
+      pagaPorSuCuenta,
+      pctPagaPorSuCuenta: total ? Math.round((pagaPorSuCuenta / total) * 100) : 0,
       destinatariosCompartidos: Array.from(destinatarios.values())
         .filter((d) => d.n > 1)
         .sort((a, b) => b.n - a.n)
         .slice(0, 8)
         .map((d) => ({ label: d.label, n: d.n })),
     },
+    conCategoria,
     revisiones: {
       total: revRojo + revAmarillo,
       rojo: revRojo,

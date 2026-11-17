@@ -13,6 +13,7 @@ export default async function MonotributoPage({
 }: {
   searchParams: { mes?: string; anio?: string };
 }) {
+  const inicio = Date.now();
   const { mes: mesDefault, anio: anioDefault } = getMesTrabajoActual();
   const mes = Number(searchParams.mes) || mesDefault;
   const anio = Number(searchParams.anio) || anioDefault;
@@ -98,6 +99,8 @@ export default async function MonotributoPage({
     };
   });
 
+  // Tiempo de armado en el servidor (se ve en los registros de Vercel).
+  console.info(`[tiempo] /monotributo ${Date.now() - inicio} ms`);
   return (
     <MonotributoClient
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -74,11 +74,15 @@ export async function GET(req: NextRequest) {
     ["No requieren envío mensual", t.automatizacion.sinEnvio],
     ["Envíos de VEP/QR por mes", t.automatizacion.enviosVep],
     ["Avisos por mes", t.automatizacion.avisos],
-    ["Destinatarios distintos", t.automatizacion.destinatarios],
+    ["Destinatarios de VEP/QR", t.automatizacion.destinatariosVep],
+    ["Destinatarios de aviso", t.automatizacion.destinatariosAviso],
+    ["Adheridos a débito o tarjeta", t.automatizacion.adheridosDebito],
+    ["Paga por su cuenta", t.automatizacion.pagaPorSuCuenta],
+    [`Con categoría (de ${t.total})`, t.conCategoria],
   ]);
   seccion("Datos a revisar (marcas pendientes)", [
     ["En rojo", t.revisiones.rojo], ["En amarillo", t.revisiones.amarillo],
-    ...t.revisiones.porResponsable.map((r) => [`· ${r.nombre}`, r.rojo + r.amarillo] as [string, number]),
+    ...t.revisiones.porResponsable.map((r) => [`· ${r.nombre} (rojas / amarillas: ${r.rojo} / ${r.amarillo})`, r.rojo + r.amarillo] as [string, number]),
   ]);
 
   // ── Por responsable ──

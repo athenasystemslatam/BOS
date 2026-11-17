@@ -1,10 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
-import { puedeSerResponsable, type Revision } from "@/lib/monotributo";
+import { puedeSerResponsable, type CampoRevision, type Revision } from "@/lib/monotributo";
 import { sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
 import { RevisarClient, type FilaRevision } from "./RevisarClient";
 
 export default async function MonotributoRevisarPage() {
+  const inicio = Date.now();
   const admin = createAdminClient();
   try {
     await sincronizarRevisionesModulo(admin);
@@ -12,12 +13,17 @@ export default async function MonotributoRevisarPage() {
     // Si la sincronización falla se muestra igual lo que ya está marcado.
   }
 
-  const [yo, areas, revs, servicios, personas] = await Promise.all([
+  // Rojas completas; amarillas livianas (se muestran agrupadas y el detalle se pide al desplegar).
+  const [yo, areas, revs, amarillasRaw, servicios, personas] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
     traerPaginado<Revision & { clientes: { nombre: string; cuit: string } | null }>((d, h) =>
       admin.from("monotributo_revisiones").select("*, clientes(nombre, cuit)")
-        .eq("estado", "pendiente").order("id").range(d, h)
+        .eq("estado", "pendiente").eq("gravedad", "rojo").order("id").range(d, h)
+    ),
+    traerPaginado<{ id: string; cliente_id: string; campo: CampoRevision }>((d, h) =>
+      admin.from("monotributo_revisiones").select("id, cliente_id, campo")
+        .eq("estado", "pendiente").eq("gravedad", "amarillo").order("id").range(d, h)
     ),
     traerPaginado<{ cliente_id: string; responsable_id: string | null; estado: boolean }>((d, h) =>
       admin.from("servicios_cliente").select("cliente_id, responsable_id, estado")
@@ -52,20 +58,26 @@ export default async function MonotributoRevisarPage() {
     };
   });
 
-  const responsablesConMarcas = Array.from(new Set(filas.map((f) => f.responsable_id).filter((x): x is string => !!x)))
+  const responsablesConMarcas = Array.from(new Set([
+    ...filas.map((f) => f.responsable_id),
+    ...amarillasRaw.map((a) => servicioPor.get(a.cliente_id)?.responsable_id ?? null),
+  ].filter((x): x is string => !!x)))
     .map((id) => ({ id, nombre: nombres.get(id) ?? "—" }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
   const puedeEditar =
     !!yo && !yo.esCobranzas && !yo.esAdministrativo && yo.rol !== "viewer" && (yo.isAdmin || areas.includes("monotributo"));
 
+  // Tiempo de armado en el servidor (se ve en los registros de Vercel).
+  console.info(`[tiempo] /monotributo/revisar ${Date.now() - inicio} ms`);
   return (
     <RevisarClient
       filas={filas}
+      amarillas={amarillasRaw.map((a) => ({ ...a, responsable_id: servicioPor.get(a.cliente_id)?.responsable_id ?? null }))}
       responsables={responsablesConMarcas}
       yoId={yo?.id ?? null}
       esAdmin={!!yo?.isAdmin}
-      esResponsable={!!yo && puedeSerResponsable(yo.rol) && filas.some((f) => f.responsable_id === yo.id)}
+      esResponsable={!!yo && puedeSerResponsable(yo.rol) && servicios.some((s) => s.estado && s.responsable_id === yo.id)}
       puedeEditar={puedeEditar}
     />
   );

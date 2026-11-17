@@ -19,7 +19,7 @@ export const TIPO_ALERTA_LABEL: Record<TipoAlerta, string> = {
   sin_avisar: "Sin avisar",
   deuda_sin_avisar: "Deuda sin avisar",
   intimacion: "Intimación",
-  debito_sin_verificar: "Débito sin verificar",
+  debito_sin_verificar: "Verificar débito",
   sin_responsable: "Sin responsable",
 };
 
@@ -30,7 +30,7 @@ export const TIPO_ALERTA_CIERRE: Record<TipoAlerta, string> = {
   sin_avisar: "Se cierra al marcar Avisado (o Enviado / Pagado / No pagó).",
   deuda_sin_avisar: "Se cierra al marcar la deuda como avisada o resuelta (Seguimiento → Deuda).",
   intimacion: "Se cierra al cambiar la intimación en Seguimiento, o con \"Resuelta\".",
-  debito_sin_verificar: "Se cierra al marcar Pagado (o No pagó).",
+  debito_sin_verificar: "Aparece pasado el vencimiento para débito automático o tarjeta (en lugar de \"Sin avisar\": se avisa solo si el débito falla). Se cierra al marcar Pagado o No pagó.",
   sin_responsable: "Se cierra al asignarle responsable.",
 };
 

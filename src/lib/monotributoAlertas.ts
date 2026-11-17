@@ -105,7 +105,9 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
       agregar("sin_enviar", vencido ? "rojo" : "amarillo",
         vencido ? `Venció el ${fmt(vencimiento)} sin VEP enviado (estado: ${estadoTxt}).` : `Vence el ${fmt(vencimiento)}; estado: ${estadoTxt}.`);
     }
-    if (ficha.avisa && !CERRADO_AVISO.includes(estado)) {
+    const esDebito = ficha.forma_pago === "debito_automatico" || ficha.forma_pago === "tarjeta_credito";
+    // Débito automático o tarjeta: no se avisa todos los meses (se avisa solo si el débito falla): va "Verificar débito".
+    if (ficha.avisa && !esDebito && !CERRADO_AVISO.includes(estado)) {
       agregar("sin_avisar", vencido ? "rojo" : "amarillo", `Cliente de AVISAR sin marcar Avisado (estado: ${estadoTxt}).`);
     }
     if (t?.deuda_estado === "si" && !t.deuda_aviso && !t.deuda_resuelta) {
@@ -115,9 +117,9 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
       agregar("intimacion", t.intimacion_estado === "si" ? "rojo" : "amarillo",
         t.intimacion_estado === "si" ? "Intimación: Sí." : "Intimación: Fijarse.", t.intimacion_estado);
     }
-    if (vencido && (ficha.forma_pago === "debito_automatico" || ficha.forma_pago === "tarjeta_credito") && !CERRADO_PAGO.includes(estado)) {
+    if (vencido && esDebito && !CERRADO_PAGO.includes(estado)) {
       agregar("debito_sin_verificar", "amarillo",
-        `${ficha.forma_pago === "debito_automatico" ? "Débito automático" : "Tarjeta"}: verificar que el débito pasó y marcar Pagado.`);
+        `${ficha.forma_pago === "debito_automatico" ? "Débito automático" : "Tarjeta"}: verificar que el débito pasó y marcar Pagado. Se avisa al cliente solo si falló.`);
     }
   }
 

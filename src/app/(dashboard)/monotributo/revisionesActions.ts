@@ -188,3 +188,61 @@ export async function listarResueltas(desde: number): Promise<MarcaResuelta[]> {
   return ((data ?? []) as unknown as (Omit<MarcaResuelta, "cliente"> & { clientes: { nombre: string } | null })[])
     .map(({ clientes, ...r }) => ({ ...r, cliente: clientes?.nombre ?? "—" }));
 }
+
+export interface MarcaPendienteVista {
+  id: string;
+  cliente_id: string;
+  cliente: string;
+  campo: Revision["campo"];
+  motivo: string;
+  anio: number | null;
+  mes: number | null;
+}
+
+/** Marcas pendientes de un grupo (campo + gravedad), para desplegar en A revisar sin traerlas todas al entrar. */
+export async function listarPendientesGrupo(campo: Revision["campo"], gravedad: "rojo" | "amarillo"): Promise<MarcaPendienteVista[]> {
+  try {
+    await requireEditorMonotributo();
+  } catch {
+    // Consulta: solo lectura también puede ver el detalle.
+  }
+  const admin = createAdminClient();
+  const filas: MarcaPendienteVista[] = [];
+  for (let desde = 0; ; desde += 1000) {
+    const { data } = await admin.from("monotributo_revisiones")
+      .select("id, cliente_id, campo, motivo, anio, mes, clientes(nombre)")
+      .eq("estado", "pendiente").eq("campo", campo).eq("gravedad", gravedad)
+      .order("id").range(desde, desde + 999);
+    const lote = ((data ?? []) as unknown as (Omit<MarcaPendienteVista, "cliente"> & { clientes: { nombre: string } | null })[])
+      .map(({ clientes, ...r }) => ({ ...r, cliente: clientes?.nombre ?? "—" }));
+    filas.push(...lote);
+    if (lote.length < 1000) break;
+  }
+  return filas.sort((a, b) => a.cliente.localeCompare(b.cliente));
+}
+
+/** "Confirmar todas" de un grupo de amarillas (por campo), respetando el filtro de responsable.
+ * modo "sin_deuda" carga además Deuda = No. Todo queda en el historial. */
+export async function confirmarGrupo(
+  campo: Revision["campo"],
+  ids: string[],
+  nota: string | null,
+  modo: "confirmar" | "sin_deuda" = "confirmar"
+): Promise<Resultado> {
+  if (modo === "sin_deuda") return confirmarSinDeuda(ids, nota ?? "Sin deuda (confirmado en lote)");
+  let yoId: string;
+  try {
+    yoId = (await requireEditorMonotributo()).id;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+  const admin = createAdminClient();
+  try {
+    const marcas = (await marcasPendientes(admin, ids)).filter((r) => r.campo === campo && r.gravedad === "amarillo");
+    const historialIds = await confirmarMarcas(admin, marcas, yoId, limpiarNota(nota) ?? "Confirmadas en lote");
+    revalidatePath("/monotributo", "layout");
+    return { ok: true, resueltas: marcas.length, historialIds };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No se pudo confirmar." };
+  }
+}

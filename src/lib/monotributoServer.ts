@@ -8,7 +8,6 @@ import {
   valorCampo,
   type CampoRevision,
   type DatosMonotributoCliente,
-  type EstadoMes,
   type Revision,
 } from "@/lib/monotributo";
 
@@ -115,109 +114,108 @@ export function enTandas<T>(lista: T[], tam = 100): T[][] {
   return out;
 }
 
-const MOTIVO_VERIFICAR_PAGO = "VEP enviado y sin Pagado pasado el vencimiento: verificar pago";
-
-/** Pasa las reglas automáticas sobre todo el módulo, en pocas consultas:
- * - datos del cliente (responsable, forma de pago, medio de contacto)
- * - "verificar pago": VEP enviado y sin Pagado pasado el vencimiento del 20
+/** Pasa las reglas automáticas sobre todo el módulo, leyendo solo lo necesario
+ * (no todo el historial de meses, para que siga rápido con el tiempo):
+ * - datos del cliente (responsable, forma de pago, medio de contacto): crea o resuelve
+ * - "verificar pago": ya no se crean marcas (vive en Alertas); las pendientes que
+ *   quedan se resuelven solas cuando ese mes deja de estar en Enviado
  * - deuda: la marca "sin verificar" se resuelve sola cuando el último mes tiene Sí/No
- * Crea las marcas que faltan (salvo que se haya confirmado "Está bien así" con
- * el mismo valor) y resuelve como "corregido" las que ya no corresponden.
- * Solo clientes con Monotributo activo. Nunca pasa nada solo a "No pagó". */
+ * No vuelve a marcar lo confirmado "Está bien así" con el mismo valor. Solo clientes
+ * con Monotributo activo. Lo que se resuelve solo queda en el historial. */
 export async function sincronizarRevisionesModulo(admin: Admin): Promise<{ creadas: number; resueltas: number }> {
   type Serv = { cliente_id: string; responsable_id: string | null; estado: boolean };
-  type Tarea = { cliente_id: string; anio: number; mes: number; cuota_estado: EstadoMes; deuda_estado: string };
-  type RevMin = Pick<Revision, "id" | "cliente_id" | "anio" | "mes" | "campo" | "estado" | "resolucion" | "valor_confirmado">;
+  type RevMin = Pick<Revision, "id" | "cliente_id" | "anio" | "mes" | "campo" | "motivo">;
+  const CAMPOS_REGLA = ["responsable", "forma_pago", "medio_contacto"] as const;
 
-  const [servicios, datosRows, revs, tareas] = await Promise.all([
+  const [servicios, datosRows, pendientesRows] = await Promise.all([
     traerPaginado<Serv>((d, h) =>
       admin.from("servicios_cliente").select("cliente_id, responsable_id, estado")
         .eq("servicio", "monotributo").eq("subtipo", "general").order("id").range(d, h)
     ),
     traerPaginado<DatosMonotributoCliente & { cliente_id: string }>((d, h) =>
-      admin.from("monotributo_clientes").select("*").order("id").range(d, h)
+      admin.from("monotributo_clientes").select("cliente_id, forma_pago, medio, mails, whatsapp").order("id").range(d, h)
     ),
     traerPaginado<RevMin>((d, h) =>
-      admin.from("monotributo_revisiones")
-        .select("id, cliente_id, anio, mes, campo, estado, resolucion, valor_confirmado")
-        .or("estado.eq.pendiente,resolucion.eq.confirmado")
-        .order("id").range(d, h)
-    ),
-    traerPaginado<Tarea>((d, h) =>
-      admin.from("monotributo_tareas").select("cliente_id, anio, mes, cuota_estado, deuda_estado")
-        .order("id").range(d, h)
+      admin.from("monotributo_revisiones").select("id, cliente_id, anio, mes, campo, motivo")
+        .eq("estado", "pendiente").order("id").range(d, h)
     ),
   ]);
 
   const activos = new Map(servicios.filter((s) => s.estado).map((s) => [s.cliente_id, s.responsable_id]));
   const datosPor = new Map(datosRows.map((r) => [r.cliente_id, { ...DATOS_VACIOS, ...r, mails: r.mails ?? [] }]));
   const clave = (c: string, campo: string, anio: number | null, mes: number | null) => `${c}|${campo}|${anio ?? 0}|${mes ?? 0}`;
+  const pendientes = new Map(pendientesRows.map((r) => [clave(r.cliente_id, r.campo, r.anio, r.mes), r]));
 
-  const pendientes = new Map<string, RevMin>();
-  const confirmadas = new Map<string, Set<string>>();
-  for (const r of revs) {
-    const k = clave(r.cliente_id, r.campo, r.anio, r.mes);
-    if (r.estado === "pendiente") pendientes.set(k, r);
-    else if (r.resolucion === "confirmado") {
-      if (!confirmadas.has(k)) confirmadas.set(k, new Set());
-      confirmadas.get(k)!.add(r.valor_confirmado ?? "");
-    }
-  }
-
-  // Lo que hoy corresponde marcar
-  const hallazgos = new Map<string, { cliente_id: string; campo: CampoRevision; anio: number | null; mes: number | null; motivo: string; gravedad: "rojo" | "amarillo"; valor: string }>();
+  // Reglas de datos del cliente
+  const hallazgos = new Map<string, { cliente_id: string; campo: CampoRevision; motivo: string; gravedad: "rojo" | "amarillo"; valor: string }>();
   activos.forEach((responsableId, clienteId) => {
     const datos = datosPor.get(clienteId) ?? { ...DATOS_VACIOS };
     for (const h of evaluarReglasCliente(datos, responsableId)) {
-      const campo = h.campo as "responsable" | "forma_pago" | "medio_contacto";
+      const campo = h.campo as (typeof CAMPOS_REGLA)[number];
       hallazgos.set(clave(clienteId, campo, null, null), {
-        cliente_id: clienteId, campo, anio: null, mes: null, motivo: h.motivo, gravedad: h.gravedad,
-        valor: valorCampo(campo, datos, responsableId),
+        cliente_id: clienteId, campo, motivo: h.motivo, gravedad: h.gravedad, valor: valorCampo(campo, datos, responsableId),
       });
     }
   });
-  const ultimaTarea = new Map<string, Tarea>();
-  for (const t of tareas) {
-    const u = ultimaTarea.get(t.cliente_id);
-    if (!u || t.anio * 100 + t.mes > u.anio * 100 + u.mes) ultimaTarea.set(t.cliente_id, t);
-    // "Verificar pago" ya no crea marcas acá (vive en Alertas, con el vencimiento del calendario ARCA):
-    // solo se mantienen pendientes las que existían mientras el mes siga en Enviado.
-    if (activos.has(t.cliente_id) && t.cuota_estado === "enviado") {
-      hallazgos.set(clave(t.cliente_id, "pago", t.anio, t.mes), {
-        cliente_id: t.cliente_id, campo: "pago", anio: t.anio, mes: t.mes,
-        motivo: MOTIVO_VERIFICAR_PAGO, gravedad: "amarillo", valor: t.cuota_estado,
-      });
+
+  // Solo los meses/clientes que tienen marcas de pago o deuda pendientes (no todo el historial).
+  const pago = pendientesRows.filter((r) => r.campo === "pago" && r.anio && r.mes && activos.has(r.cliente_id));
+  const deuda = pendientesRows.filter((r) => r.campo === "deuda" && activos.has(r.cliente_id));
+  const estadoPago = new Map<string, string>();
+  const ultimaDeuda = new Map<string, { orden: number; deuda_estado: string }>();
+  const clientesConsulta = Array.from(new Set([...pago, ...deuda].map((r) => r.cliente_id)));
+  const desdeAnio = Math.min(...pago.map((r) => r.anio as number), Number(hoyArgentina().slice(0, 4)) - 1);
+  for (const tanda of enTandas(clientesConsulta)) {
+    const { data } = await admin.from("monotributo_tareas")
+      .select("cliente_id, anio, mes, cuota_estado, deuda_estado").in("cliente_id", tanda).gte("anio", desdeAnio);
+    for (const t of (data ?? []) as { cliente_id: string; anio: number; mes: number; cuota_estado: string; deuda_estado: string }[]) {
+      estadoPago.set(clave(t.cliente_id, "pago", t.anio, t.mes), t.cuota_estado);
+      const u = ultimaDeuda.get(t.cliente_id);
+      if (!u || t.anio * 100 + t.mes > u.orden) ultimaDeuda.set(t.cliente_id, { orden: t.anio * 100 + t.mes, deuda_estado: t.deuda_estado });
     }
   }
 
   // Resolver las pendientes que ya no corresponden (solo de clientes activos)
-  const aResolver: string[] = [];
+  const aResolver: RevMin[] = [];
   pendientes.forEach((r, k) => {
     if (!activos.has(r.cliente_id)) return;
-    if (r.campo === "responsable" || r.campo === "forma_pago" || r.campo === "medio_contacto" || r.campo === "pago") {
-      if (!hallazgos.has(k)) aResolver.push(r.id);
+    if ((CAMPOS_REGLA as readonly string[]).includes(r.campo)) {
+      if (!hallazgos.has(k)) aResolver.push(r);
+    } else if (r.campo === "pago") {
+      const est = estadoPago.get(k);
+      if (est && est !== "enviado") aResolver.push(r);
     } else if (r.campo === "deuda") {
-      const u = ultimaTarea.get(r.cliente_id);
-      if (u && u.deuda_estado !== "sin_verificar") aResolver.push(r.id);
+      const u = ultimaDeuda.get(r.cliente_id);
+      if (u && u.deuda_estado !== "sin_verificar") aResolver.push(r);
     }
   });
 
-  // Crear las que faltan
-  const aCrear: Record<string, unknown>[] = [];
-  hallazgos.forEach((h, k) => {
-    if (pendientes.has(k)) return;
-    // "Verificar pago" vive en Alertas (etapa 7): acá solo se resuelven las marcas que ya existían.
-    if (h.campo === "pago") return;
-    if (confirmadas.get(k)?.has(h.valor)) return;
-    aCrear.push({ cliente_id: h.cliente_id, anio: h.anio, mes: h.mes, campo: h.campo, motivo: h.motivo, gravedad: h.gravedad, origen: "regla_automatica" });
-  });
+  // Crear las que faltan, salvo lo confirmado "Está bien así" con el mismo valor
+  // (las confirmadas se leen solo para estos clientes, no todas).
+  const candidatos = Array.from(hallazgos.entries()).filter(([k]) => !pendientes.has(k));
+  const confirmadas = new Set<string>();
+  for (const tanda of enTandas(Array.from(new Set(candidatos.map(([, h]) => h.cliente_id))))) {
+    const { data } = await admin.from("monotributo_revisiones").select("cliente_id, campo, valor_confirmado")
+      .in("cliente_id", tanda).in("campo", [...CAMPOS_REGLA]).eq("resolucion", "confirmado");
+    for (const c of (data ?? []) as { cliente_id: string; campo: string; valor_confirmado: string | null }[]) {
+      confirmadas.add(`${clave(c.cliente_id, c.campo, null, null)}=${c.valor_confirmado ?? ""}`);
+    }
+  }
+  const aCrear = candidatos
+    .filter(([k, h]) => !confirmadas.has(`${k}=${h.valor}`))
+    .map(([, h]) => ({ cliente_id: h.cliente_id, campo: h.campo, motivo: h.motivo, gravedad: h.gravedad, origen: "regla_automatica" }));
 
   const ahora = new Date().toISOString();
-  for (const ids of enTandas(aResolver)) {
+  for (const tanda of enTandas(aResolver.map((r) => r.id))) {
     await admin.from("monotributo_revisiones")
       .update({ estado: "resuelta", resolucion: "corregido", resuelta_at: ahora })
-      .in("id", ids).eq("estado", "pendiente");
+      .in("id", tanda).eq("estado", "pendiente");
   }
+  await registrarHistorial(admin, aResolver.map((r) => ({
+    cliente_id: r.cliente_id, anio: r.anio, mes: r.mes, entidad: "revision" as const, campo: r.campo,
+    valor_anterior: { estado: "pendiente", motivo: r.motivo }, valor_nuevo: { estado: "resuelta", resolucion: "corregido", motivo: r.motivo },
+    usuario_id: null, ref_id: r.id, nota: "Se resolvió sola: el dato cambió",
+  })));
   for (const filas of enTandas(aCrear, 200)) {
     await admin.from("monotributo_revisiones").insert(filas);
   }

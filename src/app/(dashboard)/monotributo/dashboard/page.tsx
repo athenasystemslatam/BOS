@@ -51,6 +51,7 @@ export default async function MonotributoDashboardPage({
 }: {
   searchParams: { mes?: string; anio?: string; resp?: string };
 }) {
+  const inicio = Date.now();
   const { mes: mesDefault, anio: anioDefault } = getMesTrabajoActual();
   const mes = Number(searchParams.mes) || mesDefault;
   const anio = Number(searchParams.anio) || anioDefault;
@@ -70,6 +71,8 @@ export default async function MonotributoDashboardPage({
   const dias = t.diasAlVencimiento;
   const exportHref = `/api/exportar/monotributo?mes=${mes}&anio=${anio}${resp ? `&resp=${encodeURIComponent(resp)}` : ""}`;
 
+  // Tiempo de armado en el servidor (se ve en los registros de Vercel).
+  console.info(`[tiempo] /monotributo/dashboard ${Date.now() - inicio} ms`);
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
       {/* Header */}
@@ -164,7 +167,7 @@ export default async function MonotributoDashboardPage({
             {t.revisiones.porResponsable.map((r) => (
               <span key={r.nombre} className="text-[12px] bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1">
                 <span className="font-medium text-gray-800">{r.nombre}</span>{" "}
-                <span className="text-red-600">{r.rojo}</span> / <span className="text-amber-700">{r.amarillo}</span>
+                <span className="text-red-600">{r.rojo} rojas</span> / <span className="text-amber-700">{r.amarillo} amarillas</span>
               </span>
             ))}
           </div>
@@ -230,7 +233,12 @@ export default async function MonotributoDashboardPage({
           <Distribucion titulo="Forma de pago" datos={t.cartera.formaPago} total={t.total} alerta="Sin forma de pago" />
           <Distribucion titulo="Medio" datos={t.cartera.medio} total={t.total} alerta="Sin medio" />
           <Distribucion titulo="Envío" datos={t.cartera.envio} total={t.total} />
-          <Distribucion titulo="Categoría" datos={t.cartera.categoria} total={t.total} />
+          <Distribucion
+            titulo={`Categoría · ${t.conCategoria} de ${t.total} con categoría`}
+            datos={t.conCategoria ? t.cartera.categoria : []}
+            total={t.total}
+            pie={t.conCategoria ? undefined : "Todavía no hay categorías cargadas (se cargan en Seguimiento o en la ficha)."}
+          />
           <Distribucion titulo="Tipo" datos={t.cartera.tipo} total={t.total} />
           <Distribucion
             titulo="Empresa o grupo (los más grandes)"
@@ -252,7 +260,7 @@ export default async function MonotributoDashboardPage({
           <div className="text-[12.5px] text-gray-600 space-y-1 mb-4">
             <p>
               Importe total cargado: <span className="font-semibold text-gray-900">{fmtPesos(t.deuda.importeTotal)}</span>
-              <span className="text-gray-400"> ({t.deuda.conImporte} de {t.deuda.conDeuda} con importe)</span>
+              <span className="text-gray-400"> (importe cargado en {t.deuda.conImporte} de {t.deuda.conDeuda})</span>
             </p>
             <p>
               Deuda avisada: <span className="font-semibold text-gray-900">{t.deuda.avisados}</span> · no avisada:{" "}
@@ -264,18 +272,21 @@ export default async function MonotributoDashboardPage({
 
         {/* Automatización */}
         <Bloque titulo="Automatización" subtitulo="Cuánto trabajo manual hay detrás de cada mes" sinMargen>
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <Mini label="Sin envío mensual" valor={`${t.automatizacion.pctSinEnvio}%`} color="text-emerald-600" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+            <Mini label="Adheridos a débito o tarjeta" valor={`${t.automatizacion.adheridosDebito} · ${t.automatizacion.pctAdheridosDebito}%`} color="text-emerald-600" />
+            <Mini label="Paga por su cuenta" valor={`${t.automatizacion.pagaPorSuCuenta} · ${t.automatizacion.pctPagaPorSuCuenta}%`} color="text-gray-900" />
+            <Mini label="Sin envío mensual (total)" valor={`${t.automatizacion.pctSinEnvio}%`} color="text-emerald-600" />
             <Mini label="Envíos VEP/QR por mes" valor={t.automatizacion.enviosVep} color="text-gray-900" />
-            <Mini label="Destinatarios distintos" valor={t.automatizacion.destinatarios} color="text-gray-900" />
+            <Mini label="Destinatarios de VEP/QR" valor={t.automatizacion.destinatariosVep} color="text-gray-900" />
+            <Mini label="Destinatarios de aviso" valor={t.automatizacion.destinatariosAviso} color="text-gray-900" />
           </div>
           <p className="text-[12px] text-gray-500 mb-3">
             {t.automatizacion.sinEnvio} de {t.total} clientes no requieren envío (débito automático, tarjeta o paga por su cuenta).{" "}
-            {t.automatizacion.avisos} se avisan por mes. Los envíos y avisos van a {t.automatizacion.destinatarios} destinatarios distintos.
+            {t.automatizacion.enviosVep} envíos de VEP/QR van a {t.automatizacion.destinatariosVep} destinatarios; {t.automatizacion.avisos} avisos van a {t.automatizacion.destinatariosAviso}.
           </p>
           {t.automatizacion.destinatariosCompartidos.length > 0 && (
             <>
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Destinatarios con varios clientes</p>
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Destinatarios de VEP/QR con varios clientes</p>
               <div className="space-y-1">
                 {t.automatizacion.destinatariosCompartidos.map((d) => (
                   <div key={d.label} className="flex items-center justify-between gap-3 text-[12px]">
