@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronDown, History, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, History, Search, ShieldCheck, X } from "lucide-react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
@@ -18,6 +18,7 @@ import { upsertMonotributoTarea, type CambiosTarea } from "./actions";
 import {
   ESTADOS_MES,
   ESTADOS_SIN_GESTIONAR,
+  contarGestionados,
   ESTADO_MES_LABEL,
   FORMA_PAGO_LABEL,
   MEDIO_LABEL,
@@ -168,6 +169,7 @@ export function MonotributoClient({
   const [filterEstado, setFilterEstado] = useState<"" | EstadoMes | "sin_gestionar">("");
   const [soloARevisar, setSoloARevisar] = useState(false);
   const [soloConDeuda, setSoloConDeuda] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
   const [reasignando, setReasignando] = useState<Servicio | null>(null);
   const [editandoDeuda, setEditandoDeuda] = useState<Servicio | null>(null);
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
@@ -284,13 +286,20 @@ export function MonotributoClient({
     if (filterResp === "__mios__") list = list.filter((s) => s.responsable_id === yoId);
     else if (filterResp === "__sin__") list = list.filter((s) => !s.responsable_nombre);
     else if (filterResp) list = list.filter((s) => s.responsable_nombre === filterResp);
+    const q = busqueda.trim().toLowerCase();
+    if (q) {
+      const qDigitos = q.replace(/\D/g, "");
+      list = list.filter((s) =>
+        (s.clientes?.nombre ?? "").toLowerCase().includes(q) || (qDigitos.length >= 3 && (s.clientes?.cuit ?? "").replace(/\D/g, "").includes(qDigitos))
+      );
+    }
     if (soloARevisar) list = list.filter((s) => !!revisiones[s.cliente_id]);
     if (soloConDeuda) list = list.filter((s) => { const t = getTarea(s.cliente_id); return t.deuda_estado === "si" && !t.deuda_resuelta; });
     if (filterEstado === "sin_gestionar") list = list.filter((s) => ESTADOS_SIN_GESTIONAR.includes(getTarea(s.cliente_id).cuota_estado));
     else if (filterEstado) list = list.filter((s) => getTarea(s.cliente_id).cuota_estado === filterEstado);
     return [...list].sort((a, b) => (a.clientes?.nombre ?? "").localeCompare(b.clientes?.nombre ?? ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [servicios, filterResp, filterEstado, soloARevisar, soloConDeuda, revisiones, tareasMap]);
+  }, [servicios, filterResp, filterEstado, soloARevisar, soloConDeuda, busqueda, revisiones, tareasMap]);
 
   const stats = useMemo(() => {
     const porEstado = Object.fromEntries(ESTADOS_MES.map((e) => [e, 0])) as Record<EstadoMes, number>;
@@ -305,132 +314,201 @@ export function MonotributoClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servicios, tareasMap]);
 
-  const hayFiltro = !!(filterResp || filterEstado || soloARevisar || soloConDeuda);
+  const hayFiltro = !!(filterResp || filterEstado || soloARevisar || soloConDeuda || busqueda.trim());
+  const gestionados = contarGestionados(stats.porEstado);
+  const sinGestionar = ESTADOS_SIN_GESTIONAR.reduce((n, e) => n + stats.porEstado[e], 0);
+  // Los períodos van del más nuevo al más viejo: "anterior" = +1 en la lista.
+  const indicePeriodo = periodos.findIndex((p) => p.mes === mes && p.anio === anio);
+  function irPeriodo(paso: number) {
+    const p = periodos[indicePeriodo + paso];
+    if (p) navigatePeriod(p.mes, p.anio);
+  }
 
   return (
     <>
-    <div className="flex flex-col h-full bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-6 rounded-full bg-amber-500" />
-            <div>
-              <h1 className="text-[17px] font-semibold text-gray-900">Monotributo</h1>
-              <p className="text-[12px] text-gray-400 mt-0.5">
-                Seguimiento mensual · la cuota {diasAlVto < 0 ? "venció" : "vence"} el {fmtFecha(vencimiento)}
-                <span className={clsx("ml-1 font-medium", diasAlVto < 0 ? "text-gray-400" : diasAlVto <= 3 ? "text-red-600" : "text-gray-600")}>
-                  {diasAlVto > 0 ? `· ${diasAlVto} ${diasAlVto === 1 ? "día" : "días"}` : diasAlVto === 0 ? "· hoy" : `· hace ${-diasAlVto} ${diasAlVto === -1 ? "día" : "días"}`}
-                </span>
-              </p>
-            </div>
-          </div>
+    <div className="flex flex-col h-full p-4 md:p-8 bg-gray-50">
+      {/* Header (mismo formato que Seguimiento de Sueldos) */}
+      <div className="shrink-0 flex flex-col gap-3 md:flex-row md:items-start md:justify-between mb-5">
+        <div>
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">
+            Monotributo · Seguimiento mensual
+          </p>
+          <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight flex items-center gap-3">
+            Seguimiento
+            {isAdmin && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-bordo/10 text-bordo px-2 py-0.5 rounded-full">
+                <ShieldCheck size={11} />
+                Vista admin
+              </span>
+            )}
+            {!puedeEditar && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                Modo consulta — solo lectura
+              </span>
+            )}
+          </h1>
+          <p className="text-sm text-gray-400 mt-1">
+            {stats.total} clientes ·{" "}
+            <span className="text-success font-medium">{gestionados} gestionados</span>
+            {sinGestionar > 0 && (
+              <>
+                {" "}·{" "}
+                <span className="text-warning font-medium">{sinGestionar} sin gestionar</span>
+              </>
+            )}
+            {" "}· la cuota {diasAlVto < 0 ? "venció" : "vence"} el {fmtFecha(vencimiento)}
+            <span className={clsx("ml-1 font-medium", diasAlVto < 0 ? "text-gray-400" : diasAlVto <= 3 ? "text-red-600" : "text-gray-500")}>
+              {diasAlVto > 0 ? `(${diasAlVto} ${diasAlVto === 1 ? "día" : "días"})` : diasAlVto === 0 ? "(hoy)" : `(hace ${-diasAlVto} ${diasAlVto === -1 ? "día" : "días"})`}
+            </span>
+          </p>
+        </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/monotributo/revisar"
+            className={clsx(
+              "flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[12px] font-medium transition-colors",
+              totalARevisar > 0 ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : "border-gray-200 text-gray-600 hover:bg-gray-50"
+            )}
+          >
+            A revisar ({totalARevisar})
+          </Link>
+          {totalAlertas !== null && (
             <Link
-              href="/monotributo/revisar"
+              href={`/monotributo/alertas?mes=${mes}&anio=${anio}`}
               className={clsx(
-                "text-xs px-3 py-2 rounded-lg border font-medium transition-colors",
-                totalARevisar > 0 ? "bg-red-50 border-red-200 text-red-700 hover:bg-red-100" : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                "flex items-center gap-1.5 px-3 py-2 rounded-lg border text-[12px] font-medium transition-colors",
+                totalAlertas > 0 ? "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100" : "border-gray-200 text-gray-600 hover:bg-gray-50"
               )}
             >
-              A revisar ({totalARevisar})
+              Alertas ({totalAlertas})
             </Link>
-            {totalAlertas !== null && (
-              <Link
-                href={`/monotributo/alertas?mes=${mes}&anio=${anio}`}
-                className={clsx(
-                  "text-xs px-3 py-2 rounded-lg border font-medium transition-colors",
-                  totalAlertas > 0 ? "bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100" : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
-                )}
-              >
-                Alertas ({totalAlertas})
-              </Link>
-            )}
-            <EquipoModuloBoton cantidad={equipoMonotributo.length} accent={ACCENT_MONOTRIBUTO} onClick={() => setMostrarEquipo(true)} />
-            <div className="relative">
-              <select
-                value={`${mes}-${anio}`}
-                onChange={(e) => {
-                  const [m, a] = e.target.value.split("-").map(Number);
-                  navigatePeriod(m, a);
-                }}
-                className="appearance-none text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-amber-400 cursor-pointer"
-              >
-                {periodos.map(({ mes: m, anio: a }) => (
-                  <option key={`${m}-${a}`} value={`${m}-${a}`}>{MESES_NOMBRES[m]} {a}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
+          )}
+          <EquipoModuloBoton cantidad={equipoMonotributo.length} accent={ACCENT_MONOTRIBUTO} onClick={() => setMostrarEquipo(true)} />
+
+          {/* Navegación de período (igual que Sueldos) */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => irPeriodo(1)}
+              disabled={indicePeriodo >= periodos.length - 1}
+              title="Mes anterior"
+              className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <select
+              value={`${mes}-${anio}`}
+              onChange={(e) => {
+                const [m, a] = e.target.value.split("-").map(Number);
+                navigatePeriod(m, a);
+              }}
+              className="py-2 px-4 rounded-lg border border-gray-200 bg-white text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo cursor-pointer min-w-[145px]"
+            >
+              {periodos.map(({ mes: m, anio: a }) => (
+                <option key={`${m}-${a}`} value={`${m}-${a}`}>{MESES_NOMBRES[m]} {a}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => irPeriodo(-1)}
+              disabled={indicePeriodo <= 0}
+              title="Mes siguiente"
+              className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-40 transition-colors text-gray-400 hover:text-gray-700"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
         </div>
       </div>
 
       {avisoCalendario && (
-        <Link href="/monotributo/calendario" className="block text-[12.5px] bg-amber-50 border-b border-amber-200 text-amber-800 px-6 py-2 hover:bg-amber-100">
+        <Link href="/monotributo/calendario" className="shrink-0 block mb-4 text-[12.5px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-2.5 hover:bg-amber-100">
           {avisoCalendario} Cargarlo →
         </Link>
       )}
 
-      {/* Stats + Filters */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-x-6 gap-y-2 flex-wrap">
-        <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
-          {ESTADOS_MES.map((e) => (
-            <button
-              key={e}
-              onClick={() => setFilterEstado((f) => (f === e ? "" : e))}
-              className={clsx(
-                "rounded-full px-2 py-0.5 font-medium border transition-colors",
-                ESTILO_ESTADO[e],
-                filterEstado === e ? "border-gray-400" : "border-transparent",
-                stats.porEstado[e] === 0 && "opacity-40"
-              )}
-            >
-              {ESTADO_MES_LABEL[e]} {stats.porEstado[e]}
+      {/* Filtro por estado del mes: "Todos" para ver todo y uno por estado */}
+      <div className="shrink-0 flex flex-wrap items-center gap-1.5 mb-3">
+        <button
+          onClick={() => setFilterEstado("")}
+          className={clsx(
+            "px-3 py-1 rounded-full text-[12px] font-medium border transition-all",
+            filterEstado === "" ? "bg-bordo text-white border-bordo" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700"
+          )}
+        >
+          Todos ({stats.total})
+        </button>
+        {ESTADOS_MES.map((e) => (
+          <button
+            key={e}
+            onClick={() => setFilterEstado((f) => (f === e ? "" : e))}
+            className={clsx(
+              "px-3 py-1 rounded-full text-[12px] font-medium border transition-all",
+              filterEstado === e ? "bg-bordo text-white border-bordo" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700",
+              stats.porEstado[e] === 0 && filterEstado !== e && "opacity-50"
+            )}
+          >
+            {ESTADO_MES_LABEL[e]} ({stats.porEstado[e]})
+          </button>
+        ))}
+        <button
+          onClick={() => setFilterEstado((f) => (f === "sin_gestionar" ? "" : "sin_gestionar"))}
+          className={clsx(
+            "px-3 py-1 rounded-full text-[12px] font-medium border transition-all",
+            filterEstado === "sin_gestionar" ? "bg-bordo text-white border-bordo" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700"
+          )}
+        >
+          Sin gestionar ({sinGestionar})
+        </button>
+      </div>
+
+      {/* Buscador + responsable + otros filtros */}
+      <div className="shrink-0 flex flex-wrap items-center gap-2 mb-4">
+        <div className="relative max-w-xs w-full sm:w-56">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Buscar cliente o CUIT..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="w-full pl-8 pr-7 py-1.5 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo placeholder:text-gray-300 bg-white"
+          />
+          {busqueda && (
+            <button onClick={() => setBusqueda("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+              <X size={12} />
             </button>
-          ))}
-          <span className="text-gray-300 mx-1">·</span>
-          <span className="text-gray-500">{stats.total} clientes</span>
-          {stats.conDeuda > 0 && (
-            <span className="bg-red-50 text-red-600 border border-red-200 rounded-full px-2 py-0.5 font-semibold">{stats.conDeuda} con deuda</span>
-          )}
-          {esRecategorizacion && (
-            <span className="bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 font-medium">
-              Mes de recategorización · {stats.recategorizadas}/{stats.total}
-            </span>
           )}
         </div>
-
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative">
-            <select
-              value={filterResp}
-              onChange={(e) => setFilterResp(e.target.value)}
-              className="appearance-none text-xs text-gray-600 bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:border-amber-400 cursor-pointer"
-            >
-              <option value="">Todos los responsables</option>
-              {yoId && <option value="__mios__">Mis clientes</option>}
-              {responsables.map((r) => <option key={r} value={r}>{r}</option>)}
-              <option value="__sin__">Sin responsable</option>
-            </select>
-            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
-          <FiltroBoton activo={filterEstado === "sin_gestionar"} onClick={() => setFilterEstado((f) => (f === "sin_gestionar" ? "" : "sin_gestionar"))} color="amber">
-            Sin gestionar
-          </FiltroBoton>
-          <FiltroBoton activo={soloConDeuda} onClick={() => setSoloConDeuda((v) => !v)} color="red">Con deuda</FiltroBoton>
-          <FiltroBoton activo={soloARevisar} onClick={() => setSoloARevisar((v) => !v)} color="red">Solo a revisar</FiltroBoton>
+        <div className="relative">
+          <select
+            value={filterResp}
+            onChange={(e) => setFilterResp(e.target.value)}
+            className="appearance-none text-[12px] text-gray-600 bg-white border border-gray-200 rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-bordo focus:border-bordo cursor-pointer"
+          >
+            <option value="">Todos los responsables</option>
+            {yoId && <option value="__mios__">Mis clientes</option>}
+            {responsables.map((r) => <option key={r} value={r}>{r}</option>)}
+            <option value="__sin__">Sin responsable</option>
+          </select>
+          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
+        <FiltroBoton activo={soloConDeuda} onClick={() => setSoloConDeuda((v) => !v)} color="red">
+          Con deuda{stats.conDeuda ? ` (${stats.conDeuda})` : ""}
+        </FiltroBoton>
+        <FiltroBoton activo={soloARevisar} onClick={() => setSoloARevisar((v) => !v)} color="red">Solo a revisar</FiltroBoton>
+        {esRecategorizacion && (
+          <span className="text-[11px] bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5 font-medium">
+            Recategorización · {stats.recategorizadas}/{stats.total}
+          </span>
+        )}
+        <span className="text-[11px] text-gray-400 ml-auto">{filas.length} de {stats.total} visibles</span>
       </div>
 
       {/* Tabla: una sola caja con scroll en los dos sentidos, así la barra horizontal queda siempre al pie de la pantalla */}
+      <div className="flex-1 min-h-0 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
       <div className="flex-1 min-h-0 overflow-auto" style={{ overflowX: "scroll" }}>
         <table className="w-full text-sm whitespace-nowrap">
           <thead className="sticky top-0 bg-gray-50 z-20">
-            <tr className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+            <tr className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">
               <th className="sticky left-0 z-30 bg-gray-50 px-6 py-2.5 min-w-[280px]">Cliente</th>
               <th className="px-3 py-2.5">Responsable</th>
               <th className="px-3 py-2.5">Pago y envío</th>
@@ -461,7 +539,7 @@ export function MonotributoClient({
               return (
                 <tr key={s.cliente_id} className={clsx("group transition-colors", conDeuda ? "bg-red-50/40 hover:bg-amber-50" : "hover:bg-amber-50")}>
                   {/* Cliente (fija al scrollear de costado) */}
-                  <td className={clsx("sticky left-0 z-10 px-6 py-1.5 group-hover:bg-amber-50", conDeuda ? "bg-red-50" : "bg-white")}>
+                  <td className={clsx("sticky left-0 z-10 px-6 py-1.5 text-left group-hover:bg-amber-50", conDeuda ? "bg-red-50" : "bg-white")}>
                     <div className="flex items-center gap-1.5">
                       {revisiones[s.cliente_id] && (
                         <span
@@ -478,8 +556,8 @@ export function MonotributoClient({
                   </td>
 
                   {/* Responsable */}
-                  <td className="px-3 py-1.5">
-                    <div className="flex items-center gap-1.5">
+                  <td className="px-3 py-1.5 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
                       <span className={clsx("text-[12px]", s.responsable_nombre ? "text-gray-600" : "text-red-600 font-medium")}>
                         {s.responsable_nombre ?? "Sin responsable"}
                       </span>
@@ -492,7 +570,7 @@ export function MonotributoClient({
                   </td>
 
                   {/* Pago y envío (datos fijos: se editan en la ficha) */}
-                  <td className="px-3 py-1.5" title={[f?.medio ? MEDIO_LABEL[f.medio] : null, f?.destinatario].filter(Boolean).join(" · ") || undefined}>
+                  <td className="px-3 py-1.5 text-center" title={[f?.medio ? MEDIO_LABEL[f.medio] : null, f?.destinatario].filter(Boolean).join(" · ") || undefined}>
                     <span className={clsx("text-[12px]", f?.forma_pago ? "text-gray-700" : "text-red-600")}>
                       {f?.forma_pago ? FORMA_PAGO_LABEL[f.forma_pago] : "Sin forma de pago"}
                     </span>
@@ -500,7 +578,7 @@ export function MonotributoClient({
                   </td>
 
                   {/* Estado del mes */}
-                  <td className="px-3 py-1.5" title={cambio}>
+                  <td className="px-3 py-1.5 text-center" title={cambio}>
                     {puedeEditar ? (
                       <div className="relative inline-block">
                         <select
@@ -523,7 +601,7 @@ export function MonotributoClient({
                   </td>
 
                   {/* Deuda */}
-                  <td className="px-3 py-1.5">
+                  <td className="px-3 py-1.5 text-center">
                     <button
                       onClick={() => setEditandoDeuda(s)}
                       title={puedeEditar ? "Ver / editar deuda e intimación" : "Ver deuda e intimación"}
@@ -540,7 +618,7 @@ export function MonotributoClient({
                   </td>
 
                   {/* Intimación */}
-                  <td className="px-3 py-1.5" title={t.intimacion_fecha ? `Desde ${fmtFecha(t.intimacion_fecha)}` : undefined}>
+                  <td className="px-3 py-1.5 text-center" title={t.intimacion_fecha ? `Desde ${fmtFecha(t.intimacion_fecha)}` : undefined}>
                     {puedeEditar ? (
                       <div className="relative inline-block">
                         <select
@@ -565,7 +643,7 @@ export function MonotributoClient({
                   </td>
 
                   {/* Categoría */}
-                  <td className="px-3 py-1.5">
+                  <td className="px-3 py-1.5 text-center">
                     {puedeEditar ? (
                       <div className="relative inline-block">
                         <select
@@ -585,7 +663,7 @@ export function MonotributoClient({
 
                   {/* Recategorización: solo en la ventana del calendario ARCA */}
                   {esRecategorizacion && (
-                    <td className="px-3 py-1.5">
+                    <td className="px-3 py-1.5 text-center">
                       {puedeEditar ? (
                         <div className="relative inline-block">
                           <select
@@ -611,7 +689,7 @@ export function MonotributoClient({
                   )}
 
                   {/* Observaciones */}
-                  <td className="px-3 py-1.5">
+                  <td className="px-3 py-1.5 text-center">
                     {puedeEditar ? (
                       <input
                         type="text"
@@ -621,7 +699,7 @@ export function MonotributoClient({
                           const val = e.target.value || null;
                           if (val !== t.observaciones) guardarCambio(s.cliente_id, { observaciones: val });
                         }}
-                        className="text-[12px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 w-full min-w-[160px] placeholder:text-gray-300"
+                        className="text-[12px] text-gray-600 text-center border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1 py-0.5 w-full min-w-[160px] placeholder:text-gray-300"
                       />
                     ) : (
                       <span className="text-[12px] text-gray-500">{t.observaciones ?? "—"}</span>
@@ -632,6 +710,7 @@ export function MonotributoClient({
             })}
           </tbody>
         </table>
+      </div>
       </div>
     </div>
     {aviso}
