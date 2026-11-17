@@ -61,6 +61,7 @@ type Tarea = {
   deuda_estado: DeudaEstado;
   deuda_periodos: string | null;
   deuda_texto_original: string | null;
+  deuda_nota: string | null;
   deuda_monto: number | null;
   deuda_aviso: boolean;
   deuda_aviso_fecha: string | null;
@@ -180,6 +181,7 @@ export function MonotributoClient({
     deuda_estado: "sin_verificar",
     deuda_periodos: null,
     deuda_texto_original: null,
+    deuda_nota: null,
     deuda_monto: null,
     deuda_aviso: false,
     deuda_aviso_fecha: null,
@@ -683,7 +685,14 @@ function FiltroBoton({ activo, onClick, color, children }: { activo: boolean; on
   );
 }
 
-/** Deuda e intimación del mes: estado, períodos, importe, aviso y resolución, cada uno con su fecha. */
+/** NOTAS de la planilla, sacadas del texto original importado ("DEUDA: SI | PERIODOS: … | NOTAS: …"). */
+function notasDeLaPlanilla(textoOriginal: string | null): string {
+  const m = (textoOriginal ?? "").match(/NOTAS:\s*(.*)$/);
+  return m ? m[1].trim() : "";
+}
+
+/** Ventana chica de la deuda del mes: estado, períodos, importe, avisada (+fecha) y nota.
+ * Precargada con lo importado de la planilla. Guarda con historial y "Deshacer". */
 function DeudaModal({
   nombre,
   tarea,
@@ -703,29 +712,23 @@ function DeudaModal({
 }) {
   const [estado, setEstado] = useState<DeudaEstado>(tarea.deuda_estado);
   const [periodos, setPeriodos] = useState(tarea.deuda_periodos ?? "");
-  const [monto, setMonto] = useState(tarea.deuda_monto === null ? "" : String(tarea.deuda_monto));
+  const [monto, setMonto] = useState(tarea.deuda_monto === null ? "" : String(tarea.deuda_monto).replace(".", ","));
   const [avisada, setAvisada] = useState(tarea.deuda_aviso);
   const [avisadaFecha, setAvisadaFecha] = useState(tarea.deuda_aviso_fecha ?? "");
-  const [resuelta, setResuelta] = useState(tarea.deuda_resuelta);
-  const [resueltaFecha, setResueltaFecha] = useState(tarea.deuda_resuelta_fecha ?? "");
-  const [intimacion, setIntimacion] = useState<IntimacionEstado | "">(tarea.intimacion_estado ?? "");
-  const [intimacionFecha, setIntimacionFecha] = useState(tarea.intimacion_fecha ?? "");
+  const [nota, setNota] = useState(tarea.deuda_nota ?? notasDeLaPlanilla(tarea.deuda_texto_original));
   const [err, setErr] = useState<string | null>(null);
 
   function guardar() {
-    const m = monto.trim() === "" ? null : Number(monto.replace(/\./g, "").replace(",", "."));
-    if (m !== null && (!Number.isFinite(m) || m < 0)) return setErr("El importe tiene que ser un número.");
-    const hoy = hoyArgentina();
+    const limpio = monto.trim().replace(/\$|\s/g, "");
+    const m = limpio === "" ? null : Number(limpio.includes(",") ? limpio.replace(/\./g, "").replace(",", ".") : limpio);
+    if (m !== null && (!Number.isFinite(m) || m < 0)) return setErr("El importe tiene que ser un número (ej. 208.274,38).");
     onGuardar({
       deuda_estado: estado,
       deuda_periodos: periodos.trim() || null,
       deuda_monto: m,
       deuda_aviso: avisada,
-      deuda_aviso_fecha: avisada ? (avisadaFecha || hoy) : null,
-      deuda_resuelta: resuelta,
-      deuda_resuelta_fecha: resuelta ? (resueltaFecha || hoy) : null,
-      intimacion_estado: intimacion || null,
-      intimacion_fecha: intimacion && intimacion !== "no" ? (intimacionFecha || hoy) : null,
+      deuda_aviso_fecha: avisada ? (avisadaFecha || hoyArgentina()) : null,
+      deuda_nota: nota.trim() || null,
     });
   }
 
@@ -733,93 +736,63 @@ function DeudaModal({
   const label = "text-[10.5px] font-semibold tracking-[.08em] uppercase text-gray-400";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
           <div>
-            <p className="text-[10.5px] font-semibold tracking-[.18em] uppercase text-gray-400">Deuda e intimación · {MESES_NOMBRES[mes]} {anio}</p>
-            <h2 className="text-[16px] font-semibold text-gray-900 mt-1">{nombre}</h2>
+            <p className="text-[10.5px] font-semibold tracking-[.14em] uppercase text-gray-400">Deuda · {MESES_NOMBRES[mes]} {anio}</p>
+            <h2 className="text-[15px] font-semibold text-gray-900 mt-0.5">{nombre}</h2>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
         </div>
-        <div className="px-6 py-5 space-y-4">
-          <div>
-            <p className={label}>Deuda</p>
-            <div className="flex gap-2 mt-1">
-              {(Object.keys(DEUDA_LABEL) as DeudaEstado[]).map((k) => (
-                <button
-                  key={k}
-                  disabled={!puedeEditar}
-                  onClick={() => setEstado(k)}
-                  className={clsx(
-                    "text-[12px] px-3 py-1.5 rounded-lg border font-medium",
-                    estado === k ? (k === "si" ? "bg-red-50 border-red-300 text-red-700" : k === "no" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "bg-amber-50 border-amber-300 text-amber-700")
-                      : "bg-white border-gray-200 text-gray-500"
-                  )}
-                >
-                  {DEUDA_LABEL[k]}
-                </button>
-              ))}
-            </div>
+        <div className="px-5 py-4 space-y-3">
+          <div className="flex gap-2">
+            {(["si", "no", "sin_verificar"] as DeudaEstado[]).map((k) => (
+              <button
+                key={k}
+                disabled={!puedeEditar}
+                onClick={() => setEstado(k)}
+                className={clsx(
+                  "text-[12px] px-3 py-1.5 rounded-lg border font-medium",
+                  estado === k
+                    ? k === "si" ? "bg-red-50 border-red-300 text-red-700" : k === "no" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "bg-amber-50 border-amber-300 text-amber-700"
+                    : "bg-white border-gray-200 text-gray-500"
+                )}
+              >
+                {DEUDA_LABEL[k]}
+              </button>
+            ))}
           </div>
-          {estado === "si" && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className={label}>Períodos adeudados</p>
-                  <input className={input} value={periodos} onChange={(e) => setPeriodos(e.target.value)} disabled={!puedeEditar} placeholder="ej. 07/2026 + intereses" />
-                </div>
-                <div>
-                  <p className={label}>Importe</p>
-                  <input className={input} value={monto} onChange={(e) => setMonto(e.target.value)} disabled={!puedeEditar} placeholder="ej. 208274,38" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center gap-2 text-[13px] text-gray-700">
-                  <input type="checkbox" checked={avisada} onChange={(e) => setAvisada(e.target.checked)} disabled={!puedeEditar} className="accent-bordo" />
-                  Avisada al cliente
-                </label>
-                {avisada && <input type="date" className={input} value={avisadaFecha} onChange={(e) => setAvisadaFecha(e.target.value)} disabled={!puedeEditar} />}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="flex items-center gap-2 text-[13px] text-gray-700">
-                  <input type="checkbox" checked={resuelta} onChange={(e) => setResuelta(e.target.checked)} disabled={!puedeEditar} className="accent-bordo" />
-                  Resuelta (pagó / regularizó)
-                </label>
-                {resuelta && <input type="date" className={input} value={resueltaFecha} onChange={(e) => setResueltaFecha(e.target.value)} disabled={!puedeEditar} />}
-              </div>
-            </>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className={label}>Intimación</p>
-              <select className={input} value={intimacion} onChange={(e) => setIntimacion(e.target.value as IntimacionEstado | "")} disabled={!puedeEditar}>
-                <option value="">—</option>
-                {(Object.keys(INTIMACION_LABEL) as IntimacionEstado[]).map((k) => <option key={k} value={k}>{INTIMACION_LABEL[k]}</option>)}
-              </select>
-            </div>
-            {intimacion && intimacion !== "no" && (
-              <div>
-                <p className={label}>Fecha</p>
-                <input type="date" className={input} value={intimacionFecha} onChange={(e) => setIntimacionFecha(e.target.value)} disabled={!puedeEditar} />
-              </div>
-            )}
+          <div>
+            <p className={label}>Períodos adeudados</p>
+            <input className={input} value={periodos} onChange={(e) => setPeriodos(e.target.value)} disabled={!puedeEditar} placeholder="ej. 07/2026 + intereses" />
+          </div>
+          <div>
+            <p className={label}>Importe (opcional)</p>
+            <input className={input} value={monto} onChange={(e) => setMonto(e.target.value)} disabled={!puedeEditar} placeholder="ej. 208.274,38" />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-[13px] text-gray-700 shrink-0">
+              <input type="checkbox" checked={avisada} onChange={(e) => setAvisada(e.target.checked)} disabled={!puedeEditar} className="accent-bordo" />
+              Avisada al cliente
+            </label>
+            {avisada && <input type="date" className={input} value={avisadaFecha} onChange={(e) => setAvisadaFecha(e.target.value)} disabled={!puedeEditar} />}
+          </div>
+          <div>
+            <p className={label}>Nota</p>
+            <textarea className={clsx(input, "resize-y")} rows={2} value={nota} onChange={(e) => setNota(e.target.value)} disabled={!puedeEditar} placeholder="—" />
           </div>
           {tarea.deuda_texto_original && (
-            <div>
-              <p className={label}>Como venía en la planilla</p>
-              <p className="text-[12px] text-gray-600 mt-1 bg-gray-50 rounded-lg px-2.5 py-1.5">{tarea.deuda_texto_original}</p>
-            </div>
+            <p className="text-[11px] text-gray-400">Planilla: {tarea.deuda_texto_original}</p>
           )}
-          <p className="text-[11px] text-gray-400">La deuda y la intimación pasan solas al mes siguiente hasta que se cambien.</p>
           {err && <p className="text-[12px] text-red-600">{err}</p>}
         </div>
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
-          <button onClick={onClose} className="text-[13px] px-4 py-2 rounded-lg border border-gray-200 text-gray-600">
+        <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
+          <button onClick={onClose} className="text-[13px] px-4 py-1.5 rounded-lg border border-gray-200 text-gray-600">
             {puedeEditar ? "Cancelar" : "Cerrar"}
           </button>
           {puedeEditar && (
-            <button onClick={guardar} className="text-[13px] px-4 py-2 rounded-lg bg-gray-900 text-white font-medium">Guardar</button>
+            <button onClick={guardar} className="text-[13px] px-4 py-1.5 rounded-lg bg-gray-900 text-white font-medium">Guardar</button>
           )}
         </div>
       </div>

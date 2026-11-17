@@ -24,6 +24,7 @@ export type CambiosTarea = {
   intimacion_estado?: (typeof INTIMACION_ESTADOS)[number] | null;
   intimacion_fecha?: string | null;
   observaciones?: string | null;
+  deuda_nota?: string | null;
 };
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
@@ -31,6 +32,7 @@ const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const CAMPOS_TAREA = [
   "cuota_estado", "cuota_fecha", "recategorizacion", "categoria", "deuda_estado", "deuda_periodos", "deuda_monto",
   "deuda_aviso", "deuda_aviso_fecha", "deuda_resuelta", "deuda_resuelta_fecha", "intimacion_estado", "intimacion_fecha", "observaciones",
+  "deuda_nota",
 ] as const;
 
 export async function upsertMonotributoTarea(clienteId: string, anio: number, mes: number, updates: CambiosTarea) {
@@ -51,6 +53,7 @@ export async function upsertMonotributoTarea(clienteId: string, anio: number, me
     if (v && !FECHA.test(v)) return { error: "Fecha inválida." };
   }
   if (typeof updates.deuda_periodos === "string") updates.deuda_periodos = updates.deuda_periodos.trim() || null;
+  if (typeof updates.deuda_nota === "string") updates.deuda_nota = updates.deuda_nota.trim().slice(0, 1000) || null;
 
   const admin = createAdminClient();
   const ahora = new Date().toISOString();
@@ -78,10 +81,15 @@ export async function upsertMonotributoTarea(clienteId: string, anio: number, me
   const cambiaEstado = !!updates.cuota_estado && estadoAnterior !== updates.cuota_estado;
   if (cambiaEstado) Object.assign(extra, { estado_cambiado_en: ahora, estado_cambiado_por: yoId, origen: "manual" });
 
-  const { error } = await admin.from("monotributo_tareas").upsert(
-    { cliente_id: clienteId, anio, mes, ...arrastre, ...updates, ...extra, updated_at: ahora },
-    { onConflict: "cliente_id,anio,mes" }
-  );
+  const fila = { cliente_id: clienteId, anio, mes, ...arrastre, ...updates, ...extra, updated_at: ahora };
+  let { error } = await admin.from("monotributo_tareas").upsert(fila, { onConflict: "cliente_id,anio,mes" });
+  // Si todavía no se corrió add_monotributo_deuda_nota.sql, se guarda todo menos la nota (no se pierde el resto).
+  if (error && /deuda_nota/.test(error.message)) {
+    const { deuda_nota: _sinNota, ...resto } = fila as Record<string, unknown>;
+    void _sinNota;
+    delete updates.deuda_nota;
+    ({ error } = await admin.from("monotributo_tareas").upsert(resto, { onConflict: "cliente_id,anio,mes" }));
+  }
   if (error) return { error: error.message };
 
   if (cambiaEstado) {

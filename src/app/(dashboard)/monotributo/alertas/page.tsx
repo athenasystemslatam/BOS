@@ -6,6 +6,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { arrastrarMes } from "@/lib/monotributoServer";
 import { enVentanaRecategorizacion, leerCalendario } from "@/lib/calendarioArca";
 
+// Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
+export const dynamic = "force-dynamic";
+
 export default async function MonotributoAlertasPage({
   searchParams,
 }: {

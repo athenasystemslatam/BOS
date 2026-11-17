@@ -348,7 +348,7 @@ const ETIQUETA_CAMPO: Record<string, string> = {
   cuota_estado: "Estado del mes", cuota_fecha: "Fecha de pago", recategorizacion: "Recategorización", categoria: "Categoría",
   deuda_estado: "Deuda", deuda_periodos: "Períodos adeudados", deuda_monto: "Importe de deuda", deuda_aviso: "Deuda avisada",
   deuda_aviso_fecha: "Fecha de aviso de deuda", deuda_resuelta: "Deuda resuelta", deuda_resuelta_fecha: "Fecha deuda resuelta",
-  intimacion_estado: "Intimación", intimacion_fecha: "Fecha de intimación", observaciones: "Observaciones",
+  deuda_nota: "Nota de la deuda", intimacion_estado: "Intimación", intimacion_fecha: "Fecha de intimación", observaciones: "Observaciones",
   forma_pago: "Forma de pago", paga_desde_cliente_id: "Paga desde la cuenta de", paga_desde_texto: "Paga desde (aclaración)",
   avisa: "Avisar", envia_vep: "Enviar VEP/QR", medio: "Medio", destinatario: "Destinatario", mails: "Mails", whatsapp: "WhatsApp",
   empresa_grupo: "Empresa / grupo", saldo_a_favor: "Saldo a favor", resolucion_arba: "Resolución ARBA", responsable_id: "Responsable",

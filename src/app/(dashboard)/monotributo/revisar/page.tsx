@@ -4,6 +4,9 @@ import { puedeSerResponsable, type CampoRevision, type Revision } from "@/lib/mo
 import { sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
 import { RevisarClient, type FilaRevision } from "./RevisarClient";
 
+// Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
+export const dynamic = "force-dynamic";
+
 export default async function MonotributoRevisarPage() {
   const inicio = Date.now();
   const admin = createAdminClient();

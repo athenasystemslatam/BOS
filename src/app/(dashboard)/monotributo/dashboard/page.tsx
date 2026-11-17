@@ -46,6 +46,9 @@ function fmtPesos(n: number) {
   return n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 }
 
+// Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
+export const dynamic = "force-dynamic";
+
 export default async function MonotributoDashboardPage({
   searchParams,
 }: {

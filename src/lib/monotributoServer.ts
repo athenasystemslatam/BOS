@@ -246,6 +246,7 @@ export const CAMPOS_ARRASTRE = [
   "deuda_resuelta_fecha",
   "intimacion_estado",
   "intimacion_fecha",
+  "deuda_nota",
 ] as const;
 
 type FilaArrastre = { [K in (typeof CAMPOS_ARRASTRE)[number]]?: unknown } & { cliente_id: string; anio: number; mes: number };
@@ -255,7 +256,8 @@ export function arrastreDesde(prev: FilaArrastre | null | undefined): Record<str
   if (!prev) return null;
   const tieneAlgo = !!prev.categoria || (prev.deuda_estado && prev.deuda_estado !== "sin_verificar") || !!prev.intimacion_estado;
   if (!tieneAlgo) return null;
-  const copia: Record<string, unknown> = Object.fromEntries(CAMPOS_ARRASTRE.map((k) => [k, prev[k] ?? null]));
+  // Solo los campos que existen en la fila (deuda_nota puede no existir si falta su SQL).
+  const copia: Record<string, unknown> = Object.fromEntries(CAMPOS_ARRASTRE.filter((k) => k in prev).map((k) => [k, prev[k] ?? null]));
   // Columnas NOT NULL de la tabla
   copia.deuda_estado = prev.deuda_estado ?? "sin_verificar";
   copia.deuda_aviso = !!prev.deuda_aviso;
@@ -269,7 +271,7 @@ export async function ultimaFilaAnterior(admin: Admin, clienteIds: string[], ani
   for (const tanda of enTandas(clienteIds)) {
     const { data, error } = await admin
       .from("monotributo_tareas")
-      .select(["cliente_id", "anio", "mes", ...CAMPOS_ARRASTRE].join(", "))
+      .select("*")
       .in("cliente_id", tanda)
       .or(`anio.lt.${anio},and(anio.eq.${anio},mes.lt.${mes})`);
     if (error) throw new Error(error.message);

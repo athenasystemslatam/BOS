@@ -28,7 +28,7 @@ export interface EntradaHistorialVista {
 // Campos que se pueden revertir por entidad (lista cerrada: nunca se escribe una columna que venga del navegador).
 const CAMPOS_TAREA = new Set([
   "cuota_estado", "cuota_fecha", "recategorizacion", "categoria", "deuda_estado", "deuda_periodos", "deuda_monto",
-  "deuda_aviso", "deuda_aviso_fecha", "deuda_resuelta", "deuda_resuelta_fecha", "intimacion_estado", "intimacion_fecha", "observaciones",
+  "deuda_aviso", "deuda_aviso_fecha", "deuda_resuelta", "deuda_resuelta_fecha", "intimacion_estado", "intimacion_fecha", "observaciones", "deuda_nota",
 ]);
 const CAMPOS_FICHA = new Set([
   "forma_pago", "paga_desde_cliente_id", "paga_desde_texto", "avisa", "envia_vep", "medio", "destinatario", "mails",

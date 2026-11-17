@@ -4,6 +4,9 @@ import { hoyArgentina } from "@/lib/monotributo";
 import { anioCargado, avisoCalendarioFaltante, leerCalendario, mesDe } from "@/lib/calendarioArca";
 import { CalendarioClient } from "./CalendarioClient";
 
+// Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
+export const dynamic = "force-dynamic";
+
 export default async function CalendarioArcaPage({ searchParams }: { searchParams: { anio?: string } }) {
   const yo = await getCurrentLiquidadora();
   if (!yo?.isAdmin) redirect("/monotributo");

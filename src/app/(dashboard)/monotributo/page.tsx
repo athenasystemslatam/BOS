@@ -8,6 +8,9 @@ import { arrastrarMes, sincronizarRevisionesModulo, traerPaginado } from "@/lib/
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { MonotributoClient, type FichaResumen } from "./MonotributoClient";
 
+// Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
+export const dynamic = "force-dynamic";
+
 export default async function MonotributoPage({
   searchParams,
 }: {
