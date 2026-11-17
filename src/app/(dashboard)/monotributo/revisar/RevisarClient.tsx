@@ -144,8 +144,11 @@ export function RevisarClient({
             <h1 className="text-[17px] font-semibold text-gray-900">A revisar ({filas.length + amarillas.length})</h1>
             <p className="text-[12px] text-gray-400 mt-0.5">
               <span className="text-red-600 font-medium">{totales.rojo} en rojo</span> (falta o no coincide) ·{" "}
-              <span className="text-amber-700 font-medium">{totales.amarillo} en amarillo</span> (sin verificar). Una marca no
-              bloquea nada: el cliente se sigue trabajando.
+              <span className="text-amber-700 font-medium">{totales.amarillo} en amarillo</span> (sin verificar).
+            </p>
+            <p className="text-[12px] text-gray-500 mt-1">
+              <span className="font-semibold text-gray-700">A revisar = datos mal cargados o faltantes</span> (responsable, forma de pago, contacto, CUIT…).
+              Se corrigen una vez y salen solas; no dependen del mes. Las tareas de cada mes (enviar, avisar) están en Alertas. Una marca no bloquea nada.
             </p>
           </div>
         </div>

@@ -142,8 +142,9 @@ export function AlertasClient({
             <div>
               <h1 className="text-[17px] font-semibold text-gray-900">Alertas ({porResp.length})</h1>
               <p className="text-[12px] text-gray-400 mt-0.5">
-                {MESES_NOMBRES[mes]} {anio} · la cuota {vencido ? "venció" : "vence"} el {d}/{m}/{y}. Solo internas: no se envía nada a clientes.
-                Cada una le llega al responsable del cliente; las de clientes sin responsable, al administrador.
+                <span className="font-semibold text-gray-700">Alertas = tareas del mes</span> (enviar el VEP/QR, avisar, avisar la deuda, intimaciones): se repiten cada mes y se cierran al hacerlas.
+                Los datos mal cargados o faltantes están en A revisar. {MESES_NOMBRES[mes]} {anio} · la cuota {vencido ? "venció" : "vence"} el {d}/{m}/{y}.
+                Solo internas: no se envía nada a clientes.
               </p>
             </div>
           </div>

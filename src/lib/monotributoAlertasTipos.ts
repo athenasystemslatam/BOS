@@ -8,7 +8,6 @@ export const TIPOS_ALERTA = [
   "sin_avisar",
   "deuda_sin_avisar",
   "intimacion",
-  "sin_responsable",
 ] as const;
 export type TipoAlerta = (typeof TIPOS_ALERTA)[number];
 
@@ -17,7 +16,6 @@ export const TIPO_ALERTA_LABEL: Record<TipoAlerta, string> = {
   sin_avisar: "Sin avisar",
   deuda_sin_avisar: "Deuda sin avisar",
   intimacion: "Intimación",
-  sin_responsable: "Sin responsable",
 };
 
 /** Cómo se cierra cada una (se muestra en la pantalla). */
@@ -26,7 +24,6 @@ export const TIPO_ALERTA_CIERRE: Record<TipoAlerta, string> = {
   sin_avisar: "Se cierra al marcar Avisado (o Enviado / Pagado / No pagó).",
   deuda_sin_avisar: "Se cierra al marcar la deuda como avisada o resuelta (Seguimiento → Deuda).",
   intimacion: "Se cierra al cambiar la intimación en Seguimiento, o con \"Resuelta\".",
-  sin_responsable: "Se cierra al asignarle responsable.",
 };
 
 /** Las que no tienen un estado en BOS que las cierre: llevan botón "Resuelta". */

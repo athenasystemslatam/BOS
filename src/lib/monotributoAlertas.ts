@@ -95,7 +95,7 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
     const estado: EstadoMes = t?.cuota_estado ?? "pendiente";
     const estadoTxt = t ? ESTADO_MES_LABEL[estado] : "sin registro del mes";
 
-    if (!respId) agregar("sin_responsable", "rojo", "El cliente no tiene responsable: le llega al administrador.");
+    // "Sin responsable" es un dato faltante: vive solo en A revisar (no es una tarea del mes).
 
     if (ficha.envia_vep && !CERRADO_ENVIO.includes(estado)) {
       agregar("sin_enviar", vencido ? "rojo" : "amarillo",
