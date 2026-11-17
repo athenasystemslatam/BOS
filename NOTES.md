@@ -2,6 +2,15 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 17-nov (Giuliana) — Monotributo: segunda ronda (pagos, deuda, A revisar vs Alertas, Cartera, Calendario)
+
+- **Los pagos no son responsabilidad del estudio:** el avance es "gestionados" (Enviado + Avisado + Pagado) sobre los activos (`contarGestionados` en `lib/monotributo.ts`). Sin columna "Fecha de pago"; filtro "Sin gestionar" (Pendiente, VEP generado, En borrador). Pagado y No pagó son informativos. Sin alertas "Verificar pago" ni "Verificar débito".
+- **Deuda:** ventana chica en Seguimiento (estado, períodos, importe, avisada + fecha, nota), precargada con PERIODOS/NOTAS de la planilla, con historial y Deshacer. **SQL `add_monotributo_deuda_nota.sql` — PENDIENTE de correr** (sin él se guarda todo menos la nota).
+- **Sin caché:** las páginas de Monotributo tienen `dynamic = "force-dynamic"` (y `staleTimes.dynamic = 0` ya estaba): Dashboard y Alertas recalculan al instante.
+- **A revisar = datos mal o faltantes** (se resuelven una vez); **Alertas = tareas del mes**. "Sin responsable" salió de Alertas.
+- **Cartera:** barras proporcionales al total; solo Forma de pago, Medio, Envío (Categoría aparece cuando haya alguna). Sin etiqueta "Empresa" en Seguimiento. Los datos (tipo, empresa/grupo) siguen en la ficha y en el Excel por cliente.
+- **Calendario** (antes "Calendario ARCA"): pegar acepta el formato de la página de ARCA (dd/mm/aa y "Recategorización semestral"). "Vencimientos" y "Productividad" salieron del submenú de Monotributo (las pantallas siguen existiendo; Productividad general no se tocó).
+
 ## Sesión del 17-nov (Giuliana) — Monotributo: ronda de ajustes de uso diario (puntos 1 a 5)
 
 Un commit por punto, directo en `main`:
@@ -148,6 +157,7 @@ Hechos ese día: ítems 105, 106, 107, 109, 122, 118, 85, 81, 82, 129 y 124 (det
 
 ## SQL pendiente de correr en Supabase
 
+- `add_monotributo_deuda_nota.sql` (17-nov, Monotributo: nota de la deuda).
 - `add_libros_sacar_de_cola.sql` (12-nov, Libros "Sacar de la cola": estado final `quitada` + columnas `quitada_en/por/motivo` en `libros_tareas`).
 
 Antes de eso, ninguno (Libros: etapas 1 a 11 corridas al 20-oct; `add_balances_vto_ganancias.sql`, `add_contable_reglas_vencimientos.sql`, `add_balances_no_corresponde.sql`, `add_clientes_cierre_cambios.sql` y `add_balances_fechas_reales.sql` corridas por Matías el 23-oct; `add_rol_administrativo.sql`, `add_balances_igj_numero.sql` y `add_clientes_fecha_alta_estudio.sql` corridas por Matías el 26-oct; `add_clientes_id_fal.sql` corrida por Matías el 27-oct).
