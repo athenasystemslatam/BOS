@@ -23,7 +23,6 @@ export * from "@/lib/monotributoAlertasTipos";
 
 const CERRADO_ENVIO: EstadoMes[] = ["enviado", "pagado", "no_pago"];
 const CERRADO_AVISO: EstadoMes[] = ["avisado", "enviado", "pagado", "no_pago"];
-const CERRADO_PAGO: EstadoMes[] = ["pagado", "no_pago"];
 
 function fmt(iso: string) {
   const [y, m, d] = iso.split("-");
@@ -98,9 +97,6 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
 
     if (!respId) agregar("sin_responsable", "rojo", "El cliente no tiene responsable: le llega al administrador.");
 
-    if (vencido && estado === "enviado") {
-      agregar("verificar_pago", "amarillo", `VEP enviado y sin Pagado; venció el ${fmt(vencimiento)}. Nunca pasa solo a "No pagó".`);
-    }
     if (ficha.envia_vep && !CERRADO_ENVIO.includes(estado)) {
       agregar("sin_enviar", vencido ? "rojo" : "amarillo",
         vencido ? `Venció el ${fmt(vencimiento)} sin VEP enviado (estado: ${estadoTxt}).` : `Vence el ${fmt(vencimiento)}; estado: ${estadoTxt}.`);
@@ -116,10 +112,6 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
     if (t?.intimacion_estado === "si" || t?.intimacion_estado === "fijarse") {
       agregar("intimacion", t.intimacion_estado === "si" ? "rojo" : "amarillo",
         t.intimacion_estado === "si" ? "Intimación: Sí." : "Intimación: Fijarse.", t.intimacion_estado);
-    }
-    if (vencido && esDebito && !CERRADO_PAGO.includes(estado)) {
-      agregar("debito_sin_verificar", "amarillo",
-        `${ficha.forma_pago === "debito_automatico" ? "Débito automático" : "Tarjeta"}: verificar que el débito pasó y marcar Pagado. Se avisa al cliente solo si falló.`);
     }
   }
 

@@ -2,35 +2,30 @@
 
 import type { Gravedad } from "@/lib/monotributo";
 
+// Los pagos no son responsabilidad del estudio (lo nuestro es enviar y avisar): no hay alertas de "verificar pago" ni "verificar débito".
 export const TIPOS_ALERTA = [
-  "verificar_pago",
   "sin_enviar",
   "sin_avisar",
   "deuda_sin_avisar",
   "intimacion",
-  "debito_sin_verificar",
   "sin_responsable",
 ] as const;
 export type TipoAlerta = (typeof TIPOS_ALERTA)[number];
 
 export const TIPO_ALERTA_LABEL: Record<TipoAlerta, string> = {
-  verificar_pago: "Verificar pago",
   sin_enviar: "VEP sin enviar",
   sin_avisar: "Sin avisar",
   deuda_sin_avisar: "Deuda sin avisar",
   intimacion: "Intimación",
-  debito_sin_verificar: "Verificar débito",
   sin_responsable: "Sin responsable",
 };
 
 /** Cómo se cierra cada una (se muestra en la pantalla). */
 export const TIPO_ALERTA_CIERRE: Record<TipoAlerta, string> = {
-  verificar_pago: "Se cierra al marcar Pagado o No pagó.",
   sin_enviar: "Se cierra al marcar Enviado (o Pagado / No pagó).",
   sin_avisar: "Se cierra al marcar Avisado (o Enviado / Pagado / No pagó).",
   deuda_sin_avisar: "Se cierra al marcar la deuda como avisada o resuelta (Seguimiento → Deuda).",
   intimacion: "Se cierra al cambiar la intimación en Seguimiento, o con \"Resuelta\".",
-  debito_sin_verificar: "Aparece pasado el vencimiento para débito automático o tarjeta (en lugar de \"Sin avisar\": se avisa solo si el débito falla). Se cierra al marcar Pagado o No pagó.",
   sin_responsable: "Se cierra al asignarle responsable.",
 };
 

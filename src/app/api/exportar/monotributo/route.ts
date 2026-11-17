@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
-import { ESTADOS_MES, ESTADO_MES_LABEL } from "@/lib/monotributo";
+import { ESTADOS_MES, ESTADO_MES_LABEL, contarGestionados } from "@/lib/monotributo";
 import { armarTableroMonotributo, type Conteo } from "@/lib/monotributoTablero";
 
 // Excel del Dashboard de Monotributo: mismos números que la pantalla (mismo
@@ -57,7 +57,10 @@ export async function GET(req: NextRequest) {
     }
   };
 
-  seccion("Avance del mes", ESTADOS_MES.map((e) => [ESTADO_MES_LABEL[e], t.estados[e]] as [string, number]));
+  seccion("Avance del mes", [
+    [`Gestionados (Enviado + Avisado + Pagado)`, contarGestionados(t.estados)],
+    ...ESTADOS_MES.map((e) => [ESTADO_MES_LABEL[e], t.estados[e]] as [string, number]),
+  ]);
   seccion("Forma de pago", t.cartera.formaPago);
   seccion("Medio", t.cartera.medio);
   seccion("Envío", t.cartera.envio);
@@ -88,10 +91,10 @@ export async function GET(req: NextRequest) {
   // ── Por responsable ──
   const wr = wb.addWorksheet("Por responsable");
   wr.columns = [{ header: "Responsable", width: 26 }, { header: "Total", width: 8 },
-    ...ESTADOS_MES.map((e) => ({ header: ESTADO_MES_LABEL[e], width: 13 })), { header: "% pagado", width: 10 }];
+    ...ESTADOS_MES.map((e) => ({ header: ESTADO_MES_LABEL[e], width: 13 })), { header: "% gestionado", width: 12 }];
   wr.getRow(1).font = { bold: true };
   for (const r of t.porResponsable) {
-    const fila = wr.addRow([r.nombre, r.total, ...ESTADOS_MES.map((e) => r.estados[e]), r.total ? r.estados.pagado / r.total : 0]);
+    const fila = wr.addRow([r.nombre, r.total, ...ESTADOS_MES.map((e) => r.estados[e]), r.total ? contarGestionados(r.estados) / r.total : 0]);
     fila.getCell(ESTADOS_MES.length + 3).numFmt = "0%";
   }
 

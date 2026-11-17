@@ -17,6 +17,7 @@ import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea, type CambiosTarea } from "./actions";
 import {
   ESTADOS_MES,
+  ESTADOS_SIN_GESTIONAR,
   ESTADO_MES_LABEL,
   FORMA_PAGO_LABEL,
   MEDIO_LABEL,
@@ -157,7 +158,7 @@ export function MonotributoClient({
   const [filterResp, setFilterResp] = useState(() =>
     !isAdmin && yoId && servicios.some((s) => s.responsable_id === yoId) ? "__mios__" : ""
   );
-  const [filterEstado, setFilterEstado] = useState<"" | EstadoMes | "sin_pagar">("");
+  const [filterEstado, setFilterEstado] = useState<"" | EstadoMes | "sin_gestionar">("");
   const [soloARevisar, setSoloARevisar] = useState(false);
   const [soloConDeuda, setSoloConDeuda] = useState(false);
   const [reasignando, setReasignando] = useState<Servicio | null>(null);
@@ -277,7 +278,7 @@ export function MonotributoClient({
     else if (filterResp) list = list.filter((s) => s.responsable_nombre === filterResp);
     if (soloARevisar) list = list.filter((s) => !!revisiones[s.cliente_id]);
     if (soloConDeuda) list = list.filter((s) => { const t = getTarea(s.cliente_id); return t.deuda_estado === "si" && !t.deuda_resuelta; });
-    if (filterEstado === "sin_pagar") list = list.filter((s) => getTarea(s.cliente_id).cuota_estado !== "pagado");
+    if (filterEstado === "sin_gestionar") list = list.filter((s) => ESTADOS_SIN_GESTIONAR.includes(getTarea(s.cliente_id).cuota_estado));
     else if (filterEstado) list = list.filter((s) => getTarea(s.cliente_id).cuota_estado === filterEstado);
     return [...list].sort((a, b) => (a.clientes?.nombre ?? "").localeCompare(b.clientes?.nombre ?? ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,8 +405,8 @@ export function MonotributoClient({
             </select>
             <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
-          <FiltroBoton activo={filterEstado === "sin_pagar"} onClick={() => setFilterEstado((f) => (f === "sin_pagar" ? "" : "sin_pagar"))} color="amber">
-            Sin pagar
+          <FiltroBoton activo={filterEstado === "sin_gestionar"} onClick={() => setFilterEstado((f) => (f === "sin_gestionar" ? "" : "sin_gestionar"))} color="amber">
+            Sin gestionar
           </FiltroBoton>
           <FiltroBoton activo={soloConDeuda} onClick={() => setSoloConDeuda((v) => !v)} color="red">Con deuda</FiltroBoton>
           <FiltroBoton activo={soloARevisar} onClick={() => setSoloARevisar((v) => !v)} color="red">Solo a revisar</FiltroBoton>
@@ -424,7 +425,6 @@ export function MonotributoClient({
               <th className="px-3 py-2.5">Deuda</th>
               <th className="px-3 py-2.5">Intimación</th>
               <th className="px-3 py-2.5">Categ.</th>
-              <th className="px-3 py-2.5 w-28">Fecha pago</th>
               {esRecategorizacion && <th className="px-3 py-2.5">Recategorización</th>}
               <th className="px-3 py-2.5">Observaciones</th>
             </tr>
@@ -570,24 +570,6 @@ export function MonotributoClient({
                       </div>
                     ) : (
                       <span className="text-[13px] font-semibold text-gray-700">{t.categoria ?? <span className="text-gray-300">—</span>}</span>
-                    )}
-                  </td>
-
-                  {/* Fecha de pago (se completa sola al marcar Pagado) */}
-                  <td className="px-3 py-1.5 w-28">
-                    {t.cuota_estado === "pagado" && puedeEditar ? (
-                      <input
-                        type="date"
-                        defaultValue={t.cuota_fecha ?? ""}
-                        key={`${s.cliente_id}-${t.cuota_fecha}`}
-                        onBlur={(e) => {
-                          const val = e.target.value || null;
-                          if (val !== t.cuota_fecha) guardarCambio(s.cliente_id, { cuota_fecha: val });
-                        }}
-                        className="text-[11.5px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-0.5 py-0 w-[104px]"
-                      />
-                    ) : (
-                      <span className="text-[11.5px] text-gray-400">{t.cuota_fecha ? fmtFecha(t.cuota_fecha) : "—"}</span>
                     )}
                   </td>
 

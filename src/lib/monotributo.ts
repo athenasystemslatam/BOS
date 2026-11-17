@@ -204,3 +204,13 @@ export function parsearMails(texto: string): string[] {
     .map((m) => m.trim())
     .filter(Boolean);
 }
+
+/** Lo nuestro es enviar el VEP/QR y avisar: un cliente está "gestionado" en el mes
+ * si está Enviado, Avisado o Pagado. Pagado y No pagó son informativos; No pagó no
+ * cuenta como gestionado ni como pendiente. */
+export const ESTADOS_GESTIONADOS: EstadoMes[] = ["enviado", "avisado", "pagado"];
+export const ESTADOS_SIN_GESTIONAR: EstadoMes[] = ["pendiente", "vep_generado", "en_borrador"];
+
+export function contarGestionados(porEstado: Record<EstadoMes, number>): number {
+  return ESTADOS_GESTIONADOS.reduce((n, e) => n + (porEstado[e] ?? 0), 0);
+}

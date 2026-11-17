@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
 import { DescargarExcelButton } from "@/components/DescargarExcelButton";
-import { ESTADOS_MES, ESTADO_MES_LABEL, type EstadoMes } from "@/lib/monotributo";
+import { ESTADOS_MES, ESTADO_MES_LABEL, contarGestionados, type EstadoMes } from "@/lib/monotributo";
 import { armarTableroMonotributo, type Conteo } from "@/lib/monotributoTablero";
 import { FiltrosTablero } from "./FiltrosTablero";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -66,8 +66,9 @@ export default async function MonotributoDashboardPage({
   }
   const [yo, t] = await Promise.all([getCurrentLiquidadora(), armarTableroMonotributo(anio, mes, resp || null)]);
 
-  const pagadas = t.estados.pagado;
-  const pctCuotas = t.total > 0 ? Math.round((pagadas / t.total) * 100) : 0;
+  // Lo nuestro es enviar el VEP/QR y avisar: el avance es "gestionados" (Enviado + Avisado + Pagado). Pagado y No pagó son informativos.
+  const gestionados = contarGestionados(t.estados);
+  const pctGestionados = t.total > 0 ? Math.round((gestionados / t.total) * 100) : 0;
   const dias = t.diasAlVencimiento;
   const exportHref = `/api/exportar/monotributo?mes=${mes}&anio=${anio}${resp ? `&resp=${encodeURIComponent(resp)}` : ""}`;
 
@@ -107,14 +108,28 @@ export default async function MonotributoDashboardPage({
         <Tarjeta titulo="Clientes activos">
           <p className="text-[28px] font-bold leading-none text-gray-900">{t.total}</p>
         </Tarjeta>
-        <Tarjeta titulo="Cuotas pagadas">
-          <p className={clsx("text-[28px] font-bold leading-none", pctCuotas === 100 ? "text-emerald-600" : "text-amber-600")}>{pagadas}</p>
-          <p className="text-[11px] text-gray-400 mt-1">{pctCuotas}% del total</p>
+        <Tarjeta titulo="Gestionados" icono={<TrendingUp size={16} className="text-amber-500" />}>
+          <p className={clsx("text-[28px] font-bold leading-none", pctGestionados === 100 ? "text-emerald-600" : "text-amber-600")}>
+            {gestionados} <span className="text-[14px] font-medium text-gray-400">de {t.total}</span>
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className={clsx("h-full rounded-full", pctGestionados === 100 ? "bg-emerald-500" : "bg-amber-400")} style={{ width: `${pctGestionados}%` }} />
+            </div>
+            <span className="text-[11px] text-gray-500 font-semibold">{pctGestionados}%</span>
+          </div>
+          <p className="text-[10.5px] text-gray-400 mt-1">Enviado + Avisado + Pagado</p>
+        </Tarjeta>
+        <Tarjeta titulo="Sin gestionar">
+          <p className={clsx("text-[28px] font-bold leading-none", t.total - gestionados - t.estados.no_pago > 0 ? "text-gray-900" : "text-emerald-600")}>
+            {t.estados.pendiente + t.estados.vep_generado + t.estados.en_borrador}
+          </p>
+          <p className="text-[11px] text-gray-400 mt-1">Pendiente, VEP generado o En borrador</p>
         </Tarjeta>
         {esRecategorizacion ? (
           <Tarjeta titulo="Recategorización">
             <p className="text-[28px] font-bold leading-none text-amber-600">{t.recategorizacion.realizadas}</p>
-            <p className="text-[11px] text-gray-400 mt-1">{t.recategorizacion.pendientes} pendientes</p>
+            <p className="text-[11px] text-gray-400 mt-1">{t.recategorizacion.pendientes} pendientes · cuota vence el {fmtFecha(t.vencimiento)}</p>
           </Tarjeta>
         ) : (
           <Tarjeta titulo="Vencimiento cuota">
@@ -126,14 +141,6 @@ export default async function MonotributoDashboardPage({
             </p>
           </Tarjeta>
         )}
-        <Tarjeta titulo="Avance cuotas" icono={<TrendingUp size={16} className="text-amber-500" />}>
-          <p className={clsx("text-[28px] font-bold leading-none", pctCuotas === 100 ? "text-emerald-600" : pctCuotas >= 50 ? "text-amber-600" : "text-gray-500")}>
-            {pctCuotas}%
-          </p>
-          <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className={clsx("h-full rounded-full", pctCuotas === 100 ? "bg-emerald-500" : "bg-amber-400")} style={{ width: `${pctCuotas}%` }} />
-          </div>
-        </Tarjeta>
       </div>
 
       {/* Avance del mes por estado */}
@@ -190,12 +197,12 @@ export default async function MonotributoDashboardPage({
                   <th className="px-6 py-3 text-left">Responsable</th>
                   <th className="px-3 py-3 text-center">Total</th>
                   {ESTADOS_MES.map((e) => <th key={e} className="px-3 py-3 text-center">{ESTADO_MES_LABEL[e]}</th>)}
-                  <th className="px-3 py-3 text-center">% pagado</th>
+                  <th className="px-3 py-3 text-center">% gestionado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {t.porResponsable.map((r) => {
-                  const pct = r.total > 0 ? Math.round((r.estados.pagado / r.total) * 100) : 0;
+                  const pct = r.total > 0 ? Math.round((contarGestionados(r.estados) / r.total) * 100) : 0;
                   const sin = r.nombre === "Sin responsable";
                   return (
                     <tr key={r.nombre} className="hover:bg-gray-50/60 transition-colors">
