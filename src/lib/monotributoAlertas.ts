@@ -11,12 +11,12 @@ import {
   ESTADO_MES_LABEL,
   hoyArgentina,
   puedeSerResponsable,
-  vencimientoCuota,
   type DatosMonotributoCliente,
   type EstadoMes,
   type Gravedad,
 } from "@/lib/monotributo";
 import { traerPaginado } from "@/lib/monotributoServer";
+import { leerCalendario, vencimientoDe } from "@/lib/calendarioArca";
 import { TIPOS_ALERTA, TIPOS_CON_RESUELTA, type Alerta, type TipoAlerta } from "@/lib/monotributoAlertasTipos";
 
 export * from "@/lib/monotributoAlertasTipos";
@@ -40,7 +40,7 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
   type Serv = { cliente_id: string; responsable_id: string | null; clientes: { nombre: string } | null };
   type Tarea = { cliente_id: string; cuota_estado: EstadoMes; deuda_estado: string; deuda_aviso: boolean; deuda_resuelta: boolean; intimacion_estado: string | null };
 
-  const [vigentes, servicios, fichas, tareas, personas, resueltasRes] = await Promise.all([
+  const [vigentes, servicios, fichas, tareas, personas, resueltasRes, calendario] = await Promise.all([
     resolverResponsablesVigentes("monotributo", "general", anio, mes),
     traerPaginado<Serv>((d, h) =>
       admin.from("servicios_cliente").select("cliente_id, responsable_id, clientes(nombre)")
@@ -61,6 +61,7 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
       admin.from("monotributo_alertas_resueltas").select("cliente_id, tipo, valor")
         .eq("anio", anio).eq("mes", mes).order("id").range(d, h)
     ).then((filas) => ({ filas, ok: true }), () => ({ filas: [], ok: false })),
+    leerCalendario([anio]),
   ]);
 
   const persona = new Map(personas.map((p) => [p.id, p]));
@@ -68,7 +69,8 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
   const tareaPor = new Map(tareas.map((t) => [t.cliente_id, t]));
   const resuelta = new Set(resueltasRes.filas.map((r) => `${r.cliente_id}|${r.tipo}|${r.valor ?? ""}`));
 
-  const vencimiento = vencimientoCuota(anio, mes);
+  // Vencimiento del calendario ARCA del año (no el día 20 fijo).
+  const vencimiento = vencimientoDe(calendario, anio, mes);
   const vencido = hoyArgentina() > vencimiento;
   const alertas: Alerta[] = [];
 

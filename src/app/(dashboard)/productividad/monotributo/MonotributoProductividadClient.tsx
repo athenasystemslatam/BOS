@@ -117,7 +117,7 @@ export function MonotributoProductividadClient({ filas }: { filas: FilaResponsab
             </table>
           </div>
           <div className="px-5 py-3 border-t border-gray-50 text-[11px] text-gray-400">
-            &quot;A tiempo&quot; compara la fecha de pago contra el día 20 del mismo mes. Recategorización solo tiene datos en febrero y agosto.
+            &quot;A tiempo&quot; compara la fecha de pago contra el vencimiento del calendario ARCA del mes. Recategorización solo tiene datos en los meses de la ventana de recategorización del calendario ARCA.
           </div>
         </div>
       )}

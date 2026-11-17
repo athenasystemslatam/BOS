@@ -12,7 +12,6 @@ import {
   MEDIO_LABEL,
   hoyArgentina,
   puedeSerResponsable,
-  vencimientoCuota,
   type CampoRevision,
   type DatosMonotributoCliente,
   type EstadoMes,
@@ -21,6 +20,7 @@ import {
   type Medio,
 } from "@/lib/monotributo";
 import { traerPaginado } from "@/lib/monotributoServer";
+import { avisoCalendarioFaltante, enVentanaRecategorizacion, leerCalendario, vencimientoDe } from "@/lib/calendarioArca";
 
 export const SIN_RESPONSABLE = "sin";
 
@@ -59,6 +59,10 @@ export interface TableroMonotributo {
   anio: number;
   mes: number;
   vencimiento: string;
+  /** El mes cae en una ventana de recategorización del calendario ARCA. */
+  esRecategorizacion: boolean;
+  /** Para administradores: falta cargar el calendario del año (o del siguiente en diciembre). */
+  avisoCalendario: string | null;
   diasAlVencimiento: number;
   responsables: { id: string; nombre: string }[];
   respFiltro: string | null;
@@ -136,7 +140,8 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
     deuda_estado: string; deuda_monto: number | null; deuda_aviso: boolean; deuda_resuelta: boolean; intimacion_estado: string | null;
   };
 
-  const [vigentes, servicios, fichas, tareas, revisiones, personas] = await Promise.all([
+  const hoy = hoyArgentina();
+  const [vigentes, servicios, fichas, tareas, revisiones, personas, calendario] = await Promise.all([
     resolverResponsablesVigentes("monotributo", "general", anio, mes),
     traerPaginado<Serv>((d, h) =>
       admin.from("servicios_cliente").select("cliente_id, responsable_id, clientes(nombre, cuit, tipo_contribuyente)")
@@ -156,6 +161,7 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
     traerPaginado<{ id: string; nombre: string; rol: string }>((d, h) =>
       admin.from("liquidadoras").select("id, nombre, rol").order("id").range(d, h)
     ),
+    leerCalendario([anio, Number(hoy.slice(0, 4)), Number(hoy.slice(0, 4)) + 1]),
   ]);
 
   const persona = new Map(personas.map((p) => [p.id, p]));
@@ -275,7 +281,7 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
   }
 
   const total = filtrados.length;
-  const vencimiento = vencimientoCuota(anio, mes);
+  const vencimiento = vencimientoDe(calendario, anio, mes);
   const todasLasFormas = [...Object.values(FORMA_PAGO_LABEL), "Sin forma de pago"];
   const categoriasOrden = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "Sin categoría"];
 
@@ -283,7 +289,9 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
     anio,
     mes,
     vencimiento,
-    diasAlVencimiento: diasEntre(hoyArgentina(), vencimiento),
+    esRecategorizacion: enVentanaRecategorizacion(calendario, anio, mes),
+    avisoCalendario: avisoCalendarioFaltante(calendario, hoy),
+    diasAlVencimiento: diasEntre(hoy, vencimiento),
     responsables,
     respFiltro,
     respFiltroNombre: !respFiltro ? null : respFiltro === SIN_RESPONSABLE ? "Sin responsable" : (persona.get(respFiltro)?.nombre ?? null),

@@ -1,7 +1,6 @@
 // Módulo Monotributo: listas cerradas, etiquetas y reglas de revisión.
 // Sin imports de servidor: lo usan tanto las Server Actions como la UI.
 
-import { esDiaHabil } from "@/lib/vencimientos";
 
 export const FORMAS_PAGO = [
   "qr",
@@ -176,23 +175,11 @@ export function evaluarReglasCliente(
   return out;
 }
 
-/** Vencimiento de la cuota: día 20 del mes, corrido al siguiente día hábil
- * (lunes a viernes, sin feriados — mismo criterio que esDiaHabil). YYYY-MM-DD. */
-export function vencimientoCuota(anio: number, mes: number): string {
-  const d = new Date(anio, mes - 1, 20);
-  while (!esDiaHabil(d)) d.setDate(d.getDate() + 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Regla del mes: pasado el vencimiento, VEP enviado y sin Pagado → amarillo
- * "verificar pago". Nunca pasa solo a "No pagó". `hoy` en YYYY-MM-DD (hora AR). */
-export function requiereVerificarPago(
-  estado: EstadoMes,
-  anio: number,
-  mes: number,
-  hoy: string
-): boolean {
-  return estado === "enviado" && hoy > vencimientoCuota(anio, mes);
+/** Regla del mes: pasado el vencimiento del calendario ARCA (no el día 20 fijo),
+ * VEP enviado y sin Pagado → "verificar pago". Nunca pasa solo a "No pagó".
+ * `vencimiento` y `hoy` en YYYY-MM-DD (hora AR). */
+export function requiereVerificarPago(estado: EstadoMes, vencimiento: string, hoy: string): boolean {
+  return estado === "enviado" && hoy > vencimiento;
 }
 
 export function hoyArgentina(): string {

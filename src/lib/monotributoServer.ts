@@ -4,7 +4,6 @@ import {
   DATOS_VACIOS,
   evaluarReglasCliente,
   hoyArgentina,
-  requiereVerificarPago,
   valorCampo,
   type CampoRevision,
   type DatosMonotributoCliente,
@@ -176,12 +175,13 @@ export async function sincronizarRevisionesModulo(admin: Admin): Promise<{ cread
       });
     }
   });
-  const hoy = hoyArgentina();
   const ultimaTarea = new Map<string, Tarea>();
   for (const t of tareas) {
     const u = ultimaTarea.get(t.cliente_id);
     if (!u || t.anio * 100 + t.mes > u.anio * 100 + u.mes) ultimaTarea.set(t.cliente_id, t);
-    if (activos.has(t.cliente_id) && requiereVerificarPago(t.cuota_estado, t.anio, t.mes, hoy)) {
+    // "Verificar pago" ya no crea marcas acá (vive en Alertas, con el vencimiento del calendario ARCA):
+    // solo se mantienen pendientes las que existían mientras el mes siga en Enviado.
+    if (activos.has(t.cliente_id) && t.cuota_estado === "enviado") {
       hallazgos.set(clave(t.cliente_id, "pago", t.anio, t.mes), {
         cliente_id: t.cliente_id, campo: "pago", anio: t.anio, mes: t.mes,
         motivo: MOTIVO_VERIFICAR_PAGO, gravedad: "amarillo", valor: t.cuota_estado,
@@ -285,7 +285,7 @@ export async function ultimaFilaAnterior(admin: Admin, clienteIds: string[], ani
 /** Crea la fila del mes (en Pendiente) a los clientes activos que no la tienen
  * y traen deuda/intimación/categoría del mes anterior. Solo hasta el mes
  * siguiente al actual: no se generan meses lejanos por mirar el selector. */
-export async function arrastrarMes(admin: Admin, anio: number, mes: number): Promise<number> {
+export async function arrastrarMes(admin: Admin, anio: number, mes: number, esRecategorizacion = false): Promise<number> {
   const [hy, hm] = hoyArgentina().split("-").map(Number);
   if (anio * 12 + mes > hy * 12 + hm + 1) return 0;
 
@@ -309,7 +309,7 @@ export async function arrastrarMes(admin: Admin, anio: number, mes: number): Pro
     if (!copia) return;
     nuevas.push({
       cliente_id: clienteId, anio, mes, cuota_estado: "pendiente", origen: "automatico",
-      recategorizacion: mes === 2 || mes === 8 ? "pendiente" : "no_corresponde",
+      recategorizacion: esRecategorizacion ? "pendiente" : "no_corresponde",
       ...copia,
     });
   });

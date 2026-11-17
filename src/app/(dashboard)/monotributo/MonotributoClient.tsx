@@ -128,6 +128,7 @@ export function MonotributoClient({
   nombres,
   yoId,
   esRecategorizacion,
+  avisoCalendario,
 }: {
   servicios: Servicio[];
   tareas: Tarea[];
@@ -144,6 +145,8 @@ export function MonotributoClient({
   yoId: string | null;
   /** El mes cae en una ventana de recategorización del calendario ARCA. */
   esRecategorizacion: boolean;
+  /** Solo para administradores: falta cargar el calendario ARCA. */
+  avisoCalendario: string | null;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -337,6 +340,12 @@ export function MonotributoClient({
           </div>
         </div>
       </div>
+
+      {avisoCalendario && (
+        <Link href="/monotributo/calendario" className="block text-[12.5px] bg-amber-50 border-b border-amber-200 text-amber-800 px-6 py-2 hover:bg-amber-100">
+          {avisoCalendario} Cargarlo →
+        </Link>
+      )}
 
       {/* Stats + Filters */}
       <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-x-6 gap-y-2 flex-wrap">

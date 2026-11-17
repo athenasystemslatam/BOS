@@ -4,6 +4,7 @@ import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { AlertasClient } from "./AlertasClient";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arrastrarMes } from "@/lib/monotributoServer";
+import { enVentanaRecategorizacion, leerCalendario } from "@/lib/calendarioArca";
 
 export default async function MonotributoAlertasPage({
   searchParams,
@@ -15,7 +16,8 @@ export default async function MonotributoAlertasPage({
   const anio = Number(searchParams.anio) || def.anio;
 
   try {
-    await arrastrarMes(createAdminClient(), anio, mes);
+    const calendario = await leerCalendario([anio]);
+    await arrastrarMes(createAdminClient(), anio, mes, enVentanaRecategorizacion(calendario, anio, mes));
   } catch {
     // Si falla, el mes se muestra sin lo arrastrado.
   }

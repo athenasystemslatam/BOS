@@ -2,8 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
 import { puedeSerResponsable } from "@/lib/monotributo";
+import { enVentanaRecategorizacion, leerCalendario } from "@/lib/calendarioArca";
 
-const RECATEGORIZACION_MESES = new Set([2, 8]);
 
 export default async function MonotributoEquipoPage({
   searchParams,
@@ -15,7 +15,7 @@ export default async function MonotributoEquipoPage({
   const anio = Number(searchParams.anio) || anioDefault;
 
   const admin = createAdminClient();
-  const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
+  const esRecategorizacion = enVentanaRecategorizacion(await leerCalendario([anio]), anio, mes);
 
   const [{ data: equipoRaw }, { data: modulosRaw }, { data: serviciosRaw }, { data: tareasRaw }] = await Promise.all([
     admin.from("liquidadoras").select("id, nombre, rol").eq("activa", true).order("nombre"),

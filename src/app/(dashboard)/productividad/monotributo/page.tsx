@@ -1,12 +1,14 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { leerCalendario, vencimientoDe } from "@/lib/calendarioArca";
 import { puedeSerResponsable } from "@/lib/monotributo";
 import { MonotributoProductividadClient, FilaResponsableMono } from "./MonotributoProductividadClient";
 
-// Vencimiento cuota: día 20 del mismo mes.
-function vencimientoCuota(anio: number, mes: number): Date {
-  return new Date(anio, mes - 1, 20);
+// Vencimiento de la cuota: el del calendario ARCA del año (no el día 20 fijo).
+function aFecha(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
 }
 
 export default async function ProductividadMonotributoPage() {
@@ -46,6 +48,7 @@ export default async function ProductividadMonotributoPage() {
     return <div className="p-8 text-gray-400 text-sm">Todavía no hay datos cargados en Monotributo.</div>;
   }
 
+  const calendario = await leerCalendario(Array.from(new Set(periodos.map((p) => p.anio))));
   const defaultResp = new Map(servicios.map((s) => [s.cliente_id, s.responsable_id]));
 
   const historial = new Map<string, { desde_anio: number; desde_mes: number; responsable_id: string }[]>();
@@ -88,7 +91,7 @@ export default async function ProductividadMonotributoPage() {
       if (!fila) continue;
 
       let pagadas = 0, aTiempo = 0, tarde = 0, recatRealizada = 0, recatPendiente = 0;
-      const venc = vencimientoCuota(periodo.anio, periodo.mes);
+      const venc = aFecha(vencimientoDe(calendario, periodo.anio, periodo.mes));
 
       for (const tarea of items) {
         if (!tarea) continue;

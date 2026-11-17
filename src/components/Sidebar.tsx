@@ -99,6 +99,7 @@ const SECTIONS: {
       { href: "/monotributo/vencimientos",   label: "Vencimientos",  icon: Calendar,        adminOnly: false },
       { href: "/monotributo/equipo",         label: "Equipo",        icon: Users,           adminOnly: false },
       { href: "/productividad/monotributo",  label: "Productividad", icon: TrendingUp,      adminOnly: true  },
+      { href: "/monotributo/calendario",     label: "Calendario ARCA", icon: Calendar,      adminOnly: true  },
     ],
   },
   {

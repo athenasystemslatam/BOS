@@ -2,23 +2,25 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
+import { anioCargado, enVentanaRecategorizacion, leerCalendario, mesDe, vencimientoDe, type CalendarioArca } from "@/lib/calendarioArca";
 
-// Vencimiento cuota monotributo: día 20 de cada mes (mismo mes, no el siguiente)
-// Meses de recategorización: febrero (mes 2) y agosto (mes 8)
-const RECATEGORIZACION_MESES = new Set([2, 8]);
-
-function vtoMes(mes: number, anio: number): Date {
-  return new Date(anio, mes - 1, 20);
+// Vencimientos y recategorización salen del calendario ARCA del año (tabla calendario_arca,
+// se carga en Monotributo → Calendario ARCA). Nada de "día 20" fijo.
+function aFecha(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
 }
 
-function generarCalendario(anio: number) {
+function generarCalendario(cal: CalendarioArca, anio: number) {
   return Array.from({ length: 12 }, (_, i) => {
     const m = i + 1;
+    const c = mesDe(cal, anio, m);
     return {
       mes: m,
       label: MESES_NOMBRES[m],
-      vto: vtoMes(m, anio),
-      esRecategorizacion: RECATEGORIZACION_MESES.has(m),
+      vto: aFecha(c.vencimiento),
+      recatLimite: c.recatLimite,
+      nota: c.nota,
     };
   });
 }
@@ -34,7 +36,9 @@ export default async function MonotributoVencimientosPage({
 
   const admin = createAdminClient();
   const hoy = new Date();
-  const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
+  const cal = await leerCalendario([anio]);
+  const esRecategorizacion = enVentanaRecategorizacion(cal, anio, mes);
+  const limitesRecat = generarCalendario(cal, anio).filter((r) => r.recatLimite).map((r) => r.recatLimite as string);
 
   const [{ data: serviciosRaw }, { data: tareasRaw }] = await Promise.all([
     admin
@@ -65,13 +69,15 @@ export default async function MonotributoVencimientosPage({
       })
     : [];
 
-  const vto = vtoMes(mes, anio);
+  const vto = aFecha(vencimientoDe(cal, anio, mes));
   const diasVto = Math.ceil((vto.getTime() - hoy.getTime()) / 86400000);
   const vencido = diasVto < 0;
   const urgente = !vencido && diasVto <= 3;
   const proximo = !vencido && diasVto <= 7;
 
-  const calendario = generarCalendario(anio);
+  const calendario = generarCalendario(cal, anio);
+  const fmtCorta = (iso: string) => aFecha(iso).toLocaleDateString("es-AR", { day: "numeric", month: "long" });
+  const proximoLimite = limitesRecat.find((l) => l >= hoy.toISOString().slice(0, 10));
 
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
@@ -161,7 +167,9 @@ export default async function MonotributoVencimientosPage({
         )}>
           <div className="px-5 py-4 border-b border-current/10">
             <h2 className="text-[14px] font-semibold text-gray-900">Recategorización</h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">Febrero y agosto</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {limitesRecat.length ? `Límites ${anio}: ${limitesRecat.map(fmtCorta).join(" y ")}` : "Sin fechas cargadas"}
+            </p>
           </div>
           <div className="p-5">
             {esRecategorizacion ? (
@@ -188,7 +196,7 @@ export default async function MonotributoVencimientosPage({
             ) : (
               <div className="py-4 text-center">
                 <p className="text-[13px] text-gray-400">No corresponde este mes</p>
-                <p className="text-[11px] text-gray-300 mt-1">Próxima: {mes < 2 ? "febrero" : mes < 8 ? "agosto" : "febrero del año siguiente"}</p>
+                <p className="text-[11px] text-gray-300 mt-1">{proximoLimite ? `Próximo límite: ${fmtCorta(proximoLimite)}` : "Próxima: según el calendario del año siguiente"}</p>
               </div>
             )}
           </div>
@@ -199,7 +207,9 @@ export default async function MonotributoVencimientosPage({
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
           <h2 className="text-[14px] font-semibold text-gray-900">Calendario {anio}</h2>
-          <p className="text-[11px] text-gray-400 mt-0.5">Cuota mensual — vencimiento día 20 de cada mes</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Según el calendario ARCA {anio}{anioCargado(cal, anio) ? "" : " (no cargado: se usa el día 20 corrido a día hábil)"}
+          </p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-[12px] whitespace-nowrap">
@@ -248,9 +258,9 @@ export default async function MonotributoVencimientosPage({
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-center">
-                      {row.esRecategorizacion ? (
+                      {row.recatLimite ? (
                         <span className="text-[11px] font-semibold bg-amber-100 text-amber-700 rounded-full px-2.5 py-1">
-                          Recategorizar
+                          Límite {aFecha(row.recatLimite).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
                         </span>
                       ) : (
                         <span className="text-gray-300">—</span>

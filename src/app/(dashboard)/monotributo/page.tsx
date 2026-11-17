@@ -2,7 +2,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
-import { puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
+import { hoyArgentina, puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
+import { avisoCalendarioFaltante, enVentanaRecategorizacion, leerCalendario } from "@/lib/calendarioArca";
 import { arrastrarMes, sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { MonotributoClient, type FichaResumen } from "./MonotributoClient";
@@ -17,9 +18,12 @@ export default async function MonotributoPage({
   const anio = Number(searchParams.anio) || anioDefault;
 
   const admin = createAdminClient();
+  const hoy = hoyArgentina();
+  const calendario = await leerCalendario([anio, Number(hoy.slice(0, 4)), Number(hoy.slice(0, 4)) + 1]);
+  const esRecategorizacion = enVentanaRecategorizacion(calendario, anio, mes);
   // Primero el arrastre de deuda/intimación/categoría al mes, después las reglas de revisión.
   try {
-    await arrastrarMes(admin, anio, mes);
+    await arrastrarMes(admin, anio, mes, esRecategorizacion);
   } catch {
     // Si falla, el mes se muestra sin lo arrastrado.
   }
@@ -111,7 +115,8 @@ export default async function MonotributoPage({
       totalAlertas={alertasMes?.alertas.length ?? null}
       nombres={Object.fromEntries(equipoMap)}
       yoId={yo?.id ?? null}
-      esRecategorizacion={mes === 2 || mes === 8}
+      esRecategorizacion={esRecategorizacion}
+      avisoCalendario={yo?.isAdmin ? avisoCalendarioFaltante(calendario, hoy) : null}
     />
   );
 }

@@ -10,8 +10,8 @@ import { armarTableroMonotributo, type Conteo } from "@/lib/monotributoTablero";
 import { FiltrosTablero } from "./FiltrosTablero";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arrastrarMes } from "@/lib/monotributoServer";
+import { enVentanaRecategorizacion, leerCalendario } from "@/lib/calendarioArca";
 
-const RECATEGORIZACION_MESES = new Set([2, 8]);
 
 const COLOR_ESTADO: Record<EstadoMes, string> = {
   pendiente: "text-gray-500",
@@ -55,10 +55,11 @@ export default async function MonotributoDashboardPage({
   const mes = Number(searchParams.mes) || mesDefault;
   const anio = Number(searchParams.anio) || anioDefault;
   const resp = searchParams.resp ?? "";
-  const esRecategorizacion = RECATEGORIZACION_MESES.has(mes);
+  const calendario = await leerCalendario([anio]);
+  const esRecategorizacion = enVentanaRecategorizacion(calendario, anio, mes);
 
   try {
-    await arrastrarMes(createAdminClient(), anio, mes);
+    await arrastrarMes(createAdminClient(), anio, mes, esRecategorizacion);
   } catch {
     // Si falla, el mes se muestra sin lo arrastrado.
   }
@@ -91,6 +92,12 @@ export default async function MonotributoDashboardPage({
           {yo?.isAdmin && <BackupButton modulo="monotributo" />}
         </div>
       </div>
+
+      {yo?.isAdmin && t.avisoCalendario && (
+        <Link href="/monotributo/calendario" className="block mb-4 text-[12.5px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-2.5 hover:bg-amber-100">
+          {t.avisoCalendario} Cargarlo →
+        </Link>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
