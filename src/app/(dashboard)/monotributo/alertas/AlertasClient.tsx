@@ -15,7 +15,8 @@ import {
   type Alerta,
   type TipoAlerta,
 } from "@/lib/monotributoAlertasTipos";
-import { marcarAlertaResuelta } from "../alertasActions";
+import { marcarAlertaResuelta, reabrirAlerta } from "../alertasActions";
+import { useDeshacer } from "@/components/DeshacerAviso";
 import { upsertMonotributoTarea, type CambiosTarea } from "../actions";
 import { hoyArgentina } from "@/lib/monotributo";
 
@@ -45,6 +46,7 @@ export function AlertasClient({
   vencimiento,
   vencido,
   resueltasDisponible,
+  resueltasMano,
   mes,
   anio,
   mesDefault,
@@ -57,6 +59,7 @@ export function AlertasClient({
   vencimiento: string;
   vencido: boolean;
   resueltasDisponible: boolean;
+  resueltasMano: { id: string; cliente_id: string; cliente: string; tipo: string; valor: string | null; nota: string | null; resuelta_at: string }[];
   mes: number;
   anio: number;
   mesDefault: number;
@@ -72,6 +75,8 @@ export function AlertasClient({
   const [abierta, setAbierta] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [procesando, setProcesando] = useState<string | null>(null);
+  const [verResueltas, setVerResueltas] = useState(false);
+  const { ofrecer, aviso: avisoDeshacer } = useDeshacer();
   const [guardando, startGuardar] = useTransition();
 
   const responsables = useMemo(() => {
@@ -101,6 +106,7 @@ export function AlertasClient({
       setAbierta(null);
       setNota("");
       router.refresh();
+      ofrecer(r.historialIds, "Alerta marcada Resuelta", () => router.refresh());
     });
   }
 
@@ -113,6 +119,16 @@ export function AlertasClient({
         cambios.deuda_aviso ? { ...cambios, deuda_aviso_fecha: hoyArgentina() } : cambios);
       setProcesando(null);
       if (r && "error" in r && r.error) return setErr(r.error);
+      router.refresh();
+      if (r && "historialIds" in r) ofrecer(r.historialIds, "Cambio guardado", () => router.refresh());
+    });
+  }
+
+  function reabrir(id: string) {
+    setErr(null);
+    startGuardar(async () => {
+      const r = await reabrirAlerta(id);
+      if ("error" in r) return setErr(r.error);
       router.refresh();
     });
   }
@@ -239,7 +255,31 @@ export function AlertasClient({
             </tbody>
           </table>
         </div>
+
+        {resueltasMano.length > 0 && (
+          <div className="px-6 py-4">
+            <button onClick={() => setVerResueltas((v) => !v)} className="text-[12px] font-medium text-gray-600 hover:text-gray-900">
+              {verResueltas ? "Ocultar" : "Ver"} alertas marcadas Resuelta este mes ({resueltasMano.length})
+            </button>
+            {verResueltas && (
+              <div className="mt-2 space-y-1">
+                {resueltasMano.map((r) => (
+                  <p key={r.id} className="text-[12px] text-gray-600">
+                    {r.cliente} · {TIPO_ALERTA_LABEL[r.tipo as TipoAlerta] ?? r.tipo}
+                    {r.nota ? ` · “${r.nota}”` : ""}
+                    {puedeEditar && (
+                      <button disabled={guardando} onClick={() => reabrir(r.id)} className="ml-2 text-amber-700 hover:underline disabled:opacity-50">
+                        Reabrir
+                      </button>
+                    )}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      {avisoDeshacer}
     </div>
   );
 }

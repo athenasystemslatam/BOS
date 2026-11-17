@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
+import { diferencias, registrarHistorial } from "@/lib/monotributoHistorial";
 import {
   FORMAS_PAGO,
   MEDIOS,
@@ -115,7 +116,7 @@ function limpiarTexto(v: unknown): string | null {
 export async function guardarFichaMonotributo(
   clienteId: string,
   cambios: CambiosMonotributo
-): Promise<{ error: string } | { ok: true; ficha: FichaMonotributo | null }> {
+): Promise<{ error: string } | { ok: true; ficha: FichaMonotributo | null; historialIds: string[] }> {
   let yoId: string;
   try {
     yoId = (await requireEditorMonotributo()).id;
@@ -166,6 +167,7 @@ export async function guardarFichaMonotributo(
   }
 
   const admin = createAdminClient();
+  const antes = await leerDatosCliente(admin, clienteId);
   const { error } = await admin
     .from("monotributo_clientes")
     .upsert(
@@ -180,6 +182,11 @@ export async function guardarFichaMonotributo(
     // La marca de revisión nunca corta el guardado.
   }
 
+  const historialIds = await registrarHistorial(
+    admin,
+    diferencias({ cliente_id: clienteId, entidad: "ficha", usuario_id: yoId }, antes as unknown as Record<string, unknown>, fila, Object.keys(fila))
+  );
+
   revalidatePath("/monotributo");
-  return { ok: true, ficha: await obtenerFichaMonotributo(clienteId) };
+  return { ok: true, ficha: await obtenerFichaMonotributo(clienteId), historialIds };
 }

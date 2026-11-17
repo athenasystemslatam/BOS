@@ -9,13 +9,16 @@ import {
   type CambiosMonotributo,
   type FichaMonotributo,
 } from "@/app/(dashboard)/monotributo/fichaActions";
-import { confirmarRevisiones } from "@/app/(dashboard)/monotributo/revisionesActions";
+import { confirmarRevisiones, reabrirRevision } from "@/app/(dashboard)/monotributo/revisionesActions";
+import { obtenerHistorialCliente, revertirCambio, type EntradaHistorialVista } from "@/app/(dashboard)/monotributo/historialActions";
+import { useDeshacer } from "@/components/DeshacerAviso";
 import { upsertMonotributoTarea } from "@/app/(dashboard)/monotributo/actions";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 
 const CATEGORIAS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 import {
   CAMPO_REVISION_LABEL,
+  ESTADO_MES_LABEL,
   FORMAS_PAGO,
   FORMA_PAGO_LABEL,
   MEDIOS,
@@ -47,6 +50,7 @@ export function MonotributoSeccion({
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [nota, setNota] = useState("");
   const [guardando, startGuardar] = useTransition();
+  const { ofrecer, aviso: avisoDeshacer } = useDeshacer();
 
   useEffect(() => {
     obtenerFichaMonotributo(clienteId).then((f) => {
@@ -78,6 +82,7 @@ export function MonotributoSeccion({
       else {
         setErr(null);
         if (r.ficha) setFicha(r.ficha);
+        ofrecer(r.historialIds, "Cambio guardado", recargar);
       }
     });
   }
@@ -89,6 +94,7 @@ export function MonotributoSeccion({
       setErr(null);
       setConfirmando(null);
       setFicha(await obtenerFichaMonotributo(clienteId));
+      ofrecer(r.historialIds, "Marca confirmada", recargar);
     });
   }
 
@@ -101,6 +107,20 @@ export function MonotributoSeccion({
       if (r && "error" in r && r.error) return setErr(r.error);
       setErr(null);
       setFicha(await obtenerFichaMonotributo(clienteId));
+      if (r && "historialIds" in r) ofrecer(r.historialIds, "Categoría guardada", recargar);
+    });
+  }
+
+  function recargar() {
+    obtenerFichaMonotributo(clienteId).then(setFicha);
+  }
+
+  function reabrir(id: string) {
+    startGuardar(async () => {
+      const r = await reabrirRevision(id);
+      if ("error" in r) return setErr(r.error);
+      setErr(null);
+      recargar();
     });
   }
 
@@ -301,6 +321,11 @@ export function MonotributoSeccion({
                   {r.resolucion === "confirmado" ? "confirmado así" : "corregido"}
                   {r.resuelta_por_nombre ? ` por ${r.resuelta_por_nombre}` : ""} el {fmtFechaHoraAR(r.resuelta_at)}
                   {r.nota ? ` · “${r.nota}”` : ""}
+                  {puedeEditar && (
+                    <button type="button" disabled={guardando} onClick={() => reabrir(r.id)} className="ml-1.5 text-amber-700 hover:underline disabled:opacity-50">
+                      Reabrir
+                    </button>
+                  )}
                 </p>
               ))}
             </div>
@@ -308,10 +333,120 @@ export function MonotributoSeccion({
         </div>
       )}
 
+      <HistorialCliente clienteId={clienteId} puedeRevertir={puedeEditar} onRevertido={recargar} />
+
       {datos.updated_at && (
         <p className="text-[10.5px] text-gray-400">Última modificación: {fmtFechaHoraAR(datos.updated_at)}</p>
       )}
       {err && <p className="text-[11px] text-danger">{err}</p>}
+      {avisoDeshacer}
+    </div>
+  );
+}
+
+const ETIQUETA_CAMPO: Record<string, string> = {
+  cuota_estado: "Estado del mes", cuota_fecha: "Fecha de pago", recategorizacion: "Recategorización", categoria: "Categoría",
+  deuda_estado: "Deuda", deuda_periodos: "Períodos adeudados", deuda_monto: "Importe de deuda", deuda_aviso: "Deuda avisada",
+  deuda_aviso_fecha: "Fecha de aviso de deuda", deuda_resuelta: "Deuda resuelta", deuda_resuelta_fecha: "Fecha deuda resuelta",
+  intimacion_estado: "Intimación", intimacion_fecha: "Fecha de intimación", observaciones: "Observaciones",
+  forma_pago: "Forma de pago", paga_desde_cliente_id: "Paga desde la cuenta de", paga_desde_texto: "Paga desde (aclaración)",
+  avisa: "Avisar", envia_vep: "Enviar VEP/QR", medio: "Medio", destinatario: "Destinatario", mails: "Mails", whatsapp: "WhatsApp",
+  empresa_grupo: "Empresa / grupo", saldo_a_favor: "Saldo a favor", resolucion_arba: "Resolución ARBA", responsable_id: "Responsable",
+};
+
+const VALOR_TEXTO: Record<string, string> = {
+  ...ESTADO_MES_LABEL, ...FORMA_PAGO_LABEL, ...MEDIO_LABEL,
+  sin_verificar: "Sin verificar", no_corresponde: "No corresponde", realizada: "Realizada", fijarse: "Fijarse", si: "Sí", no: "No",
+};
+
+function fmtValor(v: unknown): string {
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "boolean") return v ? "Sí" : "No";
+  if (Array.isArray(v)) return v.length ? v.join("; ") : "—";
+  if (typeof v === "object") {
+    const o = v as { estado?: string; resolucion?: string };
+    return o.estado === "pendiente" ? "Pendiente" : o.resolucion === "confirmado" ? "Confirmada así" : o.resolucion === "corregido" ? "Corregida" : "Resuelta";
+  }
+  const s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.split("-").reverse().join("/");
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-/.test(s)) return "(persona/cliente)";
+  return VALOR_TEXTO[s] ?? s;
+}
+
+/** Historial de cambios del cliente con "Revertir" (revertir no borra: crea una entrada nueva). */
+function HistorialCliente({ clienteId, puedeRevertir, onRevertido }: { clienteId: string; puedeRevertir: boolean; onRevertido: () => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [datos, setDatos] = useState<{ entradas: EntradaHistorialVista[]; disponible: boolean } | null>(null);
+  const [mas, setMas] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [trabajando, startTrabajo] = useTransition();
+
+  function cargar(desde = 0) {
+    obtenerHistorialCliente(clienteId, desde).then((d) => {
+      setMas(d.entradas.length === 50);
+      setDatos((prev) => (desde === 0 || !prev ? d : { ...d, entradas: [...prev.entradas, ...d.entradas] }));
+    });
+  }
+
+  function revertir(e: EntradaHistorialVista, forzar = false) {
+    setErr(null);
+    startTrabajo(async () => {
+      const r = await revertirCambio(e.id, forzar);
+      if ("error" in r) return setErr(r.error);
+      if ("conflicto" in r) {
+        if (window.confirm(`"${ETIQUETA_CAMPO[e.campo] ?? e.campo}" cambió después de este registro (hoy vale: ${fmtValor(r.actual)}). ¿Revertir igual a ${fmtValor(e.valor_anterior)}?`)) revertir(e, true);
+        return;
+      }
+      cargar(0);
+      onRevertido();
+    });
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => { setAbierto((v) => !v); if (!datos) cargar(0); }}
+        className="text-[11.5px] font-medium text-gray-600 hover:text-gray-900"
+      >
+        {abierto ? "Ocultar historial de cambios" : "Historial de cambios"}
+      </button>
+      {abierto && (
+        <div className="mt-2 space-y-1.5">
+          {!datos ? (
+            <p className="text-[11.5px] text-gray-400 flex items-center gap-1.5"><Loader2 size={11} className="animate-spin" /> Cargando…</p>
+          ) : !datos.disponible ? (
+            <p className="text-[11.5px] text-gray-400">El historial todavía no está activo (falta correr su SQL).</p>
+          ) : datos.entradas.length === 0 ? (
+            <p className="text-[11.5px] text-gray-400">Sin cambios registrados.</p>
+          ) : (
+            datos.entradas.map((e) => (
+              <div key={e.id} className="text-[11.5px] text-gray-600 flex items-start gap-2 border-b border-gray-50 pb-1">
+                <div className="flex-1">
+                  <span className="font-medium text-gray-800">{ETIQUETA_CAMPO[e.campo] ?? CAMPO_REVISION_LABEL[e.campo as CampoRevision] ?? e.campo}</span>
+                  {e.anio && e.mes ? <span className="text-gray-400"> ({String(e.mes).padStart(2, "0")}/{e.anio})</span> : null}
+                  : {fmtValor(e.valor_anterior)} → <span className="text-gray-900">{fmtValor(e.valor_nuevo)}</span>
+                  <span className="block text-[10.5px] text-gray-400">
+                    {fmtFechaHoraAR(e.creado_en)} · {e.usuario ?? "automático"}
+                    {e.revierte_id ? " · reversión" : ""}{e.nota && !e.revierte_id ? ` · ${e.nota}` : ""}
+                  </span>
+                </div>
+                {e.revertida ? (
+                  <span className="text-[10.5px] text-gray-400 shrink-0">revertido</span>
+                ) : puedeRevertir && (e.entidad === "tarea" || e.entidad === "ficha") ? (
+                  <button disabled={trabajando} onClick={() => revertir(e)} className="text-[11px] text-amber-700 hover:underline shrink-0 disabled:opacity-50">
+                    Revertir
+                  </button>
+                ) : null}
+              </div>
+            ))
+          )}
+          {datos?.disponible && mas && datos.entradas.length > 0 && (
+            <button onClick={() => cargar(datos.entradas.length)} className="text-[11px] text-gray-500 hover:text-gray-800">Ver más</button>
+          )}
+          {err && <p className="text-[11px] text-danger">{err}</p>}
+        </div>
+      )}
     </div>
   );
 }

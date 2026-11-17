@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
+import { registrarHistorial } from "@/lib/monotributoHistorial";
 
 export type AsignacionServicio = {
   id: string;
@@ -41,13 +42,19 @@ export async function crearAsignacionServicio(
   motivo: string | null,
   creadoPor: string | null
 ) {
+  let yoId: string;
   try {
-    await requireAdmin();
+    yoId = (await requireAdmin()).id;
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
 
   const admin = createAdminClient();
+  // Monotributo guarda cada cambio de responsable en su historial (con el responsable anterior).
+  const { data: servicioAntes } = servicio === "monotributo"
+    ? await admin.from("servicios_cliente").select("responsable_id")
+        .eq("cliente_id", clienteId).eq("servicio", servicio).eq("subtipo", subtipo).maybeSingle()
+    : { data: null };
   const { error } = await admin.from("asignaciones_servicio").insert({
     cliente_id: clienteId,
     servicio,
@@ -60,6 +67,14 @@ export async function crearAsignacionServicio(
   });
 
   if (error) return { error: error.message };
+
+  if (servicio === "monotributo") {
+    await registrarHistorial(admin, [{
+      cliente_id: clienteId, anio: desdeAnio, mes: desdeMes, entidad: "responsable", campo: "responsable_id",
+      valor_anterior: (servicioAntes as { responsable_id: string | null } | null)?.responsable_id ?? null,
+      valor_nuevo: responsableId, usuario_id: yoId, nota: motivo || null,
+    }]);
+  }
 
   // Avisar por mail al nuevo responsable qué cliente, servicio y fecha de
   // inicio le corresponden — sin esto se enteraba recién viéndolo aparecer

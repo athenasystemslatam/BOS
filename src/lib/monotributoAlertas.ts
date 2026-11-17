@@ -35,6 +35,8 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
   vencimiento: string;
   vencido: boolean;
   resueltasDisponible: boolean;
+  /** Alertas marcadas "Resuelta" a mano en el mes (para "Reabrir"). */
+  resueltasMano: { id: string; cliente_id: string; cliente: string; tipo: string; valor: string | null; nota: string | null; resuelta_at: string }[];
 }> {
   const admin = createAdminClient();
   type Serv = { cliente_id: string; responsable_id: string | null; clientes: { nombre: string } | null };
@@ -57,10 +59,11 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
       admin.from("liquidadoras").select("id, nombre, rol").order("id").range(d, h)
     ),
     // Si la tabla todavía no existe (SQL de la etapa 7 sin correr), las alertas se muestran igual.
-    traerPaginado<{ cliente_id: string; tipo: string; valor: string | null }>((d, h) =>
-      admin.from("monotributo_alertas_resueltas").select("cliente_id, tipo, valor")
+    // "*" y filtro de reabiertas acá: funciona tenga o no la columna reabierta_at (SQL del historial).
+    traerPaginado<{ id: string; cliente_id: string; tipo: string; valor: string | null; nota: string | null; resuelta_at: string; reabierta_at?: string | null }>((d, h) =>
+      admin.from("monotributo_alertas_resueltas").select("*")
         .eq("anio", anio).eq("mes", mes).order("id").range(d, h)
-    ).then((filas) => ({ filas, ok: true }), () => ({ filas: [], ok: false })),
+    ).then((filas) => ({ filas: filas.filter((f) => !f.reabierta_at), ok: true }), () => ({ filas: [], ok: false })),
     leerCalendario([anio]),
   ]);
 
@@ -123,5 +126,15 @@ export async function calcularAlertasMonotributo(anio: number, mes: number): Pro
     TIPOS_ALERTA.indexOf(a.tipo) - TIPOS_ALERTA.indexOf(b.tipo) ||
     a.cliente.localeCompare(b.cliente)
   );
-  return { alertas, vencimiento, vencido, resueltasDisponible: resueltasRes.ok };
+  const nombreCliente = new Map(servicios.map((s) => [s.cliente_id, s.clientes?.nombre ?? "—"]));
+  return {
+    alertas,
+    vencimiento,
+    vencido,
+    resueltasDisponible: resueltasRes.ok,
+    resueltasMano: resueltasRes.filas.map((f) => ({
+      id: f.id, cliente_id: f.cliente_id, cliente: nombreCliente.get(f.cliente_id) ?? "—", tipo: f.tipo,
+      valor: f.valor, nota: f.nota, resuelta_at: f.resuelta_at,
+    })),
+  };
 }

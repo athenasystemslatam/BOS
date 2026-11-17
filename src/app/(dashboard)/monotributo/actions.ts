@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { ESTADOS_MES, type EstadoMes } from "@/lib/monotributo";
 import { arrastreDesde, requireEditorMonotributo, ultimaFilaAnterior } from "@/lib/monotributoServer";
+import { diferencias, registrarHistorial } from "@/lib/monotributoHistorial";
 
 const DEUDA_ESTADOS = ["sin_verificar", "no", "si"] as const;
 const INTIMACION_ESTADOS = ["no", "fijarse", "avisado", "si", "pago"] as const;
@@ -26,6 +27,11 @@ export type CambiosTarea = {
 };
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+
+const CAMPOS_TAREA = [
+  "cuota_estado", "cuota_fecha", "recategorizacion", "categoria", "deuda_estado", "deuda_periodos", "deuda_monto",
+  "deuda_aviso", "deuda_aviso_fecha", "deuda_resuelta", "deuda_resuelta_fecha", "intimacion_estado", "intimacion_fecha", "observaciones",
+] as const;
 
 export async function upsertMonotributoTarea(clienteId: string, anio: number, mes: number, updates: CambiosTarea) {
   let yoId: string;
@@ -51,7 +57,7 @@ export async function upsertMonotributoTarea(clienteId: string, anio: number, me
 
   const { data: previa } = await admin
     .from("monotributo_tareas")
-    .select("cuota_estado")
+    .select("*")
     .eq("cliente_id", clienteId).eq("anio", anio).eq("mes", mes)
     .maybeSingle();
   const estadoAnterior = (previa as { cuota_estado: string } | null)?.cuota_estado ?? null;
@@ -90,6 +96,17 @@ export async function upsertMonotributoTarea(clienteId: string, anio: number, me
     });
   }
 
+  // Historial (para Deshacer / Revertir): un registro por campo que cambió.
+  // Si la fila no existía, el "antes" son los valores por defecto de la tabla (así Revertir no deja NULL donde no se puede).
+  const antes = (previa as Record<string, unknown> | null) ?? {
+    cuota_estado: "pendiente", deuda_estado: "sin_verificar", deuda_aviso: false, deuda_resuelta: false,
+    recategorizacion: "no_corresponde", ...arrastre,
+  };
+  const historialIds = await registrarHistorial(
+    admin,
+    diferencias({ cliente_id: clienteId, anio, mes, entidad: "tarea", usuario_id: yoId }, antes, updates as Record<string, unknown>, CAMPOS_TAREA)
+  );
+
   revalidatePath("/", "layout");
-  return { ok: true, estado_cambiado_en: cambiaEstado ? ahora : null };
+  return { ok: true, estado_cambiado_en: cambiaEstado ? ahora : null, historialIds };
 }

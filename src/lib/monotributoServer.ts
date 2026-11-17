@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAreaOrAdmin } from "@/lib/auth";
+import { registrarHistorial } from "@/lib/monotributoHistorial";
 import {
   DATOS_VACIOS,
   evaluarReglasCliente,
@@ -317,4 +318,41 @@ export async function arrastrarMes(admin: Admin, anio: number, mes: number, esRe
     await admin.from("monotributo_tareas").upsert(tanda, { onConflict: "cliente_id,anio,mes", ignoreDuplicates: true });
   }
   return nuevas.length;
+}
+
+/** Reabre una marca de revisión resuelta (vuelve a pendiente) y lo deja en el historial. */
+export async function reabrirMarca(admin: Admin, id: string, usuarioId: string | null): Promise<{ error: string } | { historialIds: string[] }> {
+  const { data } = await admin.from("monotributo_revisiones").select("*").eq("id", id).maybeSingle();
+  const r = data as Revision | null;
+  if (!r) return { error: "No se encontró la marca." };
+  if (r.estado === "pendiente") return { historialIds: [] };
+  const { error } = await admin.from("monotributo_revisiones")
+    .update({ estado: "pendiente", resolucion: null, resuelta_por: null, resuelta_at: null, valor_confirmado: null })
+    .eq("id", id);
+  if (error) return { error: /unique|duplicate/i.test(error.message) ? "Ya hay una marca pendiente igual para ese cliente." : error.message };
+  const historialIds = await registrarHistorial(admin, [{
+    cliente_id: r.cliente_id, anio: r.anio, mes: r.mes, entidad: "revision", campo: r.campo,
+    valor_anterior: { estado: "resuelta", resolucion: r.resolucion, motivo: r.motivo },
+    valor_nuevo: { estado: "pendiente", motivo: r.motivo }, usuario_id: usuarioId, ref_id: r.id, nota: "Reabierta",
+  }]);
+  return { historialIds };
+}
+
+/** Reabre una alerta marcada "Resuelta" (no borra la fila: la marca reabierta) y lo deja en el historial. */
+export async function reabrirAlertaResuelta(admin: Admin, id: string, usuarioId: string | null): Promise<{ error: string } | { historialIds: string[] }> {
+  const { data, error: errLeer } = await admin.from("monotributo_alertas_resueltas").select("*").eq("id", id).maybeSingle();
+  if (errLeer) return { error: errLeer.message };
+  const a = data as { id: string; cliente_id: string; tipo: string; anio: number; mes: number; valor: string | null; reabierta_at?: string | null } | null;
+  if (!a) return { error: "No se encontró la alerta." };
+  if (a.reabierta_at) return { historialIds: [] };
+  const { error } = await admin.from("monotributo_alertas_resueltas")
+    .update({ reabierta_at: new Date().toISOString(), reabierta_por: usuarioId }).eq("id", id);
+  if (error) {
+    return { error: /reabierta/.test(error.message) ? "Falta correr el SQL del historial (add_monotributo_historial.sql)." : error.message };
+  }
+  const historialIds = await registrarHistorial(admin, [{
+    cliente_id: a.cliente_id, anio: a.anio, mes: a.mes, entidad: "alerta", campo: a.tipo,
+    valor_anterior: { estado: "resuelta", valor: a.valor }, valor_nuevo: { estado: "pendiente" }, usuario_id: usuarioId, ref_id: a.id, nota: "Reabierta",
+  }]);
+  return { historialIds };
 }

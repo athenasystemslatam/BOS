@@ -8,7 +8,8 @@ import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
 import { CAMPO_REVISION_LABEL, type CampoRevision, type Gravedad } from "@/lib/monotributo";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
-import { confirmarRevisiones, confirmarSinDeuda } from "../revisionesActions";
+import { confirmarRevisiones, confirmarSinDeuda, listarResueltas, reabrirRevision, type MarcaResuelta } from "../revisionesActions";
+import { useDeshacer } from "@/components/DeshacerAviso";
 
 export interface FilaRevision {
   id: string;
@@ -55,6 +56,7 @@ export function RevisarClient({
   const [nota, setNota] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const { ofrecer, aviso: avisoDeshacer } = useDeshacer();
   const [guardando, startGuardar] = useTransition();
 
   const visibles = useMemo(() => {
@@ -116,6 +118,7 @@ export function RevisarClient({
       setNota("");
       setAviso(`${r.resueltas} ${r.resueltas === 1 ? "marca salió" : "marcas salieron"} de revisión.`);
       router.refresh();
+      ofrecer(r.historialIds, `${r.resueltas} ${r.resueltas === 1 ? "marca confirmada" : "marcas confirmadas"}`, () => router.refresh());
     });
   }
 
@@ -260,7 +263,70 @@ export function RevisarClient({
             </tbody>
           </table>
         </div>
+        <ResueltasPanel puedeEditar={puedeEditar} onCambio={() => router.refresh()} />
       </div>
+      {avisoDeshacer}
+    </div>
+  );
+}
+
+/** Marcas ya resueltas (de a 50, lo más reciente primero) con "Reabrir" para lo que se resolvió por error. */
+function ResueltasPanel({ puedeEditar, onCambio }: { puedeEditar: boolean; onCambio: () => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [filas, setFilas] = useState<MarcaResuelta[] | null>(null);
+  const [mas, setMas] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+  const [trabajando, startTrabajo] = useTransition();
+
+  function cargar(desde = 0) {
+    listarResueltas(desde).then((r) => {
+      setMas(r.length === 50);
+      setFilas((prev) => (desde === 0 || !prev ? r : [...prev, ...r]));
+    });
+  }
+
+  function reabrir(id: string) {
+    setErr(null);
+    startTrabajo(async () => {
+      const r = await reabrirRevision(id);
+      if ("error" in r) return setErr(r.error);
+      setFilas((prev) => prev?.filter((f) => f.id !== id) ?? null);
+      onCambio();
+    });
+  }
+
+  return (
+    <div className="px-6 py-4 bg-gray-50">
+      <button onClick={() => { setAbierto((v) => !v); if (!filas) cargar(0); }} className="text-[12px] font-medium text-gray-600 hover:text-gray-900">
+        {abierto ? "Ocultar marcas resueltas" : "Ver marcas resueltas (para reabrir)"}
+      </button>
+      {abierto && (
+        <div className="mt-2 space-y-1">
+          {!filas ? (
+            <p className="text-[12px] text-gray-400 flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Cargando…</p>
+          ) : filas.length === 0 ? (
+            <p className="text-[12px] text-gray-400">No hay marcas resueltas.</p>
+          ) : (
+            filas.map((f) => (
+              <p key={f.id} className="text-[12px] text-gray-600">
+                <span className="font-medium text-gray-800">{f.cliente}</span> · {CAMPO_REVISION_LABEL[f.campo]}
+                {f.anio && f.mes ? ` (${MESES_NOMBRES[f.mes]} ${f.anio})` : ""}: {f.motivo} —{" "}
+                {f.resolucion === "confirmado" ? "confirmada así" : "corregida"}
+                {f.nota ? ` · “${f.nota}”` : ""}
+                {puedeEditar && (
+                  <button disabled={trabajando} onClick={() => reabrir(f.id)} className="ml-2 text-amber-700 hover:underline disabled:opacity-50">
+                    Reabrir
+                  </button>
+                )}
+              </p>
+            ))
+          )}
+          {filas && mas && filas.length > 0 && (
+            <button onClick={() => cargar(filas.length)} className="text-[11.5px] text-gray-500 hover:text-gray-800">Ver más</button>
+          )}
+          {err && <p className="text-[12px] text-red-600">{err}</p>}
+        </div>
+      )}
     </div>
   );
 }

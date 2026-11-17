@@ -11,6 +11,7 @@ import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloP
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import { guardar, useAvisoErrorGuardado } from "@/components/AvisoErrorGuardado";
+import { useDeshacer } from "@/components/DeshacerAviso";
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
 import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea, type CambiosTarea } from "./actions";
@@ -151,6 +152,7 @@ export function MonotributoClient({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { avisar, aviso } = useAvisoErrorGuardado();
+  const { ofrecer, aviso: avisoDeshacer } = useDeshacer();
   // Al entrar: "Mis clientes" para quien tiene clientes; los administradores ven todos.
   const [filterResp, setFilterResp] = useState(() =>
     !isAdmin && yoId && servicios.some((s) => s.responsable_id === yoId) ? "__mios__" : ""
@@ -209,16 +211,26 @@ export function MonotributoClient({
   function guardarCambio(clienteId: string, cambios: CambiosTarea, patchLocal: Partial<Tarea> = cambios as Partial<Tarea>) {
     const antes = tareasMap.get(clienteId);
     patchTarea(clienteId, patchLocal);
+    const volverAtras = () =>
+      setTareasMap((prev) => {
+        const next = new Map(prev);
+        if (antes) next.set(clienteId, antes); else next.delete(clienteId);
+        return next;
+      });
     startTransition(async () => {
-      const error = await guardar(() => upsertMonotributoTarea(clienteId, anio, mes, cambios));
+      let historialIds: string[] | undefined;
+      const error = await guardar(async () => {
+        const r = await upsertMonotributoTarea(clienteId, anio, mes, cambios);
+        if (r && "historialIds" in r) historialIds = r.historialIds;
+        return r;
+      });
       if (error) {
         avisar(error);
-        setTareasMap((prev) => {
-          const next = new Map(prev);
-          if (antes) next.set(clienteId, antes); else next.delete(clienteId);
-          return next;
-        });
+        volverAtras();
+        return;
       }
+      // Aviso "Deshacer" unos segundos: revierte en la base (queda en el historial) y en pantalla.
+      ofrecer(historialIds, "Cambio guardado", volverAtras);
     });
   }
 
@@ -631,6 +643,7 @@ export function MonotributoClient({
       </div>
     </div>
     {aviso}
+    {avisoDeshacer}
     {editandoDeuda && (
       <DeudaModal
         nombre={editandoDeuda.clientes?.nombre ?? ""}
