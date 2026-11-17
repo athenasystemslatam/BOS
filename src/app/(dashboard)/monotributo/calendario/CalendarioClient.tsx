@@ -64,8 +64,12 @@ export function CalendarioClient({
       fs.map((f) => {
         const p = vistaPrevia.filas.find((x) => x.mes === f.mes);
         if (!p) return f;
-        const recatDesde = p.recatLimite ? (f.recatDesde ?? mesPorDefecto(anio, f.mes).recatDesde) : null;
-        return { ...f, vencimiento: p.vencimiento, recatLimite: p.recatLimite, recatDesde };
+        // Solo pisa lo que vino en lo pegado: si no trajo recategorización, se deja la que había.
+        return {
+          ...f,
+          vencimiento: p.vencimiento ?? f.vencimiento,
+          ...(p.recatLimite ? { recatLimite: p.recatLimite, recatDesde: f.recatDesde ?? mesPorDefecto(anio, f.mes).recatDesde } : {}),
+        };
       })
     );
     setModificado(true);
@@ -96,7 +100,7 @@ export function CalendarioClient({
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Monotributo</p>
-          <h1 className="text-[20px] font-semibold text-gray-900">Calendario ARCA {anio}</h1>
+          <h1 className="text-[20px] font-semibold text-gray-900">Calendario {anio}</h1>
           <p className="text-[12px] text-gray-400 mt-0.5">
             Vencimiento de la cuota y ventanas de recategorización. Fuente: afip.gob.ar/vencimientos. Se usa en Seguimiento, Dashboard, Vencimientos y Alertas.
           </p>
@@ -177,7 +181,9 @@ export function CalendarioClient({
         <h2 className="text-[14px] font-semibold text-gray-900">Pegar una tabla</h2>
         <p className="text-[11.5px] text-gray-400 mt-0.5 mb-3">
           Una línea por mes: mes, vencimiento y (si corresponde) límite de recategorización, separados por tabulador o punto y coma.
-          Ej.: <code>junio;22/06/{anio}</code> o <code>2	20/02/{anio}	05/02/{anio}</code>. Se ve antes de aplicar y no se guarda hasta tocar &quot;Guardar&quot;.
+          Se puede pegar tal como se copia de la página de vencimientos de ARCA, por ejemplo <code>Enero	20/01/{String(anio).slice(2)}</code> y{" "}
+          <code>Recategorización semestral	05/02/{String(anio).slice(2)}</code> (el límite va al mes de esa fecha). Las líneas sin fecha se ignoran.
+          Se ve antes de aplicar y no se guarda hasta tocar &quot;Guardar&quot;.
         </p>
         <textarea
           value={pegado}
@@ -201,10 +207,11 @@ export function CalendarioClient({
             {vistaPrevia.errores.map((e) => <p key={e} className="text-red-600">{e}</p>)}
             {vistaPrevia.filas.map((p) => (
               <p key={p.mes} className="text-gray-700">
-                {MESES_NOMBRES[p.mes]}: vence {p.vencimiento} ({diaSemana(p.vencimiento)})
-                {p.recatLimite ? ` · límite recategorización ${p.recatLimite}` : ""}
+                {MESES_NOMBRES[p.mes]}:{p.vencimiento ? ` vence ${p.vencimiento.split("-").reverse().join("/")} (${diaSemana(p.vencimiento)})` : " vencimiento sin cambios"}
+                {p.recatLimite ? ` · límite recategorización ${p.recatLimite.split("-").reverse().join("/")}` : ""}
               </p>
             ))}
+            {vistaPrevia.ignoradas > 0 && <p className="text-gray-400">{vistaPrevia.ignoradas} línea(s) sin fecha ignoradas (títulos o encabezados).</p>}
           </div>
         )}
       </div>

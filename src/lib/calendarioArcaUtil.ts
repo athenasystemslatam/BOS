@@ -72,8 +72,8 @@ export function anioCargado(cal: CalendarioArca, anio: number): boolean {
 /** Aviso para administradores: falta el año en curso, o es diciembre y falta el siguiente. */
 export function avisoCalendarioFaltante(cal: CalendarioArca, hoy: string): string | null {
   const [y, m] = hoy.split("-").map(Number);
-  if (!anioCargado(cal, y)) return `Falta cargar el calendario ARCA ${y}: mientras tanto se usa el día 20 corrido a día hábil.`;
-  if (m === 12 && !anioCargado(cal, y + 1)) return `Falta cargar el calendario ARCA ${y + 1}.`;
+  if (!anioCargado(cal, y)) return `Falta cargar el calendario ${y}: mientras tanto se usa el día 20 corrido a día hábil.`;
+  if (m === 12 && !anioCargado(cal, y + 1)) return `Falta cargar el calendario ${y + 1}.`;
   return null;
 }
 
@@ -107,41 +107,70 @@ const MESES_TXT: Record<string, number> = {
   septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
 };
 
-/** Fecha en dd/mm/aaaa, d/m/aaaa o aaaa-mm-dd → aaaa-mm-dd (o null si no es válida). */
+/** Fecha en dd/mm/aaaa, dd/mm/aa (como la publica ARCA: "20/01/26"), d/m/aaaa o aaaa-mm-dd → aaaa-mm-dd (o null). */
 export function leerFecha(txt: string): string | null {
   const t = txt.trim();
   let y: number, m: number, d: number;
   let r = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
   if (r) { y = +r[1]; m = +r[2]; d = +r[3]; }
-  else if ((r = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) { d = +r[1]; m = +r[2]; y = +r[3]; }
+  else if ((r = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/))) { d = +r[1]; m = +r[2]; y = r[3].length === 2 ? 2000 + +r[3] : +r[3]; }
   else return null;
   const f = new Date(y, m - 1, d);
   if (f.getFullYear() !== y || f.getMonth() !== m - 1 || f.getDate() !== d) return null;
   return iso(f);
 }
 
-/** Pegar una tabla (mes, vencimiento, límite de recategorización) separada por tabulador, ; o ,.
- * Devuelve las filas válidas y los errores por línea, para mostrar antes de guardar. */
-export function leerTablaPegada(texto: string, anio: number): { filas: { mes: number; vencimiento: string; recatLimite: string | null }[]; errores: string[] } {
-  const filas: { mes: number; vencimiento: string; recatLimite: string | null }[] = [];
+export interface FilaPegada {
+  mes: number;
+  vencimiento: string | null;
+  recatLimite: string | null;
+}
+
+/** Pegar la tabla tal como se copia de la página de vencimientos de ARCA:
+ *   "Enero<TAB>20/01/26"  → vencimiento de la cuota de enero
+ *   "Recategorización semestral<TAB>05/02/26"  → límite de recategorización, en el mes de esa fecha
+ * También acepta "mes; vencimiento; límite" (número o nombre de mes, fechas dd/mm/aa, dd/mm/aaaa o aaaa-mm-dd).
+ * Las líneas sin ninguna fecha (títulos, encabezados) se ignoran. Devuelve las filas por mes y los
+ * errores por línea, para mostrar antes de guardar. */
+export function leerTablaPegada(texto: string, anio: number): { filas: FilaPegada[]; errores: string[]; ignoradas: number } {
+  const porMes = new Map<number, FilaPegada>();
   const errores: string[] = [];
+  let ignoradas = 0;
+  const fila = (mes: number) => {
+    if (!porMes.has(mes)) porMes.set(mes, { mes, vencimiento: null, recatLimite: null });
+    return porMes.get(mes)!;
+  };
+
   texto.split(/\r?\n/).forEach((linea, i) => {
     if (!linea.trim()) return;
-    const cols = linea.split(/\t|;|,(?!\d{2}\b)/).map((c) => c.trim());
-    const mesTxt = (cols[0] ?? "").toLowerCase();
-    if (i === 0 && /mes/.test(mesTxt) && !MESES_TXT[mesTxt]) return; // encabezado
-    const mes = MESES_TXT[mesTxt] ?? Number(mesTxt);
-    if (!(mes >= 1 && mes <= 12)) return void errores.push(`Línea ${i + 1}: mes "${cols[0]}" no reconocido.`);
-    const vto = leerFecha(cols[1] ?? "");
-    if (!vto) return void errores.push(`Línea ${i + 1}: vencimiento "${cols[1] ?? ""}" no es una fecha.`);
-    if (Number(vto.slice(0, 4)) !== anio) return void errores.push(`Línea ${i + 1}: el vencimiento ${vto} no es de ${anio}.`);
-    let limite: string | null = null;
-    if (cols[2]) {
-      limite = leerFecha(cols[2]);
-      if (!limite) return void errores.push(`Línea ${i + 1}: límite de recategorización "${cols[2]}" no es una fecha.`);
+    const cols = linea.split(/\t|;/).map((c) => c.trim()).filter(Boolean);
+    const fechas = cols.map(leerFecha);
+    if (!fechas.some(Boolean)) return void ignoradas++;
+    const etiqueta = (cols[0] ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    const n = `Línea ${i + 1} ("${linea.trim().slice(0, 40)}")`;
+
+    if (/recategoriz/.test(etiqueta)) {
+      const f = fechas.find(Boolean)!;
+      if (Number(f.slice(0, 4)) !== anio) return void errores.push(`${n}: la fecha ${f} no es de ${anio}.`);
+      const m = Number(f.slice(5, 7));
+      if (fila(m).recatLimite) return void errores.push(`${n}: ya hay un límite de recategorización para el mes ${m}.`);
+      fila(m).recatLimite = f;
+      return;
     }
-    if (filas.some((f) => f.mes === mes)) return void errores.push(`Línea ${i + 1}: el mes ${mes} está repetido.`);
-    filas.push({ mes, vencimiento: vto, recatLimite: limite });
+
+    const mes = MESES_TXT[etiqueta] ?? (/^\d{1,2}$/.test(etiqueta) ? Number(etiqueta) : NaN);
+    if (!(mes >= 1 && mes <= 12)) return void errores.push(`${n}: "${cols[0]}" no es un mes ni "Recategorización".`);
+    const vto = fechas[1] ?? fechas.find(Boolean)!;
+    if (!vto) return void errores.push(`${n}: falta la fecha de vencimiento.`);
+    if (Number(vto.slice(0, 4)) !== anio) return void errores.push(`${n}: el vencimiento ${vto} no es de ${anio}.`);
+    if (Number(vto.slice(5, 7)) !== mes) errores.push(`${n}: el vencimiento ${vto} no cae en ${Object.keys(MESES_TXT).find((k) => MESES_TXT[k] === mes)}; revisalo.`);
+    if (fila(mes).vencimiento) return void errores.push(`${n}: el mes ${mes} está repetido.`);
+    fila(mes).vencimiento = vto;
+    const limite = fechas[2];
+    if (limite) {
+      if (fila(Number(limite.slice(5, 7))).recatLimite) return void errores.push(`${n}: límite de recategorización repetido.`);
+      fila(Number(limite.slice(5, 7))).recatLimite = limite;
+    }
   });
-  return { filas, errores };
+  return { filas: Array.from(porMes.values()).sort((a, b) => a.mes - b.mes), errores, ignoradas };
 }

@@ -3,7 +3,7 @@ import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
 import { hoyArgentina, puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
-import { avisoCalendarioFaltante, enVentanaRecategorizacion, leerCalendario } from "@/lib/calendarioArca";
+import { avisoCalendarioFaltante, enVentanaRecategorizacion, leerCalendario, vencimientoDe } from "@/lib/calendarioArca";
 import { arrastrarMes, sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { MonotributoClient, type FichaResumen } from "./MonotributoClient";
@@ -123,6 +123,8 @@ export default async function MonotributoPage({
       yoId={yo?.id ?? null}
       esRecategorizacion={esRecategorizacion}
       avisoCalendario={yo?.isAdmin ? avisoCalendarioFaltante(calendario, hoy) : null}
+      vencimiento={vencimientoDe(calendario, anio, mes)}
+      hoy={hoy}
     />
   );
 }

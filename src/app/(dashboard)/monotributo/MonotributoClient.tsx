@@ -132,6 +132,8 @@ export function MonotributoClient({
   yoId,
   esRecategorizacion,
   avisoCalendario,
+  vencimiento,
+  hoy,
 }: {
   servicios: Servicio[];
   tareas: Tarea[];
@@ -150,7 +152,11 @@ export function MonotributoClient({
   esRecategorizacion: boolean;
   /** Solo para administradores: falta cargar el calendario ARCA. */
   avisoCalendario: string | null;
+  /** Vencimiento de la cuota del mes, del calendario (aaaa-mm-dd), y la fecha de hoy en Argentina. */
+  vencimiento: string;
+  hoy: string;
 }) {
+  const diasAlVto = Math.round((Date.parse(vencimiento + "T00:00:00Z") - Date.parse(hoy + "T00:00:00Z")) / 86_400_000);
   const router = useRouter();
   const [, startTransition] = useTransition();
   const { avisar, aviso } = useAvisoErrorGuardado();
@@ -311,7 +317,12 @@ export function MonotributoClient({
             <div className="w-2 h-6 rounded-full bg-amber-500" />
             <div>
               <h1 className="text-[17px] font-semibold text-gray-900">Monotributo</h1>
-              <p className="text-[12px] text-gray-400 mt-0.5">Seguimiento mensual</p>
+              <p className="text-[12px] text-gray-400 mt-0.5">
+                Seguimiento mensual · la cuota {diasAlVto < 0 ? "venció" : "vence"} el {fmtFecha(vencimiento)}
+                <span className={clsx("ml-1 font-medium", diasAlVto < 0 ? "text-gray-400" : diasAlVto <= 3 ? "text-red-600" : "text-gray-600")}>
+                  {diasAlVto > 0 ? `· ${diasAlVto} ${diasAlVto === 1 ? "día" : "días"}` : diasAlVto === 0 ? "· hoy" : `· hace ${-diasAlVto} ${diasAlVto === -1 ? "día" : "días"}`}
+                </span>
+              </p>
             </div>
           </div>
 
