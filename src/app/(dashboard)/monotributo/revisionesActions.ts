@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DATOS_VACIOS, valorCampo, type DatosMonotributoCliente, type Revision } from "@/lib/monotributo";
-import { enTandas, reabrirMarca, requireEditorMonotributo } from "@/lib/monotributoServer";
+import { conContacto, enTandas, leerContactos, reabrirMarca, requireEditorMonotributo } from "@/lib/monotributoServer";
 import { registrarHistorial, type EntradaHistorial } from "@/lib/monotributoHistorial";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -33,20 +33,21 @@ async function valoresActuales(admin: Admin, marcas: Revision[]): Promise<Map<st
   const datos = new Map<string, DatosMonotributoCliente>();
   const resp = new Map<string, string | null>();
   for (const tanda of enTandas(clientes)) {
-    const [{ data: fichas }, { data: servs }] = await Promise.all([
+    const [{ data: fichas }, { data: servs }, contactos] = await Promise.all([
       admin.from("monotributo_clientes").select("*").in("cliente_id", tanda),
       admin.from("servicios_cliente").select("cliente_id, responsable_id").in("cliente_id", tanda)
         .eq("servicio", "monotributo").eq("subtipo", "general"),
+      leerContactos(admin, tanda),
     ]);
     for (const f of (fichas ?? []) as (DatosMonotributoCliente & { cliente_id: string })[]) {
-      datos.set(f.cliente_id, { ...DATOS_VACIOS, ...f, mails: f.mails ?? [] });
+      datos.set(f.cliente_id, conContacto({ ...DATOS_VACIOS, ...f }, contactos.get(f.cliente_id)));
     }
     for (const s of (servs ?? []) as { cliente_id: string; responsable_id: string | null }[]) resp.set(s.cliente_id, s.responsable_id);
   }
   const out = new Map<string, string>();
   for (const r of marcas) {
     if (r.campo === "responsable" || r.campo === "forma_pago" || r.campo === "medio_contacto") {
-      out.set(r.id, valorCampo(r.campo, datos.get(r.cliente_id) ?? { ...DATOS_VACIOS }, resp.get(r.cliente_id) ?? null));
+      out.set(r.id, valorCampo(r.campo, datos.get(r.cliente_id) ?? { ...DATOS_VACIOS, mails: [] }, resp.get(r.cliente_id) ?? null));
     } else out.set(r.id, r.campo === "pago" ? "enviado" : r.campo === "deuda" ? "sin_verificar" : "confirmado");
   }
   return out;

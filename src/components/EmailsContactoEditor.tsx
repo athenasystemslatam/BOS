@@ -2,8 +2,9 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import type { EmailContacto } from "@/types";
+import { MAX_EMAILS_CONTACTO } from "@/lib/contactos";
 
-const MAX_EMAILS = 5;
+const MAX_EMAILS = MAX_EMAILS_CONTACTO;
 
 // Editor de la lista de emails de contacto de un cliente, cada uno con su
 // aclaración de área (sueldos, impuestos, administración...) — mismo patrón
@@ -11,7 +12,7 @@ const MAX_EMAILS = 5;
 // entre los 4 modales de Nueva/Editar empresa (Panel General y Clientes) y
 // la llavecita de Seguimiento. Tope de 5 (ver también el recorte del lado
 // del servidor en actions.ts) para que la ficha del cliente no crezca sin
-// límite.
+// límite (10, ver lib/contactos.ts).
 export function EmailsContactoEditor({
   emails,
   onChange,

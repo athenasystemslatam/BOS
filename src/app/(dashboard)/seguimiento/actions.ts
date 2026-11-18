@@ -1,5 +1,7 @@
 "use server";
 
+import { ERROR_TELEFONOS_DETALLE, MAX_EMAILS_CONTACTO as MAX_EMAILS_GENERAL, limpiarTelefonos } from "@/lib/contactos";
+import type { TelefonoContacto } from "@/types";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireLiquidadoraOrAdmin, requireAreaOrAdmin } from "@/lib/auth";
@@ -18,7 +20,7 @@ const CAMPOS_DRIVE = [
   "sac",
 ] as const;
 
-const MAX_EMAILS_CONTACTO = 5;
+const MAX_EMAILS_CONTACTO = MAX_EMAILS_GENERAL;
 
 /** Edita los datos de contacto/accesos de un cliente desde el recuadro de
  * la llavecita en Seguimiento — mismos campos que la ficha completa
@@ -31,6 +33,7 @@ export async function editarDatosCliente(
     emails_contacto_detalle: EmailContacto[];
     cuil_arca: string | null;
     telefono: string | null;
+    telefonos_detalle?: TelefonoContacto[];
     observaciones: string | null;
     claves_acceso: ClaveAcceso[];
   }
@@ -54,7 +57,11 @@ export async function editarDatosCliente(
   const emails_contacto = emails_contacto_detalle.map((e) => e.email);
 
   const cuil_arca = datos.cuil_arca?.trim() || null;
-  const telefono = datos.telefono?.trim() || null;
+  // Lista de teléfonos con aclaración (la misma que ven todos los módulos); "telefono" queda con el primero.
+  const telefonos_detalle = datos.telefonos_detalle
+    ? limpiarTelefonos(datos.telefonos_detalle)
+    : limpiarTelefonos(datos.telefono?.trim() ? [{ telefono: datos.telefono, aclaracion: "" }] : []);
+  const telefono = telefonos_detalle[0]?.telefono ?? null;
   const observaciones = datos.observaciones?.trim() || null;
 
   const claves_acceso = (Array.isArray(datos.claves_acceso) ? datos.claves_acceso : [])
@@ -74,6 +81,7 @@ export async function editarDatosCliente(
       emails_contacto_detalle,
       cuil_arca,
       telefono,
+      telefonos_detalle,
       observaciones,
       claves_acceso,
       fecha_modificacion: new Date().toISOString(),
@@ -86,6 +94,7 @@ export async function editarDatosCliente(
         error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.',
       };
     }
+    if (error.message.includes("telefonos_detalle")) return { error: ERROR_TELEFONOS_DETALLE };
     if (error.message.includes("telefono")) {
       return {
         error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;',

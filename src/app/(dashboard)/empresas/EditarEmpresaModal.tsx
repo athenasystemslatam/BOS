@@ -7,6 +7,9 @@ import { Cliente, Liquidadora, ClaveAcceso, EmailContacto, Local } from "@/types
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
+import { TelefonosContactoEditor } from "@/components/TelefonosContactoEditor";
+import type { TelefonoContacto } from "@/types";
+import { telefonosDeCliente } from "@/lib/contactos";
 import { LocalesEditor } from "@/components/LocalesEditor";
 import { useBackdropClose } from "@/lib/useBackdropClose";
 
@@ -65,6 +68,7 @@ export function EditarEmpresaModal({
   // Clientes editados antes de agregar la aclaración por email todavía no
   // tienen emails_contacto_detalle cargado — se completa con la columna
   // vieja (solo direcciones) para no perderlos de vista.
+  const [telefonos, setTelefonos] = useState<TelefonoContacto[]>(telefonosDeCliente(cliente));
   const [emailsContacto, setEmailsContacto] = useState<EmailContacto[]>(
     cliente.emails_contacto_detalle && cliente.emails_contacto_detalle.length > 0
       ? cliente.emails_contacto_detalle
@@ -94,6 +98,7 @@ export function EditarEmpresaModal({
     formData.set("tiene_rubrica_lsd", String(tieneRubrica));
     formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
+    formData.set("telefonos_detalle", JSON.stringify(telefonos.map((t) => ({ telefono: t.telefono.trim(), aclaracion: t.aclaracion.trim() })).filter((t) => t.telefono)));
     formData.set(
       "emails_contacto_detalle",
       JSON.stringify(
@@ -203,13 +208,7 @@ export function EditarEmpresaModal({
               <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 Teléfono
               </label>
-              <input
-                name="telefono"
-                type="text"
-                defaultValue={cliente.telefono ?? ""}
-                placeholder="Ej: 11 4567-8900"
-                className={inputCls}
-              />
+              <TelefonosContactoEditor telefonos={telefonos} onChange={setTelefonos} />
             </div>
 
             {/* Emails de contacto */}

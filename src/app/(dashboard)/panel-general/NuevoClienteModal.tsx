@@ -8,6 +8,8 @@ import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
+import { TelefonosContactoEditor } from "@/components/TelefonosContactoEditor";
+import type { TelefonoContacto } from "@/types";
 import { LocalesEditor } from "@/components/LocalesEditor";
 import { crearClienteConServicios } from "./actions";
 
@@ -26,6 +28,7 @@ export function NuevoClienteModal({
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [telefonos, setTelefonos] = useState<TelefonoContacto[]>([]);
   const [emailsContacto, setEmailsContacto] = useState<EmailContacto[]>([]);
   const [tieneLocales, setTieneLocales] = useState(false);
   const [locales, setLocales] = useState<Local[]>([]);
@@ -103,6 +106,7 @@ export function NuevoClienteModal({
     });
 
     formData.set("servicios", JSON.stringify(serviciosPayload));
+    formData.set("telefonos_detalle", JSON.stringify(telefonos.map((t) => ({ telefono: t.telefono.trim(), aclaracion: t.aclaracion.trim() })).filter((t) => t.telefono)));
     formData.set(
       "emails_contacto_detalle",
       JSON.stringify(
@@ -205,11 +209,7 @@ export function NuevoClienteModal({
               <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                 Teléfono
               </label>
-              <input
-                name="telefono"
-                className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
-                placeholder="Ej. 11 4567-8900"
-              />
+              <TelefonosContactoEditor telefonos={telefonos} onChange={setTelefonos} />
             </div>
 
             <div>

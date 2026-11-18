@@ -8,6 +8,7 @@ import type { Cliente, FichaLibrosSocietario, ModuloClave } from "@/types";
 import { vencimientoFinal } from "@/lib/libros";
 import { FalSeccion } from "@/components/FalSeccion";
 import { MonotributoSeccion } from "@/components/MonotributoSeccion";
+import { ContactosCliente } from "@/components/ContactosCliente";
 
 const MODULO_LABEL: Record<ModuloClave, string> = {
   "": "General",
@@ -168,6 +169,15 @@ export function FichaClienteBoton({
   // Ítem 88: siempre vuelve a pedir los datos al abrir, no solo la primera
   // vez — si no, muestra lo que había cuando se abrió por primera vez,
   // aunque se haya editado el cliente desde otro módulo en el medio.
+  // Al guardar contactos se vuelve a leer el cliente y se recarga la sección de Monotributo (sus marcas usan esos contactos).
+  const [version, setVersion] = useState(0);
+  function recargar() {
+    fetchAction(clienteId).then((c) => {
+      setCliente(c);
+      setVersion((v) => v + 1);
+    });
+  }
+
   function abrir() {
     setMono(null);
     setAbierto(true);
@@ -228,26 +238,12 @@ export function FichaClienteBoton({
                 <p className="text-sm text-gray-400 text-center py-10">No se pudo cargar la ficha.</p>
               ) : (
                 <>
-                  <MonotributoSeccion clienteId={cliente.id} nombreCliente={nombre} onInfo={setMono} />
+                  <MonotributoSeccion key={version} clienteId={cliente.id} nombreCliente={nombre} onInfo={setMono} />
 
                   <Seccion titulo="Datos básicos">
-                    <div className="grid grid-cols-2 gap-3">
-                      <Campo label="CUIT" value={cliente.cuit?.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")} />
-                      <Campo label="Teléfono" value={cliente.telefono} />
-                    </div>
-                    {(cliente.emails_contacto_detalle?.length ?? 0) > 0 ? (
-                      <div className="space-y-1">
-                        <p className="text-[10px] font-semibold tracking-[.08em] uppercase text-gray-400">Emails de contacto</p>
-                        {cliente.emails_contacto_detalle!.map((e, i) => (
-                          <p key={i} className="text-[13px] text-gray-800">
-                            {e.email}
-                            {e.aclaracion && <span className="text-gray-400"> — {e.aclaracion}</span>}
-                          </p>
-                        ))}
-                      </div>
-                    ) : (
-                      <Campo label="Emails de contacto" value={cliente.emails_contacto?.join(", ")} />
-                    )}
+                    <Campo label="CUIT" value={cliente.cuit?.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3")} />
+                    {/* Teléfonos y mails: los mismos en todo el sistema (lib/contactos.ts). */}
+                    <ContactosCliente key={cliente.id + version} cliente={cliente} onGuardado={recargar} />
                   </Seccion>
 
                   {!mono?.soloMonotributo && (<>

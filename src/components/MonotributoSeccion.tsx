@@ -26,7 +26,6 @@ import {
   MEDIOS,
   MEDIO_LABEL,
   fmtFechaHoraAR,
-  parsearMails,
   type CampoRevision,
   type Gravedad,
 } from "@/lib/monotributo";
@@ -316,21 +315,17 @@ export function MonotributoSeccion({
         <Texto label="Empresa / grupo" valor={datos.empresa_grupo} disabled={deshabilitado}
           onGuardar={(v) => guardar({ empresa_grupo: v })} />
 
-        <Texto
-          label="Mails"
-          valor={datos.mails.join("; ")}
-          disabled={deshabilitado}
-          marca={datos.medio === "mail" ? marcaDe("medio_contacto") : null}
-          placeholder="separados por ;"
-          onGuardar={(v) => guardar({ mails: parsearMails(v ?? "") })}
-        />
-        <Texto
-          label="WhatsApp"
-          valor={datos.whatsapp}
-          disabled={deshabilitado}
-          marca={datos.medio === "whatsapp" ? marcaDe("medio_contacto") : null}
-          onGuardar={(v) => guardar({ whatsapp: v })}
-        />
+        {/* Mails y teléfonos: la lista general del cliente (se editan en "Datos básicos", más abajo). */}
+        <Fila label="Mails" marca={datos.medio === "mail" ? marcaDe("medio_contacto") : null}>
+          <span className="text-[12.5px] text-gray-800 break-all">{datos.mails.length ? datos.mails.join("; ") : "—"}</span>
+        </Fila>
+        <Fila label="WhatsApp" marca={datos.medio === "whatsapp" ? marcaDe("medio_contacto") : null}>
+          <span className="text-[12.5px] text-gray-800">{datos.whatsapp ?? "—"}</span>
+        </Fila>
+        <p className="col-span-2 -mt-1 text-[11px] text-gray-400">
+          Mails y teléfonos son los mismos en todo el sistema: se cargan en &quot;Datos básicos&quot;, más abajo. Para WhatsApp se usa el teléfono
+          que diga &quot;WhatsApp&quot; en la aclaración (o el primero).
+        </p>
 
         <Fila label="Paga desde la cuenta de">
           <select
@@ -425,6 +420,7 @@ const ETIQUETA_CAMPO: Record<string, string> = {
   forma_pago: "Forma de pago", paga_desde_cliente_id: "Paga desde la cuenta de", paga_desde_texto: "Paga desde (aclaración)",
   avisa: "Avisar", envia_vep: "Enviar VEP/QR", medio: "Medio", destinatario: "Destinatario", mails: "Mails", whatsapp: "WhatsApp",
   empresa_grupo: "Empresa / grupo", saldo_a_favor: "Saldo a favor", resolucion_arba: "Resolución ARBA", responsable_id: "Responsable",
+  emails_contacto_detalle: "Mails", telefonos_detalle: "Teléfonos",
   total_facturado: "Facturado 12 meses", ficha_enviada: "Ficha enviada al cliente", ficha_enviada_fecha: "Fecha de envío de la ficha", nota: "Nota",
 };
 
@@ -436,7 +432,12 @@ const VALOR_TEXTO: Record<string, string> = {
 function fmtValor(v: unknown): string {
   if (v === null || v === undefined || v === "") return "—";
   if (typeof v === "boolean") return v ? "Sí" : "No";
-  if (Array.isArray(v)) return v.length ? v.join("; ") : "—";
+  if (Array.isArray(v)) {
+    if (!v.length) return "—";
+    return v.map((x) => (x && typeof x === "object"
+      ? [(x as { email?: string; telefono?: string }).email ?? (x as { telefono?: string }).telefono, (x as { aclaracion?: string }).aclaracion].filter(Boolean).join(" — ")
+      : String(x))).join("; ");
+  }
   if (typeof v === "object") {
     const o = v as { estado?: string; resolucion?: string };
     return o.estado === "pendiente" ? "Pendiente" : o.resolucion === "confirmado" ? "Confirmada así" : o.resolucion === "corregido" ? "Corregida" : "Resuelta";

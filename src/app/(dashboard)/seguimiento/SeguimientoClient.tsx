@@ -52,6 +52,9 @@ import { getVencimientosGrupos, getVencimientoF931, MESES_NOMBRES } from "@/lib/
 import { FalSeccion } from "@/components/FalSeccion";
 import type { FilaFal } from "@/lib/fal";
 import { FalCartel } from "./FalCartel";
+import { TelefonosContactoEditor } from "@/components/TelefonosContactoEditor";
+import { telefonosDeCliente } from "@/lib/contactos";
+import type { TelefonoContacto } from "@/types";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -260,7 +263,8 @@ function ClavesModal({
   const [edit, setEdit] = useState(false);
   const [emails, setEmails] = useState<EmailContacto[]>(emailsIniciales);
   const [cuil, setCuil] = useState(cliente.cuil_arca ?? "");
-  const [tel, setTel] = useState(cliente.telefono ?? "");
+  const telefonosIniciales = telefonosDeCliente(cliente);
+  const [telefonos, setTelefonos] = useState<TelefonoContacto[]>(telefonosIniciales);
   const [obs, setObs] = useState(cliente.observaciones ?? "");
   const [clavesEdit, setClavesEdit] = useState<ClaveAcceso[]>(claves);
   const [err, setErr] = useState<string | null>(null);
@@ -273,7 +277,8 @@ function ClavesModal({
       const r = await editarDatosCliente(cliente.id, {
         emails_contacto_detalle: emails,
         cuil_arca: cuil.trim() || null,
-        telefono: tel.trim() || null,
+        telefono: telefonos[0]?.telefono.trim() || null,
+        telefonos_detalle: telefonos,
         observaciones: obs.trim() || null,
         claves_acceso: clavesEdit,
       });
@@ -340,13 +345,7 @@ function ClavesModal({
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 Teléfono
               </p>
-              <input
-                type="text"
-                value={tel}
-                onChange={(e) => setTel(e.target.value)}
-                placeholder="11 4567-8900"
-                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-bordo"
-              />
+              <TelefonosContactoEditor telefonos={telefonos} onChange={setTelefonos} />
             </div>
 
             <div>
@@ -381,7 +380,7 @@ function ClavesModal({
                   setEdit(false);
                   setEmails(emailsIniciales);
                   setCuil(cliente.cuil_arca ?? "");
-                  setTel(cliente.telefono ?? "");
+                  setTelefonos(telefonosIniciales);
                   setObs(cliente.observaciones ?? "");
                   setClavesEdit(claves);
                   setErr(null);
@@ -439,15 +438,22 @@ function ClavesModal({
               </div>
             )}
 
-            {/* Teléfono */}
-            {cliente.telefono && (
+            {/* Teléfonos (la misma lista en todo el sistema) */}
+            {telefonosIniciales.length > 0 && (
               <div className="mb-4">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Teléfono
+                  Teléfono{telefonosIniciales.length > 1 ? "s" : ""}
                 </p>
-                <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 text-[13px] text-gray-700">
-                  {cliente.telefono}
-                  <CopyButton value={cliente.telefono} />
+                <div className="space-y-1.5">
+                  {telefonosIniciales.map((t, i) => (
+                    <div key={i} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 text-[13px] text-gray-700">
+                      {t.telefono}
+                      <CopyButton value={t.telefono} />
+                      {t.aclaracion && (
+                        <span className="ml-auto shrink-0 text-[11px] font-medium text-bordo bg-bordo/5 px-2 py-0.5 rounded-full">{t.aclaracion}</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

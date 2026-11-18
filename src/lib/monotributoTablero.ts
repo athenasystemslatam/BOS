@@ -19,7 +19,7 @@ import {
   type Gravedad,
   type Medio,
 } from "@/lib/monotributo";
-import { traerPaginado } from "@/lib/monotributoServer";
+import { conContacto, leerContactos, traerPaginado } from "@/lib/monotributoServer";
 import { avisoCalendarioFaltante, enVentanaRecategorizacion, leerCalendario, vencimientoDe } from "@/lib/calendarioArca";
 
 export const SIN_RESPONSABLE = "sin";
@@ -177,7 +177,8 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
   ]);
 
   const persona = new Map(personas.map((p) => [p.id, p]));
-  const fichaPor = new Map(fichas.map((f) => [f.cliente_id, { ...DATOS_VACIOS, ...f, mails: f.mails ?? [] }]));
+  const contactos = await leerContactos(admin, servicios.map((s) => s.cliente_id));
+  const fichaPor = new Map(fichas.map((f) => [f.cliente_id, conContacto({ ...DATOS_VACIOS, ...f }, contactos.get(f.cliente_id))]));
   const tareaPor = new Map(tareas.map((t) => [t.cliente_id, t]));
   const revPor = new Map<string, { rojo: number; amarillo: number; campos: string[] }>();
   for (const r of revisiones) {

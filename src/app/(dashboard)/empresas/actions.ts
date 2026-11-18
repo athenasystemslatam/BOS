@@ -1,5 +1,6 @@
 "use server";
 
+import { ERROR_TELEFONOS_DETALLE, MAX_EMAILS_CONTACTO as MAX_EMAILS_GENERAL, telefonosDelForm } from "@/lib/contactos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAreaOrAdmin, type CurrentLiquidadora } from "@/lib/auth";
@@ -11,7 +12,7 @@ function parseCuit(raw: string) {
   return { digits, terminacion: parseInt(digits[10]) };
 }
 
-const MAX_EMAILS_CONTACTO = 5;
+const MAX_EMAILS_CONTACTO = MAX_EMAILS_GENERAL;
 
 // emails_contacto_detalle es la fuente nueva (email + aclaración de área).
 // emails_contacto (solo direcciones, la columna vieja) se sigue derivando y
@@ -67,7 +68,8 @@ export async function crearEmpresa(formData: FormData) {
   const id_fal = (formData.get("id_fal") as string)?.trim() || null;
   const emails_contacto_detalle = parseEmailsContactoDetalle(formData);
   const emails_contacto = emails_contacto_detalle.map((e) => e.email);
-  const telefono = (formData.get("telefono") as string)?.trim() || null;
+  const telefonos_detalle = telefonosDelForm(formData);
+  const telefono = telefonos_detalle[0]?.telefono ?? null;
   // domicilio_*/jurisdiccion_*: información básica general — no confundir
   // con "jurisdiccion" más abajo, que es la jurisdicción LABORAL de Rúbrica
   // LSD (otro campo, otro propósito).
@@ -123,6 +125,7 @@ export async function crearEmpresa(formData: FormData) {
       emails_contacto,
       emails_contacto_detalle,
       telefono,
+      telefonos_detalle,
       domicilio_fiscal,
       jurisdiccion_fiscal,
       domicilio_legal,
@@ -156,6 +159,7 @@ export async function crearEmpresa(formData: FormData) {
     if (error.message.includes("claves_acceso")) {
       return { error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.' };
     }
+    if (error.message.includes("telefonos_detalle")) return { error: ERROR_TELEFONOS_DETALLE };
     if (error.message.includes("telefono")) {
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     }
@@ -201,7 +205,8 @@ export async function editarEmpresa(formData: FormData) {
   const id_fal = (formData.get("id_fal") as string)?.trim() || null;
   const emails_contacto_detalle = parseEmailsContactoDetalle(formData);
   const emails_contacto = emails_contacto_detalle.map((e) => e.email);
-  const telefono = (formData.get("telefono") as string)?.trim() || null;
+  const telefonos_detalle = telefonosDelForm(formData);
+  const telefono = telefonos_detalle[0]?.telefono ?? null;
   const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
   const jurisdiccion_fiscal = (formData.get("jurisdiccion_fiscal") as string)?.trim() || null;
   const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
@@ -270,6 +275,7 @@ export async function editarEmpresa(formData: FormData) {
     emails_contacto,
     emails_contacto_detalle,
     telefono,
+    telefonos_detalle,
     domicilio_fiscal,
     jurisdiccion_fiscal,
     domicilio_legal,
@@ -303,6 +309,7 @@ export async function editarEmpresa(formData: FormData) {
     if (error.message.includes("claves_acceso")) {
       return { error: 'Para guardar claves, ejecutá primero "alter_clientes_y_liquidadoras.sql" en Supabase.' };
     }
+    if (error.message.includes("telefonos_detalle")) return { error: ERROR_TELEFONOS_DETALLE };
     if (error.message.includes("telefono")) {
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     }

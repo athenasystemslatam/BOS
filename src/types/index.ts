@@ -47,6 +47,14 @@ export interface EmailContacto {
   aclaracion: string;
 }
 
+// Teléfono de contacto con aclaración de quién es (ej. "Celu del titular", "WhatsApp contadora").
+// La lista vive en clientes.telefonos_detalle y la usan todos los módulos (ver lib/contactos.ts);
+// clientes.telefono se sigue completando con el primero.
+export interface TelefonoContacto {
+  telefono: string;
+  aclaracion: string;
+}
+
 export interface Liquidadora {
   id: string;
   nombre: string;
@@ -68,6 +76,7 @@ export interface Cliente {
   emails_contacto?: string[];
   emails_contacto_detalle?: EmailContacto[];
   telefono?: string;
+  telefonos_detalle?: TelefonoContacto[];
   // Domicilio + jurisdicción fiscal y legal (información básica) — pueden
   // no coincidir entre sí (ej. fiscal en CABA, legal en PBA), por eso cada
   // domicilio lleva su propia jurisdicción en vez de una sola "jurisdicción

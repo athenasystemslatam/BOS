@@ -10,8 +10,35 @@ import {
   type DatosMonotributoCliente,
   type Revision,
 } from "@/lib/monotributo";
+import { emailsDeCliente, telefonoWhatsapp, telefonosDeCliente } from "@/lib/contactos";
+import type { EmailContacto, TelefonoContacto } from "@/types";
 
 type Admin = ReturnType<typeof createAdminClient>;
+
+export type ContactoMono = { mails: string[]; whatsapp: string | null };
+
+/** Mails y teléfono para WhatsApp de cada cliente, de la lista general de contactos (tabla clientes):
+ * la misma que se edita en Panel General, Clientes, Seguimiento de Sueldos y la ficha. */
+export async function leerContactos(admin: Admin, ids: string[]): Promise<Map<string, ContactoMono>> {
+  type Fila = { id: string; emails_contacto: string[] | null; emails_contacto_detalle: EmailContacto[] | null; telefono: string | null; telefonos_detalle?: TelefonoContacto[] | null };
+  const out = new Map<string, ContactoMono>();
+  for (const tanda of enTandas(Array.from(new Set(ids)))) {
+    let { data, error }: { data: unknown[] | null; error: { message: string } | null } = await admin.from("clientes")
+      .select("id, emails_contacto, emails_contacto_detalle, telefono, telefonos_detalle").in("id", tanda);
+    // Sin el SQL de contactos todavía: se lee el teléfono viejo.
+    if (error) ({ data, error } = await admin.from("clientes").select("id, emails_contacto, emails_contacto_detalle, telefono").in("id", tanda));
+    if (error) throw new Error(error.message);
+    for (const c of (data ?? []) as Fila[]) {
+      out.set(c.id, { mails: emailsDeCliente(c).map((e) => e.email), whatsapp: telefonoWhatsapp(telefonosDeCliente(c)) });
+    }
+  }
+  return out;
+}
+
+/** Datos de Monotributo del cliente con los contactos de la lista general. */
+export function conContacto<T extends DatosMonotributoCliente>(d: T, c: ContactoMono | undefined): T {
+  return { ...d, mails: c?.mails ?? [], whatsapp: c?.whatsapp ?? null };
+}
 
 /** Trae todas las filas de a 1000 (PostgREST corta ahí, ítem 78). */
 export async function traerPaginado<T>(
@@ -32,8 +59,8 @@ export async function leerDatosCliente(admin: Admin, clienteId: string): Promise
     .select("*")
     .eq("cliente_id", clienteId)
     .maybeSingle();
-  if (!data) return { ...DATOS_VACIOS };
-  return { ...DATOS_VACIOS, ...data, mails: data.mails ?? [] } as DatosMonotributoCliente;
+  const contacto = (await leerContactos(admin, [clienteId])).get(clienteId);
+  return conContacto({ ...DATOS_VACIOS, ...(data ?? {}) } as DatosMonotributoCliente, contacto);
 }
 
 const CAMPOS_REGLA_CLIENTE = ["responsable", "forma_pago", "medio_contacto"] as const;
@@ -133,7 +160,7 @@ export async function sincronizarRevisionesModulo(admin: Admin): Promise<{ cread
         .eq("servicio", "monotributo").eq("subtipo", "general").order("id").range(d, h)
     ),
     traerPaginado<DatosMonotributoCliente & { cliente_id: string }>((d, h) =>
-      admin.from("monotributo_clientes").select("cliente_id, forma_pago, medio, mails, whatsapp").order("id").range(d, h)
+      admin.from("monotributo_clientes").select("cliente_id, forma_pago, medio").order("id").range(d, h)
     ),
     traerPaginado<RevMin>((d, h) =>
       admin.from("monotributo_revisiones").select("id, cliente_id, anio, mes, campo, motivo")
@@ -142,14 +169,15 @@ export async function sincronizarRevisionesModulo(admin: Admin): Promise<{ cread
   ]);
 
   const activos = new Map(servicios.filter((s) => s.estado).map((s) => [s.cliente_id, s.responsable_id]));
-  const datosPor = new Map(datosRows.map((r) => [r.cliente_id, { ...DATOS_VACIOS, ...r, mails: r.mails ?? [] }]));
+  const contactos = await leerContactos(admin, servicios.filter((s) => s.estado).map((s) => s.cliente_id));
+  const datosPor = new Map(datosRows.map((r) => [r.cliente_id, conContacto({ ...DATOS_VACIOS, ...r }, contactos.get(r.cliente_id))]));
   const clave = (c: string, campo: string, anio: number | null, mes: number | null) => `${c}|${campo}|${anio ?? 0}|${mes ?? 0}`;
   const pendientes = new Map(pendientesRows.map((r) => [clave(r.cliente_id, r.campo, r.anio, r.mes), r]));
 
   // Reglas de datos del cliente
   const hallazgos = new Map<string, { cliente_id: string; campo: CampoRevision; motivo: string; gravedad: "rojo" | "amarillo"; valor: string }>();
   activos.forEach((responsableId, clienteId) => {
-    const datos = datosPor.get(clienteId) ?? { ...DATOS_VACIOS };
+    const datos = datosPor.get(clienteId) ?? conContacto({ ...DATOS_VACIOS }, contactos.get(clienteId));
     for (const h of evaluarReglasCliente(datos, responsableId)) {
       const campo = h.campo as (typeof CAMPOS_REGLA)[number];
       hallazgos.set(clave(clienteId, campo, null, null), {

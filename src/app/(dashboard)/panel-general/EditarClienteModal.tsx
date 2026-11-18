@@ -8,6 +8,9 @@ import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
+import { TelefonosContactoEditor } from "@/components/TelefonosContactoEditor";
+import type { TelefonoContacto } from "@/types";
+import { telefonosDeCliente } from "@/lib/contactos";
 import { LocalesEditor } from "@/components/LocalesEditor";
 import { editarClienteConServicios, getEmpresaCompleta } from "./actions";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
@@ -35,7 +38,7 @@ export function EditarClienteModal({
   const [nombre, setNombre] = useState("");
   const [cuit, setCuit] = useState("");
   const [tipoContribuyente, setTipoContribuyente] = useState("empresa");
-  const [telefono, setTelefono] = useState("");
+  const [telefonos, setTelefonos] = useState<TelefonoContacto[]>([]);
   const [domicilioFiscal, setDomicilioFiscal] = useState("");
   const [jurisdiccionFiscal, setJurisdiccionFiscal] = useState("");
   const [domicilioLegal, setDomicilioLegal] = useState("");
@@ -87,7 +90,7 @@ export function EditarClienteModal({
       setNombre(cliente.nombre);
       setCuit(cliente.cuit.replace(/(\d{2})(\d{8})(\d)/, "$1-$2-$3"));
       setTipoContribuyente(cliente.tipo_contribuyente ?? "empresa");
-      setTelefono(cliente.telefono ?? "");
+      setTelefonos(telefonosDeCliente(cliente));
       setDomicilioFiscal(cliente.domicilio_fiscal ?? "");
       setJurisdiccionFiscal(cliente.jurisdiccion_fiscal ?? "");
       setDomicilioLegal(cliente.domicilio_legal ?? "");
@@ -193,6 +196,7 @@ export function EditarClienteModal({
     });
 
     formData.set("servicios", JSON.stringify(serviciosPayload));
+    formData.set("telefonos_detalle", JSON.stringify(telefonos.map((t) => ({ telefono: t.telefono.trim(), aclaracion: t.aclaracion.trim() })).filter((t) => t.telefono)));
     formData.set(
       "emails_contacto_detalle",
       JSON.stringify(
@@ -307,12 +311,7 @@ export function EditarClienteModal({
                 <label className="text-[10.5px] font-semibold tracking-[.1em] uppercase text-ink-subtle block mb-[7px]">
                   Teléfono
                 </label>
-                <input
-                  name="telefono"
-                  defaultValue={telefono}
-                  className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2.5 outline-none bg-white focus:border-bordo focus:ring-[3px] focus:ring-bordo/[0.09] transition-[border-color,box-shadow] placeholder:text-ink-faint"
-                  placeholder="Ej. 11 4567-8900"
-                />
+                <TelefonosContactoEditor telefonos={telefonos} onChange={setTelefonos} />
               </div>
 
               <div>

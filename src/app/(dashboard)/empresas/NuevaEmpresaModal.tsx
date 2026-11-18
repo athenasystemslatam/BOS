@@ -8,6 +8,8 @@ import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { Toggle } from "@/components/Toggle";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
+import { TelefonosContactoEditor } from "@/components/TelefonosContactoEditor";
+import type { TelefonoContacto } from "@/types";
 import { LocalesEditor } from "@/components/LocalesEditor";
 import { useBackdropClose } from "@/lib/useBackdropClose";
 
@@ -64,6 +66,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
   const [jurisdiccion, setJurisdiccion] = useState("CABA");
   const [sindicatoNombre, setSindicatoNombre] = useState("");
   const [claves, setClaves] = useState<ClaveAcceso[]>([]);
+  const [telefonos, setTelefonos] = useState<TelefonoContacto[]>([]);
   const [emailsContacto, setEmailsContacto] = useState<EmailContacto[]>([]);
   const [tieneLocales, setTieneLocales] = useState(false);
   const [locales, setLocales] = useState<Local[]>([]);
@@ -109,6 +112,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
     formData.set("fecha_inicio_liquidacion", fechaInicioLiquidacion);
     formData.set("es_quincenal", String(esQuincenal));
     formData.set("claves_acceso", JSON.stringify(claves));
+    formData.set("telefonos_detalle", JSON.stringify(telefonos.map((t) => ({ telefono: t.telefono.trim(), aclaracion: t.aclaracion.trim() })).filter((t) => t.telefono)));
     formData.set(
       "emails_contacto_detalle",
       JSON.stringify(
@@ -210,12 +214,7 @@ export function NuevaEmpresaModal({ liquidadoras }: { liquidadoras: Liquidadora[
                   </Field>
 
                   <Field label="Teléfono">
-                    <input
-                      name="telefono"
-                      type="text"
-                      placeholder="Ej: 11 4567-8900"
-                      className={inputCls}
-                    />
+                    <TelefonosContactoEditor telefonos={telefonos} onChange={setTelefonos} />
                   </Field>
 
                   <Field label="Emails de contacto">

@@ -1,5 +1,6 @@
 "use server";
 
+import { ERROR_TELEFONOS_DETALLE, MAX_EMAILS_CONTACTO as MAX_EMAILS_GENERAL, telefonosDelForm } from "@/lib/contactos";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { getCurrentLiquidadora, requireAdminOrAdministrativo, requireAreaOrAdmin } from "@/lib/auth";
@@ -87,7 +88,7 @@ function parseCuit(raw: string) {
   return { digits, terminacion: parseInt(digits[10]) };
 }
 
-const MAX_EMAILS_CONTACTO = 5;
+const MAX_EMAILS_CONTACTO = MAX_EMAILS_GENERAL;
 
 // emails_contacto_detalle es la fuente nueva (email + aclaración de área).
 // emails_contacto (solo direcciones, la columna vieja) se sigue derivando y
@@ -146,7 +147,8 @@ export async function crearClienteConServicios(formData: FormData) {
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
   const emails_contacto_detalle = parseEmailsContactoDetalle(formData);
   const emails_contacto = emails_contacto_detalle.map((e) => e.email);
-  const telefono = (formData.get("telefono") as string)?.trim() || null;
+  const telefonos_detalle = telefonosDelForm(formData);
+  const telefono = telefonos_detalle[0]?.telefono ?? null;
   const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
   const jurisdiccion_fiscal = (formData.get("jurisdiccion_fiscal") as string)?.trim() || null;
   const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
@@ -187,6 +189,7 @@ export async function crearClienteConServicios(formData: FormData) {
       emails_contacto,
       emails_contacto_detalle,
       telefono,
+      telefonos_detalle,
       domicilio_fiscal,
       jurisdiccion_fiscal,
       domicilio_legal,
@@ -202,6 +205,7 @@ export async function crearClienteConServicios(formData: FormData) {
 
   if (clienteError) {
     if (clienteError.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
+    if (clienteError.message.includes("telefonos_detalle")) return { error: ERROR_TELEFONOS_DETALLE };
     if (clienteError.message.includes("telefono"))
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     if (
@@ -320,7 +324,8 @@ export async function editarClienteConServicios(formData: FormData) {
   const tipo_contribuyente = (formData.get("tipo_contribuyente") as string) ?? "empresa";
   const emails_contacto_detalle = parseEmailsContactoDetalle(formData);
   const emails_contacto = emails_contacto_detalle.map((e) => e.email);
-  const telefono = (formData.get("telefono") as string)?.trim() || null;
+  const telefonos_detalle = telefonosDelForm(formData);
+  const telefono = telefonos_detalle[0]?.telefono ?? null;
   const domicilio_fiscal = (formData.get("domicilio_fiscal") as string)?.trim() || null;
   const jurisdiccion_fiscal = (formData.get("jurisdiccion_fiscal") as string)?.trim() || null;
   const domicilio_legal = (formData.get("domicilio_legal") as string)?.trim() || null;
@@ -394,6 +399,7 @@ export async function editarClienteConServicios(formData: FormData) {
       emails_contacto,
       emails_contacto_detalle,
       telefono,
+      telefonos_detalle,
       domicilio_fiscal,
       jurisdiccion_fiscal,
       domicilio_legal,
@@ -409,6 +415,7 @@ export async function editarClienteConServicios(formData: FormData) {
 
   if (clienteError) {
     if (clienteError.code === "23505") return { error: "Ya existe un cliente con ese CUIT." };
+    if (clienteError.message.includes("telefonos_detalle")) return { error: ERROR_TELEFONOS_DETALLE };
     if (clienteError.message.includes("telefono"))
       return { error: 'Para guardar el teléfono, ejecutá primero en Supabase: alter table clientes add column if not exists telefono text;' };
     if (

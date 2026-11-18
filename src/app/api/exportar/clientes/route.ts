@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Cliente, VistEmpresa } from "@/types";
+import { telefonosDeCliente } from "@/lib/contactos";
 
 // Exportación de la ficha completa de clientes a Excel — un botón "Exportar
 // todo" en Panel General (sin ?id) y un ícono por fila para exportar uno
@@ -103,6 +104,7 @@ export async function GET(req: NextRequest) {
     { header: "Resp. Monotributo", key: "resp_monotributo", width: 18 },
     { header: "Resp. Libros", key: "resp_libros", width: 18 },
     { header: "Emails de contacto", key: "emails", width: 35 },
+    { header: "Teléfonos", key: "telefonos", width: 35 },
     { header: "CUIL ARCA", key: "cuil_arca", width: 16 },
     { header: "ART", key: "art", width: 16 },
     { header: "Alícuota ART", key: "alicuota_art", width: 14 },
@@ -152,6 +154,7 @@ export async function GET(req: NextRequest) {
       resp_monotributo: v?.responsable_monotributo ?? "",
       resp_libros: v?.responsable_libros ?? "",
       emails: (c.emails_contacto ?? []).join(", "),
+      telefonos: telefonosDeCliente(c).map((t) => (t.aclaracion ? `${t.telefono} (${t.aclaracion})` : t.telefono)).join(", "),
       cuil_arca: c.cuil_arca ?? "",
       art: c.art ?? "",
       alicuota_art: c.alicuota_art ?? "",

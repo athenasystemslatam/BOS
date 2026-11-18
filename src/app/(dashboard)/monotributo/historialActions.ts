@@ -7,6 +7,7 @@ import { reabrirAlertaResuelta, reabrirMarca, requireEditorMonotributo, sincroni
 import { registrarHistorial, type EntidadHistorial } from "@/lib/monotributoHistorial";
 import { revertirResponsableMonotributo } from "@/lib/asignacionesServicio";
 import { revertirFacturacion } from "@/lib/monotributoFacturacionServer";
+import { columnasContacto, emailsDeCliente, limpiarEmails, limpiarTelefonos, telefonosDeCliente } from "@/lib/contactos";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -109,6 +110,28 @@ export async function revertirCambio(
   if (!e) return { error: "No se encontró el cambio." };
 
   if (e.entidad === "responsable") return revertirResponsableMonotributo(e.id);
+  // Mails y teléfonos: viven en clientes (la lista general de contactos), no en la ficha de Monotributo.
+  if (e.entidad === "ficha" && (e.campo === "emails_contacto_detalle" || e.campo === "telefonos_detalle")) {
+    const { data: c } = await admin.from("clientes").select("*").eq("id", e.cliente_id!).maybeSingle();
+    if (!c) return { error: "No se encontró el cliente." };
+    const emails = emailsDeCliente(c);
+    const tels = telefonosDeCliente(c);
+    const actual = e.campo === "emails_contacto_detalle" ? emails : tels;
+    if (!iguales(actual, e.valor_nuevo) && !forzar) return { conflicto: true, actual };
+    const nuevo = Array.isArray(e.valor_anterior) ? e.valor_anterior : [];
+    const cols = e.campo === "emails_contacto_detalle"
+      ? columnasContacto(limpiarEmails(nuevo), tels)
+      : columnasContacto(emails, limpiarTelefonos(nuevo));
+    const { error } = await admin.from("clientes").update({ ...cols, fecha_modificacion: new Date().toISOString() }).eq("id", e.cliente_id!);
+    if (error) return { error: error.message };
+    await sincronizarRevisionesCliente(admin, e.cliente_id!, yo.id).catch(() => undefined);
+    const historialIds = await registrarHistorial(admin, [{
+      cliente_id: e.cliente_id, entidad: "ficha", campo: e.campo, valor_anterior: actual, valor_nuevo: nuevo,
+      usuario_id: yo.id, revierte_id: e.id, nota: "Revertido",
+    }]);
+    revalidatePath("/", "layout");
+    return { ok: true, historialIds };
+  }
   if (e.entidad === "facturacion" || e.entidad === "control" || e.entidad === "categorias" || e.entidad === "config") {
     const r = await revertirFacturacion(admin, e, { id: yo.id, isAdmin: yo.isAdmin }, forzar);
     if ("ok" in r) revalidatePath("/monotributo", "layout");
