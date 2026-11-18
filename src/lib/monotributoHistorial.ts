@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
-export type EntidadHistorial = "tarea" | "ficha" | "responsable" | "revision" | "alerta" | "calendario";
+export type EntidadHistorial = "tarea" | "ficha" | "responsable" | "revision" | "alerta" | "calendario" | "categorias" | "control" | "facturacion" | "config";
 
 export interface EntradaHistorial {
   cliente_id: string | null;

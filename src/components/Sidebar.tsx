@@ -98,6 +98,9 @@ const SECTIONS: {
       { href: "/monotributo/dashboard",      label: "Dashboard",     icon: LayoutDashboard, adminOnly: false },
       { href: "/monotributo/equipo",         label: "Equipo",        icon: Users,           adminOnly: false },
       { href: "/monotributo/calendario",     label: "Calendario",    icon: Calendar,        adminOnly: false },
+      { href: "/monotributo/facturacion",    label: "Facturación",   icon: Receipt,         adminOnly: false },
+      { href: "/monotributo/categorias",     label: "Categorías",    icon: Settings,        adminOnly: false },
+      { href: "/monotributo/controles",      label: "Controles",     icon: ClipboardList,   adminOnly: false },
     ],
   },
   {

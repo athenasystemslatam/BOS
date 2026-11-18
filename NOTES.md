@@ -2,6 +2,12 @@
 
 Cada sesión (Giuliana / Matías, cualquier cuenta de Claude) deja acá qué hizo y qué quedó pendiente, para que la siguiente no lo tenga que adivinar. Ver reglas en `CLAUDE.md` → "Dos cuentas / dos colaboradores".
 
+## Sesión del 18-nov (Giuliana) — Monotributo: permisos, Corna Hayes, deuda abonada y Facturación
+- **Permisos:** el equipo de Monotributo reasigna responsables (Seguimiento y ficha, con historial y Deshacer; antes solo admin) y edita el Calendario. Calendario, Facturación, Categorías y Controles se ven para todos los que tienen el área; editan admin + equipo; Janina/cobranzas/solo lectura consultan (el servidor rechaza). Borrar una versión de Categorías: solo admin. Todas ven todos los clientes (el filtro por responsable se recuerda por navegador).
+- **Deuda:** "El cliente la abonó" + fecha (`deuda_resuelta`); abonada sale de "con deuda" y de alertas. Ventana de deuda también en la ficha (`components/DeudaMonotributoModal.tsx`). Dashboard: Avisadas y Abonadas con %.
+- **Facturación** (nuevo): `/monotributo/facturacion`, `/categorias`, `/controles`. Tablas `monotributo_categorias_versiones/_categorias` (versiones con vigencia), `monotributo_controles` (por año; por defecto feb, may, jun, ago, nov, dic; corte = último día del mes anterior, en jun/dic el del mismo mes; ventana = 12 meses que terminan en el corte), `monotributo_facturacion` (carga por cliente y control, ficha enviada), `monotributo_config` (umbral 85 %), `monotributo_facturacion_archivos` (fase 2, sin uso). Cálculo en SQL: `monotributo_facturacion_control()` y `_resumen()`. Ficha PDF a pedido: `/api/monotributo/ficha` (`lib/pdf-ficha-facturacion.tsx`, @react-pdf, no se guarda). Seguimiento no lee nada de facturación; Dashboard y Alertas solo el resumen del control en curso.
+- **SQL pendiente de correr:** `add_monotributo_facturacion.sql` (antes de subir el código de Facturación), `cargar_monotributo_categorias_2026.sql` (cuando se confirmen los valores) y `monotributo_corna_hayes_duplicado.sql` (fuera del repo: tiene CUIT).
+
 ## Sesión del 17-nov (Giuliana) — Monotributo: segunda ronda (pagos, deuda, A revisar vs Alertas, Cartera, Calendario)
 
 - **Los pagos no son responsabilidad del estudio:** el avance es "gestionados" (Enviado + Avisado + Pagado) sobre los activos (`contarGestionados` en `lib/monotributo.ts`). Sin columna "Fecha de pago"; filtro "Sin gestionar" (Pendiente, VEP generado, En borrador). Pagado y No pagó son informativos. Sin alertas "Verificar pago" ni "Verificar débito".

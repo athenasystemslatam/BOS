@@ -5,7 +5,8 @@ import Link from "next/link";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
 import { DescargarExcelButton } from "@/components/DescargarExcelButton";
-import { ESTADOS_MES, ESTADO_MES_LABEL, contarGestionados, type EstadoMes } from "@/lib/monotributo";
+import { ESTADOS_MES, ESTADO_MES_LABEL, contarGestionados, hoyArgentina, type EstadoMes } from "@/lib/monotributo";
+import { resumenControlEnCurso } from "@/lib/monotributoFacturacionServer";
 import { armarTableroMonotributo, type Conteo } from "@/lib/monotributoTablero";
 import { FiltrosTablero } from "./FiltrosTablero";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -67,7 +68,7 @@ export default async function MonotributoDashboardPage({
   } catch {
     // Si falla, el mes se muestra sin lo arrastrado.
   }
-  const [yo, t] = await Promise.all([getCurrentLiquidadora(), armarTableroMonotributo(anio, mes, resp || null)]);
+  const [yo, t, fact] = await Promise.all([getCurrentLiquidadora(), armarTableroMonotributo(anio, mes, resp || null), resumenControlEnCurso(createAdminClient(), hoyArgentina())]);
 
   // Lo nuestro es enviar el VEP/QR y avisar: el avance es "gestionados" (Enviado + Avisado + Pagado). Pagado y No pagó son informativos.
   const gestionados = contarGestionados(t.estados);
@@ -238,6 +239,18 @@ export default async function MonotributoDashboardPage({
       </div>
 
       {/* Cartera */}
+      {fact && (
+        <Bloque titulo="Facturación" subtitulo={`Control de ${MESES_NOMBRES[fact.mes]} ${fact.anio} · últimos 12 meses`}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <Mini label={`Cargados · ${pct(fact.cargados, fact.total)}`} valor={`${fact.cargados} de ${fact.total}`} color="text-gray-900" />
+            <Mini label="Fichas enviadas" valor={fact.fichas_enviadas} color="text-gray-900" />
+            <Mini label={`Cerca del tope (${fact.umbral}%)`} valor={fact.cerca_tope} color={fact.cerca_tope ? "text-amber-600" : "text-gray-300"} />
+            <Mini label="Sobre el tope" valor={fact.sobre_tope} color={fact.sobre_tope ? "text-red-600" : "text-gray-300"} />
+          </div>
+          <Link href="/monotributo/facturacion" className="inline-block mt-3 text-[12px] text-bordo hover:underline">Ver Facturación →</Link>
+        </Bloque>
+      )}
+
       <Bloque titulo="Cartera" subtitulo="Clientes activos según la ficha de Monotributo">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           <Distribucion titulo="Forma de pago" datos={t.cartera.formaPago} total={t.total} alerta="Sin forma de pago" />

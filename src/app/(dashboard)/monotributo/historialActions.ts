@@ -6,6 +6,7 @@ import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { reabrirAlertaResuelta, reabrirMarca, requireEditorMonotributo, sincronizarRevisionesCliente } from "@/lib/monotributoServer";
 import { registrarHistorial, type EntidadHistorial } from "@/lib/monotributoHistorial";
 import { revertirResponsableMonotributo } from "@/lib/asignacionesServicio";
+import { revertirFacturacion } from "@/lib/monotributoFacturacionServer";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -108,6 +109,11 @@ export async function revertirCambio(
   if (!e) return { error: "No se encontró el cambio." };
 
   if (e.entidad === "responsable") return revertirResponsableMonotributo(e.id);
+  if (e.entidad === "facturacion" || e.entidad === "control" || e.entidad === "categorias" || e.entidad === "config") {
+    const r = await revertirFacturacion(admin, e, { id: yo.id, isAdmin: yo.isAdmin }, forzar);
+    if ("ok" in r) revalidatePath("/monotributo", "layout");
+    return r;
+  }
   // Marca o alerta resuelta: revertir = reabrirla (vuelve a pendiente, queda en el historial).
   if (e.entidad === "revision" || e.entidad === "alerta") {
     const nuevoEstado = (e.valor_nuevo as { estado?: string } | null)?.estado;

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import clsx from "clsx";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
@@ -54,6 +55,7 @@ export function AlertasClient({
   anioDefault,
   yoId,
   puedeEditar,
+  avisoFacturacion,
 }: {
   alertas: Alerta[];
   vencimiento: string;
@@ -66,6 +68,7 @@ export function AlertasClient({
   anioDefault: number;
   yoId: string | null;
   puedeEditar: boolean;
+  avisoFacturacion: string | null;
 }) {
   const router = useRouter();
   // Todos ven todo; si alguien filtra por responsable, queda recordado.
@@ -148,6 +151,11 @@ export function AlertasClient({
                 Los datos mal cargados o faltantes están en A revisar. {MESES_NOMBRES[mes]} {anio} · la cuota {vencido ? "venció" : "vence"} el {d}/{m}/{y}.
                 Solo internas: no se envía nada a clientes.
               </p>
+              {avisoFacturacion && (
+                <Link href="/monotributo/facturacion" className="inline-block mt-2 text-[12.5px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-1.5 hover:bg-amber-100">
+                  {avisoFacturacion} Ir a Facturación →
+                </Link>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">

@@ -63,6 +63,8 @@ export const BACKUPS: Record<BackupModulo, { label: string; tablas: string[] }> 
     tablas: [
       "monotributo_tareas", "monotributo_clientes", "monotributo_revisiones", "monotributo_eventos",
       "monotributo_alertas_resueltas", "monotributo_historial", "calendario_arca",
+      "monotributo_categorias_versiones", "monotributo_categorias", "monotributo_controles",
+      "monotributo_facturacion", "monotributo_facturacion_archivos", "monotributo_config",
     ],
   },
   libros: {

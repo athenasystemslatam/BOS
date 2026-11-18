@@ -1,5 +1,7 @@
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
-import { getMesTrabajoActual } from "@/lib/vencimientos";
+import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
+import { hoyArgentina } from "@/lib/monotributo";
+import { resumenControlEnCurso } from "@/lib/monotributoFacturacionServer";
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { AlertasClient } from "./AlertasClient";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,11 +27,17 @@ export default async function MonotributoAlertasPage({
   } catch {
     // Si falla, el mes se muestra sin lo arrastrado.
   }
-  const [yo, areas, datos] = await Promise.all([
+  const [yo, areas, datos, fact] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
     calcularAlertasMonotributo(anio, mes),
+    resumenControlEnCurso(createAdminClient(), hoyArgentina()),
   ]);
+  // Alerta interna cuando llega un control de facturación con clientes sin cargar.
+  const sinCargar = fact ? fact.total - fact.cargados : 0;
+  const avisoFacturacion = fact && sinCargar > 0
+    ? `Control de ${MESES_NOMBRES[fact.mes].toLowerCase()}: ${sinCargar} ${sinCargar === 1 ? "cliente sin cargar" : "clientes sin cargar"}.`
+    : null;
 
   const puedeEditar =
     !!yo && !yo.esCobranzas && !yo.esAdministrativo && yo.rol !== "viewer" && (yo.isAdmin || areas.includes("monotributo"));
@@ -45,6 +53,7 @@ export default async function MonotributoAlertasPage({
       anioDefault={def.anio}
       yoId={yo?.id ?? null}
       puedeEditar={puedeEditar}
+      avisoFacturacion={avisoFacturacion}
     />
   );
 }

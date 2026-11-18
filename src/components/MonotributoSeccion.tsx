@@ -425,6 +425,7 @@ const ETIQUETA_CAMPO: Record<string, string> = {
   forma_pago: "Forma de pago", paga_desde_cliente_id: "Paga desde la cuenta de", paga_desde_texto: "Paga desde (aclaración)",
   avisa: "Avisar", envia_vep: "Enviar VEP/QR", medio: "Medio", destinatario: "Destinatario", mails: "Mails", whatsapp: "WhatsApp",
   empresa_grupo: "Empresa / grupo", saldo_a_favor: "Saldo a favor", resolucion_arba: "Resolución ARBA", responsable_id: "Responsable",
+  total_facturado: "Facturado 12 meses", ficha_enviada: "Ficha enviada al cliente", ficha_enviada_fecha: "Fecha de envío de la ficha", nota: "Nota",
 };
 
 const VALOR_TEXTO: Record<string, string> = {
