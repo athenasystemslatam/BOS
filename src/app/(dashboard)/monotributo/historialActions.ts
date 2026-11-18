@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { reabrirAlertaResuelta, reabrirMarca, requireEditorMonotributo, sincronizarRevisionesCliente } from "@/lib/monotributoServer";
 import { registrarHistorial, type EntidadHistorial } from "@/lib/monotributoHistorial";
+import { revertirResponsableMonotributo } from "@/lib/asignacionesServicio";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -55,9 +56,23 @@ export async function obtenerHistorialCliente(clienteId: string, desde = 0): Pro
   // Cuáles de estas ya fueron revertidas (una consulta para todas).
   const { data: rev } = await admin.from("monotributo_historial").select("revierte_id").in("revierte_id", filas.map((f) => f.id));
   const revertidas = new Set(((rev ?? []) as { revierte_id: string }[]).map((r) => r.revierte_id));
+  // Cambios de responsable: mostrar el nombre en vez del id (una consulta para todos).
+  const idsPersonas = Array.from(new Set(filas.filter((f) => f.entidad === "responsable")
+    .flatMap((f) => [f.valor_anterior, f.valor_nuevo]).filter((v): v is string => typeof v === "string")));
+  const nombrePersona = new Map<string, string>();
+  if (idsPersonas.length) {
+    const { data: pers } = await admin.from("liquidadoras").select("id, nombre").in("id", idsPersonas);
+    for (const p of (pers ?? []) as { id: string; nombre: string }[]) nombrePersona.set(p.id, p.nombre);
+  }
+  const nombre = (v: unknown) => (typeof v === "string" ? (nombrePersona.get(v) ?? v) : v);
   return {
     disponible: true,
-    entradas: filas.map(({ liquidadoras, ...f }) => ({ ...f, usuario: liquidadoras?.nombre ?? null, revertida: revertidas.has(f.id) })),
+    entradas: filas.map(({ liquidadoras, ...f }) => ({
+      ...f,
+      ...(f.entidad === "responsable" ? { valor_anterior: nombre(f.valor_anterior), valor_nuevo: nombre(f.valor_nuevo) } : {}),
+      usuario: liquidadoras?.nombre ?? null,
+      revertida: revertidas.has(f.id),
+    })),
   };
 }
 
@@ -92,9 +107,7 @@ export async function revertirCambio(
   const e = data as EntradaHistorialVista | null;
   if (!e) return { error: "No se encontró el cambio." };
 
-  if (e.entidad === "responsable") {
-    return { error: "El responsable se cambia desde \"Historial de responsables\" (el reloj junto al nombre en Seguimiento)." };
-  }
+  if (e.entidad === "responsable") return revertirResponsableMonotributo(e.id);
   // Marca o alerta resuelta: revertir = reabrirla (vuelve a pendiente, queda en el historial).
   if (e.entidad === "revision" || e.entidad === "alerta") {
     const nuevoEstado = (e.valor_nuevo as { estado?: string } | null)?.estado;
@@ -104,7 +117,6 @@ export async function revertirCambio(
     revalidatePath("/monotributo", "layout");
     return { ok: true, historialIds: r.historialIds };
   }
-  if (e.entidad === "calendario" && !yo.isAdmin) return { error: "Solo un administrador cambia el calendario ARCA." };
   const permitidos = e.entidad === "tarea" ? CAMPOS_TAREA : e.entidad === "ficha" ? CAMPOS_FICHA : CAMPOS_CALENDARIO;
   if (!permitidos.has(e.campo)) return { error: "Ese cambio no se puede revertir desde acá." };
 

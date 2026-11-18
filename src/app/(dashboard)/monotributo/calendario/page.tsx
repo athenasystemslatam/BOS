@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCurrentLiquidadora } from "@/lib/auth";
+import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { hoyArgentina } from "@/lib/monotributo";
 import { anioCargado, avisoCalendarioFaltante, leerCalendario, mesDe } from "@/lib/calendarioArca";
 import { CalendarioClient } from "./CalendarioClient";
@@ -8,8 +8,10 @@ import { CalendarioClient } from "./CalendarioClient";
 export const dynamic = "force-dynamic";
 
 export default async function CalendarioArcaPage({ searchParams }: { searchParams: { anio?: string } }) {
-  const yo = await getCurrentLiquidadora();
-  if (!yo?.isAdmin) redirect("/monotributo");
+  // Lo ven administradores y quien tiene el área Monotributo; editan admin y el equipo (no solo lectura).
+  const [yo, areas] = await Promise.all([getCurrentLiquidadora(), getAreasDelUsuario()]);
+  if (!yo || (!yo.isAdmin && !areas.includes("monotributo"))) redirect("/monotributo");
+  const puedeEditar = !yo.esCobranzas && !yo.esAdministrativo && yo.rol !== "viewer";
 
   const hoy = hoyArgentina();
   const anioHoy = Number(hoy.slice(0, 4));
@@ -27,6 +29,7 @@ export default async function CalendarioArcaPage({ searchParams }: { searchParam
       cargado={anioCargado(cal, anio)}
       anterior={anterior}
       aviso={avisoCalendarioFaltante(cal, hoy)}
+      puedeEditar={puedeEditar}
     />
   );
 }

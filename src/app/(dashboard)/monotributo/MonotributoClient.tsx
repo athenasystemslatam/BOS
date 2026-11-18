@@ -562,7 +562,7 @@ export function MonotributoClient({
                       <span className={clsx("text-[12px]", s.responsable_nombre ? "text-gray-600" : "text-red-600 font-medium")}>
                         {s.responsable_nombre ?? "Sin responsable"}
                       </span>
-                      {isAdmin && (
+                      {puedeEditar && (
                         <button onClick={() => setReasignando(s)} title="Ver historial / reasignar" className="text-gray-300 hover:text-amber-600 transition-colors">
                           <History size={13} />
                         </button>
@@ -740,6 +740,7 @@ export function MonotributoClient({
         responsableActual={reasignando.responsable_nombre}
         creadoPor={creadoPor}
         onClose={() => setReasignando(null)}
+        onGuardado={(ids) => ofrecer(ids, `Responsable de ${reasignando.clientes?.nombre ?? "el cliente"} cambiado.`)}
       />
     )}
     {mostrarEquipo && (

@@ -24,6 +24,7 @@ export function AsignacionServicioModal({
   responsableActual,
   creadoPor,
   onClose,
+  onGuardado,
 }: {
   clienteId: string;
   clienteNombre: string;
@@ -33,6 +34,8 @@ export function AsignacionServicioModal({
   responsableActual: string | null;
   creadoPor: string | null;
   onClose: () => void;
+  /** Después de guardar (Monotributo: para ofrecer "Deshacer"). */
+  onGuardado?: (historialIds: string[]) => void;
 }) {
   const hoy = new Date();
   const [historial, setHistorial] = useState<AsignacionServicio[]>([]);
@@ -57,6 +60,7 @@ export function AsignacionServicioModal({
         clienteId, servicio, subtipo, nuevoResp, desdeAnio, desdeMes, motivo || null, creadoPor
       );
       if (res.error) { setError(res.error); return; }
+      onGuardado?.(res.historialIds ?? []);
       const nuevo = await getAsignacionesServicio(clienteId, servicio, subtipo);
       setHistorial(nuevo);
       setNuevoResp("");

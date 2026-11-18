@@ -14,6 +14,7 @@ import { obtenerHistorialCliente, revertirCambio, type EntradaHistorialVista } f
 import { useDeshacer } from "@/components/DeshacerAviso";
 import { upsertMonotributoTarea } from "@/app/(dashboard)/monotributo/actions";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
+import { crearAsignacionServicio } from "@/lib/asignacionesServicio";
 
 const CATEGORIAS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
 import {
@@ -111,6 +112,18 @@ export function MonotributoSeccion({
     });
   }
 
+  /** Reasigna desde el mes en curso (queda en "Historial de responsables" y en el historial del cliente). */
+  function reasignar(responsableId: string) {
+    const hoy = new Date();
+    startGuardar(async () => {
+      const r = await crearAsignacionServicio(clienteId, "monotributo", "general", responsableId, hoy.getFullYear(), hoy.getMonth() + 1, null, null);
+      if (r.error) return setErr(r.error);
+      setErr(null);
+      setFicha(await obtenerFichaMonotributo(clienteId));
+      ofrecer(r.historialIds, "Responsable cambiado", recargar);
+    });
+  }
+
   function recargar() {
     obtenerFichaMonotributo(clienteId).then(setFicha);
   }
@@ -203,7 +216,23 @@ export function MonotributoSeccion({
         </Fila>
 
         <Fila label="Responsable" marca={marcaDe("responsable")}>
-          <span className="text-[12.5px] text-gray-800">{ficha.responsable ?? "Sin responsable"}</span>
+          {puedeEditar ? (
+            <select
+              value={ficha.responsableId ?? ""}
+              disabled={deshabilitado}
+              onChange={(e) => e.target.value && reasignar(e.target.value)}
+              className={inputCls}
+              title="Cambia el responsable desde este mes"
+            >
+              {!ficha.responsableId && <option value="">Sin responsable</option>}
+              {ficha.responsableId && !ficha.equipoResponsables.some((p) => p.id === ficha.responsableId) && (
+                <option value={ficha.responsableId}>{ficha.responsable ?? "—"}</option>
+              )}
+              {ficha.equipoResponsables.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+          ) : (
+            <span className="text-[12.5px] text-gray-800">{ficha.responsable ?? "Sin responsable"}</span>
+          )}
         </Fila>
 
         <Fila label="Forma de pago" marca={marcaDe("forma_pago")}>

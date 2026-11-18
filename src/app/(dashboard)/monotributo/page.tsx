@@ -122,7 +122,7 @@ export default async function MonotributoPage({
       nombres={Object.fromEntries(equipoMap)}
       yoId={yo?.id ?? null}
       esRecategorizacion={esRecategorizacion}
-      avisoCalendario={yo?.isAdmin ? avisoCalendarioFaltante(calendario, hoy) : null}
+      avisoCalendario={yo && !yo.esCobranzas && !yo.esAdministrativo && yo.rol !== "viewer" ? avisoCalendarioFaltante(calendario, hoy) : null}
       vencimiento={vencimientoDe(calendario, anio, mes)}
       hoy={hoy}
     />

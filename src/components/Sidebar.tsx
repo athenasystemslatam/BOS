@@ -97,7 +97,7 @@ const SECTIONS: {
       { href: "/monotributo/alertas",        label: "Alertas",       icon: Bell,            adminOnly: false },
       { href: "/monotributo/dashboard",      label: "Dashboard",     icon: LayoutDashboard, adminOnly: false },
       { href: "/monotributo/equipo",         label: "Equipo",        icon: Users,           adminOnly: false },
-      { href: "/monotributo/calendario",     label: "Calendario",    icon: Calendar,        adminOnly: true  },
+      { href: "/monotributo/calendario",     label: "Calendario",    icon: Calendar,        adminOnly: false },
     ],
   },
   {

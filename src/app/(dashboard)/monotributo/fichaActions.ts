@@ -8,6 +8,7 @@ import { diferencias, registrarHistorial } from "@/lib/monotributoHistorial";
 import {
   FORMAS_PAGO,
   MEDIOS,
+  puedeSerResponsable,
   type DatosMonotributoCliente,
   type Revision,
 } from "@/lib/monotributo";
@@ -23,6 +24,9 @@ export interface FichaMonotributo {
   puedeEditar: boolean;
   datos: DatosMonotributoCliente;
   responsable: string | null;
+  responsableId: string | null;
+  /** Personas del equipo de Monotributo que pueden ser responsables (para reasignar desde la ficha). */
+  equipoResponsables: { id: string; nombre: string }[];
   revisiones: (Revision & { resuelta_por_nombre: string | null })[];
   opcionesPagaDesde: { id: string; nombre: string }[];
   /** Categoría vigente (fila del mes de trabajo o la última anterior) y el mes donde se guarda. */
@@ -55,8 +59,8 @@ export async function obtenerFichaMonotributo(clienteId: string): Promise<FichaM
       .select("*")
       .eq("cliente_id", clienteId)
       .order("detectada_at", { ascending: false }),
-    traerPaginado<{ id: string; nombre: string }>((d, h) =>
-      admin.from("liquidadoras").select("id, nombre").order("id").range(d, h)
+    traerPaginado<{ id: string; nombre: string; rol: string; activa: boolean }>((d, h) =>
+      admin.from("liquidadoras").select("id, nombre, rol, activa").order("id").range(d, h)
     ),
     traerPaginado<{ cliente_id: string; clientes: { nombre: string } | null }>((d, h) =>
       admin
@@ -77,6 +81,8 @@ export async function obtenerFichaMonotributo(clienteId: string): Promise<FichaM
       .maybeSingle(),
     admin.from("servicios_cliente").select("servicio").eq("cliente_id", clienteId).eq("estado", true),
   ]);
+  const { data: modulosRaw } = await admin.from("equipo_modulos").select("equipo_id").eq("modulo", "monotributo");
+  const delModulo = new Set(((modulosRaw ?? []) as { equipo_id: string }[]).map((m) => m.equipo_id));
 
   const nombres = new Map(equipo.map((e) => [e.id, e.nombre]));
   const { responsable_id } = servicio as { responsable_id: string | null };
@@ -89,6 +95,11 @@ export async function obtenerFichaMonotributo(clienteId: string): Promise<FichaM
     puedeEditar,
     datos,
     responsable: responsable_id ? (nombres.get(responsable_id) ?? null) : null,
+    responsableId: responsable_id,
+    equipoResponsables: equipo
+      .filter((e) => e.activa && delModulo.has(e.id) && puedeSerResponsable(e.rol))
+      .map(({ id, nombre }) => ({ id, nombre }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     revisiones: ((revsRaw ?? []) as Revision[]).map((r) => ({
       ...r,
       resuelta_por_nombre: r.resuelta_por ? (nombres.get(r.resuelta_por) ?? null) : null,

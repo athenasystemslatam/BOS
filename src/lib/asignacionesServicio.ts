@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
+import { requireEditorMonotributo, sincronizarRevisionesCliente } from "@/lib/monotributoServer";
 import { sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { registrarHistorial } from "@/lib/monotributoHistorial";
@@ -44,18 +45,20 @@ export async function crearAsignacionServicio(
 ) {
   let yoId: string;
   try {
-    yoId = (await requireAdmin()).id;
+    // Monotributo: cualquiera del equipo del módulo reasigna (y el servidor rechaza a quien es solo lectura).
+    yoId = (servicio === "monotributo" ? await requireEditorMonotributo() : await requireAdmin()).id;
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No autorizado." };
   }
 
   const admin = createAdminClient();
+  let historialIds: string[] = [];
   // Monotributo guarda cada cambio de responsable en su historial (con el responsable anterior).
   const { data: servicioAntes } = servicio === "monotributo"
     ? await admin.from("servicios_cliente").select("responsable_id")
         .eq("cliente_id", clienteId).eq("servicio", servicio).eq("subtipo", subtipo).maybeSingle()
     : { data: null };
-  const { error } = await admin.from("asignaciones_servicio").insert({
+  const fila = {
     cliente_id: clienteId,
     servicio,
     subtipo,
@@ -63,16 +66,20 @@ export async function crearAsignacionServicio(
     desde_anio: desdeAnio,
     desde_mes: desdeMes,
     motivo: motivo || null,
-    creado_por: creadoPor,
-  });
+    creado_por: servicio === "monotributo" ? yoId : creadoPor,
+  };
+  // Monotributo: dos cambios en el mismo mes reemplazan la fila de ese mes en vez de fallar.
+  const { data: guardada, error } = servicio === "monotributo"
+    ? await admin.from("asignaciones_servicio").upsert(fila, { onConflict: "cliente_id,servicio,subtipo,desde_anio,desde_mes" }).select("id").single()
+    : await admin.from("asignaciones_servicio").insert(fila).select("id").single();
 
   if (error) return { error: error.message };
 
   if (servicio === "monotributo") {
-    await registrarHistorial(admin, [{
+    historialIds = await registrarHistorial(admin, [{
       cliente_id: clienteId, anio: desdeAnio, mes: desdeMes, entidad: "responsable", campo: "responsable_id",
       valor_anterior: (servicioAntes as { responsable_id: string | null } | null)?.responsable_id ?? null,
-      valor_nuevo: responsableId, usuario_id: yoId, nota: motivo || null,
+      valor_nuevo: responsableId, usuario_id: yoId, nota: motivo || null, ref_id: (guardada as { id: string } | null)?.id ?? null,
     }]);
   }
 
@@ -99,7 +106,25 @@ export async function crearAsignacionServicio(
   const mesHoy = hoy.getMonth() + 1;
   const anioHoy = hoy.getFullYear();
   const esVigente = desdeAnio * 100 + desdeMes <= anioHoy * 100 + mesHoy;
-  if (esVigente) {
+  if (esVigente) await sincronizarResponsableActual(clienteId, servicio, subtipo);
+  // Monotributo: la marca "Sin responsable" de A revisar se cierra en el momento.
+  if (servicio === "monotributo") await sincronizarRevisionesCliente(admin, clienteId, yoId).catch(() => undefined);
+
+  // Igual que en Equipo: revalidar todo el sitio de una, no listar rutas
+  // (esta lista se recibía como parámetro y se quedaba corta apenas se
+  // agregaba una sub-página nueva a un módulo).
+  revalidatePath("/", "layout");
+  return { success: true, historialIds };
+}
+
+/** Deja servicios_cliente.responsable_id igual a la asignación vigente más reciente
+ * (o `siNoHay` si no queda ninguna vigente). Interna: no se exporta como acción. */
+async function sincronizarResponsableActual(clienteId: string, servicio: string, subtipo: string, siNoHay?: string | null) {
+  const admin = createAdminClient();
+  const hoy = new Date();
+  const mesHoy = hoy.getMonth() + 1;
+  const anioHoy = hoy.getFullYear();
+  {
     const { data: masReciente } = await admin
       .from("asignaciones_servicio")
       .select("responsable_id")
@@ -119,14 +144,45 @@ export async function crearAsignacionServicio(
         .eq("cliente_id", clienteId)
         .eq("servicio", servicio)
         .eq("subtipo", subtipo);
+    } else if (siNoHay !== undefined) {
+      await admin.from("servicios_cliente").update({ responsable_id: siNoHay })
+        .eq("cliente_id", clienteId).eq("servicio", servicio).eq("subtipo", subtipo);
     }
   }
+}
 
-  // Igual que en Equipo: revalidar todo el sitio de una, no listar rutas
-  // (esta lista se recibía como parámetro y se quedaba corta apenas se
-  // agregaba una sub-página nueva a un módulo).
+/** "Deshacer" / "Revertir" un cambio de responsable de Monotributo (entrada del historial).
+ * Vuelve la fila de ese mes al responsable anterior; si antes no había ninguno, saca la fila. */
+export async function revertirResponsableMonotributo(historialId: string): Promise<{ error: string } | { ok: true; historialIds: string[] }> {
+  let yoId: string;
+  try {
+    yoId = (await requireEditorMonotributo()).id;
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
+  const admin = createAdminClient();
+  const { data: e } = await admin.from("monotributo_historial").select("*").eq("id", historialId).maybeSingle();
+  const h = e as { id: string; cliente_id: string; anio: number; mes: number; entidad: string; valor_anterior: string | null; valor_nuevo: string | null; ref_id: string | null } | null;
+  if (!h || h.entidad !== "responsable") return { error: "No se encontró el cambio." };
+  if (!h.ref_id) return { error: "Este cambio es anterior al historial completo: cambiá el responsable desde \"Historial de responsables\"." };
+
+  const { data: filaAsig } = await admin.from("asignaciones_servicio").select("id, responsable_id").eq("id", h.ref_id).maybeSingle();
+  const actual = (filaAsig as { responsable_id: string } | null)?.responsable_id ?? null;
+  if (!filaAsig || actual !== h.valor_nuevo) return { error: "El responsable cambió después de este registro: cambialo desde \"Historial de responsables\"." };
+
+  const { error } = h.valor_anterior
+    ? await admin.from("asignaciones_servicio").update({ responsable_id: h.valor_anterior, motivo: "Deshecho" }).eq("id", h.ref_id)
+    : await admin.from("asignaciones_servicio").delete().eq("id", h.ref_id);
+  if (error) return { error: error.message };
+  await sincronizarResponsableActual(h.cliente_id, "monotributo", "general", h.valor_anterior);
+  await sincronizarRevisionesCliente(admin, h.cliente_id, yoId).catch(() => undefined);
+
+  const historialIds = await registrarHistorial(admin, [{
+    cliente_id: h.cliente_id, anio: h.anio, mes: h.mes, entidad: "responsable", campo: "responsable_id",
+    valor_anterior: actual, valor_nuevo: h.valor_anterior, usuario_id: yoId, revierte_id: h.id, ref_id: h.ref_id, nota: "Revertido",
+  }]);
   revalidatePath("/", "layout");
-  return { success: true };
+  return { ok: true, historialIds };
 }
 
 // Resuelve, para un conjunto de clientes de un servicio, quién era el

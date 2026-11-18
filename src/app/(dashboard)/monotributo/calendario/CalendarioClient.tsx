@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { copiarAnioAnterior, leerTablaPegada, mesPorDefecto, type MesCalendario } from "@/lib/calendarioArcaUtil";
 import { guardarCalendarioAnio, type FilaCalendarioEdit } from "./calendarioActions";
+import { useDeshacer } from "@/components/DeshacerAviso";
 
 const aEdit = (m: MesCalendario): FilaCalendarioEdit => ({
   mes: m.mes,
@@ -22,7 +23,7 @@ function diaSemana(iso: string | null) {
   return new Date(y, m - 1, d).toLocaleDateString("es-AR", { weekday: "short" });
 }
 
-/** Calendario ARCA de Monotributo (solo administradores): se carga a mano una vez por año. */
+/** Calendario de Monotributo: lo editan administradores y el equipo del módulo; el resto lo consulta. */
 export function CalendarioClient({
   anio,
   anioHoy,
@@ -30,6 +31,7 @@ export function CalendarioClient({
   cargado,
   anterior,
   aviso,
+  puedeEditar,
 }: {
   anio: number;
   anioHoy: number;
@@ -37,8 +39,10 @@ export function CalendarioClient({
   cargado: boolean;
   anterior: MesCalendario[];
   aviso: string | null;
+  puedeEditar: boolean;
 }) {
   const router = useRouter();
+  const { ofrecer, aviso: avisoDeshacer } = useDeshacer();
   const [filas, setFilas] = useState<FilaCalendarioEdit[]>(iniciales.map(aEdit));
   const [modificado, setModificado] = useState(false);
   const [pegado, setPegado] = useState("");
@@ -89,6 +93,7 @@ export function CalendarioClient({
       }
       setModificado(false);
       setMsg({ tipo: "ok", texto: r.cambios ? `Guardado: ${r.cambios} cambio(s), registrados en el historial.` : "No había cambios." });
+      ofrecer(r.historialIds, `Calendario ${anio} guardado`, () => router.refresh());
       router.refresh();
     });
   }
@@ -124,7 +129,10 @@ export function CalendarioClient({
         </p>
       )}
 
-      <div className="flex gap-2 mb-4 flex-wrap">
+      {!puedeEditar && (
+        <p className="mb-4 text-[12.5px] bg-gray-100 text-gray-600 rounded-lg px-4 py-2.5">Modo consulta: el calendario lo editan el equipo de Monotributo y los administradores.</p>
+      )}
+      {puedeEditar && <div className="flex gap-2 mb-4 flex-wrap">
         <button onClick={copiarAnterior} className="text-xs px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 hover:border-gray-300">
           Copiar desde {anio - 1} y ajustar fechas
         </button>
@@ -135,14 +143,14 @@ export function CalendarioClient({
         >
           {guardando && <Loader2 size={12} className="animate-spin" />} Guardar {anio}
         </button>
-      </div>
+      </div>}
       {msg && (
         <p className={clsx("mb-4 text-[12.5px] rounded-lg px-4 py-2", msg.tipo === "ok" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>
           {msg.texto}
         </p>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto mb-6">
+      <fieldset disabled={!puedeEditar} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto mb-6 min-w-0">
         <table className="w-full text-[12.5px] whitespace-nowrap">
           <thead>
             <tr className="bg-gray-50 text-[11px] font-semibold text-gray-400 uppercase tracking-wider text-left">
@@ -175,9 +183,9 @@ export function CalendarioClient({
             ))}
           </tbody>
         </table>
-      </div>
+      </fieldset>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      {puedeEditar && <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
         <h2 className="text-[14px] font-semibold text-gray-900">Pegar una tabla</h2>
         <p className="text-[11.5px] text-gray-400 mt-0.5 mb-3">
           Una línea por mes: mes, vencimiento y (si corresponde) límite de recategorización, separados por tabulador o punto y coma.
@@ -214,7 +222,8 @@ export function CalendarioClient({
             {vistaPrevia.ignoradas > 0 && <p className="text-gray-400">{vistaPrevia.ignoradas} línea(s) sin fecha ignoradas (títulos o encabezados).</p>}
           </div>
         )}
-      </div>
+      </div>}
+      {avisoDeshacer}
     </div>
   );
 }

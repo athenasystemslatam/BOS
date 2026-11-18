@@ -100,7 +100,7 @@ export default async function MonotributoDashboardPage({
         </div>
       </div>
 
-      {yo?.isAdmin && t.avisoCalendario && (
+      {yo && !yo.esCobranzas && !yo.esAdministrativo && yo.rol !== "viewer" && t.avisoCalendario && (
         <Link href="/monotributo/calendario" className="block mb-4 text-[12.5px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-2.5 hover:bg-amber-100">
           {t.avisoCalendario} Cargarlo →
         </Link>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requireAdmin } from "@/lib/auth";
+import { requireEditorMonotributo } from "@/lib/monotributoServer";
 import { leerFecha } from "@/lib/calendarioArcaUtil";
 import { registrarHistorial, type EntradaHistorial } from "@/lib/monotributoHistorial";
 
@@ -19,12 +19,12 @@ export async function guardarCalendarioAnio(
   anio: number,
   filas: FilaCalendarioEdit[],
   confirmarPisar: boolean
-): Promise<{ error: string } | { requiereConfirmacion: true; cambios: number } | { ok: true; cambios: number }> {
+): Promise<{ error: string } | { requiereConfirmacion: true; cambios: number } | { ok: true; cambios: number; historialIds: string[] }> {
   let yoId: string;
   try {
-    yoId = (await requireAdmin()).id;
+    yoId = (await requireEditorMonotributo()).id;
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Solo administradores." };
+    return { error: e instanceof Error ? e.message : "No autorizado." };
   }
   if (!(anio >= 2020 && anio <= 2100)) return { error: "Año inválido." };
   if (filas.length !== 12 || new Set(filas.map((f) => f.mes)).size !== 12) return { error: "Tienen que estar los 12 meses, sin repetir." };
@@ -68,7 +68,7 @@ export async function guardarCalendarioAnio(
       }
     }
   }
-  if (!historial.length) return { ok: true, cambios: 0 };
+  if (!historial.length) return { ok: true, cambios: 0, historialIds: [] };
   // Nunca pisar un año ya cargado sin confirmación.
   if (porMes.size > 0 && !confirmarPisar && historial.some((h) => h.valor_anterior !== null)) {
     return { requiereConfirmacion: true, cambios: historial.length };
@@ -79,8 +79,8 @@ export async function guardarCalendarioAnio(
     .upsert(limpias.map((l) => ({ ...l, updated_at: new Date().toISOString(), updated_por: yoId })), { onConflict: "anio,mes" });
   if (error) return { error: error.message };
 
-  await registrarHistorial(admin, historial);
+  const historialIds = await registrarHistorial(admin, historial);
   revalidatePath("/monotributo", "layout");
   revalidatePath("/productividad/monotributo");
-  return { ok: true, cambios: historial.length };
+  return { ok: true, cambios: historial.length, historialIds };
 }
