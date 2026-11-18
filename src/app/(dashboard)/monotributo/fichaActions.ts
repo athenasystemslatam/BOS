@@ -12,6 +12,7 @@ import {
   type DatosMonotributoCliente,
   type Revision,
 } from "@/lib/monotributo";
+import type { DatosDeuda } from "@/components/DeudaMonotributoModal";
 import {
   leerDatosCliente,
   requireEditorMonotributo,
@@ -31,6 +32,8 @@ export interface FichaMonotributo {
   opcionesPagaDesde: { id: string; nombre: string }[];
   /** Categoría vigente (fila del mes de trabajo o la última anterior) y el mes donde se guarda. */
   categoria: string | null;
+  /** Deuda vigente (misma fila que la categoría); se edita en el mes de trabajo. */
+  deuda: DatosDeuda;
   mesTrabajo: { anio: number; mes: number };
   /** El cliente no tiene ningún otro servicio activo: la ficha oculta Sueldos y Domicilios. */
   soloMonotributo: boolean;
@@ -72,7 +75,7 @@ export async function obtenerFichaMonotributo(clienteId: string): Promise<FichaM
     ),
     admin
       .from("monotributo_tareas")
-      .select("categoria, anio, mes")
+      .select("categoria, anio, mes, deuda_estado, deuda_periodos, deuda_texto_original, deuda_nota, deuda_monto, deuda_aviso, deuda_aviso_fecha, deuda_resuelta, deuda_resuelta_fecha")
       .eq("cliente_id", clienteId)
       .or(`anio.lt.${mesTrabajo.anio},and(anio.eq.${mesTrabajo.anio},mes.lte.${mesTrabajo.mes})`)
       .order("anio", { ascending: false })
@@ -109,6 +112,11 @@ export async function obtenerFichaMonotributo(clienteId: string): Promise<FichaM
       .map((c) => ({ id: c.cliente_id, nombre: c.clientes!.nombre }))
       .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     categoria: (catRaw as { categoria: string | null } | null)?.categoria ?? null,
+    deuda: {
+      deuda_estado: "sin_verificar", deuda_periodos: null, deuda_texto_original: null, deuda_nota: null, deuda_monto: null,
+      deuda_aviso: false, deuda_aviso_fecha: null, deuda_resuelta: false, deuda_resuelta_fecha: null,
+      ...((catRaw ?? {}) as Partial<DatosDeuda>),
+    },
     mesTrabajo,
     soloMonotributo: ((otrosRaw ?? []) as { servicio: string }[]).every((s) => s.servicio === "monotributo"),
   };

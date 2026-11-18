@@ -258,6 +258,11 @@ export default async function MonotributoDashboardPage({
             <Mini label="Sin deuda" valor={t.deuda.sinDeuda} color="text-emerald-600" />
             <Mini label="Sin verificar" valor={t.deuda.sinVerificar} color={t.deuda.sinVerificar ? "text-amber-600" : "text-gray-300"} />
           </div>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <Mini label={`Avisadas · ${pct(t.deuda.avisadas, t.deuda.registradas)}`} valor={t.deuda.avisadas} color="text-violet-600" />
+            <Mini label={`Abonadas · ${pct(t.deuda.abonadas, t.deuda.registradas)}`} valor={t.deuda.abonadas} color="text-emerald-600" />
+          </div>
+          <p className="text-[11px] text-gray-400 -mt-2 mb-3">Sobre {t.deuda.registradas} deuda(s) registrada(s) en el mes (abonadas incluidas).</p>
           <div className="text-[12.5px] text-gray-600 space-y-1 mb-4">
             <p>
               Importe total cargado: <span className="font-semibold text-gray-900">{fmtPesos(t.deuda.importeTotal)}</span>
@@ -324,6 +329,10 @@ function Bloque({ titulo, subtitulo, sinMargen, children }: { titulo: string; su
       {children}
     </div>
   );
+}
+
+function pct(n: number, total: number) {
+  return total > 0 ? `${Math.round((n / total) * 100)}%` : "—";
 }
 
 function Mini({ label, valor, color }: { label: string; valor: number | string; color: string }) {

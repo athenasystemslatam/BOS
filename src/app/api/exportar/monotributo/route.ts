@@ -67,6 +67,7 @@ export async function GET(req: NextRequest) {
   if (t.conCategoria) seccion("Categoría", t.cartera.categoria);
   seccion("Deuda", [
     ["Con deuda", t.deuda.conDeuda], ["Sin deuda", t.deuda.sinDeuda], ["Sin verificar", t.deuda.sinVerificar],
+    ["Deudas registradas", t.deuda.registradas], ["Avisadas", t.deuda.avisadas], ["Abonadas", t.deuda.abonadas],
     ["Deuda avisada", t.deuda.avisados], ["Deuda no avisada", t.deuda.noAvisados],
   ]);
   ws.addRow(["Importe total de deuda cargado", t.deuda.importeTotal]).getCell(2).numFmt = '"$" #,##0.00';

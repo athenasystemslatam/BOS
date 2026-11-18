@@ -89,6 +89,9 @@ export interface TableroMonotributo {
     sinVerificar: number;
     avisados: number;
     noAvisados: number;
+    registradas: number;
+    avisadas: number;
+    abonadas: number;
     intimaciones: Conteo[];
   };
   automatizacion: {
@@ -206,7 +209,8 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
   const clientes: FilaClienteTablero[] = [];
   const formas: string[] = [], medios: string[] = [], envios: string[] = [], categorias: string[] = [], tipos: string[] = [], grupos: string[] = [];
   let sinGrupo = 0;
-  const deuda = { conDeuda: 0, importeTotal: 0, conImporte: 0, sinDeuda: 0, sinVerificar: 0, avisados: 0, noAvisados: 0 };
+  // registradas = toda deuda "Sí" (abonada o no); avisadas y abonadas se miden sobre ese total.
+  const deuda = { conDeuda: 0, importeTotal: 0, conImporte: 0, sinDeuda: 0, sinVerificar: 0, avisados: 0, noAvisados: 0, registradas: 0, avisadas: 0, abonadas: 0 };
   const intimaciones: string[] = [];
   let sinEnvio = 0, enviosVep = 0, avisos = 0, adheridosDebito = 0, pagaPorSuCuenta = 0, conCategoria = 0;
   const destinatariosAviso = new Set<string>();
@@ -241,11 +245,16 @@ export async function armarTableroMonotributo(anio: number, mes: number, respFil
 
     // Una deuda marcada resuelta ya no cuenta como deuda.
     const deudaEstado = t?.deuda_estado === "si" && t.deuda_resuelta ? "no" : (t?.deuda_estado ?? "sin_verificar");
+    if (t?.deuda_estado === "si") {
+      deuda.registradas++;
+      if (t.deuda_aviso) deuda.avisadas++;
+      if (t.deuda_resuelta) deuda.abonadas++;
+    }
     if (deudaEstado === "si") {
       deuda.conDeuda++;
       if (t?.deuda_monto) { deuda.importeTotal += Number(t.deuda_monto); deuda.conImporte++; }
       if (t?.deuda_aviso) deuda.avisados++; else deuda.noAvisados++;
-    } else if (deudaEstado === "no") deuda.sinDeuda++;
+    } else if (deudaEstado === "no" && !(t?.deuda_estado === "si")) deuda.sinDeuda++;
     else deuda.sinVerificar++;
     intimaciones.push(INTIMACION_LABEL[t?.intimacion_estado ?? ""] ?? "Sin dato");
 

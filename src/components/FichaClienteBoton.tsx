@@ -228,7 +228,7 @@ export function FichaClienteBoton({
                 <p className="text-sm text-gray-400 text-center py-10">No se pudo cargar la ficha.</p>
               ) : (
                 <>
-                  <MonotributoSeccion clienteId={cliente.id} onInfo={setMono} />
+                  <MonotributoSeccion clienteId={cliente.id} nombreCliente={nombre} onInfo={setMono} />
 
                   <Seccion titulo="Datos básicos">
                     <div className="grid grid-cols-2 gap-3">

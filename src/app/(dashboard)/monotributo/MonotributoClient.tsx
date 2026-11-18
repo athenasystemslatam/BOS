@@ -13,6 +13,7 @@ import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import { useFiltroGuardado } from "@/components/useFiltroGuardado";
 import { guardar, useAvisoErrorGuardado } from "@/components/AvisoErrorGuardado";
 import { useDeshacer } from "@/components/DeshacerAviso";
+import { DEUDA_LABEL, DeudaMonotributoModal, type DeudaEstado } from "@/components/DeudaMonotributoModal";
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
 import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea, type CambiosTarea } from "./actions";
@@ -44,9 +45,7 @@ const ESTILO_ESTADO: Record<EstadoMes, string> = {
   no_pago: "bg-red-50 text-red-700",
 };
 
-const DEUDA_LABEL = { sin_verificar: "Sin verificar", no: "No", si: "Sí" } as const;
 const INTIMACION_LABEL = { no: "No", fijarse: "Fijarse", avisado: "Avisado", si: "Sí", pago: "Pagó" } as const;
-type DeudaEstado = keyof typeof DEUDA_LABEL;
 type IntimacionEstado = keyof typeof INTIMACION_LABEL;
 
 type Tarea = {
@@ -612,7 +611,7 @@ export function MonotributoClient({
                           : t.deuda_estado === "no" ? "bg-gray-100 text-gray-600" : "bg-amber-50 text-amber-700"
                       )}
                     >
-                      {t.deuda_estado === "si" ? (t.deuda_resuelta ? "Resuelta" : "Sí") : DEUDA_LABEL[t.deuda_estado]}
+                      {t.deuda_estado === "si" ? (t.deuda_resuelta ? "Abonada" : "Sí") : DEUDA_LABEL[t.deuda_estado]}
                       {conDeuda && t.deuda_monto ? ` · $ ${Number(t.deuda_monto).toLocaleString("es-AR")}` : ""}
                       {conDeuda ? (t.deuda_aviso ? " · avisada" : " · sin avisar") : ""}
                     </button>
@@ -717,7 +716,7 @@ export function MonotributoClient({
     {aviso}
     {avisoDeshacer}
     {editandoDeuda && (
-      <DeudaModal
+      <DeudaMonotributoModal
         nombre={editandoDeuda.clientes?.nombre ?? ""}
         tarea={getTarea(editandoDeuda.cliente_id)}
         mes={mes}
@@ -771,120 +770,5 @@ function FiltroBoton({ activo, onClick, color, children }: { activo: boolean; on
     >
       {children}
     </button>
-  );
-}
-
-/** NOTAS de la planilla, sacadas del texto original importado ("DEUDA: SI | PERIODOS: … | NOTAS: …"). */
-function notasDeLaPlanilla(textoOriginal: string | null): string {
-  const m = (textoOriginal ?? "").match(/NOTAS:\s*(.*)$/);
-  return m ? m[1].trim() : "";
-}
-
-/** Ventana chica de la deuda del mes: estado, períodos, importe, avisada (+fecha) y nota.
- * Precargada con lo importado de la planilla. Guarda con historial y "Deshacer". */
-function DeudaModal({
-  nombre,
-  tarea,
-  mes,
-  anio,
-  puedeEditar,
-  onGuardar,
-  onClose,
-}: {
-  nombre: string;
-  tarea: Tarea;
-  mes: number;
-  anio: number;
-  puedeEditar: boolean;
-  onGuardar: (cambios: CambiosTarea) => void;
-  onClose: () => void;
-}) {
-  const [estado, setEstado] = useState<DeudaEstado>(tarea.deuda_estado);
-  const [periodos, setPeriodos] = useState(tarea.deuda_periodos ?? "");
-  const [monto, setMonto] = useState(tarea.deuda_monto === null ? "" : String(tarea.deuda_monto).replace(".", ","));
-  const [avisada, setAvisada] = useState(tarea.deuda_aviso);
-  const [avisadaFecha, setAvisadaFecha] = useState(tarea.deuda_aviso_fecha ?? "");
-  const [nota, setNota] = useState(tarea.deuda_nota ?? notasDeLaPlanilla(tarea.deuda_texto_original));
-  const [err, setErr] = useState<string | null>(null);
-
-  function guardar() {
-    const limpio = monto.trim().replace(/\$|\s/g, "");
-    const m = limpio === "" ? null : Number(limpio.includes(",") ? limpio.replace(/\./g, "").replace(",", ".") : limpio);
-    if (m !== null && (!Number.isFinite(m) || m < 0)) return setErr("El importe tiene que ser un número (ej. 208.274,38).");
-    onGuardar({
-      deuda_estado: estado,
-      deuda_periodos: periodos.trim() || null,
-      deuda_monto: m,
-      deuda_aviso: avisada,
-      deuda_aviso_fecha: avisada ? (avisadaFecha || hoyArgentina()) : null,
-      deuda_nota: nota.trim() || null,
-    });
-  }
-
-  const input = "w-full text-[13px] border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-400 disabled:bg-gray-50";
-  const label = "text-[10.5px] font-semibold tracking-[.08em] uppercase text-gray-400";
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-          <div>
-            <p className="text-[10.5px] font-semibold tracking-[.14em] uppercase text-gray-400">Deuda · {MESES_NOMBRES[mes]} {anio}</p>
-            <h2 className="text-[15px] font-semibold text-gray-900 mt-0.5">{nombre}</h2>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
-        </div>
-        <div className="px-5 py-4 space-y-3">
-          <div className="flex gap-2">
-            {(["si", "no", "sin_verificar"] as DeudaEstado[]).map((k) => (
-              <button
-                key={k}
-                disabled={!puedeEditar}
-                onClick={() => setEstado(k)}
-                className={clsx(
-                  "text-[12px] px-3 py-1.5 rounded-lg border font-medium",
-                  estado === k
-                    ? k === "si" ? "bg-red-50 border-red-300 text-red-700" : k === "no" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "bg-amber-50 border-amber-300 text-amber-700"
-                    : "bg-white border-gray-200 text-gray-500"
-                )}
-              >
-                {DEUDA_LABEL[k]}
-              </button>
-            ))}
-          </div>
-          <div>
-            <p className={label}>Períodos adeudados</p>
-            <input className={input} value={periodos} onChange={(e) => setPeriodos(e.target.value)} disabled={!puedeEditar} placeholder="ej. 07/2026 + intereses" />
-          </div>
-          <div>
-            <p className={label}>Importe (opcional)</p>
-            <input className={input} value={monto} onChange={(e) => setMonto(e.target.value)} disabled={!puedeEditar} placeholder="ej. 208.274,38" />
-          </div>
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-[13px] text-gray-700 shrink-0">
-              <input type="checkbox" checked={avisada} onChange={(e) => setAvisada(e.target.checked)} disabled={!puedeEditar} className="accent-bordo" />
-              Avisada al cliente
-            </label>
-            {avisada && <input type="date" className={input} value={avisadaFecha} onChange={(e) => setAvisadaFecha(e.target.value)} disabled={!puedeEditar} />}
-          </div>
-          <div>
-            <p className={label}>Nota</p>
-            <textarea className={clsx(input, "resize-y")} rows={2} value={nota} onChange={(e) => setNota(e.target.value)} disabled={!puedeEditar} placeholder="—" />
-          </div>
-          {tarea.deuda_texto_original && (
-            <p className="text-[11px] text-gray-400">Planilla: {tarea.deuda_texto_original}</p>
-          )}
-          {err && <p className="text-[12px] text-red-600">{err}</p>}
-        </div>
-        <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
-          <button onClick={onClose} className="text-[13px] px-4 py-1.5 rounded-lg border border-gray-200 text-gray-600">
-            {puedeEditar ? "Cancelar" : "Cerrar"}
-          </button>
-          {puedeEditar && (
-            <button onClick={guardar} className="text-[13px] px-4 py-1.5 rounded-lg bg-gray-900 text-white font-medium">Guardar</button>
-          )}
-        </div>
-      </div>
-    </div>
   );
 }

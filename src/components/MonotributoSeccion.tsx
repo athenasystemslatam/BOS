@@ -12,7 +12,8 @@ import {
 import { confirmarRevisiones, reabrirRevision } from "@/app/(dashboard)/monotributo/revisionesActions";
 import { obtenerHistorialCliente, revertirCambio, type EntradaHistorialVista } from "@/app/(dashboard)/monotributo/historialActions";
 import { useDeshacer } from "@/components/DeshacerAviso";
-import { upsertMonotributoTarea } from "@/app/(dashboard)/monotributo/actions";
+import { upsertMonotributoTarea, type CambiosTarea } from "@/app/(dashboard)/monotributo/actions";
+import { DEUDA_LABEL, DeudaMonotributoModal } from "@/components/DeudaMonotributoModal";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { crearAsignacionServicio } from "@/lib/asignacionesServicio";
 
@@ -40,9 +41,11 @@ const MARCA: Record<Gravedad, string> = {
  * ficha y no aparece si el cliente nunca tuvo el servicio. */
 export function MonotributoSeccion({
   clienteId,
+  nombreCliente,
   onInfo,
 }: {
   clienteId: string;
+  nombreCliente?: string;
   onInfo?: (info: { soloMonotributo: boolean; puedeEditar: boolean }) => void;
 }) {
   const [ficha, setFicha] = useState<FichaMonotributo | null | undefined>(undefined);
@@ -50,6 +53,7 @@ export function MonotributoSeccion({
   const [verHistorial, setVerHistorial] = useState(false);
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [nota, setNota] = useState("");
+  const [verDeuda, setVerDeuda] = useState(false);
   const [guardando, startGuardar] = useTransition();
   const { ofrecer, aviso: avisoDeshacer } = useDeshacer();
 
@@ -109,6 +113,20 @@ export function MonotributoSeccion({
       setErr(null);
       setFicha(await obtenerFichaMonotributo(clienteId));
       if (r && "historialIds" in r) ofrecer(r.historialIds, "Categoría guardada", recargar);
+    });
+  }
+
+  /** La deuda se guarda en el mes de trabajo (pasa sola a los meses siguientes), igual que en Seguimiento. */
+  function guardarDeuda(cambios: CambiosTarea) {
+    if (!ficha?.mostrar) return;
+    const { anio, mes } = ficha.mesTrabajo;
+    setVerDeuda(false);
+    startGuardar(async () => {
+      const r = await upsertMonotributoTarea(clienteId, anio, mes, cambios);
+      if (r && "error" in r && r.error) return setErr(r.error);
+      setErr(null);
+      setFicha(await obtenerFichaMonotributo(clienteId));
+      if (r && "historialIds" in r) ofrecer(r.historialIds, "Deuda guardada", recargar);
     });
   }
 
@@ -213,6 +231,21 @@ export function MonotributoSeccion({
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
+        </Fila>
+
+        <Fila label={`Deuda (${MESES_NOMBRES[ficha.mesTrabajo.mes]})`} marca={marcaDe("deuda")}>
+          <button
+            type="button"
+            onClick={() => setVerDeuda(true)}
+            className={clsx(
+              inputCls, "text-left",
+              ficha.deuda.deuda_estado === "si" ? (ficha.deuda.deuda_resuelta ? "text-emerald-700" : "text-red-700") : "text-gray-700"
+            )}
+          >
+            {ficha.deuda.deuda_estado === "si"
+              ? (ficha.deuda.deuda_resuelta ? "Abonada" : `Sí${ficha.deuda.deuda_aviso ? " · avisada" : " · sin avisar"}`)
+              : DEUDA_LABEL[ficha.deuda.deuda_estado]}
+          </button>
         </Fila>
 
         <Fila label="Responsable" marca={marcaDe("responsable")}>
@@ -369,6 +402,17 @@ export function MonotributoSeccion({
       )}
       {err && <p className="text-[11px] text-danger">{err}</p>}
       {avisoDeshacer}
+      {verDeuda && (
+        <DeudaMonotributoModal
+          nombre={nombreCliente ?? ""}
+          tarea={ficha.deuda}
+          mes={ficha.mesTrabajo.mes}
+          anio={ficha.mesTrabajo.anio}
+          puedeEditar={puedeEditar}
+          onGuardar={guardarDeuda}
+          onClose={() => setVerDeuda(false)}
+        />
+      )}
     </div>
   );
 }

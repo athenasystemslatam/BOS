@@ -30,7 +30,7 @@ export default async function MonotributoEquipoPage({
       .eq("estado", true),
     admin
       .from("monotributo_tareas")
-      .select("cliente_id, cuota_estado, recategorizacion, deuda_monto")
+      .select("cliente_id, cuota_estado, recategorizacion, deuda_monto, deuda_estado, deuda_resuelta")
       .eq("anio", anio)
       .eq("mes", mes),
   ]);
@@ -51,7 +51,7 @@ export default async function MonotributoEquipoPage({
       : 0;
     const conDeuda = mis.filter((s) => {
       const t = tareasMap.get(s.cliente_id);
-      return t?.deuda_monto && t.deuda_monto > 0;
+      return t?.deuda_estado === "si" && !t.deuda_resuelta;
     }).length;
     return { ...e, total: mis.length, cuotasOk, recatOk, conDeuda };
   });
