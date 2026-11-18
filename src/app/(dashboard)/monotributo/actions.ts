@@ -3,7 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { ESTADOS_MES, type EstadoMes } from "@/lib/monotributo";
-import { arrastreDesde, requireEditorMonotributo, ultimaFilaAnterior } from "@/lib/monotributoServer";
+import { CAMPOS_ARRASTRE, arrastreDesde, requireEditorMonotributo, ultimaFilaAnterior } from "@/lib/monotributoServer";
 import { diferencias, registrarHistorial } from "@/lib/monotributoHistorial";
 
 const DEUDA_ESTADOS = ["sin_verificar", "no", "si"] as const;
@@ -34,6 +34,49 @@ const CAMPOS_TAREA = [
   "deuda_aviso", "deuda_aviso_fecha", "deuda_resuelta", "deuda_resuelta_fecha", "intimacion_estado", "intimacion_fecha", "observaciones",
   "deuda_nota",
 ] as const;
+
+const iguales = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/** Categoría, deuda e intimación pasan solas a los meses siguientes. Si esos meses ya tenían
+ * fila creada, el cambio se copia a los que todavía tenían el valor viejo (hasta el primero que
+ * alguien haya cambiado a mano). Queda en el historial y el "Deshacer" lo revierte también. */
+async function propagarAMesesSiguientes(
+  admin: ReturnType<typeof createAdminClient>,
+  clienteId: string,
+  anio: number,
+  mes: number,
+  antes: Record<string, unknown>,
+  updates: Record<string, unknown>,
+  yoId: string
+): Promise<string[]> {
+  const campos = (CAMPOS_ARRASTRE as readonly string[]).filter((k) => k in updates && !iguales(antes[k], updates[k]));
+  if (!campos.length) return [];
+  const { data } = await admin
+    .from("monotributo_tareas")
+    .select("*")
+    .eq("cliente_id", clienteId)
+    .or(`anio.gt.${anio},and(anio.eq.${anio},mes.gt.${mes})`)
+    .order("anio").order("mes");
+  const siguientes = (data ?? []) as Record<string, unknown>[];
+  const sigue = new Set(campos);
+  const ids: string[] = [];
+  for (const fila of siguientes) {
+    const patch: Record<string, unknown> = {};
+    for (const k of Array.from(sigue)) {
+      if (iguales(fila[k], antes[k])) patch[k] = updates[k];
+      else sigue.delete(k); // alguien lo cambió en ese mes: de ahí en adelante no se toca
+    }
+    if (!Object.keys(patch).length) break;
+    const { error } = await admin.from("monotributo_tareas").update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("cliente_id", clienteId).eq("anio", fila.anio as number).eq("mes", fila.mes as number);
+    if (error) break;
+    ids.push(...(await registrarHistorial(admin, Object.keys(patch).map((k) => ({
+      cliente_id: clienteId, anio: fila.anio as number, mes: fila.mes as number, entidad: "tarea" as const, campo: k,
+      valor_anterior: fila[k] ?? null, valor_nuevo: patch[k], usuario_id: yoId, nota: `Pasa desde ${String(mes).padStart(2, "0")}/${anio}`,
+    })))));
+  }
+  return ids;
+}
 
 export async function upsertMonotributoTarea(clienteId: string, anio: number, mes: number, updates: CambiosTarea) {
   let yoId: string;
@@ -114,6 +157,7 @@ export async function upsertMonotributoTarea(clienteId: string, anio: number, me
     admin,
     diferencias({ cliente_id: clienteId, anio, mes, entidad: "tarea", usuario_id: yoId }, antes, updates as Record<string, unknown>, CAMPOS_TAREA)
   );
+  historialIds.push(...(await propagarAMesesSiguientes(admin, clienteId, anio, mes, antes, updates as Record<string, unknown>, yoId)));
 
   revalidatePath("/", "layout");
   return { ok: true, estado_cambiado_en: cambiaEstado ? ahora : null, historialIds };
