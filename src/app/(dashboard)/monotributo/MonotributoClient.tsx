@@ -17,11 +17,15 @@ import { DEUDA_LABEL, DeudaMonotributoModal, type DeudaEstado } from "@/componen
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
 import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea, type CambiosTarea } from "./actions";
+import { guardarFichaMonotributo } from "./fichaActions";
+import { crearAsignacionServicio } from "@/lib/asignacionesServicio";
 import {
   ESTADOS_MES,
   ESTADOS_SIN_GESTIONAR,
   contarGestionados,
   ESTADO_MES_LABEL,
+  FORMAS_PAGO,
+  MEDIOS,
   FORMA_PAGO_LABEL,
   MEDIO_LABEL,
   fmtFechaHoraAR,
@@ -109,16 +113,24 @@ function fmtFecha(iso: string | null) {
   return `${d}/${m}/${y}`;
 }
 
-function textoEnvio(f: FichaResumen | null) {
-  if (!f) return null;
-  if (f.envia_vep && f.avisa) return "Avisar y enviar";
-  if (f.envia_vep) return "Enviar";
-  if (f.avisa) return "Avisar";
-  return null;
+type Envio = "nada" | "avisar" | "enviar" | "ambos";
+const ENVIO_LABEL: Record<Envio, string> = { ambos: "Avisar y enviar VEP/QR", enviar: "Enviar VEP/QR", avisar: "Solo avisar", nada: "Sin envío" };
+const ENVIO_CAMBIOS: Record<Envio, Partial<FichaResumen>> = {
+  ambos: { avisa: true, envia_vep: true },
+  enviar: { avisa: false, envia_vep: true },
+  avisar: { avisa: true, envia_vep: false },
+  nada: { avisa: false, envia_vep: false },
+};
+function envioDe(f: FichaResumen | null): Envio {
+  if (f?.envia_vep && f.avisa) return "ambos";
+  if (f?.envia_vep) return "enviar";
+  if (f?.avisa) return "avisar";
+  return "nada";
 }
+const selectCelda = "text-[12px] bg-transparent border border-transparent hover:border-gray-200 focus:border-amber-400 rounded px-1 py-0.5 cursor-pointer focus:outline-none";
 
 export function MonotributoClient({
-  servicios,
+  servicios: serviciosProp,
   tareas: initialTareas,
   equipoMonotributo,
   mes,
@@ -157,6 +169,12 @@ export function MonotributoClient({
   vencimiento: string;
   hoy: string;
 }) {
+  // Cambios hechos en esta pantalla (responsable y pago/envío): se ven al instante, antes de la recarga.
+  const [cambiosLocales, setCambiosLocales] = useState<Record<string, Partial<Servicio>>>({});
+  const servicios = useMemo(
+    () => serviciosProp.map((s) => (cambiosLocales[s.cliente_id] ? { ...s, ...cambiosLocales[s.cliente_id] } : s)),
+    [serviciosProp, cambiosLocales]
+  );
   const diasAlVto = Math.round((Date.parse(vencimiento + "T00:00:00Z") - Date.parse(hoy + "T00:00:00Z")) / 86_400_000);
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -219,6 +237,40 @@ export function MonotributoClient({
   }
 
   /** Guarda y, si falla, vuelve la fila a como estaba y avisa. */
+  /** Forma de pago, medio, envío y destinatario: datos del cliente (no del mes), con historial y Deshacer. */
+  function guardarPago(s: Servicio, cambios: Partial<FichaResumen>) {
+    const antes = cambiosLocales[s.cliente_id];
+    const base: FichaResumen = s.ficha ?? { forma_pago: null, medio: null, avisa: false, envia_vep: false, destinatario: null };
+    setCambiosLocales((c) => ({ ...c, [s.cliente_id]: { ...c[s.cliente_id], ficha: { ...base, ...cambios } } }));
+    startTransition(async () => {
+      const r = await guardarFichaMonotributo(s.cliente_id, cambios).catch(() => ({ error: "No hay conexión con el servidor." }));
+      if ("error" in r) {
+        setCambiosLocales((c) => ({ ...c, [s.cliente_id]: antes ?? {} }));
+        avisar(`${s.clientes?.nombre ?? "Cliente"}: ${r.error}`);
+        return;
+      }
+      ofrecer(r.historialIds, `${s.clientes?.nombre ?? "Cliente"}: pago y envío guardado`, () => { setCambiosLocales((c) => ({ ...c, [s.cliente_id]: {} })); router.refresh(); });
+    });
+  }
+
+  /** Reasigna desde el mes que se está mirando (queda en "Historial de responsables" y en el historial del cliente). */
+  function reasignar(s: Servicio, responsableId: string) {
+    const persona = equipoMonotributo.find((e) => e.id === responsableId);
+    if (!persona || responsableId === s.responsable_id) return;
+    const antes = cambiosLocales[s.cliente_id];
+    setCambiosLocales((c) => ({ ...c, [s.cliente_id]: { ...c[s.cliente_id], responsable_id: persona.id, responsable_nombre: persona.nombre } }));
+    startTransition(async () => {
+      const r = await crearAsignacionServicio(s.cliente_id, "monotributo", "general", persona.id, anio, mes, null, creadoPor)
+        .catch(() => ({ error: "No hay conexión con el servidor.", historialIds: [] as string[] }));
+      if (r.error) {
+        setCambiosLocales((c) => ({ ...c, [s.cliente_id]: antes ?? {} }));
+        avisar(`${s.clientes?.nombre ?? "Cliente"}: ${r.error}`);
+        return;
+      }
+      ofrecer(r.historialIds ?? [], `${s.clientes?.nombre ?? "Cliente"}: responsable ${persona.nombre}`, () => { setCambiosLocales((c) => ({ ...c, [s.cliente_id]: {} })); router.refresh(); });
+    });
+  }
+
   function guardarCambio(clienteId: string, cambios: CambiosTarea, patchLocal: Partial<Tarea> = cambios as Partial<Tarea>) {
     const antes = tareasMap.get(clienteId);
     patchTarea(clienteId, patchLocal);
@@ -511,7 +563,10 @@ export function MonotributoClient({
             <tr className="text-center text-[11px] font-semibold text-gray-400 uppercase tracking-wide border-b border-gray-100">
               <th className="sticky left-0 z-30 bg-gray-50 px-6 py-2.5 min-w-[280px]">Cliente</th>
               <th className="px-3 py-2.5">Responsable</th>
-              <th className="px-3 py-2.5">Pago y envío</th>
+              <th className="px-3 py-2.5">Forma de pago</th>
+              <th className="px-3 py-2.5">Medio</th>
+              <th className="px-3 py-2.5">Envío</th>
+              <th className="px-3 py-2.5">Destinatario</th>
               <th className="px-3 py-2.5">Estado del mes</th>
               <th className="px-3 py-2.5">Deuda</th>
               <th className="px-3 py-2.5">Intimación</th>
@@ -523,7 +578,7 @@ export function MonotributoClient({
           <tbody className="divide-y divide-gray-100 bg-white">
             {filas.length === 0 && (
               <tr>
-                <td colSpan={10} className="text-center text-gray-400 text-sm py-16">
+                <td colSpan={14} className="text-center text-gray-400 text-sm py-16">
                   {hayFiltro ? "Sin resultados para el filtro aplicado" : "No hay clientes con servicio de monotributo"}
                 </td>
               </tr>
@@ -531,7 +586,6 @@ export function MonotributoClient({
             {filas.map((s) => {
               const t = getTarea(s.cliente_id);
               const f = s.ficha;
-              const envio = textoEnvio(f);
               const conDeuda = t.deuda_estado === "si" && !t.deuda_resuelta;
               const cambio = t.estado_cambiado_en
                 ? `Último cambio: ${fmtFechaHoraAR(t.estado_cambiado_en)}${t.estado_cambiado_por && nombres[t.estado_cambiado_por] ? ` · ${nombres[t.estado_cambiado_por]}` : ""}`
@@ -558,9 +612,24 @@ export function MonotributoClient({
                   {/* Responsable */}
                   <td className="px-3 py-1.5 text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      <span className={clsx("text-[12px]", s.responsable_nombre ? "text-gray-600" : "text-red-600 font-medium")}>
-                        {s.responsable_nombre ?? "Sin responsable"}
-                      </span>
+                      {puedeEditar ? (
+                        <select
+                          value={s.responsable_id ?? ""}
+                          onChange={(e) => reasignar(s, e.target.value)}
+                          title={`Cambia el responsable desde ${MESES_NOMBRES[mes]} ${anio}`}
+                          className={clsx(selectCelda, s.responsable_nombre ? "text-gray-700" : "text-red-600 font-medium")}
+                        >
+                          {!s.responsable_id && <option value="">Sin responsable</option>}
+                          {s.responsable_id && !equipoMonotributo.some((e) => e.id === s.responsable_id) && (
+                            <option value={s.responsable_id}>{s.responsable_nombre ?? "—"}</option>
+                          )}
+                          {equipoMonotributo.map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}
+                        </select>
+                      ) : (
+                        <span className={clsx("text-[12px]", s.responsable_nombre ? "text-gray-600" : "text-red-600 font-medium")}>
+                          {s.responsable_nombre ?? "Sin responsable"}
+                        </span>
+                      )}
                       {puedeEditar && (
                         <button onClick={() => setReasignando(s)} title="Ver historial / reasignar" className="text-gray-300 hover:text-amber-600 transition-colors">
                           <History size={13} />
@@ -569,12 +638,64 @@ export function MonotributoClient({
                     </div>
                   </td>
 
-                  {/* Pago y envío (datos fijos: se editan en la ficha) */}
-                  <td className="px-3 py-1.5 text-center" title={[f?.medio ? MEDIO_LABEL[f.medio] : null, f?.destinatario].filter(Boolean).join(" · ") || undefined}>
-                    <span className={clsx("text-[12px]", f?.forma_pago ? "text-gray-700" : "text-red-600")}>
-                      {f?.forma_pago ? FORMA_PAGO_LABEL[f.forma_pago] : "Sin forma de pago"}
-                    </span>
-                    {envio && <span className="text-[11px] text-gray-400"> · {envio}</span>}
+                  {/* Forma de pago, medio, envío y destinatario (datos del cliente: valen para todos los meses) */}
+                  <td className="px-3 py-1.5 text-center">
+                    {puedeEditar ? (
+                      <select
+                        value={f?.forma_pago ?? ""}
+                        onChange={(e) => guardarPago(s, { forma_pago: (e.target.value || null) as FormaPago | null })}
+                        className={clsx(selectCelda, f?.forma_pago ? "text-gray-700" : "text-red-600")}
+                      >
+                        <option value="">Sin forma de pago</option>
+                        {FORMAS_PAGO.map((p) => <option key={p} value={p}>{FORMA_PAGO_LABEL[p]}</option>)}
+                      </select>
+                    ) : (
+                      <span className={clsx("text-[12px]", f?.forma_pago ? "text-gray-700" : "text-red-600")}>{f?.forma_pago ? FORMA_PAGO_LABEL[f.forma_pago] : "Sin forma de pago"}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 text-center">
+                    {puedeEditar ? (
+                      <select
+                        value={f?.medio ?? ""}
+                        onChange={(e) => guardarPago(s, { medio: (e.target.value || null) as Medio | null })}
+                        className={clsx(selectCelda, f?.medio ? "text-gray-700" : "text-red-600")}
+                      >
+                        <option value="">Sin medio</option>
+                        {MEDIOS.map((m) => <option key={m} value={m}>{MEDIO_LABEL[m]}</option>)}
+                      </select>
+                    ) : (
+                      <span className={clsx("text-[12px]", f?.medio ? "text-gray-700" : "text-red-600")}>{f?.medio ? MEDIO_LABEL[f.medio] : "Sin medio"}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 text-center">
+                    {puedeEditar ? (
+                      <select
+                        value={envioDe(f)}
+                        onChange={(e) => guardarPago(s, ENVIO_CAMBIOS[e.target.value as Envio])}
+                        className={clsx(selectCelda, "text-gray-700")}
+                      >
+                        {(Object.keys(ENVIO_LABEL) as Envio[]).map((k) => <option key={k} value={k}>{ENVIO_LABEL[k]}</option>)}
+                      </select>
+                    ) : (
+                      <span className="text-[12px] text-gray-700">{ENVIO_LABEL[envioDe(f)]}</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-1.5 text-center">
+                    {puedeEditar ? (
+                      <input
+                        key={`${s.cliente_id}-${f?.destinatario ?? ""}`}
+                        defaultValue={f?.destinatario ?? ""}
+                        placeholder="—"
+                        onBlur={(e) => {
+                          const v = e.target.value.trim() || null;
+                          if (v !== (f?.destinatario ?? null)) guardarPago(s, { destinatario: v });
+                        }}
+                        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                        className="w-40 text-[12px] text-center border border-transparent hover:border-gray-200 focus:border-amber-400 rounded px-1.5 py-0.5 bg-transparent focus:bg-white focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-[12px] text-gray-600">{f?.destinatario ?? "—"}</span>
+                    )}
                   </td>
 
                   {/* Estado del mes */}
