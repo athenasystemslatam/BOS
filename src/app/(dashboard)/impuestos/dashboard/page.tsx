@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
+import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
 
 const SUBTIPOS = [
   { key: "iva", label: "IVA" },
@@ -94,6 +95,7 @@ export default async function ImpuestosDashboardPage({
         <div className="flex items-center gap-3">
           <MesSelector basePath="/impuestos/dashboard" options={opciones} currentMes={mes} currentAnio={anio} />
           {yo?.isAdmin && <BackupButton modulo="impuestos" />}
+          {yo?.isAdmin && <GuardarBackupStorageButton modulo="impuestos" />}
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import clsx from "clsx";
 import Link from "next/link";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
+import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
 import { DescargarExcelButton } from "@/components/DescargarExcelButton";
 import { ESTADOS_MES, ESTADO_MES_LABEL, contarGestionados, hoyArgentina, type EstadoMes } from "@/lib/monotributo";
 import { resumenControlEnCurso } from "@/lib/monotributoFacturacionServer";
@@ -98,6 +99,7 @@ export default async function MonotributoDashboardPage({
           <FiltrosTablero opciones={generarOpciones(mesDefault, anioDefault)} mes={mes} anio={anio} resp={resp} responsables={t.responsables} />
           <DescargarExcelButton href={exportHref} />
           {yo?.isAdmin && <BackupButton modulo="monotributo" />}
+          {yo?.isAdmin && <GuardarBackupStorageButton modulo="monotributo" />}
         </div>
       </div>
 

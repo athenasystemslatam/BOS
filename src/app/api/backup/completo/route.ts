@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { armarWorkbookBackup, stampArchivoBackup } from "@/lib/backups";
+import { armarWorkbookBackup, stampArchivoBackup, registrarTamanioBackup } from "@/lib/backups";
 
 // Backup crudo de TODA la base, tabla por tabla — para poder recuperar todo
 // y retomar el trabajo si algo se pierde (Seguimiento, Equipo, Productividad
@@ -42,6 +42,10 @@ export async function GET() {
   const wb = await armarWorkbookBackup(admin, "Sistema completo (BOS)", tablas);
   const buffer = await wb.xlsx.writeBuffer();
   const nombreArchivo = `backup-completo_${stampArchivoBackup(ahora)}.xlsx`;
+
+  // No tiene que romper la descarga si esto falla (ej. todavía no se corrió
+  // la migración de backup_historial) — es solo para la barra de estado.
+  registrarTamanioBackup(admin, "manual", "completo", buffer.byteLength).catch(() => {});
 
   return new NextResponse(buffer, {
     headers: {

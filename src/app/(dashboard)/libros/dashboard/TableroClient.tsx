@@ -12,6 +12,7 @@ import { CHIP, ENCABEZADO, MONO, NUM, PAGINA, PANEL, PANEL_CABECERA, RAYA_MODULO
 import type { ObjetivoConAvance } from "@/lib/librosObjetivosMetricas";
 import { ObjetivosDashboard } from "./Objetivos";
 import { BackupButton } from "@/components/BackupButton";
+import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
 import { DescargarExcelButton } from "@/components/DescargarExcelButton";
 
 type MandatoFila = { clienteId: string; nombre: string; vence: string; dias: number };
@@ -648,6 +649,7 @@ export function TableroClient({ datos }: { datos: DatosTablero }) {
               title="Descargar este tablero (atrasados, mandatos, envíos) a Excel"
             />
             <BackupButton modulo="libros" />
+            <GuardarBackupStorageButton modulo="libros" />
           </div>
         )}
       </div>

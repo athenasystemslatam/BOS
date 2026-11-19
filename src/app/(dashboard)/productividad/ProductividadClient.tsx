@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { ProductividadTabs } from "@/components/ProductividadTabs";
 import { BackupButton } from "@/components/BackupButton";
+import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
 
 export interface FilaLiquidadora {
   id: string;
@@ -116,7 +117,10 @@ export function ProductividadClient({ filas }: {
             Rendimiento por liquidadora — clasificación contra el objetivo configurado al marcar cada tarea
           </p>
         </div>
-        <BackupButton modulo="productividad" />
+        <div className="flex items-center gap-2">
+          <BackupButton modulo="productividad" />
+          <GuardarBackupStorageButton modulo="productividad" />
+        </div>
       </div>
 
       {/* Selector liquidadora */}

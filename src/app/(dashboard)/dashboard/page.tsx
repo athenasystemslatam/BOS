@@ -4,6 +4,7 @@ import { TrendingUp, Building2, CheckCircle2, Clock, CalendarDays, AlertTriangle
 import clsx from "clsx";
 import { MonthSelector } from "./MonthSelector";
 import { BackupButton } from "@/components/BackupButton";
+import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
 import { DescargarExcelButton } from "@/components/DescargarExcelButton";
 
 const CAMPO_LABELS: Record<string, string> = {
@@ -55,6 +56,7 @@ export default async function DashboardPage({
             />
           )}
           {yo?.isAdmin && <BackupButton modulo="sueldos" />}
+          {yo?.isAdmin && <GuardarBackupStorageButton modulo="sueldos" />}
         </div>
       </div>
 

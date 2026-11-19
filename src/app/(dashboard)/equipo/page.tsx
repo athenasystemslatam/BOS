@@ -4,6 +4,7 @@ import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { Liquidadora } from "@/types";
 import { LiquidadorasClient } from "./LiquidadorasClient";
 import { listarBloqueados } from "./actions";
+import { obtenerUltimoBackupCompleto, type UltimoBackupCompleto } from "@/lib/backups";
 
 export default async function EquipoPage() {
   const yo = await getCurrentLiquidadora();
@@ -17,10 +18,13 @@ export default async function EquipoPage() {
 
   const supabase = createAdminClient();
 
-  const [{ data }, { data: modulosRaw }, bloqueados] = await Promise.all([
+  const [{ data }, { data: modulosRaw }, bloqueados, ultimoBackup] = await Promise.all([
     supabase.from("liquidadoras").select("*").order("nombre"),
     supabase.from("equipo_modulos").select("equipo_id, modulo"),
     listarBloqueados(),
+    // Todavía no corrida la migración de backup_historial en algún entorno
+    // → no tiene que romper la pantalla, la barra de estado se oculta sola.
+    obtenerUltimoBackupCompleto(supabase).catch((): UltimoBackupCompleto => null),
   ]);
 
   const areasPorPersona: Record<string, string[]> = {};
@@ -36,6 +40,7 @@ export default async function EquipoPage() {
       areasPorPersona={areasPorPersona}
       creadoPor={yo.id}
       isAdmin={yo.isAdmin}
+      ultimoBackup={ultimoBackup}
     />
   );
 }

@@ -9,6 +9,9 @@ import { EditarLiquidadoraModal } from "./EditarLiquidadoraModal";
 import { TransferirCarteraModal } from "./TransferirCarteraModal";
 import { BloqueosPanel } from "./BloqueosPanel";
 import { BackupButton } from "@/components/BackupButton";
+import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
+import { BackupTamanioBar } from "@/components/BackupTamanioBar";
+import type { UltimoBackupCompleto } from "@/lib/backups";
 
 const ROL_LABELS: Record<string, { label: string; cls: string }> = {
   admin:       { label: "Admin",        cls: "bg-purple-50 text-purple-700" },
@@ -35,12 +38,14 @@ export function LiquidadorasClient({
   areasPorPersona,
   creadoPor,
   isAdmin,
+  ultimoBackup,
 }: {
   lista: Liquidadora[];
   bloqueados: AccesoBloqueado[];
   areasPorPersona: Record<string, string[]>;
   creadoPor: string | null;
   isAdmin: boolean;
+  ultimoBackup: UltimoBackupCompleto;
 }) {
   const [filtro, setFiltro] = useState<Filtro>("activas");
   const [editando, setEditando] = useState<Liquidadora | null>(null);
@@ -64,9 +69,13 @@ export function LiquidadorasClient({
               Todo el personal de KMA — quién tiene acceso al sistema, con qué rol, y a qué áreas pertenece.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {isAdmin && <BackupButton modulo="completo" />}
-            {isAdmin && <NuevaLiquidadoraModal />}
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              {isAdmin && <BackupButton modulo="completo" />}
+              {isAdmin && <GuardarBackupStorageButton modulo="completo" />}
+              {isAdmin && <NuevaLiquidadoraModal />}
+            </div>
+            {isAdmin && <BackupTamanioBar ultimoBackup={ultimoBackup} />}
           </div>
         </div>
 

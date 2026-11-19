@@ -7,6 +7,7 @@ import { aFecha } from "@/lib/vencimientosContables";
 import { MapaCargaClient } from "./MapaCargaClient";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
+import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
 
 function fmt(d: Date) {
   return d.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
@@ -227,6 +228,7 @@ export default async function ContableDashboardPage({
             </a>
           </div>
           {yo?.isAdmin && <BackupButton modulo="contable" />}
+          {yo?.isAdmin && <GuardarBackupStorageButton modulo="contable" />}
         </div>
       </div>
 

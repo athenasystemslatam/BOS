@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { armarWorkbookBackup, limpiarBackupsViejos, stampArchivoBackup, subirBackupAStorage } from "@/lib/backups";
+import {
+  armarWorkbookBackup,
+  limpiarBackupsViejos,
+  stampArchivoBackup,
+  subirBackupAStorage,
+  registrarTamanioBackup,
+} from "@/lib/backups";
 
 export const maxDuration = 60;
 
@@ -62,6 +68,7 @@ export async function GET(req: NextRequest) {
     // + se borran las más viejas para no acumular para siempre.
     await subirBackupAStorage(admin, nombreArchivo, buffer);
     await limpiarBackupsViejos(admin);
+    await registrarTamanioBackup(admin, "automatico", "completo", buffer.byteLength);
 
     const fechaLegible = ahora.toLocaleDateString("es-AR", {
       timeZone: "America/Argentina/Buenos_Aires",

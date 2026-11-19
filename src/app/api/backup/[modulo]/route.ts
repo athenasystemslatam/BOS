@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { BACKUPS, esBackupModuloValido, armarWorkbookBackup, stampArchivoBackup } from "@/lib/backups";
+import { BACKUPS, esBackupModuloValido, armarWorkbookBackup, stampArchivoBackup, registrarTamanioBackup } from "@/lib/backups";
 
 // Backup crudo de un tablero puntual: un sheet por tabla, todas las columnas
 // tal cual están en la base, sin formatear — para restaurar info si se
@@ -29,6 +29,10 @@ export async function GET(req: NextRequest, { params }: { params: { modulo: stri
   const wb = await armarWorkbookBackup(admin, label, tablas);
   const buffer = await wb.xlsx.writeBuffer();
   const nombreArchivo = `backup-${modulo}_${stampArchivoBackup(ahora)}.xlsx`;
+
+  // No tiene que romper la descarga si esto falla (ej. todavía no se corrió
+  // la migración de backup_historial) — es solo para la barra de estado.
+  registrarTamanioBackup(admin, "manual", modulo, buffer.byteLength).catch(() => {});
 
   return new NextResponse(buffer, {
     headers: {
