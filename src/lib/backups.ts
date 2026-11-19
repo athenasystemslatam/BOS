@@ -290,3 +290,125 @@ export async function limpiarBackupsViejos(admin: ReturnType<typeof createAdminC
     .remove(sobrantes.map((f) => f.name));
   if (errorBorrado) throw new Error(`No se pudieron borrar backups viejos: ${errorBorrado.message}`);
 }
+
+// Carpeta aparte dentro del mismo bucket para los backups que se guardan a
+// mano (botón "Guardar copia") — separada de las semanales automáticas
+// (que viven en la raíz) para que no compitan por los mismos 12 lugares de
+// limpiarBackupsViejos.
+const CARPETA_MANUAL = "manual";
+
+export async function subirBackupManualAStorage(
+  admin: ReturnType<typeof createAdminClient>,
+  nombreArchivo: string,
+  buffer: ExcelJS.Buffer
+): Promise<void> {
+  const { error } = await admin.storage.from(BACKUP_BUCKET).upload(`${CARPETA_MANUAL}/${nombreArchivo}`, buffer, {
+    contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  if (error) throw new Error(`No se pudo subir el backup a Storage: ${error.message}`);
+}
+
+/** Igual que limpiarBackupsViejos pero por módulo: los nombres son
+ * `backup-<modulo>_<fecha>.xlsx`, así que se agrupan por el prefijo antes
+ * del primer "_" y se conservan las últimas BACKUPS_A_CONSERVAR de cada
+ * grupo — una racha de guardados en Contable no debería tirar copias
+ * viejas de Sueldos. */
+export async function limpiarBackupsManualesViejos(admin: ReturnType<typeof createAdminClient>): Promise<void> {
+  const { data, error } = await admin.storage.from(BACKUP_BUCKET).list(CARPETA_MANUAL, {
+    sortBy: { column: "name", order: "desc" },
+  });
+  if (error) throw new Error(`No se pudo listar los backups manuales: ${error.message}`);
+
+  const porModulo = new Map<string, string[]>();
+  for (const archivo of data ?? []) {
+    const modulo = archivo.name.replace(/^backup-/, "").split("_")[0];
+    const lista = porModulo.get(modulo) ?? [];
+    lista.push(archivo.name);
+    porModulo.set(modulo, lista);
+  }
+
+  const sobrantes = Array.from(porModulo.values()).flatMap((nombres) => nombres.slice(BACKUPS_A_CONSERVAR));
+  if (sobrantes.length === 0) return;
+
+  const { error: errorBorrado } = await admin.storage
+    .from(BACKUP_BUCKET)
+    .remove(sobrantes.map((n) => `${CARPETA_MANUAL}/${n}`));
+  if (errorBorrado) throw new Error(`No se pudieron borrar backups manuales viejos: ${errorBorrado.message}`);
+}
+
+// Vercel no deja que una función devuelva más de 4.5 MB por respuesta — es
+// el límite real que puede romper la generación de un backup (no Resend ni
+// Supabase Storage, que están mucho más holgados). Lo usamos como techo de
+// referencia para la barra de estado y la alerta temprana.
+export const BACKUP_LIMITE_BYTES = 4.5 * 1024 * 1024;
+
+// A partir de qué porcentaje del límite se manda el mail de aviso.
+const UMBRAL_ALERTA_BACKUP = 0.7;
+
+async function avisarBackupCercaDelLimite(modulo: string, tamanioBytes: number) {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!process.env.RESEND_API_KEY || !adminEmail) return;
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const mb = (tamanioBytes / 1024 / 1024).toFixed(2);
+    const limiteMb = (BACKUP_LIMITE_BYTES / 1024 / 1024).toFixed(1);
+    await resend.emails.send({
+      from: "bos@kmaconsultores.com.ar",
+      to: adminEmail,
+      subject: "⚠ BOS — un backup se está acercando al límite de tamaño",
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;margin:0 auto;color:#222">
+          <h2 style="font-size:16px;color:#c0392b">BOS — backup cerca del límite</h2>
+          <p style="font-size:14px">El backup de "${modulo}" pesó <strong>${mb} MB</strong> — se está acercando al límite de ${limiteMb} MB que permite Vercel por respuesta. Si lo supera, ese backup va a empezar a fallar.</p>
+        </div>
+      `,
+    });
+  } catch {
+    // Mejor silencioso que romper el guardado del backup por esto.
+  }
+}
+
+/** Guarda cuánto pesó un backup generado (manual o automático) para poder
+ * mostrar un historial y una barra de estado — ver backup_historial en
+ * supabase/crear_tabla_backup_historial.sql — y manda un aviso por mail si
+ * ya está cerca de BACKUP_LIMITE_BYTES. */
+export async function registrarTamanioBackup(
+  admin: ReturnType<typeof createAdminClient>,
+  tipo: "manual" | "automatico",
+  modulo: string,
+  tamanioBytes: number
+): Promise<void> {
+  const { error } = await admin
+    .from("backup_historial")
+    .insert({ tipo, modulo, tamanio_bytes: tamanioBytes });
+  if (error) throw new Error(`No se pudo registrar el tamaño del backup: ${error.message}`);
+
+  if (tamanioBytes >= BACKUP_LIMITE_BYTES * UMBRAL_ALERTA_BACKUP) {
+    await avisarBackupCercaDelLimite(modulo, tamanioBytes);
+  }
+}
+
+export type UltimoBackupCompleto = {
+  tamanioBytes: number;
+  creadoEn: string;
+} | null;
+
+/** Último backup "completo" conocido (manual o automático, lo que sea más
+ * reciente) — es el que importa para la barra de estado porque es el que
+ * más tablas junta y el más cercano al límite de Vercel. */
+export async function obtenerUltimoBackupCompleto(
+  admin: ReturnType<typeof createAdminClient>
+): Promise<UltimoBackupCompleto> {
+  const { data, error } = await admin
+    .from("backup_historial")
+    .select("tamanio_bytes, creado_en")
+    .eq("modulo", "completo")
+    .order("creado_en", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`No se pudo leer el historial de backups: ${error.message}`);
+  if (!data) return null;
+
+  return { tamanioBytes: data.tamanio_bytes, creadoEn: data.creado_en };
+}
