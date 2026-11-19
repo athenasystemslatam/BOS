@@ -22,15 +22,17 @@ export type ContactoMono = { mails: string[]; whatsapp: string | null };
 export async function leerContactos(admin: Admin, ids: string[]): Promise<Map<string, ContactoMono>> {
   type Fila = { id: string; emails_contacto: string[] | null; emails_contacto_detalle: EmailContacto[] | null; telefono: string | null; telefonos_detalle?: TelefonoContacto[] | null };
   const out = new Map<string, ContactoMono>();
-  for (const tanda of enTandas(Array.from(new Set(ids)))) {
+  const leerTanda = async (tanda: string[]) => {
     let { data, error }: { data: unknown[] | null; error: { message: string } | null } = await admin.from("clientes")
       .select("id, emails_contacto, emails_contacto_detalle, telefono, telefonos_detalle").in("id", tanda);
     // Sin el SQL de contactos todavía: se lee el teléfono viejo.
     if (error) ({ data, error } = await admin.from("clientes").select("id, emails_contacto, emails_contacto_detalle, telefono").in("id", tanda));
     if (error) throw new Error(error.message);
-    for (const c of (data ?? []) as Fila[]) {
-      out.set(c.id, { mails: emailsDeCliente(c).map((e) => e.email), whatsapp: telefonoWhatsapp(telefonosDeCliente(c)) });
-    }
+    return (data ?? []) as Fila[];
+  };
+  const tandas = await Promise.all(enTandas(Array.from(new Set(ids))).map(leerTanda));
+  for (const c of tandas.flat()) {
+    out.set(c.id, { mails: emailsDeCliente(c).map((e) => e.email), whatsapp: telefonoWhatsapp(telefonosDeCliente(c)) });
   }
   return out;
 }
@@ -193,9 +195,15 @@ export async function sincronizarRevisionesModulo(admin: Admin): Promise<{ cread
   const ultimaDeuda = new Map<string, { orden: number; deuda_estado: string }>();
   const clientesConsulta = Array.from(new Set([...pago, ...deuda].map((r) => r.cliente_id)));
   const desdeAnio = Math.min(...pago.map((r) => r.anio as number), Number(hoyArgentina().slice(0, 4)) - 1);
-  for (const tanda of enTandas(clientesConsulta)) {
-    const { data } = await admin.from("monotributo_tareas")
-      .select("cliente_id, anio, mes, cuota_estado, deuda_estado").in("cliente_id", tanda).gte("anio", desdeAnio);
+  const candidatos = Array.from(hallazgos.entries()).filter(([k]) => !pendientes.has(k));
+  const [tareasRows, confirmadasRows] = await Promise.all([
+    Promise.all(enTandas(clientesConsulta).map((tanda) => admin.from("monotributo_tareas")
+      .select("cliente_id, anio, mes, cuota_estado, deuda_estado").in("cliente_id", tanda).gte("anio", desdeAnio))),
+    Promise.all(enTandas(Array.from(new Set(candidatos.map(([, h]) => h.cliente_id)))).map((tanda) => admin.from("monotributo_revisiones")
+      .select("cliente_id, campo, valor_confirmado")
+      .in("cliente_id", tanda).in("campo", [...CAMPOS_REGLA]).eq("resolucion", "confirmado"))),
+  ]);
+  for (const { data } of tareasRows) {
     for (const t of (data ?? []) as { cliente_id: string; anio: number; mes: number; cuota_estado: string; deuda_estado: string }[]) {
       estadoPago.set(clave(t.cliente_id, "pago", t.anio, t.mes), t.cuota_estado);
       const u = ultimaDeuda.get(t.cliente_id);
@@ -220,11 +228,8 @@ export async function sincronizarRevisionesModulo(admin: Admin): Promise<{ cread
 
   // Crear las que faltan, salvo lo confirmado "Está bien así" con el mismo valor
   // (las confirmadas se leen solo para estos clientes, no todas).
-  const candidatos = Array.from(hallazgos.entries()).filter(([k]) => !pendientes.has(k));
   const confirmadas = new Set<string>();
-  for (const tanda of enTandas(Array.from(new Set(candidatos.map(([, h]) => h.cliente_id))))) {
-    const { data } = await admin.from("monotributo_revisiones").select("cliente_id, campo, valor_confirmado")
-      .in("cliente_id", tanda).in("campo", [...CAMPOS_REGLA]).eq("resolucion", "confirmado");
+  for (const { data } of confirmadasRows) {
     for (const c of (data ?? []) as { cliente_id: string; campo: string; valor_confirmado: string | null }[]) {
       confirmadas.add(`${clave(c.cliente_id, c.campo, null, null)}=${c.valor_confirmado ?? ""}`);
     }
@@ -296,12 +301,12 @@ export function arrastreDesde(prev: FilaArrastre | null | undefined): Record<str
 /** Última fila anterior a (anio, mes) de cada cliente pedido. */
 export async function ultimaFilaAnterior(admin: Admin, clienteIds: string[], anio: number, mes: number) {
   const ultima = new Map<string, FilaArrastre>();
-  for (const tanda of enTandas(clienteIds)) {
-    const { data, error } = await admin
-      .from("monotributo_tareas")
-      .select("*")
-      .in("cliente_id", tanda)
-      .or(`anio.lt.${anio},and(anio.eq.${anio},mes.lt.${mes})`);
+  const tandas = await Promise.all(enTandas(clienteIds).map((tanda) => admin
+    .from("monotributo_tareas")
+    .select("*")
+    .in("cliente_id", tanda)
+    .or(`anio.lt.${anio},and(anio.eq.${anio},mes.lt.${mes})`)));
+  for (const { data, error } of tandas) {
     if (error) throw new Error(error.message);
     for (const f of (data ?? []) as unknown as FilaArrastre[]) {
       const u = ultima.get(f.cliente_id);
