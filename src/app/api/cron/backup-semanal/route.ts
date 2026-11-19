@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
     const ahora = new Date();
     const wb = await armarWorkbookBackup(admin, "Sistema completo (BOS)", tablas);
     const buffer = await wb.xlsx.writeBuffer();
+    const totalFilas = Object.values(wb.filasPorTabla).reduce((a, b) => a + b, 0);
     const nombreArchivo = `backup-completo_${stampArchivoBackup(ahora)}.xlsx`;
 
     // Copia durable en Storage (no depende de que alguien archive el mail)
@@ -85,7 +86,12 @@ export async function GET(req: NextRequest) {
 
     if (emailError) throw new Error(emailError.message);
 
-    return NextResponse.json({ ok: true, archivo: nombreArchivo, tablas: tablas.length, destinatario: adminEmail });
+    // Tablas que no se pudieron copiar: el archivo igual se guardó, pero el cron tiene que fallar y avisar.
+    if (wb.errores.length) {
+      throw new Error(`El backup se guardó (${nombreArchivo}) pero ${wb.errores.length} tabla(s) no se pudieron copiar: ${wb.errores.join(" · ")}`);
+    }
+
+    return NextResponse.json({ ok: true, archivo: nombreArchivo, tablas: tablas.length, filas: totalFilas, destinatario: adminEmail });
   } catch (e) {
     const motivo = e instanceof Error ? e.message : "Error desconocido";
     await avisarFalla(motivo);

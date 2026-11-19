@@ -100,6 +100,19 @@ export function esBackupModuloValido(valor: string): valor is BackupModulo {
   return Object.prototype.hasOwnProperty.call(BACKUPS, valor);
 }
 
+// Tablas sin columna "id": se ordenan por su clave primaria. Antes todo se
+// ordenaba por "id" y estas tablas hacían fallar el backup entero.
+const ORDEN_TABLA: Record<string, string[]> = {
+  accesos_bloqueados: ["email"],
+  clientes_fal: ["cliente_id"],
+  clientes_societario: ["cliente_id"],
+  copiadora_facturas_tareas: ["factura_id", "tarea_id"],
+  libros_avisos_mandato: ["cliente_id", "mandato_vence", "umbral"],
+  libros_snapshot: ["fecha"],
+  libros_preferencias: ["email"],
+  objetivos_area: ["area"],
+};
+
 // PostgREST corta en 1000 filas por defecto — tablas como tareas o
 // libros_movimientos ya lo superan.
 async function traerTodas(
@@ -109,8 +122,21 @@ async function traerTodas(
 ): Promise<Record<string, any>[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filas: Record<string, any>[] = [];
+  let orden = ORDEN_TABLA[tabla] ?? ["id"];
   for (let desde = 0; ; desde += 1000) {
-    const { data, error } = await admin.from(tabla).select("*").order("id").range(desde, desde + 999);
+    let consulta = admin.from(tabla).select("*");
+    for (const c of orden) consulta = consulta.order(c);
+    let { data, error } = await consulta.range(desde, desde + 999);
+    // Tabla nueva sin "id" que todavía no está en ORDEN_TABLA (backup completo):
+    // se ordena por todas sus columnas, que es estable aunque no haya clave.
+    if (error && desde === 0 && orden[0] === "id" && /column .*id.* does not exist|42703/i.test(`${error.code} ${error.message}`)) {
+      const { data: muestra, error: e2 } = await admin.from(tabla).select("*").limit(1);
+      if (e2) throw new Error(`${tabla}: ${e2.message}`);
+      orden = Object.keys(muestra?.[0] ?? {});
+      let reintento = admin.from(tabla).select("*");
+      for (const c of orden) reintento = reintento.order(c);
+      ({ data, error } = await reintento.range(desde, desde + 999));
+    }
     if (error) throw new Error(`${tabla}: ${error.message}`);
     filas.push(...(data ?? []));
     if (!data || data.length < 1000) return filas;
@@ -129,12 +155,17 @@ function celda(valor: any) {
 /** Arma el workbook de un backup: una hoja "Info" + una hoja por tabla, con
  * todas sus columnas sin formatear. Lo comparten /api/backup/[modulo] (lista
  * fija) y /api/backup/completo (lista resuelta en el momento contra la base
- * completa, vía la función SQL listar_tablas_backup). */
+ * completa, vía la función SQL listar_tablas_backup).
+ * Si una tabla falla, el resto igual se guarda: el error queda en la hoja
+ * "Info" y en la de esa tabla, y se devuelve en `errores` (el cron semanal
+ * avisa con eso). */
 export async function armarWorkbookBackup(
   admin: ReturnType<typeof createAdminClient>,
   label: string,
   tablas: string[]
-): Promise<ExcelJS.Workbook> {
+): Promise<ExcelJS.Workbook & { errores: string[]; filasPorTabla: Record<string, number> }> {
+  const errores: string[] = [];
+  const filasPorTabla: Record<string, number> = {};
   const ahora = new Date();
   const wb = new ExcelJS.Workbook();
 
@@ -150,6 +181,16 @@ export async function armarWorkbookBackup(
   // Nombres de sheet repetidos (truncado a 31 u otra colisión real) no
   // deberían pasar con las tablas actuales, pero por las dudas se
   // desambiguan agregando un sufijo en vez de que ExcelJS tire error.
+  // Las tablas se leen de a 6 a la vez (antes una atrás de otra); las hojas se arman en orden.
+  const lecturas = new Map<string, Promise<Record<string, unknown>[]>>();
+  const leer = (t: string) => {
+    if (!lecturas.has(t)) lecturas.set(t, traerTodas(admin, t));
+    return lecturas.get(t)!;
+  };
+  for (let k = 0; k < tablas.length; k += 6) {
+    await Promise.allSettled(tablas.slice(k, k + 6).map(leer));
+  }
+
   const nombresUsados = new Set<string>(["Info"]);
   for (const tabla of tablas) {
     let nombre = tabla.slice(0, 31);
@@ -160,8 +201,19 @@ export async function armarWorkbookBackup(
     }
     nombresUsados.add(nombre);
 
-    const filas = await traerTodas(admin, tabla);
     const ws = wb.addWorksheet(nombre);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let filas: Record<string, any>[];
+    try {
+      filas = await leer(tabla);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errores.push(msg);
+      ws.getCell("A1").value = `ERROR: no se pudo copiar esta tabla — ${msg}`;
+      ws.getCell("A1").font = { bold: true, color: { argb: "FFC0392B" } };
+      continue;
+    }
+    filasPorTabla[tabla] = filas.length;
 
     if (filas.length === 0) {
       ws.getCell("A1").value = "(sin datos)";
@@ -180,7 +232,12 @@ export async function armarWorkbookBackup(
     }
   }
 
-  return wb;
+  if (errores.length) {
+    wsInfo.getCell("A4").value = `⚠ ${errores.length} tabla(s) no se pudieron copiar: ${errores.join(" · ")}`;
+    wsInfo.getCell("A4").font = { bold: true, color: { argb: "FFC0392B" } };
+    wsInfo.getCell("A4").alignment = { wrapText: true };
+  }
+  return Object.assign(wb, { errores, filasPorTabla });
 }
 
 export function stampArchivoBackup(d: Date) {
@@ -224,7 +281,8 @@ export async function limpiarBackupsViejos(admin: ReturnType<typeof createAdminC
   });
   if (error) throw new Error(`No se pudo listar el bucket de backups: ${error.message}`);
 
-  const sobrantes = (data ?? []).slice(BACKUPS_A_CONSERVAR);
+  // Solo las copias (la carpeta "latidos/" de las tareas automáticas no se toca).
+  const sobrantes = (data ?? []).filter((f) => f.name.startsWith("backup-")).slice(BACKUPS_A_CONSERVAR);
   if (sobrantes.length === 0) return;
 
   const { error: errorBorrado } = await admin.storage
