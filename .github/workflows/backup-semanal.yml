@@ -14,9 +14,12 @@ jobs:
     steps:
       - name: Backup completo de la base
         run: |
-          curl -sf \
+          # Falla si la respuesta no es 200 (antes un 307 al login pasaba como éxito).
+          code=$(curl -s -o respuesta.txt -w "%{http_code}" --max-time 300 \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://bos-plum.vercel.app/api/cron/backup-semanal"
+            "https://bos-plum.vercel.app/api/cron/backup-semanal")
+          cat respuesta.txt; echo
+          if [ "$code" != "200" ]; then echo "::error::BOS respondió $code (se esperaba 200)"; exit 1; fi
 
       # El route ya manda mail si falla algo DESPUÉS de entrar (ver
       # avisarFalla en backup-semanal/route.ts). Esto cubre lo que ese mail
