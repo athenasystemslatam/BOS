@@ -3,9 +3,11 @@ import { obtenerSeguimientoSueldos } from "./datos";
 
 // Ruta dinámica: usa cookies para saber qué empresas mostrar.
 export default async function SeguimientoPage() {
+  const inicio = Date.now();
   const { clientes, tareas, periodos, periodo, liquidadoras, isAdmin, puedeEditar, recordatoriosPrevios, fal } =
     await obtenerSeguimientoSueldos();
 
+  console.info(`[tiempo] /seguimiento ${Date.now() - inicio} ms`);
   return (
     <SeguimientoClient
       clientes={clientes}

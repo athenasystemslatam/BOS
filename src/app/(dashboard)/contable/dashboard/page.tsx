@@ -21,6 +21,7 @@ export default async function ContableDashboardPage({
 }: {
   searchParams: { anio?: string };
 }) {
+  const inicio = Date.now();
   // Ventana de dos años: un balance que cierra a fin de un año fiscal puede
   // vencer (cierre + 135/160 días) recién entrado el año siguiente, así que
   // el dashboard siempre trae los datos de año actual + el anterior juntos
@@ -190,6 +191,7 @@ export default async function ContableDashboardPage({
     return `${a} de ${anios[0]} · ${b} de ${anios[1]}`;
   }
 
+  console.info(`[tiempo] /contable/dashboard ${Date.now() - inicio} ms`);
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
       {/* Header */}

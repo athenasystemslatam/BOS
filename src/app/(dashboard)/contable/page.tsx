@@ -9,6 +9,7 @@ export default async function ContablePage({
 }: {
   searchParams: { anio?: string };
 }) {
+  const inicio = Date.now();
   const anio = Number(searchParams.anio) || new Date().getFullYear();
   const admin = createAdminClient();
   const [
@@ -89,6 +90,7 @@ export default async function ContablePage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const clientesConServicio = (clientesContable ?? []).map((s: any) => s.clientes).filter(Boolean);
 
+  console.info(`[tiempo] /contable ${Date.now() - inicio} ms`);
   return (
     <ContableClient
       // balancesMap se inicializa una sola vez (useState lazy) a partir de

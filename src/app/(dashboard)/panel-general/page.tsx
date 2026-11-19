@@ -3,6 +3,7 @@ import { getCurrentLiquidadora } from "@/lib/auth";
 import { PanelGeneralClient } from "./PanelGeneralClient";
 
 export default async function PanelGeneralPage() {
+  const inicio = Date.now();
   const supabase = createAdminClient();
   const [
     yo,
@@ -48,6 +49,7 @@ export default async function PanelGeneralPage() {
   // que sigue siendo exclusivo de esos dos roles (ver isAdmin).
   const esDeSueldos = !!yo && (equipoModulos ?? []).some((m) => m.equipo_id === yo.id && m.modulo === "sueldos");
 
+  console.info(`[tiempo] /panel-general ${Date.now() - inicio} ms`);
   return (
     <PanelGeneralClient
       empresas={empresas ?? []}

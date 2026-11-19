@@ -9,6 +9,7 @@ export default async function ImpuestosPage({
 }: {
   searchParams: { mes?: string; anio?: string };
 }) {
+  const inicio = Date.now();
   const { mes: mesDefault, anio: anioDefault } = getMesTrabajoActual();
   const mes = Number(searchParams.mes) || mesDefault;
   const anio = Number(searchParams.anio) || anioDefault;
@@ -59,6 +60,7 @@ export default async function ImpuestosPage({
     };
   });
 
+  console.info(`[tiempo] /impuestos ${Date.now() - inicio} ms`);
   return (
     <ImpuestosClient
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

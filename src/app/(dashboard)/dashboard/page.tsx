@@ -20,6 +20,7 @@ export default async function DashboardPage({
 }: {
   searchParams: { mes?: string; anio?: string };
 }) {
+  const inicio = Date.now();
   const {
     mesActual, anioActual, esMesSAC, esMesActual, monthOptions,
     resumen, totalLegajos, gruposF931,
@@ -28,6 +29,7 @@ export default async function DashboardPage({
     alertasPostcierre, yo,
   } = await obtenerDatosDashboardSueldos(searchParams);
 
+  console.info(`[tiempo] /dashboard ${Date.now() - inicio} ms`);
   return (
     <div className="p-4 md:p-8">
       <div className="mb-6 flex items-center justify-between">
