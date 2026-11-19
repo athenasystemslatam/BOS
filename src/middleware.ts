@@ -66,7 +66,7 @@ async function getBlockReason(
 // Tareas automáticas (GitHub Actions / Vercel Cron): no traen sesión de usuario,
 // así que el chequeo de abajo las mandaba al login (307) y no corrían. Cada una
 // exige su propio "Authorization: Bearer CRON_SECRET" adentro del endpoint.
-const TAREAS_AUTOMATICAS = ["/api/cron/backup-semanal"];
+const TAREAS_AUTOMATICAS = ["/api/cron/backup-semanal", "/api/cron/chequeo-crecimiento"];
 
 export async function middleware(request: NextRequest) {
   if (TAREAS_AUTOMATICAS.includes(request.nextUrl.pathname)) return NextResponse.next();
