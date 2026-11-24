@@ -4,7 +4,7 @@ import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { Liquidadora } from "@/types";
 import { LiquidadorasClient } from "./LiquidadorasClient";
 import { listarBloqueados } from "./actions";
-import { obtenerUltimoBackupCompleto, type UltimoBackupCompleto } from "@/lib/backups";
+import { obtenerUltimoBackupCompleto, BACKUP_LIMITE_BYTES, type UltimoBackupCompleto } from "@/lib/backups";
 
 export default async function EquipoPage() {
   const yo = await getCurrentLiquidadora();
@@ -41,6 +41,7 @@ export default async function EquipoPage() {
       creadoPor={yo.id}
       isAdmin={yo.isAdmin}
       ultimoBackup={ultimoBackup}
+      limiteBackupBytes={BACKUP_LIMITE_BYTES}
     />
   );
 }

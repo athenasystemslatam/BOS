@@ -39,6 +39,7 @@ export function LiquidadorasClient({
   creadoPor,
   isAdmin,
   ultimoBackup,
+  limiteBackupBytes,
 }: {
   lista: Liquidadora[];
   bloqueados: AccesoBloqueado[];
@@ -46,6 +47,7 @@ export function LiquidadorasClient({
   creadoPor: string | null;
   isAdmin: boolean;
   ultimoBackup: UltimoBackupCompleto;
+  limiteBackupBytes: number;
 }) {
   const [filtro, setFiltro] = useState<Filtro>("activas");
   const [editando, setEditando] = useState<Liquidadora | null>(null);
@@ -75,7 +77,7 @@ export function LiquidadorasClient({
               {isAdmin && <GuardarBackupStorageButton modulo="completo" />}
               {isAdmin && <NuevaLiquidadoraModal />}
             </div>
-            {isAdmin && <BackupTamanioBar ultimoBackup={ultimoBackup} />}
+            {isAdmin && <BackupTamanioBar ultimoBackup={ultimoBackup} limiteBytes={limiteBackupBytes} />}
           </div>
         </div>
 

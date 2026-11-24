@@ -1,16 +1,26 @@
-import { BACKUP_LIMITE_BYTES, type UltimoBackupCompleto } from "@/lib/backups";
+import type { UltimoBackupCompleto } from "@/lib/backups";
 
 // Barra de estado para el admin: qué tan cerca está el último backup
 // completo conocido (manual o automático, el que sea más reciente) del
-// límite real de 4.5 MB que impone Vercel por respuesta — ver
-// BACKUP_LIMITE_BYTES en src/lib/backups.ts. Se oculta sola si todavía no
-// hay ningún registro (ej. recién se corrió la migración).
-export function BackupTamanioBar({ ultimoBackup }: { ultimoBackup: UltimoBackupCompleto }) {
+// límite real que impone Vercel por respuesta. Se oculta sola si todavía
+// no hay ningún registro (ej. recién se corrió la migración).
+// `limiteBytes` llega como prop (en vez de importar BACKUP_LIMITE_BYTES de
+// @/lib/backups acá) para que este componente, usado dentro de un "use
+// client", no arrastre al bundle del navegador el resto de backups.ts
+// (createAdminClient, Resend, etc.) — solo importa el tipo, que se borra
+// al compilar.
+export function BackupTamanioBar({
+  ultimoBackup,
+  limiteBytes,
+}: {
+  ultimoBackup: UltimoBackupCompleto;
+  limiteBytes: number;
+}) {
   if (!ultimoBackup) return null;
 
-  const pct = Math.min(100, (ultimoBackup.tamanioBytes / BACKUP_LIMITE_BYTES) * 100);
+  const pct = Math.min(100, (ultimoBackup.tamanioBytes / limiteBytes) * 100);
   const mb = (ultimoBackup.tamanioBytes / 1024 / 1024).toFixed(2);
-  const limiteMb = (BACKUP_LIMITE_BYTES / 1024 / 1024).toFixed(1);
+  const limiteMb = (limiteBytes / 1024 / 1024).toFixed(1);
   const fecha = new Date(ultimoBackup.creadoEn).toLocaleDateString("es-AR", {
     day: "2-digit",
     month: "short",
