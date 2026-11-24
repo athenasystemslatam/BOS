@@ -100,6 +100,29 @@ export function esBackupModuloValido(valor: string): valor is BackupModulo {
   return Object.prototype.hasOwnProperty.call(BACKUPS, valor);
 }
 
+// Una letra por módulo (no el nombre completo: "monotributo_" ya es parte
+// del nombre de casi todas sus tablas, y duplicarlo entero se pasa del
+// límite de 31 caracteres que tiene el nombre de una hoja de Excel).
+const PREFIJO_MODULO: Record<BackupModulo, string> = {
+  "panel-general": "G",
+  sueldos: "S",
+  impuestos: "I",
+  contable: "C",
+  monotributo: "M",
+  libros: "L",
+  productividad: "P",
+};
+
+// A qué módulo pertenece cada tabla — para prefijar las hojas del Excel
+// (ej. "S_periodos") y poder ubicar de un vistazo las de un módulo en el
+// backup completo, donde las hojas vienen en orden alfabético y no
+// agrupadas. Una tabla que no esté en ningún módulo (ej. un log interno
+// como monitoreo_crecimiento) queda sin prefijo.
+const PREFIJO_POR_TABLA: Record<string, string> = {};
+for (const [modulo, { tablas }] of Object.entries(BACKUPS)) {
+  for (const tabla of tablas) PREFIJO_POR_TABLA[tabla] = PREFIJO_MODULO[modulo as BackupModulo];
+}
+
 // Tablas sin columna "id": se ordenan por su clave primaria. Antes todo se
 // ordenaba por "id" y estas tablas hacían fallar el backup entero.
 const ORDEN_TABLA: Record<string, string[]> = {
@@ -163,8 +186,15 @@ export async function armarWorkbookBackup(
   admin: ReturnType<typeof createAdminClient>,
   label: string,
   tablas: string[]
-): Promise<ExcelJS.Workbook & { errores: string[]; filasPorTabla: Record<string, number> }> {
+): Promise<
+  ExcelJS.Workbook & { errores: string[]; filasPorTabla: Record<string, number>; avisosNombre: string[] }
+> {
   const errores: string[] = [];
+  // Nombres de hoja que superaron los 31 caracteres de Excel y quedaron
+  // recortados — un aviso, no una falla (los datos están todos igual). Se
+  // guarda aparte de `errores` para no disparar la alerta de "backup
+  // falló" del cron semanal por esto.
+  const avisosNombre: string[] = [];
   const filasPorTabla: Record<string, number> = {};
   const ahora = new Date();
   const wb = new ExcelJS.Workbook();
@@ -193,11 +223,16 @@ export async function armarWorkbookBackup(
 
   const nombresUsados = new Set<string>(["Info"]);
   for (const tabla of tablas) {
-    let nombre = tabla.slice(0, 31);
+    const prefijo = PREFIJO_POR_TABLA[tabla];
+    const base = prefijo ? `${prefijo}_${tabla}` : tabla;
+    if (base.length > 31) {
+      avisosNombre.push(`"${tabla}" → "${base}" (${base.length} caracteres)`);
+    }
+    let nombre = base.slice(0, 31);
     let i = 2;
     while (nombresUsados.has(nombre)) {
       const sufijo = `~${i++}`;
-      nombre = tabla.slice(0, 31 - sufijo.length) + sufijo;
+      nombre = base.slice(0, 31 - sufijo.length) + sufijo;
     }
     nombresUsados.add(nombre);
 
@@ -237,7 +272,13 @@ export async function armarWorkbookBackup(
     wsInfo.getCell("A4").font = { bold: true, color: { argb: "FFC0392B" } };
     wsInfo.getCell("A4").alignment = { wrapText: true };
   }
-  return Object.assign(wb, { errores, filasPorTabla });
+  if (avisosNombre.length) {
+    const fila = errores.length ? 5 : 4;
+    wsInfo.getCell(`A${fila}`).value = `ℹ Nombre de hoja recortado (31 car. máx. de Excel): ${avisosNombre.join(" · ")}`;
+    wsInfo.getCell(`A${fila}`).font = { italic: true, color: { argb: "FF888888" } };
+    wsInfo.getCell(`A${fila}`).alignment = { wrapText: true };
+  }
+  return Object.assign(wb, { errores, filasPorTabla, avisosNombre });
 }
 
 export function stampArchivoBackup(d: Date) {
