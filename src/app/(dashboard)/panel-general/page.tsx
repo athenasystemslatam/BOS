@@ -11,22 +11,21 @@ export default async function PanelGeneralPage() {
     { data: equipo },
     { data: equipoModulos },
     { data: servicios },
-    { data: clientesData },
   ] = await Promise.all([
     getCurrentLiquidadora(),
     supabase.from("vista_empresas").select("*").order("nombre"),
     supabase.from("liquidadoras").select("id, nombre, activa, rol").eq("activa", true).order("nombre"),
     supabase.from("equipo_modulos").select("equipo_id, modulo"),
-    supabase.from("servicios_cliente").select("cliente_id, servicio, subtipo, estado"),
-    supabase.from("clientes").select("id, liquidador_id"),
+    supabase.from("servicios_cliente").select("cliente_id, servicio, subtipo, estado, responsable_id"),
   ]);
 
-  // Map clienteId → liquidador_id
-  const liqMap = new Map((clientesData ?? []).map((c) => [c.id, c.liquidador_id]));
-
-  // Set of clienteIds que tienen sueldos activo pero sin liquidador_id en clientes
+  // Clientes con Sueldos activo pero sin responsable cargado en
+  // servicios_cliente — misma fuente que ya usa vista_empresas.responsable_sueldos
+  // y el texto "Sin responsable" de cada celda. Antes esto se calculaba aparte
+  // contra clientes.liquidador_id, una columna redundante (mismo dato, otra
+  // tabla) que podía desincronizarse de la real sin que nadie se enterara.
   const sueldosSinLiquidadora = (servicios ?? [])
-    .filter((s) => s.servicio === "sueldos" && s.estado === true && !liqMap.get(s.cliente_id))
+    .filter((s) => s.servicio === "sueldos" && s.subtipo === "general" && s.estado === true && !s.responsable_id)
     .map((s) => s.cliente_id);
 
   // Map clienteId → array de "servicio:subtipo" activos (para mostrar botones de baja)
