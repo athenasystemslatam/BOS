@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, Check, Square, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
@@ -1070,24 +1070,41 @@ function AccionesMenu({
   onDarDeBaja: () => void;
 }) {
   const [abierto, setAbierto] = useState(false);
+  // Posición en coordenadas de viewport (no relativa a la celda): la tabla
+  // scrollea horizontal y la columna Acciones queda en el borde derecho, así
+  // que un menú "absolute" común quedaba recortado por el contenedor con
+  // scroll. Con "fixed" + la posición del botón (getBoundingClientRect) se
+  // dibuja siempre entero, encima de todo, sin importar el scroll.
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const botonRef = useRef<HTMLButtonElement>(null);
   const frenado = balance.estado === "frenado";
   const noCorresponde = balance.estado === "no_corresponde";
+
+  function abrir() {
+    const r = botonRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    setAbierto(true);
+  }
 
   return (
     <div className="relative inline-block">
       <button
+        ref={botonRef}
         type="button"
-        onClick={() => setAbierto((v) => !v)}
+        onClick={() => (abierto ? setAbierto(false) : abrir())}
         className="text-gray-300 hover:text-gray-600 p-1 rounded transition-colors"
         title="Más acciones"
       >
         <MoreHorizontal size={16} />
       </button>
 
-      {abierto && (
+      {abierto && pos && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setAbierto(false)} />
-          <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
+          <div
+            className="fixed z-20 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+            style={{ top: pos.top, right: pos.right }}
+          >
             {noCorresponde ? (
               <button
                 type="button"
