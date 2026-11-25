@@ -10,6 +10,7 @@ import {
   prioridadSugerida,
 } from "@/lib/libros";
 import { configLibros, sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
+import { estaVigenteHoy } from "@/lib/estadoVigente";
 import type { ClienteSocietario, Libro, LibroCatalogo, LibroEstado, LibroPedido, LibroTarea } from "@/types";
 import type {
   AvisoBalance,
@@ -25,7 +26,13 @@ type ServicioRaw = {
   cliente_id: string;
   responsable_id: string | null;
   responsable: { nombre: string } | null;
-  clientes: { id: string; nombre: string; cuit: string | null; cierre_ejercicio_mes: number | null; cierre_ejercicio_dia: number | null } | null;
+  estado: boolean;
+  fecha_baja: string | null;
+  clientes: {
+    id: string; nombre: string; cuit: string | null;
+    cierre_ejercicio_mes: number | null; cierre_ejercicio_dia: number | null;
+    estado: string; fecha_baja: string | null;
+  } | null;
 };
 
 type BalanceRaw = { id: string; cliente_id: string; anio_fiscal: number; fecha_cierre: string; estado: string };
@@ -68,12 +75,13 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
     { data: renovacionesRaw },
     { data: actasRaw },
   ] = await Promise.all([
+    // Sin los .eq("estado", ...): la vigencia ahora también depende de
+    // fecha_baja (baja programada a futuro sigue viéndose) — se filtra
+    // después de traer, con estaVigenteHoy (ver más abajo).
     admin
       .from("servicios_cliente")
-      .select("cliente_id, responsable_id, responsable:liquidadoras(nombre), clientes!inner(id, nombre, cuit, estado, cierre_ejercicio_mes, cierre_ejercicio_dia)")
-      .eq("servicio", "libros")
-      .eq("clientes.estado", "activo")
-      .eq("estado", true),
+      .select("cliente_id, responsable_id, responsable:liquidadoras(nombre), estado, fecha_baja, clientes!inner(id, nombre, cuit, estado, fecha_baja, cierre_ejercicio_mes, cierre_ejercicio_dia)")
+      .eq("servicio", "libros"),
     admin.from("clientes_societario").select("*"),
     admin.from("libros_catalogo").select("*").order("orden"),
     admin.from("libros").select("*"),
@@ -97,7 +105,12 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
       .order("fecha", { ascending: false }),
   ]);
 
-  const servicios = ((serviciosRaw ?? []) as unknown as ServicioRaw[]).filter((s) => s.clientes);
+  const servicios = ((serviciosRaw ?? []) as unknown as ServicioRaw[]).filter(
+    (s) =>
+      s.clientes &&
+      estaVigenteHoy(s.estado, s.fecha_baja) &&
+      estaVigenteHoy(s.clientes.estado === "activo", s.clientes.fecha_baja)
+  );
   const societarios = new Map(((societariosRaw ?? []) as ClienteSocietario[]).map((s) => [s.cliente_id, s]));
   const catalogo = new Map(((catalogoRaw ?? []) as LibroCatalogo[]).map((k) => [k.id, k]));
   const libros = (librosRaw ?? []) as Libro[];

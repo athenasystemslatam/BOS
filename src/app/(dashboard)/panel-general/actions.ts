@@ -450,7 +450,17 @@ export async function editarClienteConServicios(formData: FormData) {
     const previo = previosPorClave.get(`${s.servicio}:${s.subtipo}`);
 
     const { error: svcError } = await supabase.from("servicios_cliente").upsert(
-      { cliente_id: id, servicio: s.servicio, subtipo: s.subtipo, estado: true, responsable_id: nuevoResponsable },
+      {
+        cliente_id: id,
+        servicio: s.servicio,
+        subtipo: s.subtipo,
+        estado: true,
+        // Se limpia por si el servicio ya había estado dado de baja antes
+        // (mismo motivo que reactivarCliente): sin esto quedaba una fecha
+        // vieja sin sentido en un servicio que ya está activo de nuevo.
+        fecha_baja: null,
+        responsable_id: nuevoResponsable,
+      },
       { onConflict: "cliente_id,servicio,subtipo" }
     );
     if (svcError) return { error: svcError.message };
@@ -611,7 +621,12 @@ export async function editarClienteConServicios(formData: FormData) {
   return { success: true };
 }
 
-export async function darDeBajaServicio(clienteId: string, servicio: string, subtipo: string) {
+export async function darDeBajaServicio(
+  clienteId: string,
+  servicio: string,
+  subtipo: string,
+  fechaBaja?: string
+) {
   try {
     await requireAdminOrAdministrativo();
   } catch (e) {
@@ -633,10 +648,14 @@ export async function darDeBajaServicio(clienteId: string, servicio: string, sub
     supabase.from("clientes").select("nombre").eq("id", clienteId).maybeSingle(),
   ]);
 
-  const fechaBaja = new Date();
+  // La fecha elegida (puede ser pasada, hoy o futura) es la que determina
+  // desde cuándo deja de verse en Seguimiento — ver estaVigenteHoy. Si no
+  // se manda ninguna (ej. llamado en cascada desde darDeBajaCliente sin
+  // especificarla), se usa hoy, igual que el comportamiento de antes.
+  const fecha = fechaBaja ? new Date(`${fechaBaja}T00:00:00`) : new Date();
   const { error } = await supabase
     .from("servicios_cliente")
-    .update({ estado: false, fecha_baja: fechaBaja.toISOString() })
+    .update({ estado: false, fecha_baja: fechaBaja ?? fecha.toISOString() })
     .eq("cliente_id", clienteId)
     .eq("servicio", servicio)
     .eq("subtipo", subtipo);
@@ -655,7 +674,7 @@ export async function darDeBajaServicio(clienteId: string, servicio: string, sub
       SERVICIOS_CONFIG.find((s) => s.servicio === servicio && s.subtipo === subtipo)?.label
       ?? servicio;
     if (responsable?.email) {
-      await sendEmailBajaServicio(responsable.nombre, responsable.email, cliente.nombre, servicioLabel, fechaBaja);
+      await sendEmailBajaServicio(responsable.nombre, responsable.email, cliente.nombre, servicioLabel, fecha);
     }
   }
 
@@ -663,7 +682,7 @@ export async function darDeBajaServicio(clienteId: string, servicio: string, sub
   return { success: true };
 }
 
-export async function darDeBajaCliente(clienteId: string) {
+export async function darDeBajaCliente(clienteId: string, fechaBaja?: string) {
   try {
     await requireAdminOrAdministrativo();
   } catch (e) {
@@ -671,9 +690,17 @@ export async function darDeBajaCliente(clienteId: string) {
   }
 
   const supabase = createAdminClient();
+  // fecha_baja existía en la tabla desde siempre pero nadie la llenaba acá
+  // — Panel General mostraba "Inactiva" apenas se tocaba el botón, sin
+  // ninguna fecha elegible. Ahora guarda la fecha real desde la que el
+  // cliente deja de aparecer en Seguimiento (ver estaVigenteHoy).
   const { error } = await supabase
     .from("clientes")
-    .update({ estado: "inactivo", fecha_modificacion: new Date().toISOString() })
+    .update({
+      estado: "inactivo",
+      fecha_baja: fechaBaja ? `${fechaBaja}T00:00:00` : new Date().toISOString(),
+      fecha_modificacion: new Date().toISOString(),
+    })
     .eq("id", clienteId);
 
   if (error) return { error: error.message };
@@ -682,14 +709,14 @@ export async function darDeBajaCliente(clienteId: string) {
   // desaparecía de Panel General pero seguía apareciendo asignado en
   // Contable/Impuestos/Monotributo/Sueldos, sin que su responsable se
   // enterara. Se da de baja cada servicio activo igual que si se hiciera
-  // uno por uno (mismo aviso por mail al responsable).
+  // uno por uno (mismo aviso por mail al responsable, misma fecha elegida).
   const { data: activos } = await supabase
     .from("servicios_cliente")
     .select("servicio, subtipo")
     .eq("cliente_id", clienteId)
     .eq("estado", true);
   for (const s of activos ?? []) {
-    await darDeBajaServicio(clienteId, s.servicio, s.subtipo);
+    await darDeBajaServicio(clienteId, s.servicio, s.subtipo, fechaBaja);
   }
 
   revalidatePath("/", "layout");
@@ -704,9 +731,12 @@ export async function reactivarCliente(clienteId: string) {
   }
 
   const supabase = createAdminClient();
+  // Se limpia fecha_baja al reactivar — si no, quedaría una fecha vieja
+  // dando vueltas que no significa nada (el cliente ya está activo de
+  // nuevo, estaVigenteHoy ni la mira mientras lo esté).
   const { error } = await supabase
     .from("clientes")
-    .update({ estado: "activo", fecha_modificacion: new Date().toISOString() })
+    .update({ estado: "activo", fecha_baja: null, fecha_modificacion: new Date().toISOString() })
     .eq("id", clienteId);
 
   if (error) return { error: error.message };

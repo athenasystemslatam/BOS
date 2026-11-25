@@ -69,6 +69,13 @@ function sigla(nombre: string) {
 // guardado/pegado como los caracteres combinantes reales.
 const DIACRITICOS = new RegExp("[" + String.fromCharCode(0x300) + "-" + String.fromCharCode(0x36f) + "]", "g");
 
+// Fecha de hoy en Argentina (no la del huso del navegador) para el default
+// del selector de fecha de baja, en formato YYYY-MM-DD (el que entiende
+// <input type="date">).
+function hoyAR(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+}
+
 function normalizar(t: string) {
   // Sin esto, "lanus" no encontraba "Textiles Lanús".
   return t.toLowerCase().normalize("NFD").replace(DIACRITICOS, "");
@@ -120,6 +127,10 @@ export function PanelGeneralClient({
   const [confirmando, setConfirmando] = useState<Confirmando | null>(null);
   // Baja pendiente de la última confirmación en ventana (tras "Confirmar").
   const [bajaFinal, setBajaFinal] = useState<Confirmando | null>(null);
+  // Fecha a partir de la cual se considera dado de baja (no el momento del
+  // clic) — determina desde cuándo deja de aparecer en Seguimiento. Se
+  // reinicia a hoy cada vez que se abre la ventana de confirmación.
+  const [fechaBaja, setFechaBaja] = useState(hoyAR);
   const [isPending, startTransition] = useTransition();
   const backdropBaja = useBackdropClose(() => {
     if (!isPending) setBajaFinal(null);
@@ -284,6 +295,7 @@ export function PanelGeneralClient({
       // Segunda pulsación: en vez de ejecutar, pide una última confirmación
       // en una ventana (ver bajaFinal / ejecutarBaja).
       setConfirmando(null);
+      setFechaBaja(hoyAR());
       setBajaFinal(c);
     } else {
       setConfirmando(c);
@@ -296,6 +308,7 @@ export function PanelGeneralClient({
     if (!isAdmin) return;
     setActionError(null);
     setConfirmando(null);
+    setFechaBaja(hoyAR());
     setBajaFinal({ tipo: activa ? "cliente" : "reactivar", clienteId });
   }
 
@@ -305,10 +318,10 @@ export function PanelGeneralClient({
     startTransition(async () => {
       const result =
         c.tipo === "servicio"
-          ? await darDeBajaServicio(c.clienteId, c.servicio, c.subtipo)
+          ? await darDeBajaServicio(c.clienteId, c.servicio, c.subtipo, fechaBaja)
           : c.tipo === "reactivar"
             ? await reactivarCliente(c.clienteId)
-            : await darDeBajaCliente(c.clienteId);
+            : await darDeBajaCliente(c.clienteId, fechaBaja);
       if (result?.error) setActionError(result.error);
       setBajaFinal(null);
     });
@@ -1000,7 +1013,20 @@ export function PanelGeneralClient({
               {bajaFinalInfo.titulo}
             </h2>
             <p className="text-[13px] text-ink-muted mt-3">{bajaFinalInfo.detalle}</p>
-            <p className="text-[13px] font-semibold text-danger mt-2">¿Estás seguro?</p>
+            {bajaFinal.tipo !== "reactivar" && (
+              <label className="block mt-4">
+                <span className="block text-[12px] font-medium text-ink-muted mb-1">
+                  Fecha de baja — a partir de ese día deja de aparecer en Seguimiento
+                </span>
+                <input
+                  type="date"
+                  value={fechaBaja}
+                  onChange={(e) => setFechaBaja(e.target.value)}
+                  className="w-full text-[13px] text-ink border border-line-input rounded-[9px] px-3 py-2 outline-none focus:border-bordo"
+                />
+              </label>
+            )}
+            <p className="text-[13px] font-semibold text-danger mt-4">¿Estás seguro?</p>
             <div className="flex justify-end gap-2.5 mt-6">
               <button
                 onClick={() => setBajaFinal(null)}

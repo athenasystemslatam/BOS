@@ -2,6 +2,7 @@ import { getAniosContables } from "@/lib/aniosContables";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
+import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { ContableClient } from "./ContableClient";
 
 export default async function ContablePage({
@@ -34,11 +35,15 @@ export default async function ContablePage({
       )
       .eq("anio_fiscal", anio)
       .order("fecha_cierre"),
+    // Sin .eq("estado", true): la vigencia depende también de fecha_baja
+    // ahora — se filtra después de traer (ver clientesConServicio más
+    // abajo). Esto solo decide quién puede iniciar un balance NUEVO; los
+    // balances ya en curso de un cliente dado de baja no desaparecen solos,
+    // siguen su ciclo hasta finalizar.
     admin
       .from("servicios_cliente")
-      .select("cliente_id, clientes(id, nombre, cuit, cierre_ejercicio_mes, cierre_ejercicio_dia)")
-      .eq("servicio", "contable")
-      .eq("estado", true),
+      .select("cliente_id, estado, fecha_baja, clientes(id, nombre, cuit, cierre_ejercicio_mes, cierre_ejercicio_dia, estado, fecha_baja)")
+      .eq("servicio", "contable"),
     // Para el modal de edición de ficha (reutiliza EditarClienteModal de
     // Panel General), que necesita el equipo completo y sus módulos, no
     // solo el de Contable, ya que edita servicios de todos los módulos.
@@ -86,9 +91,17 @@ export default async function ContablePage({
     rol: e.rol,
   }));
 
-  // Clients with contable service
+  // Clients with contable service, vigentes hoy (ni el servicio ni el
+  // cliente entero dados de baja con una fecha ya pasada).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const clientesConServicio = (clientesContable ?? []).map((s: any) => s.clientes).filter(Boolean);
+  const clientesConServicio = (clientesContable ?? [])
+    .filter((s: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (!estaVigenteHoy(s.estado, s.fecha_baja)) return false;
+      const c = s.clientes;
+      return !c || estaVigenteHoy(c.estado === "activo", c.fecha_baja);
+    })
+    .map((s: any) => s.clientes) // eslint-disable-line @typescript-eslint/no-explicit-any
+    .filter(Boolean);
 
   console.info(`[tiempo] /contable ${Date.now() - inicio} ms`);
   return (

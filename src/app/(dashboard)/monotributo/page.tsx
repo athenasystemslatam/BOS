@@ -6,6 +6,7 @@ import { hoyArgentina, puedeSerResponsable, type Gravedad } from "@/lib/monotrib
 import { avisoCalendarioFaltante, enVentanaRecategorizacion, leerCalendario, vencimientoDe } from "@/lib/calendarioArca";
 import { arrastrarMes, sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
+import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { MonotributoClient, type FichaResumen } from "./MonotributoClient";
 
 // Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
@@ -52,11 +53,13 @@ export default async function MonotributoPage({
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
     resolverResponsablesVigentes("monotributo", "general", anio, mes),
+    // Sin .eq("estado", true): la vigencia ahora también depende de
+    // fecha_baja (baja programada a futuro sigue viéndose) — se filtra
+    // después de traer, con estaVigenteHoy.
     admin
       .from("servicios_cliente")
-      .select("cliente_id, responsable_id, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso)")
-      .eq("servicio", "monotributo")
-      .eq("estado", true),
+      .select("cliente_id, responsable_id, estado, fecha_baja, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso, estado, fecha_baja)")
+      .eq("servicio", "monotributo"),
     admin
       .from("monotributo_tareas")
       .select("*")
@@ -90,17 +93,22 @@ export default async function MonotributoPage({
 
   const equipoMap = new Map((equipoRaw ?? []).map((e) => [e.id, e.nombre]));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const servicios = (serviciosRaw ?? []).map((s: any) => {
-    const vigente = vigentes.get(s.cliente_id);
-    const ficha = fichaPor.get(s.cliente_id) ?? null;
-    if (vigente) return { ...s, ficha, responsable_id: vigente.id, responsable_nombre: vigente.nombre };
-    return {
-      ...s,
-      ficha,
-      responsable_nombre: s.responsable_id ? (equipoMap.get(s.responsable_id) ?? null) : null,
-    };
-  });
+  const servicios = (serviciosRaw ?? [])
+    .filter((s: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      if (!estaVigenteHoy(s.estado, s.fecha_baja)) return false;
+      const c = s.clientes;
+      return !c || estaVigenteHoy(c.estado === "activo", c.fecha_baja);
+    })
+    .map((s: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      const vigente = vigentes.get(s.cliente_id);
+      const ficha = fichaPor.get(s.cliente_id) ?? null;
+      if (vigente) return { ...s, ficha, responsable_id: vigente.id, responsable_nombre: vigente.nombre };
+      return {
+        ...s,
+        ficha,
+        responsable_nombre: s.responsable_id ? (equipoMap.get(s.responsable_id) ?? null) : null,
+      };
+    });
 
   // Tiempo de armado en el servidor (se ve en los registros de Vercel).
   console.info(`[tiempo] /monotributo ${Date.now() - inicio} ms`);
