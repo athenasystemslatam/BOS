@@ -148,7 +148,8 @@ export async function middleware(request: NextRequest) {
     const next = request.nextUrl.searchParams.get("next");
     const url = request.nextUrl.clone();
     url.search = "";
-    url.pathname = next && next.startsWith("/") && !next.startsWith("//") ? next.split("?")[0] : "/";
+    const valido = !!next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/login") && !next.startsWith("/auth");
+    url.pathname = valido ? next!.split("?")[0] : "/";
     if (next && url.pathname !== "/" && next.includes("?")) url.search = next.slice(next.indexOf("?"));
     return NextResponse.redirect(url);
   }
