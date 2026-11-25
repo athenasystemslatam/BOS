@@ -384,14 +384,21 @@ async function insertarAsignacion(
   motivo: string | null,
   creadoPor: string | null
 ): Promise<{ error: string } | { success: true }> {
-  const { error } = await admin.from("asignaciones").insert({
-    cliente_id: clienteId,
-    liquidador_id: liquidadorId,
-    desde_anio: desdeAnio,
-    desde_mes: desdeMes,
-    motivo: motivo || null,
-    creado_por: creadoPor,
-  });
+  // upsert, no insert: "asignaciones" tiene UNIQUE (cliente_id, desde_anio,
+  // desde_mes) — reasignar dos veces al mismo cliente para el mismo período
+  // (ej. corregir una transferencia recién hecha) tiraba un error de clave
+  // duplicada en vez de reemplazar el registro.
+  const { error } = await admin.from("asignaciones").upsert(
+    {
+      cliente_id: clienteId,
+      liquidador_id: liquidadorId,
+      desde_anio: desdeAnio,
+      desde_mes: desdeMes,
+      motivo: motivo || null,
+      creado_por: creadoPor,
+    },
+    { onConflict: "cliente_id,desde_anio,desde_mes" }
+  );
 
   if (error) return { error: error.message };
 
