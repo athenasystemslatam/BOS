@@ -495,7 +495,7 @@ export function ContableClient({
             <col className="w-28" />
             <col className="w-28" />
             <col className="w-36" />
-            <col className="w-16" />
+            <col className="w-32" />
             <col className="w-36" />
             <col className="w-32" />
             <col className="w-32" />
@@ -551,7 +551,7 @@ export function ContableClient({
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Vto Gcias</th>
               {/* Estado */}
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Estado</th>
-              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-28">Avance</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32">Avance</th>
               <th className="bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-36">Responsable</th>
               {/* Etapas */}
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-32 whitespace-normal leading-tight">Pedido de información</th>
