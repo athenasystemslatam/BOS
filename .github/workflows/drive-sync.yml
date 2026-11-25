@@ -5,52 +5,86 @@ on:
     - cron: '0 9 * * *'   # 9:00 UTC = 6:00 ART
   workflow_dispatch:        # disparo manual desde GitHub Actions
 
+permissions:
+  issues: write
+
 jobs:
   activo-tanda-0:
     runs-on: ubuntu-latest
     steps:
       - name: Sync mes activo — tanda 0/2
+        env:
+          URL: "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=0&total=2&mes=activo"
         run: |
-          curl -sf \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=0&total=2&mes=activo"
+          # Falla si la respuesta no es 200 (antes un 307 al login pasaba como éxito).
+          code=$(curl -s -o respuesta.txt -w "%{http_code}" --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "$URL")
+          cat respuesta.txt; echo
+          if [ "$code" != "200" ]; then echo "::error::BOS respondió $code (se esperaba 200)"; exit 1; fi
 
   activo-tanda-1:
     needs: activo-tanda-0
     runs-on: ubuntu-latest
     steps:
       - name: Sync mes activo — tanda 1/2
+        env:
+          URL: "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=1&total=2&mes=activo"
         run: |
-          curl -sf \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=1&total=2&mes=activo"
+          # Falla si la respuesta no es 200 (antes un 307 al login pasaba como éxito).
+          code=$(curl -s -o respuesta.txt -w "%{http_code}" --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "$URL")
+          cat respuesta.txt; echo
+          if [ "$code" != "200" ]; then echo "::error::BOS respondió $code (se esperaba 200)"; exit 1; fi
 
   anterior-tanda-0:
     needs: activo-tanda-1
     runs-on: ubuntu-latest
     steps:
       - name: Sync mes anterior — tanda 0/2
+        env:
+          URL: "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=0&total=2&mes=anterior"
         run: |
-          curl -sf \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=0&total=2&mes=anterior"
+          # Falla si la respuesta no es 200 (antes un 307 al login pasaba como éxito).
+          code=$(curl -s -o respuesta.txt -w "%{http_code}" --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "$URL")
+          cat respuesta.txt; echo
+          if [ "$code" != "200" ]; then echo "::error::BOS respondió $code (se esperaba 200)"; exit 1; fi
 
   anterior-tanda-1:
     needs: anterior-tanda-0
     runs-on: ubuntu-latest
     steps:
       - name: Sync mes anterior — tanda 1/2
+        env:
+          URL: "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=1&total=2&mes=anterior"
         run: |
-          curl -sf \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://bos-plum.vercel.app/api/cron/drive-sync?tanda=1&total=2&mes=anterior"
+          # Falla si la respuesta no es 200 (antes un 307 al login pasaba como éxito).
+          code=$(curl -s -o respuesta.txt -w "%{http_code}" --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "$URL")
+          cat respuesta.txt; echo
+          if [ "$code" != "200" ]; then echo "::error::BOS respondió $code (se esperaba 200)"; exit 1; fi
 
   generar-reporte:
     needs: anterior-tanda-1
     runs-on: ubuntu-latest
     steps:
       - name: Generar reporte mensual PDF
+        env:
+          URL: "https://bos-plum.vercel.app/api/cron/reporte-mensual"
         run: |
-          curl -sf \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://bos-plum.vercel.app/api/cron/reporte-mensual"
+          # Falla si la respuesta no es 200 (antes un 307 al login pasaba como éxito).
+          code=$(curl -s -o respuesta.txt -w "%{http_code}" --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "$URL")
+          cat respuesta.txt; echo
+          if [ "$code" != "200" ]; then echo "::error::BOS respondió $code (se esperaba 200)"; exit 1; fi
+
+  avisar:
+    needs: [activo-tanda-0, activo-tanda-1, anterior-tanda-0, anterior-tanda-1, generar-reporte]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Abrir issue en GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" --title "⚠ Drive Sync / reporte mensual falló — $(date -u +'%Y-%m-%d')" --body "La tarea automática de BOS no se completó. Ver el log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

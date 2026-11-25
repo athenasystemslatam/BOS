@@ -5,12 +5,30 @@ on:
     - cron: '0 11 * * *'   # 11:00 UTC = 8:00 ART
   workflow_dispatch:
 
+permissions:
+  issues: write
+
 jobs:
   alertas-libros:
     runs-on: ubuntu-latest
     steps:
       - name: Enviar alertas Libros
+        env:
+          URL: "https://bos-plum.vercel.app/api/alertas/libros"
         run: |
-          curl -sf \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "https://bos-plum.vercel.app/api/alertas/libros"
+          # Falla si la respuesta no es 200 (antes un 307 al login pasaba como éxito).
+          code=$(curl -s -o respuesta.txt -w "%{http_code}" --max-time 300 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "$URL")
+          cat respuesta.txt; echo
+          if [ "$code" != "200" ]; then echo "::error::BOS respondió $code (se esperaba 200)"; exit 1; fi
+
+  avisar:
+    needs: [alertas-libros]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Abrir issue en GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" --title "⚠ Alertas de Libros falló — $(date -u +'%Y-%m-%d')" --body "La tarea automática de BOS no se completó. Ver el log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

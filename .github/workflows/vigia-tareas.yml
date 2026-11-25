@@ -1,0 +1,50 @@
+name: Vigía de tareas automáticas
+
+# Las otras tareas avisan si fallan; esta avisa si directamente NO corren
+# (GitHub las puede pausar, o el cron puede dejar de dispararse sin error).
+on:
+  schedule:
+    - cron: '0 14 * * *'   # 14:00 UTC = 11:00 ART, después de todas las demás
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  issues: write
+
+jobs:
+  vigia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Revisar la última ejecución exitosa de cada tarea
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # archivo:días máximos sin una ejecución exitosa
+          tareas="drive-sync.yml:2 alertas-libros.yml:2 backup-semanal.yml:8 chequeo-crecimiento.yml:8"
+          problemas=""
+          ahora=$(date -u +%s)
+          for t in $tareas; do
+            wf=${t%%:*}; max=${t##*:}
+            estado=$(gh api "repos/$REPO/actions/workflows/$wf" --jq .state 2>/dev/null || echo "no-existe")
+            ultima=$(gh api "repos/$REPO/actions/workflows/$wf/runs?status=success&per_page=1" --jq '.workflow_runs[0].created_at // empty' 2>/dev/null || true)
+            if [ "$estado" != "active" ]; then
+              problemas="$problemas\n- $wf: está en estado \"$estado\" (no se ejecuta). Reactivarla en Actions."
+            elif [ -z "$ultima" ]; then
+              problemas="$problemas\n- $wf: nunca terminó bien."
+            else
+              dias=$(( (ahora - $(date -u -d "$ultima" +%s)) / 86400 ))
+              echo "$wf: última ejecución exitosa hace $dias día(s)"
+              if [ "$dias" -gt "$max" ]; then
+                problemas="$problemas\n- $wf: última ejecución exitosa hace $dias días (máximo esperado: $max)."
+              fi
+            fi
+          done
+          if [ -z "$problemas" ]; then echo "Todas las tareas corrieron a tiempo."; exit 0; fi
+          titulo="⚠ Tareas automáticas de BOS sin correr"
+          if gh issue list --repo "$REPO" --state open --search "$titulo in:title" --json number --jq '.[0].number' | grep -q .; then
+            echo "Ya hay un aviso abierto."; printf "$problemas\n"; exit 1
+          fi
+          printf "Estas tareas no corrieron como se esperaba:\n$problemas\n\nLog: ${{ github.server_url }}/$REPO/actions/runs/${{ github.run_id }}\n" > cuerpo.md
+          gh issue create --repo "$REPO" --title "$titulo" --body-file cuerpo.md
+          exit 1
