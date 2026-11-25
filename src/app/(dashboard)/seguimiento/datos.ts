@@ -30,7 +30,14 @@ export async function obtenerSeguimientoSueldos() {
       getCurrentLiquidadora(),
       fetchPeriodo(anio, mes),
       admin.from("periodos").select("*").order("anio", { ascending: false }).order("mes", { ascending: false }).limit(24),
-      admin.from("servicios_cliente").select("cliente_id").eq("servicio", "sueldos").eq("estado", true),
+      // Responsable de Sueldos vía servicios_cliente (igual que todos los
+      // demás módulos), en vez de clientes.liquidador_id directo.
+      admin
+        .from("servicios_cliente")
+        .select("cliente_id, responsable_id, liquidadora:liquidadoras!responsable_id(id, nombre)")
+        .eq("servicio", "sueldos")
+        .eq("subtipo", "general")
+        .eq("estado", true),
       admin
         .from("asignaciones")
         .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en, liquidadora:liquidadoras!liquidador_id(id, nombre)")
@@ -40,22 +47,38 @@ export async function obtenerSeguimientoSueldos() {
     ]);
   await aplicarDefaultFal(objetivoSueldos);
   const idsSueldos = (serviciosSueldos ?? []).map((s) => s.cliente_id);
+  const responsablePorCliente = new Map((serviciosSueldos ?? []).map((s) => [s.cliente_id, s]));
 
-  let clientesQuery = admin
+  // No-admin: solo ve sus propios clientes — antes era .eq("liquidador_id",
+  // yo.id) contra la columna de `clientes`; ahora se resuelve el mismo
+  // conjunto contra servicios_cliente.responsable_id.
+  const esRestringido = !yo?.isAdmin && !yo?.esCobranzas && !yo?.esAdministrativo && !!yo;
+  const idsVisibles = esRestringido
+    ? (serviciosSueldos ?? []).filter((s) => s.responsable_id === yo!.id).map((s) => s.cliente_id)
+    : idsSueldos;
+
+  const clientesQuery = admin
     .from("clientes")
-    .select("*, liquidadora:liquidadoras!liquidador_id(id, nombre)")
+    .select("*")
     .eq("estado", "activo")
-    .in("id", idsSueldos)
+    .in("id", idsVisibles)
     .order("terminacion_cuit");
-  if (!yo?.isAdmin && !yo?.esCobranzas && !yo?.esAdministrativo && yo) {
-    clientesQuery = clientesQuery.eq("liquidador_id", yo.id);
-  }
   const [{ data: clientesRaw }, { data: tareas }, recordatoriosPrevios] = await Promise.all([
-    idsSueldos.length > 0 ? clientesQuery : Promise.resolve({ data: [] }),
+    idsVisibles.length > 0 ? clientesQuery : Promise.resolve({ data: [] }),
     periodo ? admin.from("tareas").select("*").eq("periodo_id", periodo.id) : Promise.resolve({ data: [] }),
     periodo ? fetchRecordatoriosPrevios(periodo.id, { anio: periodo.anio, mes: periodo.mes }) : Promise.resolve({}),
   ]);
-  const clientes = ((clientesRaw ?? []) as ClienteConLiq[]);
+  // Se pisan liquidador_id/liquidadora con lo que diga servicios_cliente —
+  // la reconciliación contra "asignaciones" de más abajo sigue igual, no le
+  // importa de dónde salió el valor que está pisando.
+  const clientes = ((clientesRaw ?? []) as Cliente[]).map((c) => {
+    const resp = responsablePorCliente.get(c.id);
+    return {
+      ...c,
+      liquidador_id: resp?.responsable_id ?? null,
+      liquidadora: (resp?.liquidadora as unknown as { id: string; nombre: string } | null) ?? null,
+    } as ClienteConLiq;
+  });
 
   // Resolver liquidadora por período usando tabla asignaciones
   if (clientes.length > 0) {
