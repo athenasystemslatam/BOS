@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo, useRef } from "react";
+import { useState, useTransition, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, Check, Square, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
@@ -1085,6 +1085,18 @@ function AccionesMenu({
     if (r) setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
     setAbierto(true);
   }
+
+  // Al ser "fixed", la posición se calcula una sola vez al abrir — si
+  // después se scrollea (la tabla, o la página), el menú se queda flotando
+  // en ese mismo lugar en vez de acompañar a su fila. Se cierra solo apenas
+  // arranca el scroll, en vez de quedar "pegado" en un lugar que ya no es
+  // el de su fila.
+  useEffect(() => {
+    if (!abierto) return;
+    const cerrar = () => setAbierto(false);
+    window.addEventListener("scroll", cerrar, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", cerrar, { capture: true });
+  }, [abierto]);
 
   return (
     <div className="relative inline-block">
