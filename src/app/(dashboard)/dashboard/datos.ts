@@ -46,10 +46,13 @@ export async function obtenerDatosDashboardSueldos(searchParams: { mes?: string;
 
   const [{ data: liquidadoras }, { data: clientes }, { data: serviciosSueldos }, periodoActual, { data: alertasPostcierre }, objetivoGeneral, yo] = await Promise.all([
     supabase.from("liquidadoras").select("*").eq("activa", true).order("nombre"),
-    supabase.from("clientes").select("*, liquidadora:liquidadoras!liquidador_id(*)").eq("estado", "activo"),
+    supabase.from("clientes").select("*").eq("estado", "activo"),
+    // Responsable de Sueldos vía servicios_cliente (igual que todos los
+    // demás módulos), en vez de clientes.liquidador_id directo — de paso
+    // sirve para idsConSueldos, que ya se calculaba de acá.
     supabase
       .from("servicios_cliente")
-      .select("cliente_id")
+      .select("cliente_id, responsable_id, liquidadora:liquidadoras!responsable_id(*)")
       .eq("servicio", "sueldos")
       .eq("subtipo", "general")
       .eq("estado", true),
@@ -64,15 +67,27 @@ export async function obtenerDatosDashboardSueldos(searchParams: { mes?: string;
     getCurrentLiquidadora(),
   ]);
 
+  const responsablePorCliente = new Map((serviciosSueldos ?? []).map((s) => [s.cliente_id, s]));
   const idsConSueldos = new Set((serviciosSueldos ?? []).map((s) => s.cliente_id));
 
   const { data: tareas } = periodoActual
     ? await supabase.from("tareas").select("*").eq("periodo_id", periodoActual.id)
     : { data: [] };
 
-  const clientesList = ((clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? []).filter((c) =>
-    idsConSueldos.has(c.id)
-  );
+  // Se pisan liquidador_id/liquidadora con lo que diga servicios_cliente —
+  // el resto de esta función sigue leyendo esos mismos dos campos de
+  // siempre, sin cambios, solo que ahora vienen de la fuente correcta.
+  const clientesList = ((clientes as Cliente[]) ?? [])
+    .filter((c) => idsConSueldos.has(c.id))
+    .map((c) => {
+      const resp = responsablePorCliente.get(c.id);
+      const liquidadora = (resp?.liquidadora as unknown as Liquidadora | null) ?? null;
+      return {
+        ...c,
+        liquidador_id: resp?.responsable_id ?? null,
+        liquidadora,
+      } as Cliente & { liquidadora: Liquidadora };
+    });
   const clienteLiqIds = new Set(clientesList.map((c) => c.liquidador_id).filter(Boolean));
   const liquidadorasList = ((liquidadoras as Liquidadora[]) ?? []).filter((l) => clienteLiqIds.has(l.id));
   const tareasList = (tareas as Tarea[]) ?? [];
