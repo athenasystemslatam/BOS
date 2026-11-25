@@ -1102,7 +1102,7 @@ function AccionesMenu({
         <>
           <div className="fixed inset-0 z-10" onClick={() => setAbierto(false)} />
           <div
-            className="fixed z-20 w-44 bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+            className="fixed z-20 w-44 flex flex-col whitespace-normal bg-white border border-gray-200 rounded-lg shadow-lg py-1"
             style={{ top: pos.top, right: pos.right }}
           >
             {noCorresponde ? (
