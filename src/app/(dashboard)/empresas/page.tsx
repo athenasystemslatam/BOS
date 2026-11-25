@@ -46,13 +46,30 @@ export default async function EmpresasPage() {
   // Módulo Sueldos: solo clientes con el servicio "sueldos" activo (no toda la
   // base de /panel-general — un cliente que solo tiene Impuestos no es de acá).
   const idsSueldos = (serviciosSueldos ?? []).map((s) => s.cliente_id);
-  const { data: clientes } = idsSueldos.length > 0
-    ? await supabase
-        .from("clientes")
-        .select("*, liquidadora:liquidadoras!liquidador_id(*)")
-        .in("id", idsSueldos)
-        .order("nombre")
-    : { data: [] };
+  const [{ data: clientesRaw }, { data: serviciosConResponsable }] = await Promise.all([
+    idsSueldos.length > 0
+      ? supabase.from("clientes").select("*").in("id", idsSueldos).order("nombre")
+      : Promise.resolve({ data: [] as Cliente[] }),
+    // Responsable de Sueldos vía servicios_cliente (igual que todos los
+    // demás módulos), en vez de clientes.liquidador_id directo.
+    idsSueldos.length > 0
+      ? supabase
+          .from("servicios_cliente")
+          .select("cliente_id, responsable_id, liquidadora:liquidadoras!responsable_id(*)")
+          .eq("servicio", "sueldos")
+          .eq("subtipo", "general")
+          .in("cliente_id", idsSueldos)
+      : Promise.resolve({ data: [] as { cliente_id: string; responsable_id: string | null; liquidadora: Liquidadora | null }[] }),
+  ]);
+  const responsablePorCliente = new Map((serviciosConResponsable ?? []).map((s) => [s.cliente_id, s]));
+  // Se pisan liquidador_id/liquidadora de `clientes` con lo que diga
+  // servicios_cliente, para no tener que tocar EmpresasClient/los modales:
+  // ellos siguen leyendo los mismos campos de siempre, solo que ahora
+  // vienen resueltos desde la fuente que ya usan los demás módulos.
+  const clientes = (clientesRaw ?? []).map((c) => {
+    const resp = responsablePorCliente.get(c.id);
+    return { ...c, liquidador_id: resp?.responsable_id ?? null, liquidadora: resp?.liquidadora ?? null };
+  });
 
   const lsdHasta: Record<string, { anio: number; mes: number }> = {};
   for (const t of rubricaTareas) {
@@ -66,7 +83,7 @@ export default async function EmpresasPage() {
 
   return (
     <EmpresasClient
-      clientes={(clientes as (Cliente & { liquidadora: Liquidadora })[]) ?? []}
+      clientes={clientes as (Cliente & { liquidadora: Liquidadora })[]}
       liquidadoras={(liquidadoras as Liquidadora[]) ?? []}
       isAdmin={yo?.isAdmin ?? false}
       creadoPor={yo?.id ?? null}
