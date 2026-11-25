@@ -7,6 +7,7 @@ import { getObjetivoSueldos } from "@/lib/objetivos";
 import { aplicarDefaultFal, getFilasFal } from "@/lib/falServer";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { paginado } from "@/lib/paginado";
+import { cantidadClaves, sinSensibles } from "@/lib/clavesServer";
 
 export type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -86,7 +87,8 @@ export async function obtenerSeguimientoSueldos() {
     .map((c) => {
       const resp = responsablePorCliente.get(c.id);
       return {
-        ...c,
+        ...sinSensibles(c),
+        tiene_sensibles: cantidadClaves(c) > 0 || !!c.cuil_arca,
         liquidador_id: resp?.responsable_id ?? null,
         liquidadora: (resp?.liquidadora as unknown as { id: string; nombre: string } | null) ?? null,
       } as ClienteConLiq;

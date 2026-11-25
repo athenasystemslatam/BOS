@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache";
 import { getCurrentLiquidadora, requireAdminOrAdministrativo, requireAreaOrAdmin } from "@/lib/auth";
 import { sendEmailBajaServicio, sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
-import type { Cliente, ClienteSocietario } from "@/types";
+import type { ClaveAcceso, Cliente, ClienteSocietario } from "@/types";
+import { alcanceClaves, fusionarClaves, protegerCliente, puedeVerCuil } from "@/lib/clavesServer";
 
 // Ficha de cliente de solo lectura para la llavecita de Panel General —
 // misma info y mismo componente (FichaClienteBoton) que ya usa Contable.
@@ -28,7 +29,7 @@ export async function getFichaCliente(clienteId: string): Promise<Cliente | null
       .maybeSingle(),
   ]);
 
-  const cliente = (data as Cliente) ?? null;
+  const cliente = data ? ((await protegerCliente(data as Cliente, "ficha")) as Cliente) : null;
   if (!cliente) return null;
 
   if (!servicioLibros) return cliente;
@@ -305,7 +306,7 @@ export async function getEmpresaCompleta(clienteId: string) {
   ]);
 
   if (!cliente) return null;
-  return { cliente, servicios: servicios ?? [] };
+  return { cliente: await protegerCliente(cliente, "editar cliente"), servicios: servicios ?? [] };
 }
 
 export async function editarClienteConServicios(formData: FormData) {
@@ -389,6 +390,10 @@ export async function editarClienteConServicios(formData: FormData) {
     }
   }
 
+  // El editor solo recibió las claves (y el CUIL) que esta persona puede ver: lo demás se conserva.
+  const alcance = await alcanceClaves();
+  const { data: sensiblesAntes } = await supabase.from("clientes").select("claves_acceso, cuil_arca").eq("id", id).maybeSingle();
+
   const { error: clienteError } = await supabase
     .from("clientes")
     .update({
@@ -406,7 +411,7 @@ export async function editarClienteConServicios(formData: FormData) {
       jurisdiccion_legal,
       tiene_locales,
       locales,
-      claves_acceso,
+      claves_acceso: fusionarClaves(sensiblesAntes?.claves_acceso, Array.isArray(claves_acceso) ? (claves_acceso as ClaveAcceso[]) : [], alcance),
       observaciones,
       drive_folder_id,
       fecha_modificacion: new Date().toISOString(),
@@ -536,7 +541,7 @@ export async function editarClienteConServicios(formData: FormData) {
       sindicato_nombre: tiene_sindicato ? sindicato_nombre : null,
       tiene_rubrica_lsd,
       jurisdiccion,
-      cuil_arca,
+      cuil_arca: puedeVerCuil(alcance) ? cuil_arca : sensiblesAntes?.cuil_arca ?? null,
       id_fal,
       art,
       red_bancaria,

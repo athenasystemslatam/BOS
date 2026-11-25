@@ -4,6 +4,7 @@ import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentesTodos } from "@/lib/asignacionesServicio";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { ImpuestosClient } from "./ImpuestosClient";
+import { cantidadClaves, sinSensibles } from "@/lib/clavesServer";
 
 export default async function ImpuestosPage({
   searchParams,
@@ -60,7 +61,10 @@ export default async function ImpuestosPage({
       const cliente = s.clientes as unknown as { estado: string; fecha_baja: string | null } | null;
       return !cliente || estaVigenteHoy(cliente.estado === "activo", cliente.fecha_baja);
     })
-    .map((s) => {
+    .map((sc) => {
+      // Las claves no viajan al navegador: solo cuántas hay (la llave las pide al abrir).
+      const cli = sc.clientes as unknown as { claves_acceso?: unknown } | null;
+      const s = { ...sc, clientes: cli ? { ...sinSensibles(cli), claves_modulo: cantidadClaves(cli, "impuestos") } : null };
       const vigente = vigentesPorSubtipo[s.subtipo]?.get(s.cliente_id);
       if (vigente) return { ...s, responsable_id: vigente.id, responsable_nombre: vigente.nombre };
       return {

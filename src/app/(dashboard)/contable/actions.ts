@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentLiquidadora, requireAreaOrAdmin } from "@/lib/auth";
 import { calcularAvance, calcularEstado, ESTADOS_MANUALES } from "./semaforo";
 import type { Cliente } from "@/types";
+import { protegerCliente } from "@/lib/clavesServer";
 
 const CAMPOS_AVANCE = ["envio1", "info_recibida", "estado_eecc"] as const;
 // Campos que pueden mover el Estado automático (ítem 34). "estado" no está
@@ -28,7 +29,7 @@ export async function getFichaCliente(clienteId: string): Promise<Cliente | null
     .select("*")
     .eq("id", clienteId)
     .maybeSingle();
-  return (data as Cliente) ?? null;
+  return data ? ((await protegerCliente(data as Cliente, "ficha contable")) as Cliente) : null;
 }
 
 export async function updateBalance(

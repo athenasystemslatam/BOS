@@ -55,6 +55,7 @@ import { FalCartel } from "./FalCartel";
 import { TelefonosContactoEditor } from "@/components/TelefonosContactoEditor";
 import { telefonosDeCliente } from "@/lib/contactos";
 import type { TelefonoContacto } from "@/types";
+import { leerSensiblesCliente, type SensiblesCliente } from "@/app/(dashboard)/clavesActions";
 
 type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -240,17 +241,36 @@ function CopyButton({ value }: { value: string }) {
 
 // ─── ClavesModal ──────────────────────────────────────────────────────────────
 
-function ClavesModal({
-  cliente,
-  puedeEditar,
-  onClose,
-  onSaved,
-}: {
+type PropsClavesModal = {
   cliente: ClienteConLiq;
   puedeEditar: boolean;
   onClose: () => void;
   onSaved: () => void;
-}) {
+};
+
+// La lista no trae claves ni CUIL ARCA: se piden al servidor al abrir, y el
+// servidor entrega solo lo que esta persona puede ver.
+function ClavesModal(props: PropsClavesModal) {
+  const [sens, setSens] = useState<SensiblesCliente | { error: string } | null>(null);
+  const { cliente, onClose } = props;
+  useEffect(() => {
+    leerSensiblesCliente(cliente.id, "seguimiento sueldos")
+      .then(setSens)
+      .catch(() => setSens({ error: "No se pudieron leer los datos del cliente." }));
+  }, [cliente.id]);
+  if (sens && !("error" in sens)) {
+    return <ClavesModalContenido {...props} cliente={{ ...cliente, claves_acceso: sens.claves_acceso, cuil_arca: sens.cuil_arca ?? undefined }} />;
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl border border-gray-100 w-full max-w-md mx-4 p-5 text-sm" onClick={(e) => e.stopPropagation()}>
+        <p className={sens ? "text-danger" : "text-gray-400"}>{sens ? sens.error : "Cargando…"}</p>
+      </div>
+    </div>
+  );
+}
+
+function ClavesModalContenido({ cliente, puedeEditar, onClose, onSaved }: PropsClavesModal) {
   const claves: ClaveAcceso[] = cliente.claves_acceso ?? [];
   // Clientes editados antes de agregar la aclaración por email todavía no
   // tienen emails_contacto_detalle cargado — se completa con la columna
@@ -1403,7 +1423,7 @@ export function SeguimientoClient({
                       onClick={() => setClienteClaves(cliente)}
                       className={clsx(
                         "transition-colors",
-                        cliente.cuil_arca || (cliente.claves_acceso && cliente.claves_acceso.length > 0)
+                        cliente.tiene_sensibles
                           ? "text-gray-400 hover:text-bordo"
                           : "text-gray-200"
                       )}
@@ -1769,7 +1789,7 @@ export function SeguimientoClient({
                             onClick={() => setClienteClaves(cliente)}
                             className={clsx(
                               "shrink-0 transition-colors hover:text-bordo",
-                              cliente.cuil_arca || (cliente.claves_acceso && cliente.claves_acceso.length > 0)
+                              cliente.tiene_sensibles
                                 ? "text-gray-400"
                                 : "text-gray-200"
                             )}

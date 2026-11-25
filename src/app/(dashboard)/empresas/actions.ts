@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireAreaOrAdmin, type CurrentLiquidadora } from "@/lib/auth";
 import { sendEmailTraspaso } from "@/lib/email";
+import { alcanceClaves, fusionarClaves, puedeVerCuil } from "@/lib/clavesServer";
+import type { ClaveAcceso } from "@/types";
 
 function parseCuit(raw: string) {
   const digits = raw.replace(/\D/g, "");
@@ -254,23 +256,26 @@ export async function editarEmpresa(formData: FormData) {
   // real de responsable (ver el registro en "asignaciones" más abajo).
   const { data: actual } = await supabase
     .from("clientes")
-    .select("liquidador_id, estado")
+    .select("liquidador_id, estado, claves_acceso, cuil_arca")
     .eq("id", id)
     .maybeSingle();
+  const alcance = await alcanceClaves();
   const liquidadorAntes = actual?.liquidador_id ?? null;
   if (!yo.isAdmin && actual) {
     liquidador_id = actual.liquidador_id;
     estado = actual.estado;
   }
 
-  let claves_acceso: unknown = [];
-  try { claves_acceso = JSON.parse(claves_raw); } catch { /* keep [] */ }
+  let clavesEnviadas: ClaveAcceso[] = [];
+  try { clavesEnviadas = JSON.parse(claves_raw); } catch { /* keep [] */ }
+  // El editor solo recibió las claves (y el CUIL) que esta persona puede ver: lo demás se conserva.
+  const claves_acceso = fusionarClaves(actual?.claves_acceso, clavesEnviadas, alcance);
 
   const { error } = await supabase.from("clientes").update({
     nombre,
     cuit: parsed.digits,
     terminacion_cuit: parsed.terminacion,
-    cuil_arca,
+    cuil_arca: puedeVerCuil(alcance) ? cuil_arca : actual?.cuil_arca ?? null,
     id_fal,
     emails_contacto,
     emails_contacto_detalle,

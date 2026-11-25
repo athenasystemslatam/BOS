@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { Cliente, Liquidadora } from "@/types";
 import { EmpresasClient } from "./EmpresasClient";
+import { sinSensibles } from "@/lib/clavesServer";
 
 /** Todas las filas de una consulta, de a 1000: PostgREST corta en 1000 por
  * defecto y las tareas con rúbrica LSD (de todos los meses) crecen cada mes. */
@@ -68,7 +69,7 @@ export default async function EmpresasPage() {
   // vienen resueltos desde la fuente que ya usan los demás módulos.
   const clientes = (clientesRaw ?? []).map((c) => {
     const resp = responsablePorCliente.get(c.id);
-    return { ...c, liquidador_id: resp?.responsable_id ?? null, liquidadora: resp?.liquidadora ?? null };
+    return { ...sinSensibles(c), liquidador_id: resp?.responsable_id ?? null, liquidadora: resp?.liquidadora ?? null };
   });
 
   const lsdHasta: Record<string, { anio: number; mes: number }> = {};

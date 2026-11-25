@@ -30,7 +30,7 @@ export default async function ContablePage({
     admin
       .from("balances")
       .select(
-        "*, clientes(id, nombre, cuit, tipo_contribuyente, claves_acceso, cierre_ejercicio_mes, cierre_ejercicio_dia), " +
+        "*, clientes(id, nombre, cuit, tipo_contribuyente, cierre_ejercicio_mes, cierre_ejercicio_dia), " +
         "responsable:liquidadoras!balances_responsable_id_fkey(id, nombre), " +
         "responsable2:liquidadoras!balances_responsable2_id_fkey(id, nombre)"
       )

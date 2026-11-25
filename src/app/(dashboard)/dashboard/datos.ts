@@ -8,6 +8,7 @@ import {
 } from "@/lib/objetivoSueldos";
 import { fetchPeriodo } from "../seguimiento/actions";
 import { getCurrentLiquidadora } from "@/lib/auth";
+import { sinSensibles } from "@/lib/clavesServer";
 
 export type ConteoObjetivo = Record<ColorEnVivo, number>;
 
@@ -83,7 +84,7 @@ export async function obtenerDatosDashboardSueldos(searchParams: { mes?: string;
       const resp = responsablePorCliente.get(c.id);
       const liquidadora = (resp?.liquidadora as unknown as Liquidadora | null) ?? null;
       return {
-        ...c,
+        ...sinSensibles(c),
         liquidador_id: resp?.responsable_id ?? null,
         liquidadora,
       } as Cliente & { liquidadora: Liquidadora };

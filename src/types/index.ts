@@ -105,6 +105,8 @@ export interface Cliente {
   estado: EstadoCliente;
   observaciones?: string;
   claves_acceso?: ClaveAcceso[];
+  // Las listas no traen claves ni CUIL ARCA (se piden de a un cliente): solo si hay alguno.
+  tiene_sensibles?: boolean;
   lsd_desde_anio?: number | null;
   lsd_desde_mes?: number | null;
   lsd_hasta_anio?: number | null;

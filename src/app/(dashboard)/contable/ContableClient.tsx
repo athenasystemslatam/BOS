@@ -19,7 +19,7 @@ import {
   diasDemoraPedido, colorAlertaDemora,
 } from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
-import type { ClaveAcceso, EquipoMiembro } from "@/types";
+import type { EquipoMiembro } from "@/types";
 
 // Grupos de columnas de la tabla (diseño nuevo): una franja de color suave
 // por bloque arriba del encabezado, para orientarse más rápido en una tabla
@@ -86,7 +86,7 @@ type Balance = {
   // Ítem 91: ya vienen resueltos desde el servidor (regla, prórroga o fecha
   // manual) — este componente no sabe nada de reglas, solo los muestra.
   vtos: VtosBalance;
-  clientes: { nombre: string; cuit: string; claves_acceso: ClaveAcceso[] | null } | null;
+  clientes: { nombre: string; cuit: string } | null;
   responsable: { id: string; nombre: string } | null;
   responsable2: { id: string; nombre: string } | null;
 };

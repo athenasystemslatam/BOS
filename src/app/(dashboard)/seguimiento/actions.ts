@@ -9,6 +9,7 @@ import { requireLiquidadoraOrAdmin, requireAreaOrAdmin } from "@/lib/auth";
 import { MESES_NOMBRES, getMesTrabajoActual } from "@/lib/vencimientos";
 import { ClaveAcceso, EmailContacto, Periodo, Tarea } from "@/types";
 import type { CampoManual } from "@/lib/drive";
+import { alcanceClaves, fusionarClaves, puedeVerCuil } from "@/lib/clavesServer";
 export type { CampoManual } from "@/lib/drive";
 
 const CAMPOS_DRIVE = [
@@ -74,16 +75,18 @@ export async function editarDatosCliente(
     }))
     .filter((c) => c.sistema || c.usuario || c.contrasena || c.identificador);
 
+  const alcance = await alcanceClaves();
+  const { data: antes } = await admin.from("clientes").select("claves_acceso, cuil_arca").eq("id", clienteId).maybeSingle();
   const { error } = await admin
     .from("clientes")
     .update({
       emails_contacto,
       emails_contacto_detalle,
-      cuil_arca,
+      cuil_arca: puedeVerCuil(alcance) ? cuil_arca : antes?.cuil_arca ?? null,
       telefono,
       telefonos_detalle,
       observaciones,
-      claves_acceso,
+      claves_acceso: fusionarClaves(antes?.claves_acceso, claves_acceso as ClaveAcceso[], alcance),
       fecha_modificacion: new Date().toISOString(),
     })
     .eq("id", clienteId);

@@ -15,7 +15,6 @@ import { guardar, useAvisoErrorGuardado } from "@/components/AvisoErrorGuardado"
 import { useDeshacer } from "@/components/DeshacerAviso";
 import { DEUDA_LABEL, DeudaMonotributoModal, type DeudaEstado } from "@/components/DeudaMonotributoModal";
 import { getFichaCliente } from "@/app/(dashboard)/panel-general/actions";
-import type { ClaveAcceso } from "@/types";
 import { upsertMonotributoTarea, type CambiosTarea } from "./actions";
 import { guardarFichaMonotributo } from "./fichaActions";
 import { crearAsignacionServicio } from "@/lib/asignacionesServicio";
@@ -90,7 +89,7 @@ type Servicio = {
   responsable_id: string | null;
   responsable_nombre: string | null;
   ficha: FichaResumen | null;
-  clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string; claves_acceso: ClaveAcceso[] | null };
+  clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string; claves_modulo: number };
 };
 
 /** Meses del selector: el próximo y los 13 anteriores al mes de trabajo. */
@@ -604,7 +603,7 @@ export function MonotributoClient({
                       <span className="text-[13px] font-medium text-gray-800 truncate max-w-[230px]" title={s.clientes?.nombre}>
                         {s.clientes?.nombre ?? "—"}
                       </span>
-                      <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="monotributo" />
+                      <ClavesModuloPopover clienteId={s.cliente_id} cantidad={s.clientes?.claves_modulo ?? 0} modulo="monotributo" />
                       <FichaClienteBoton clienteId={s.cliente_id} nombre={s.clientes?.nombre ?? ""} fetchAction={getFichaCliente} />
                     </div>
                   </td>

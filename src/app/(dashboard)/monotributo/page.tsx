@@ -8,6 +8,7 @@ import { arrastrarMes, sincronizarRevisionesModulo, traerPaginado } from "@/lib/
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { MonotributoClient, type FichaResumen } from "./MonotributoClient";
+import { cantidadClaves, sinSensibles } from "@/lib/clavesServer";
 
 // Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
 export const dynamic = "force-dynamic";
@@ -99,7 +100,9 @@ export default async function MonotributoPage({
       const c = s.clientes;
       return !c || estaVigenteHoy(c.estado === "activo", c.fecha_baja);
     })
-    .map((s: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    .map((sc: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      // Las claves no viajan al navegador: solo cuántas hay (la llave las pide al abrir).
+      const s = { ...sc, clientes: sc.clientes ? { ...sinSensibles(sc.clientes), claves_modulo: cantidadClaves(sc.clientes, "monotributo") } : null };
       const vigente = vigentes.get(s.cliente_id);
       const ficha = fichaPor.get(s.cliente_id) ?? null;
       if (vigente) return { ...s, ficha, responsable_id: vigente.id, responsable_nombre: vigente.nombre };

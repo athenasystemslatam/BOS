@@ -9,7 +9,6 @@ import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
 import { DarDeBajaServicioModal } from "@/components/DarDeBajaServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
-import type { ClaveAcceso } from "@/types";
 import { upsertImpuestoTarea } from "./actions";
 
 const ACCENT_IMPUESTOS = { dot: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-700" };
@@ -21,7 +20,7 @@ type Servicio = {
   subtipo: Subtipo;
   responsable_id: string | null;
   responsable_nombre: string | null;
-  clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string; claves_acceso: ClaveAcceso[] | null };
+  clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string; claves_modulo: number };
 };
 
 type Tarea = {
@@ -387,7 +386,7 @@ export function ImpuestosClient({
                       <p className="text-[13px] font-medium text-gray-800 leading-tight truncate" title={s.clientes?.nombre}>
                         {s.clientes?.nombre ?? "—"}
                       </p>
-                      <ClavesModuloPopover claves={s.clientes?.claves_acceso} modulo="impuestos" />
+                      <ClavesModuloPopover clienteId={s.cliente_id} cantidad={s.clientes?.claves_modulo ?? 0} modulo="impuestos" />
                     </div>
                     <p className="text-[11px] text-gray-400 mt-0.5 capitalize">
                       {s.clientes?.tipo_contribuyente ?? ""}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { leerSensiblesCliente, type SensiblesCliente } from "@/app/(dashboard)/clavesActions";
 import { X } from "lucide-react";
 import { editarEmpresa } from "./actions";
 import { Cliente, Liquidadora, ClaveAcceso, EmailContacto, Local } from "@/types";
@@ -41,17 +42,36 @@ function formatCuit(raw: string) {
 
 const JURISDICCIONES = ["CABA", "PBA", "Otra"];
 
-export function EditarEmpresaModal({
-  cliente,
-  liquidadoras,
-  isAdmin = false,
-  onClose,
-}: {
+type PropsEditar = {
   cliente: Cliente & { liquidadora?: Liquidadora };
   liquidadoras: Liquidadora[];
   isAdmin?: boolean;
   onClose: () => void;
-}) {
+};
+
+// La lista no trae claves ni CUIL ARCA: se piden al servidor al abrir el
+// editor; lo que esta persona no puede ver se conserva al guardar.
+export function EditarEmpresaModal(props: PropsEditar) {
+  const [sens, setSens] = useState<SensiblesCliente | { error: string } | null>(null);
+  const { cliente, onClose } = props;
+  useEffect(() => {
+    leerSensiblesCliente(cliente.id, "editar cliente sueldos")
+      .then(setSens)
+      .catch(() => setSens({ error: "No se pudieron leer los datos del cliente." }));
+  }, [cliente.id]);
+  if (sens && !("error" in sens)) {
+    return <EditarEmpresaContenido {...props} cliente={{ ...cliente, claves_acceso: sens.claves_acceso, cuil_arca: sens.cuil_arca ?? undefined }} />;
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-5 text-sm" onClick={(e) => e.stopPropagation()}>
+        <p className={sens ? "text-danger" : "text-gray-400"}>{sens ? sens.error : "Cargando…"}</p>
+      </div>
+    </div>
+  );
+}
+
+function EditarEmpresaContenido({ cliente, liquidadoras, isAdmin = false, onClose }: PropsEditar) {
   const [cuit, setCuit] = useState(formatCuit(cliente.cuit));
   const [tieneSindicato, setTieneSindicato] = useState(cliente.tiene_sindicato);
   const [sindicatoNombre, setSindicatoNombre] = useState(cliente.sindicato_nombre ?? "");

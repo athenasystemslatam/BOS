@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KeyRound, Eye, EyeOff } from "lucide-react";
 import type { ClaveAcceso, ModuloClave } from "@/types";
+import { leerClavesModulo } from "@/app/(dashboard)/clavesActions";
 
 // Botón + popover de solo lectura para ver, desde dentro de un módulo, las
 // claves de ese cliente etiquetadas para ese módulo. La edición sigue
@@ -10,25 +11,40 @@ import type { ClaveAcceso, ModuloClave } from "@/types";
 // mitad "visible desde el módulo" del pedido de Giuliana, no la mitad
 // "editable desde el módulo" (esa requiere que Panel General tenga edición
 // de clientes, que hoy no existe).
+// Las claves no vienen con la lista: se piden al servidor al abrir, y el
+// servidor solo las entrega a quien trabaja en el módulo (o admin).
 export function ClavesModuloPopover({
-  claves,
+  clienteId,
+  cantidad,
   modulo,
 }: {
-  claves: ClaveAcceso[] | null | undefined;
+  clienteId: string;
+  cantidad: number;
   modulo: ModuloClave;
 }) {
   const [abierto, setAbierto] = useState(false);
   const [verPass, setVerPass] = useState<Record<number, boolean>>({});
+  const [propias, setPropias] = useState<ClaveAcceso[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const propias = (claves ?? []).filter((c) => (c.modulo ?? "") === modulo);
-  if (propias.length === 0) return null;
+  if (!cantidad) return null;
+
+  function alternar() {
+    if (abierto) return setAbierto(false);
+    setAbierto(true);
+    setPropias(null);
+    setError(null);
+    leerClavesModulo(clienteId, modulo)
+      .then((r) => ("error" in r ? setError(r.error) : setPropias(r)))
+      .catch(() => setError("No se pudieron leer las claves."));
+  }
 
   return (
     <div className="relative inline-block">
       <button
         type="button"
-        onClick={() => setAbierto((v) => !v)}
-        title={`${propias.length} clave${propias.length > 1 ? "s" : ""} de este módulo`}
+        onClick={alternar}
+        title={`${cantidad} clave${cantidad > 1 ? "s" : ""} de este módulo`}
         className="text-gray-300 hover:text-amber-600 transition-colors"
       >
         <KeyRound size={13} />
@@ -38,7 +54,9 @@ export function ClavesModuloPopover({
         <>
           <div className="fixed inset-0 z-10" onClick={() => setAbierto(false)} />
           <div className="absolute left-0 top-full mt-1 z-20 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3 space-y-2.5">
-            {propias.map((c, i) => (
+            {error && <p className="text-[12px] text-red-600">{error}</p>}
+            {!error && !propias && <p className="text-[12px] text-gray-400">Cargando…</p>}
+            {(propias ?? []).map((c, i) => (
               <div key={i} className="text-[12px]">
                 <p className="font-semibold text-gray-800">{c.sistema || "Sin nombre"}</p>
                 {c.identificador ? (
