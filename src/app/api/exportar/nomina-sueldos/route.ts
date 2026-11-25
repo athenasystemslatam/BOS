@@ -56,24 +56,33 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No se encontró el período." }, { status: 404 });
   }
 
+  // Responsable de Sueldos vía servicios_cliente (igual que todos los demás
+  // módulos), no clientes.liquidador_id.
   const { data: serviciosSueldos } = await admin
     .from("servicios_cliente")
-    .select("cliente_id")
+    .select("cliente_id, liquidadoras!responsable_id(nombre)")
     .eq("servicio", "sueldos")
+    .eq("subtipo", "general")
     .eq("estado", true);
   const idsSueldos = (serviciosSueldos ?? []).map((s) => s.cliente_id);
+  const liqNombrePorCliente = new Map(
+    (serviciosSueldos ?? []).map((s) => [
+      s.cliente_id,
+      (s.liquidadoras as unknown as { nombre: string } | null)?.nombre ?? null,
+    ])
+  );
 
-  type ClienteConLiq = { id: string; nombre: string; liquidadora: { nombre: string } | null };
+  type ClienteSimple = { id: string; nombre: string };
 
   const [{ data: clientes }, { data: tareas }] = await Promise.all([
     idsSueldos.length > 0
       ? admin
           .from("clientes")
-          .select("id, nombre, liquidadora:liquidadoras!liquidador_id(nombre)")
+          .select("id, nombre")
           .eq("estado", "activo")
           .in("id", idsSueldos)
           .order("nombre")
-      : Promise.resolve({ data: [] as unknown as ClienteConLiq[] }),
+      : Promise.resolve({ data: [] as unknown as ClienteSimple[] }),
     idsSueldos.length > 0
       ? admin.from("tareas").select("cliente_id, legajos_cantidad").eq("periodo_id", periodoId)
       : Promise.resolve({ data: [] as { cliente_id: string; legajos_cantidad: number }[] }),
@@ -103,8 +112,8 @@ export async function GET(req: NextRequest) {
   headerRow.font = { bold: true };
   headerRow.alignment = { horizontal: "center" };
 
-  for (const c of (clientes ?? []) as unknown as ClienteConLiq[]) {
-    const fila = ws.addRow([c.nombre, c.liquidadora?.nombre ?? "", legajosPorCliente.get(c.id) ?? 0]);
+  for (const c of (clientes ?? []) as unknown as ClienteSimple[]) {
+    const fila = ws.addRow([c.nombre, liqNombrePorCliente.get(c.id) ?? "", legajosPorCliente.get(c.id) ?? 0]);
     fila.getCell(2).alignment = { horizontal: "center" };
     fila.getCell(3).alignment = { horizontal: "center" };
   }

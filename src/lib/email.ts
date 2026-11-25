@@ -55,25 +55,38 @@ async function getEmpresasPendientesF931(): Promise<{
       clientes!inner (
         nombre,
         terminacion_cuit,
-        estado,
-        liquidadoras!liquidador_id (
-          nombre,
-          email
-        )
+        estado
       )
     `)
     .eq("periodo_id", periodo.id)
     .eq("f931_manual", false)
     .eq("f931_drive", false);
 
+  // Responsable de Sueldos vía servicios_cliente (igual que todos los demás
+  // módulos) en vez de clientes.liquidador_id — una sola consulta aparte,
+  // más simple que anidarla filtrada dentro del embed de arriba.
+  const clienteIds = (tareasPendientes ?? []).map((t) => t.cliente_id);
+  const { data: responsablesSueldos } = clienteIds.length > 0
+    ? await admin
+        .from("servicios_cliente")
+        .select("cliente_id, liquidadoras!responsable_id(nombre, email)")
+        .in("cliente_id", clienteIds)
+        .eq("servicio", "sueldos")
+        .eq("subtipo", "general")
+        .eq("estado", true)
+    : { data: [] };
+  const responsablePorCliente = new Map(
+    (responsablesSueldos ?? []).map((s) => [s.cliente_id, s.liquidadoras as unknown as { nombre: string; email: string } | null])
+  );
+
   const empresas: EmpresaPendiente[] = (tareasPendientes ?? [])
     .filter((t: Record<string, unknown>) => {
       const c = t.clientes as Record<string, unknown> | null;
       return c && c.estado === "activo";
     })
-    .map((t: Record<string, unknown>) => {
+    .map((t: { cliente_id: string } & Record<string, unknown>) => {
       const c = t.clientes as Record<string, unknown>;
-      const liq = c.liquidadoras as Record<string, string> | null;
+      const liq = responsablePorCliente.get(t.cliente_id) ?? null;
       return {
         nombre: c.nombre as string,
         terminacion_cuit: c.terminacion_cuit as number,

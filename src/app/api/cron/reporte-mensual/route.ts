@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     const { data: clientes } = await admin
       .from("clientes")
-      .select("id, nombre, liquidador_id")
+      .select("id, nombre")
       .eq("estado", "activo")
       .order("nombre");
 
@@ -61,8 +61,18 @@ export async function GET(req: NextRequest) {
       .eq("activa", true)
       .order("nombre");
 
+    // Responsable de Sueldos vía servicios_cliente (igual que todos los
+    // demás módulos), no clientes.liquidador_id.
+    const { data: serviciosSueldos } = await admin
+      .from("servicios_cliente")
+      .select("cliente_id, responsable_id")
+      .eq("servicio", "sueldos")
+      .eq("subtipo", "general")
+      .eq("estado", true);
+
     const tareasMap = new Map((tareas ?? []).map((t) => [t.cliente_id, t]));
     const liqMap = new Map((liquidadoras ?? []).map((l) => [l.id, l.nombre]));
+    const responsablePorCliente = new Map((serviciosSueldos ?? []).map((s) => [s.cliente_id, s.responsable_id]));
 
     const total = clientes.length;
     let completadas = 0;
@@ -76,8 +86,9 @@ export async function GET(req: NextRequest) {
 
     for (const cliente of clientes) {
       const tarea = tareasMap.get(cliente.id);
-      const liqId = cliente.liquidador_id ?? "sin-asignar";
-      const liqNombre = (cliente.liquidador_id ? liqMap.get(cliente.liquidador_id) : null) ?? "Sin asignar";
+      const responsableId = responsablePorCliente.get(cliente.id) ?? null;
+      const liqId = responsableId ?? "sin-asignar";
+      const liqNombre = (responsableId ? liqMap.get(responsableId) : null) ?? "Sin asignar";
 
       if (!porLiqMap.has(liqId)) {
         porLiqMap.set(liqId, { nombre: liqNombre, total: 0, recibosOk: 0, f931Ok: 0, pendientes: 0 });
