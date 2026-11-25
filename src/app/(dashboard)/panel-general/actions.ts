@@ -538,7 +538,14 @@ export async function editarClienteConServicios(formData: FormData) {
     // que sacarle el responsable a un cliente no se guardaba nunca: quedaba
     // el liquidador_id viejo en la base sin que nadie se enterara. Ahora se
     // guarda siempre, elijan a alguien o lo dejen sin asignar.
-    update.liquidador_id = sueldos.responsable_id || null;
+    const nuevoResponsableSueldos = sueldos.responsable_id || null;
+
+    // Se necesita el valor previo para saber si esto es un cambio real de
+    // responsable (y, si lo es, dejarlo en el historial — ver más abajo).
+    const { data: clienteAntes } = await supabase.from("clientes").select("liquidador_id").eq("id", id).maybeSingle();
+    const anteriorResponsableSueldos = clienteAntes?.liquidador_id ?? null;
+
+    update.liquidador_id = nuevoResponsableSueldos;
 
     const { error: sueldosError } = await supabase.from("clientes").update(update).eq("id", id);
     if (sueldosError) {
@@ -550,10 +557,34 @@ export async function editarClienteConServicios(formData: FormData) {
     // fix: antes solo se sincronizaba si había alguien elegido.
     await supabase
       .from("servicios_cliente")
-      .update({ responsable_id: sueldos.responsable_id || null })
+      .update({ responsable_id: nuevoResponsableSueldos })
       .eq("cliente_id", id)
       .eq("servicio", "sueldos")
       .eq("subtipo", "general");
+
+    // Si cambió a una persona nueva (no a "Sin asignar" — la tabla
+    // asignaciones exige liquidador_id, no admite null), dejarlo en el
+    // historial igual que "Transferir Cartera": Productividad resuelve el
+    // responsable de cada período leyendo primero ese historial, así que sin
+    // este registro un cambio hecho acá no se reflejaba en sus reportes.
+    if (nuevoResponsableSueldos && nuevoResponsableSueldos !== anteriorResponsableSueldos) {
+      const hoy = new Date();
+      // upsert, no insert: "asignaciones" tiene UNIQUE (cliente_id, desde_anio,
+      // desde_mes) — si ya se había tocado este cliente en el mismo mes (otra
+      // edición, o un "Transferir Cartera"), esto reemplaza esa fila en vez de
+      // chocar con un error de clave duplicada.
+      await supabase.from("asignaciones").upsert(
+        {
+          cliente_id: id,
+          liquidador_id: nuevoResponsableSueldos,
+          desde_anio: hoy.getFullYear(),
+          desde_mes: hoy.getMonth() + 1,
+          motivo: "Editado desde la ficha del cliente",
+          creado_por: yo.id,
+        },
+        { onConflict: "cliente_id,desde_anio,desde_mes" }
+      );
+    }
   }
 
   // Fecha de cierre de ejercicio fija (Contable) — ver add_cierre_ejercicio_fijo.sql.

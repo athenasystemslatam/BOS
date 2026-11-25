@@ -248,19 +248,19 @@ export async function editarEmpresa(formData: FormData) {
   const parsed = parseCuit(cuit);
   if (!parsed) return { error: "El CUIT debe tener 11 dígitos." };
 
-  // Un no-admin no puede reasignar la liquidadora ni cambiar el estado —
-  // se ignora lo que venga en el form y se conserva lo que ya está guardado
-  // (defensa por si alguien arma el request a mano).
-  if (!yo.isAdmin) {
-    const { data: actual } = await supabase
-      .from("clientes")
-      .select("liquidador_id, estado")
-      .eq("id", id)
-      .maybeSingle();
-    if (actual) {
-      liquidador_id = actual.liquidador_id;
-      estado = actual.estado;
-    }
+  // Valor previo, para dos cosas: que un no-admin no pueda reasignar la
+  // liquidadora ni cambiar el estado (se ignora lo que venga en el form y
+  // se conserva lo que ya está guardado), y para saber si esto es un cambio
+  // real de responsable (ver el registro en "asignaciones" más abajo).
+  const { data: actual } = await supabase
+    .from("clientes")
+    .select("liquidador_id, estado")
+    .eq("id", id)
+    .maybeSingle();
+  const liquidadorAntes = actual?.liquidador_id ?? null;
+  if (!yo.isAdmin && actual) {
+    liquidador_id = actual.liquidador_id;
+    estado = actual.estado;
   }
 
   let claves_acceso: unknown = [];
@@ -333,6 +333,29 @@ export async function editarEmpresa(formData: FormData) {
     .eq("cliente_id", id)
     .eq("servicio", "sueldos")
     .eq("subtipo", "general");
+
+  // Si cambió a una liquidadora distinta, dejarlo en el historial igual que
+  // "Transferir Cartera"/"Asignar" (crearAsignacion más abajo): Productividad
+  // resuelve el responsable de cada período leyendo primero ese historial,
+  // así que sin este registro un cambio hecho acá no se reflejaba ahí.
+  if (liquidador_id && liquidador_id !== liquidadorAntes) {
+    const hoy = new Date();
+    // upsert, no insert: "asignaciones" tiene UNIQUE (cliente_id, desde_anio,
+    // desde_mes) — si ya se había tocado este cliente en el mismo mes (otra
+    // edición, o un "Transferir Cartera"), esto reemplaza esa fila en vez de
+    // chocar con un error de clave duplicada.
+    await supabase.from("asignaciones").upsert(
+      {
+        cliente_id: id,
+        liquidador_id,
+        desde_anio: hoy.getFullYear(),
+        desde_mes: hoy.getMonth() + 1,
+        motivo: "Editado desde la ficha del cliente",
+        creado_por: yo.id,
+      },
+      { onConflict: "cliente_id,desde_anio,desde_mes" }
+    );
+  }
 
   revalidatePath("/", "layout");
   return { success: true };
