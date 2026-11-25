@@ -53,7 +53,7 @@ export default async function ContableVencimientosPage({
   const finalizados = filas.filter((b) => b.estado === "finalizado");
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+    <div className="flex-1 min-w-0 overflow-y-auto p-6 bg-gray-50">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
@@ -102,7 +102,7 @@ export default async function ContableVencimientosPage({
             <table className="w-full text-[12px] whitespace-nowrap">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                  <th className="px-6 py-3 text-left">Cliente</th>
+                  <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left">Cliente</th>
                   <th className="px-4 py-3 text-left">Responsable</th>
                   <th className="px-4 py-3 text-left">Cierre</th>
                   <th className="px-4 py-3 text-left">VTO Balance</th>
@@ -121,8 +121,8 @@ export default async function ContableVencimientosPage({
                   const vencido = b.diasVto < 0;
                   const { label, cls } = ESTADO_BALANCE[b.estado] ?? ESTADO_BALANCE.sin_asignar;
                   return (
-                    <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-6 py-3 font-medium text-gray-800">{b.clientes?.nombre ?? "—"}</td>
+                    <tr key={b.id} className="group hover:bg-gray-50/50 transition-colors">
+                      <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-3 font-medium text-gray-800">{b.clientes?.nombre ?? "—"}</td>
                       <td className="px-4 py-3 text-gray-600">
                         {b.responsable?.nombre ?? "—"}
                         {b.responsable2?.nombre && (
@@ -180,7 +180,7 @@ export default async function ContableVencimientosPage({
             <table className="w-full text-[12px] whitespace-nowrap">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                  <th className="px-6 py-3 text-left">Cliente</th>
+                  <th className="sticky left-0 z-10 bg-gray-50 px-6 py-3 text-left">Cliente</th>
                   <th className="px-4 py-3 text-left">Responsable</th>
                   <th className="px-4 py-3 text-left">Cierre</th>
                   <th className="px-4 py-3 text-left">VTO Balance</th>
@@ -190,10 +190,10 @@ export default async function ContableVencimientosPage({
                   <th className="px-4 py-3 text-left">VTO F.657</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 text-gray-400">
                 {finalizados.map((b) => (
-                  <tr key={b.id} className="hover:bg-gray-50/50 transition-colors opacity-60">
-                    <td className="px-6 py-3 font-medium text-gray-700">{b.clientes?.nombre ?? "—"}</td>
+                  <tr key={b.id} className="group hover:bg-gray-50/50 transition-colors">
+                    <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50 px-6 py-3 font-medium text-gray-500">{b.clientes?.nombre ?? "—"}</td>
                     <td className="px-4 py-3 text-gray-500">{b.responsable?.nombre ?? "—"}</td>
                     <td className="px-4 py-3 text-gray-400">
                       {new Date(b.fecha_cierre + "T00:00:00").toLocaleDateString("es-AR")}
