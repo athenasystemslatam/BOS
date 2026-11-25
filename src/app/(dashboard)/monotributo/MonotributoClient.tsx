@@ -3,10 +3,11 @@
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronDown, ChevronLeft, ChevronRight, History, Search, ShieldCheck, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, History, Search, ShieldCheck, UserMinus, X } from "lucide-react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
+import { DarDeBajaServicioModal } from "@/components/DarDeBajaServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
@@ -188,6 +189,7 @@ export function MonotributoClient({
   const [soloConDeuda, setSoloConDeuda] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [reasignando, setReasignando] = useState<Servicio | null>(null);
+  const [bajandoServicio, setBajandoServicio] = useState<Servicio | null>(null);
   const [editandoDeuda, setEditandoDeuda] = useState<Servicio | null>(null);
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
 
@@ -634,6 +636,11 @@ export function MonotributoClient({
                           <History size={13} />
                         </button>
                       )}
+                      {isAdmin && (
+                        <button onClick={() => setBajandoServicio(s)} title="Dar de baja este servicio" className="text-gray-300 hover:text-danger transition-colors">
+                          <UserMinus size={13} />
+                        </button>
+                      )}
                     </div>
                   </td>
 
@@ -860,6 +867,17 @@ export function MonotributoClient({
         creadoPor={creadoPor}
         onClose={() => setReasignando(null)}
         onGuardado={(ids) => ofrecer(ids, `Responsable de ${reasignando.clientes?.nombre ?? "el cliente"} cambiado.`)}
+      />
+    )}
+    {bajandoServicio && (
+      <DarDeBajaServicioModal
+        clienteId={bajandoServicio.cliente_id}
+        clienteNombre={bajandoServicio.clientes?.nombre ?? "—"}
+        servicio="monotributo"
+        subtipo="general"
+        servicioLabel="Monotributo"
+        onClose={() => setBajandoServicio(null)}
+        onConfirmado={() => router.refresh()}
       />
     )}
     {mostrarEquipo && (

@@ -19,6 +19,7 @@ import {
   diasDemoraPedido, colorAlertaDemora,
 } from "./semaforo";
 import { EditarClienteModal } from "../panel-general/EditarClienteModal";
+import { DarDeBajaServicioModal } from "@/components/DarDeBajaServicioModal";
 import type { EquipoMiembro } from "@/types";
 
 // Grupos de columnas de la tabla (diseño nuevo): una franja de color suave
@@ -154,6 +155,9 @@ export function ContableClient({
   // desplegable nunca aparecía).
   const [conResp2, setConResp2] = useState<Set<string>>(new Set());
   const [fechasDe, setFechasDe] = useState<Balance | null>(null);
+  // Dar de baja el servicio Contable de un cliente puntual (Fase 3) — no
+  // afecta el balance que se está viendo, solo si puede empezarse uno nuevo.
+  const [bajandoServicio, setBajandoServicio] = useState<Balance | null>(null);
 
   const [balancesMap, setBalancesMap] = useState<Map<string, Balance>>(() => {
     const m = new Map<string, Balance>();
@@ -828,6 +832,7 @@ export function ContableClient({
                         onNoCorresponde={() => setNoCorrespondeDe(b)}
                         onVolverACorresponder={() => volverACorresponder(b)}
                         onFechasPresentacion={() => setFechasDe(b)}
+                        onDarDeBaja={() => setBajandoServicio(b)}
                       />
                     )}
                   </td>
@@ -882,6 +887,17 @@ export function ContableClient({
             marcarNoCorresponde(noCorrespondeDe, motivo);
             setNoCorrespondeDe(null);
           }}
+        />
+      )}
+      {bajandoServicio && (
+        <DarDeBajaServicioModal
+          clienteId={bajandoServicio.cliente_id}
+          clienteNombre={bajandoServicio.clientes?.nombre ?? "—"}
+          servicio="contable"
+          subtipo="general"
+          servicioLabel="Contable"
+          onClose={() => setBajandoServicio(null)}
+          onConfirmado={() => router.refresh()}
         />
       )}
       {editandoClienteId && (
@@ -1044,12 +1060,14 @@ function AccionesMenu({
   onNoCorresponde,
   onVolverACorresponder,
   onFechasPresentacion,
+  onDarDeBaja,
 }: {
   balance: Balance;
   onToggleFrenado: () => void;
   onNoCorresponde: () => void;
   onVolverACorresponder: () => void;
   onFechasPresentacion: () => void;
+  onDarDeBaja: () => void;
 }) {
   const [abierto, setAbierto] = useState(false);
   const frenado = balance.estado === "frenado";
@@ -1120,6 +1138,17 @@ function AccionesMenu({
                 )}
               </>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                onDarDeBaja();
+                setAbierto(false);
+              }}
+              title="No afecta este balance — solo si el cliente puede iniciar uno nuevo"
+              className="w-full text-left text-[12px] px-3 py-1.5 hover:bg-gray-50 text-danger border-t border-gray-100 mt-1"
+            >
+              Dar de baja servicio Contable…
+            </button>
           </div>
         </>
       )}

@@ -26,7 +26,9 @@ import {
   Pencil,
   Maximize2,
   Download,
+  UserMinus,
 } from "lucide-react";
+import { DarDeBajaServicioModal } from "@/components/DarDeBajaServicioModal";
 import { Cliente, ClaveAcceso, EmailContacto, Liquidadora, Periodo, Tarea } from "@/types";
 import { EmailsContactoEditor } from "@/components/EmailsContactoEditor";
 import { ClavesAccesoEditor } from "@/components/ClavesAccesoEditor";
@@ -644,6 +646,9 @@ export function SeguimientoClient({
   // Modal de claves
   const [clienteClaves, setClienteClaves] = useState<ClienteConLiq | null>(null);
 
+  // Modal de dar de baja el servicio Sueldos de un cliente puntual (Fase 3)
+  const [bajandoServicio, setBajandoServicio] = useState<ClienteConLiq | null>(null);
+
   // Modal de observaciones expandidas (para leer/editar notas largas cómodo)
   const [obsExpandida, setObsExpandida] = useState<{ clienteId: string; nombre: string } | null>(null);
 
@@ -1049,6 +1054,17 @@ export function SeguimientoClient({
             setClienteClaves(null);
             router.refresh();
           }}
+        />
+      )}
+      {bajandoServicio && (
+        <DarDeBajaServicioModal
+          clienteId={bajandoServicio.id}
+          clienteNombre={bajandoServicio.nombre}
+          servicio="sueldos"
+          subtipo="general"
+          servicioLabel="Sueldos"
+          onClose={() => setBajandoServicio(null)}
+          onConfirmado={() => router.refresh()}
         />
       )}
       {obsExpandida && (
@@ -1817,9 +1833,20 @@ export function SeguimientoClient({
 
                       {/* Liquidadora */}
                       <td className="px-3 py-2.5">
-                        <span className="text-[12px] text-gray-500 truncate block max-w-[100px]">
-                          {cliente.liquidadora?.nombre ?? "—"}
-                        </span>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="text-[12px] text-gray-500 truncate max-w-[90px]">
+                            {cliente.liquidadora?.nombre ?? "—"}
+                          </span>
+                          {isAdmin && (
+                            <button
+                              onClick={() => setBajandoServicio(cliente)}
+                              title="Dar de baja el servicio Sueldos"
+                              className="text-gray-300 hover:text-danger transition-colors shrink-0"
+                            >
+                              <UserMinus size={12} />
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       {/* Rec Q1 */}
