@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { PanelGeneralClient } from "./PanelGeneralClient";
+import { paginado } from "@/lib/paginado";
 
 export default async function PanelGeneralPage() {
   const inicio = Date.now();
@@ -13,10 +14,10 @@ export default async function PanelGeneralPage() {
     { data: servicios },
   ] = await Promise.all([
     getCurrentLiquidadora(),
-    supabase.from("vista_empresas").select("*").order("nombre"),
+    paginado((d, h) => supabase.from("vista_empresas").select("*").order("nombre").order("id").range(d, h)),
     supabase.from("liquidadoras").select("id, nombre, activa, rol").eq("activa", true).order("nombre"),
     supabase.from("equipo_modulos").select("equipo_id, modulo"),
-    supabase.from("servicios_cliente").select("cliente_id, servicio, subtipo, estado, responsable_id"),
+    paginado((d, h) => supabase.from("servicios_cliente").select("cliente_id, servicio, subtipo, estado, responsable_id").order("id").range(d, h)),
   ]);
 
   // Clientes con Sueldos activo pero sin responsable cargado en

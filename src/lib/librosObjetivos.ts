@@ -9,6 +9,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 
 export * from "@/lib/librosObjetivosMetricas";
 import type { MetricaObjetivo, Objetivo, ObjetivoConAvance, ValorMetrica } from "@/lib/librosObjetivosMetricas";
+import { paginado } from "@/lib/paginado";
 
 const DIAS_ENVIO = 60;
 const pct = (cumplen: number, total: number): ValorMetrica => ({
@@ -30,7 +31,7 @@ export async function calcularMetricas(admin: Admin, hoy: string = hoyISO()): Pr
       admin.from("clientes_societario").select("*"),
       admin.from("libros_pedidos").select("*").eq("tipo", "renovacion_autoridades"),
       admin.from("libros").select("cliente_id, estado, ultimo_periodo_copiado, folios_totales").eq("estado", "activo"),
-      admin.from("libros_tareas").select("cliente_id, balance_id, estado_id, fecha_fin, creado_en, quitada_en").eq("origen", "balance"),
+      paginado((d, h) => admin.from("libros_tareas").select("cliente_id, balance_id, estado_id, fecha_fin, creado_en, quitada_en").eq("origen", "balance").order("id").range(d, h)),
       admin.from("libros_estados").select("id, es_final"),
       admin.from("libros_relevamiento").select("cliente_id, estado"),
     ]);

@@ -11,6 +11,7 @@ import {
   type DatosMandato,
 } from "@/lib/libros";
 import type { PrioridadLibro } from "@/types";
+import { paginado } from "@/lib/paginado";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = "bos@kmaconsultores.com.ar";
@@ -254,11 +255,13 @@ async function resumenSemanal(admin: Admin, hoy: string): Promise<ResultadoMails
     await Promise.all([
       calcularAtraso(admin, hoy),
       admin.from("libros_snapshot").select("*").order("fecha"),
-      admin
+      paginado((d, h) => admin
         .from("libros_tareas")
-        .select("cliente_id, origen, balance_id, pedido_id, fecha_limite, material_listo, prioridad_manual, estado_id, fecha_fin, observaciones"),
+        .select("cliente_id, origen, balance_id, pedido_id, fecha_limite, material_listo, prioridad_manual, estado_id, fecha_fin, observaciones")
+        .order("id")
+        .range(d, h)),
       admin.from("libros_estados").select("id, es_final"),
-      admin.from("balances").select("id, estado"),
+      paginado((d, h) => admin.from("balances").select("id, estado").order("id").range(d, h)),
       admin.from("libros_pedidos").select("id, fecha_limite, tipo, mandato_vence"),
       admin.from("clientes_societario").select("*"),
       admin.from("servicios_cliente").select("cliente_id, responsable_id, clientes!inner(estado)").eq("servicio", "libros").eq("estado", true).eq("clientes.estado", "activo"),

@@ -4,6 +4,7 @@ import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { ContableClient } from "./ContableClient";
+import { paginado } from "@/lib/paginado";
 
 export default async function ContablePage({
   searchParams,
@@ -53,10 +54,12 @@ export default async function ContablePage({
     getAniosContables(),
     // Ítem 109: último cambio registrado de la fecha de cierre fija de cada
     // cliente, para explicar por qué un balance no coincide con ella.
-    admin
+    paginado((d, h) => admin
       .from("clientes_cierre_cambios")
       .select("cliente_id, motivo, mes_anterior, dia_anterior, creado_en")
-      .order("creado_en", { ascending: false }),
+      .order("creado_en", { ascending: false })
+      .order("id")
+      .range(d, h)),
   ]);
   const ultimoCambio = new Map<string, { motivo: string; mes_anterior: number; dia_anterior: number }>();
   for (const c of cambiosCierre ?? []) if (!ultimoCambio.has(c.cliente_id)) ultimoCambio.set(c.cliente_id, c);

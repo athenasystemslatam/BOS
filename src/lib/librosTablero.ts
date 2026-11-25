@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { atrasoLibro, hoyISO, mesIndice, type EstadoAtraso } from "@/lib/libros";
 import type { EstadoLibro, PeriodicidadLibro } from "@/types";
+import { paginado } from "@/lib/paginado";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -98,7 +99,7 @@ export async function calcularAtraso(admin: Admin, hoy: string = hoyISO()): Prom
       admin.from("clientes_societario").select("cliente_id, tipo_societario"),
       admin.from("libros_catalogo").select("id, codigo, nombre, tipo_societario, periodicidad, dispara_con_balance, activo"),
       admin.from("libros").select("id, cliente_id, catalogo_id, tomo, estado, periodicidad, ultimo_periodo_copiado"),
-      admin.from("balances").select("cliente_id, anio_fiscal, fecha_cierre, estado").order("fecha_cierre", { ascending: false }),
+      paginado((d, h) => admin.from("balances").select("cliente_id, anio_fiscal, fecha_cierre, estado").order("fecha_cierre", { ascending: false }).order("id").range(d, h)),
     ]);
 
   const tipos = new Map((societariosRaw ?? []).map((s) => [s.cliente_id as string, s.tipo_societario as string | null]));

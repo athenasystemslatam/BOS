@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { paginado } from "@/lib/paginado";
 import {
   TAG_LIBROS,
   AVISOS_MANDATO,
@@ -119,9 +120,9 @@ export async function sincronizarLibrosAutomaticosAhora(): Promise<void> {
       admin
         .from("libros")
         .select("id, cliente_id, catalogo_id, tomo, estado, folios_totales, folios_usados, ultimo_periodo_copiado"),
-      admin.from("balances").select("id, cliente_id, fecha_cierre, estado").order("fecha_cierre", { ascending: false }),
+      paginado((d, h) => admin.from("balances").select("id, cliente_id, fecha_cierre, estado").order("fecha_cierre", { ascending: false }).order("id").range(d, h)),
       admin.from("libros_estados").select("id, codigo, es_final"),
-      admin.from("libros_tareas").select("libro_id, cliente_id, balance_id, estado_id, orden_manual"),
+      paginado((d, h) => admin.from("libros_tareas").select("libro_id, cliente_id, balance_id, estado_id, orden_manual").order("id").range(d, h)),
       admin
         .from("libros_pedidos")
         .select("*")

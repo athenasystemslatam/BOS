@@ -21,6 +21,7 @@ import type {
   TareaVista,
 } from "./SeguimientoLibrosClient";
 import type { Persona } from "./NuevaTareaModal";
+import { paginado } from "@/lib/paginado";
 
 type ServicioRaw = {
   cliente_id: string;
@@ -84,12 +85,12 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
       .eq("servicio", "libros"),
     admin.from("clientes_societario").select("*"),
     admin.from("libros_catalogo").select("*").order("orden"),
-    admin.from("libros").select("*"),
-    admin.from("libros_tareas").select("*"),
+    paginado((d, h) => admin.from("libros").select("*").order("id").range(d, h)),
+    paginado((d, h) => admin.from("libros_tareas").select("*").order("id").range(d, h)),
     admin.from("libros_estados").select("*").order("orden"),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "libros"),
-    admin.from("balances").select("id, cliente_id, anio_fiscal, fecha_cierre, estado"),
+    paginado((d, h) => admin.from("balances").select("id, cliente_id, anio_fiscal, fecha_cierre, estado").order("id").range(d, h)),
     admin.from("libros_pedidos").select("id").not("fecha_limite", "is", null),
     admin
       .from("libros_pedidos")

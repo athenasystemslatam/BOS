@@ -7,6 +7,7 @@ import { requireEditorMonotributo, sincronizarRevisionesCliente } from "@/lib/mo
 import { sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { registrarHistorial } from "@/lib/monotributoHistorial";
+import { paginado } from "@/lib/paginado";
 
 export type AsignacionServicio = {
   id: string;
@@ -196,11 +197,14 @@ export async function resolverResponsablesVigentes(
   mes: number
 ): Promise<Map<string, { id: string; nombre: string }>> {
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data } = await paginado((d, h) => admin
     .from("asignaciones_servicio")
     .select("cliente_id, desde_anio, desde_mes, responsable:liquidadoras!responsable_id(id, nombre)")
     .eq("servicio", servicio)
-    .eq("subtipo", subtipo);
+    .eq("subtipo", subtipo)
+    .lte("desde_anio", anio)
+    .order("id")
+    .range(d, h));
 
   const resultado = new Map<string, { id: string; nombre: string }>();
   if (!data) return resultado;
@@ -228,10 +232,13 @@ export async function resolverResponsablesVigentesTodos(
   mes: number
 ): Promise<Record<string, Map<string, { id: string; nombre: string }>>> {
   const admin = createAdminClient();
-  const { data } = await admin
+  const { data } = await paginado((d, h) => admin
     .from("asignaciones_servicio")
     .select("cliente_id, subtipo, desde_anio, desde_mes, responsable:liquidadoras!responsable_id(id, nombre)")
-    .eq("servicio", servicio);
+    .eq("servicio", servicio)
+    .lte("desde_anio", anio)
+    .order("id")
+    .range(d, h));
 
   if (!data) return {};
 

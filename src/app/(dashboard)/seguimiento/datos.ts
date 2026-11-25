@@ -6,6 +6,7 @@ import { fetchRecordatoriosPrevios, fetchPeriodo } from "./actions";
 import { getObjetivoSueldos } from "@/lib/objetivos";
 import { aplicarDefaultFal, getFilasFal } from "@/lib/falServer";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
+import { paginado } from "@/lib/paginado";
 
 export type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
@@ -40,10 +41,12 @@ export async function obtenerSeguimientoSueldos() {
         .select("cliente_id, responsable_id, estado, fecha_baja, liquidadora:liquidadoras!responsable_id(id, nombre)")
         .eq("servicio", "sueldos")
         .eq("subtipo", "general"),
-      admin
+      paginado((d, h) => admin
         .from("asignaciones")
         .select("cliente_id, liquidador_id, desde_anio, desde_mes, creado_en, liquidadora:liquidadoras!liquidador_id(id, nombre)")
-        .lte("desde_anio", anioReal),
+        .lte("desde_anio", anioReal)
+        .order("id")
+        .range(d, h)),
       admin.from("liquidadoras").select("id, nombre").eq("activa", true).order("nombre"),
       getObjetivoSueldos(),
     ]);

@@ -17,6 +17,7 @@ import {
 } from "@/lib/libros";
 import { configLibros } from "@/lib/librosAutomaticos";
 import { METRICAS, type MetricaObjetivo } from "@/lib/librosObjetivosMetricas";
+import { paginado } from "@/lib/paginado";
 import type {
   AutoridadCliente,
   ClienteSocietario,
@@ -421,9 +422,11 @@ export async function crearTareas(datos: NuevaTarea): Promise<Resultado & { crea
   const { data: pendiente } = await admin.from("libros_estados").select("id").eq("codigo", "pendiente").maybeSingle();
   if (!pendiente) return { error: "Falta el estado Pendiente en libros_estados." };
 
-  let abiertasQ = admin.from("libros_tareas").select("libro_id, cliente_id, orden_manual");
-  if (finales.length) abiertasQ = abiertasQ.not("estado_id", "in", listaIn(finales));
-  const { data: abiertas, error: errAbiertas } = await abiertasQ;
+  const { data: abiertas, error: errAbiertas } = await paginado((d, h) => {
+    let q = admin.from("libros_tareas").select("libro_id, cliente_id, orden_manual");
+    if (finales.length) q = q.not("estado_id", "in", listaIn(finales));
+    return q.order("id").range(d, h);
+  });
   if (errAbiertas) return { error: errAbiertas.message };
 
   const yaEnCola = new Set((abiertas ?? []).map((t) => t.libro_id as string));
