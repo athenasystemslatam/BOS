@@ -1,8 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
+import { SUBTIPOS_IMPUESTOS, SUBTIPO_IMPUESTO_LABEL } from "@/lib/impuestos";
 
-const SUBTIPO_LABEL: Record<string, string> = { iva: "IVA", iibb: "IIBB", seh: "Seg. e Hig." };
+const SUBTIPO_LABEL = SUBTIPO_IMPUESTO_LABEL;
 
 export default async function ImpuestosEquipoPage({
   searchParams,
@@ -45,7 +46,7 @@ export default async function ImpuestosEquipoPage({
       (s) => tareasMap.get(`${s.cliente_id}:${s.subtipo}`)?.estado === "presentado"
     ).length;
 
-    const porSubtipo = ["iva", "iibb", "seh"].map((sub) => {
+    const porSubtipo = SUBTIPOS_IMPUESTOS.map((s) => s.key as string).map((sub) => {
       const srvs = misServicios.filter((s) => s.subtipo === sub);
       const ok = srvs.filter((s) => tareasMap.get(`${s.cliente_id}:${sub}`)?.estado === "presentado").length;
       return { sub, label: SUBTIPO_LABEL[sub], total: srvs.length, ok };

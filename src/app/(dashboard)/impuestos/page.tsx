@@ -5,6 +5,7 @@ import { resolverResponsablesVigentesTodos } from "@/lib/asignacionesServicio";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { ImpuestosClient } from "./ImpuestosClient";
 import { cantidadClaves, sinSensibles } from "@/lib/clavesServer";
+import type { DatosImpuestosCliente } from "@/lib/impuestos";
 
 export default async function ImpuestosPage({
   searchParams,
@@ -28,6 +29,7 @@ export default async function ImpuestosPage({
     { data: tareas },
     { data: equipoRaw },
     { data: modulosRaw },
+    { data: datosRaw },
   ] = await Promise.all([
     getCurrentLiquidadora(),
     getAreasDelUsuario(),
@@ -46,7 +48,19 @@ export default async function ImpuestosPage({
       .eq("mes", mes),
     admin.from("liquidadoras").select("id, nombre").eq("activa", true),
     admin.from("equipo_modulos").select("equipo_id").eq("modulo", "impuestos"),
+    // Agencia IIBB, municipios y otros servicios. Si la tabla todavía no existe
+    // (falta add_impuestos_modulo_v2.sql), la pantalla sigue igual sin esos datos.
+    admin.from("impuestos_clientes").select("cliente_id, agencias_iibb, seh_municipios, otros_servicios, apoyo:liquidadoras!apoyo_iva_id(nombre)"),
   ]);
+  const datosPorCliente = new Map<string, DatosImpuestosCliente>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((datosRaw ?? []) as any[]).map((d) => [d.cliente_id, {
+      agencias_iibb: d.agencias_iibb ?? [],
+      seh_municipios: d.seh_municipios ?? null,
+      apoyo_iva: d.apoyo?.nombre ?? null,
+      otros_servicios: Array.isArray(d.otros_servicios) ? d.otros_servicios : [],
+    }])
+  );
 
   const equipoIdsImpuestos = new Set((modulosRaw ?? []).map((m) => m.equipo_id));
   const equipoImpuestos = (equipoRaw ?? []).filter((e) => equipoIdsImpuestos.has(e.id));
@@ -64,7 +78,7 @@ export default async function ImpuestosPage({
     .map((sc) => {
       // Las claves no viajan al navegador: solo cuántas hay (la llave las pide al abrir).
       const cli = sc.clientes as unknown as { claves_acceso?: unknown } | null;
-      const s = { ...sc, clientes: cli ? { ...sinSensibles(cli), claves_modulo: cantidadClaves(cli, "impuestos") } : null };
+      const s = { ...sc, datos: datosPorCliente.get(sc.cliente_id) ?? null, clientes: cli ? { ...sinSensibles(cli), claves_modulo: cantidadClaves(cli, "impuestos") } : null };
       const vigente = vigentesPorSubtipo[s.subtipo]?.get(s.cliente_id);
       if (vigente) return { ...s, responsable_id: vigente.id, responsable_nombre: vigente.nombre };
       return {

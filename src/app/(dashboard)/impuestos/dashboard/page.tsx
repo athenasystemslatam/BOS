@@ -6,12 +6,9 @@ import { MesSelector } from "@/components/MesSelector";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { BackupButton } from "@/components/BackupButton";
 import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
+import { SUBTIPOS_IMPUESTOS } from "@/lib/impuestos";
 
-const SUBTIPOS = [
-  { key: "iva", label: "IVA" },
-  { key: "iibb", label: "IIBB" },
-  { key: "seh", label: "Seg. e Hig." },
-] as const;
+const SUBTIPOS = SUBTIPOS_IMPUESTOS;
 
 function generarOpciones(mesActual: number, anioActual: number) {
   const result = [];

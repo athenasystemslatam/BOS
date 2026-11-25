@@ -46,7 +46,7 @@ export const BACKUPS: Record<BackupModulo, { label: string; tablas: string[] }> 
   },
   impuestos: {
     label: "Impuestos",
-    tablas: ["impuestos_tareas"],
+    tablas: ["impuestos_tareas", "impuestos_clientes"],
   },
   contable: {
     label: "Contable",

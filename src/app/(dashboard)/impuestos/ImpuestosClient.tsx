@@ -10,16 +10,18 @@ import { DarDeBajaServicioModal } from "@/components/DarDeBajaServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
 import { upsertImpuestoTarea } from "./actions";
+import { SUBTIPOS_IMPUESTOS, type DatosImpuestosCliente, type SubtipoImpuesto } from "@/lib/impuestos";
 
 const ACCENT_IMPUESTOS = { dot: "bg-blue-500", bg: "bg-blue-50", text: "text-blue-700" };
 
-type Subtipo = "iva" | "iibb" | "seh";
+type Subtipo = SubtipoImpuesto;
 
 type Servicio = {
   cliente_id: string;
   subtipo: Subtipo;
   responsable_id: string | null;
   responsable_nombre: string | null;
+  datos: DatosImpuestosCliente | null;
   clientes: { id: string; nombre: string; cuit: string; tipo_contribuyente: string; claves_modulo: number };
 };
 
@@ -34,11 +36,7 @@ type Tarea = {
   observaciones: string | null;
 };
 
-const TABS: { key: Subtipo; label: string }[] = [
-  { key: "iva", label: "IVA" },
-  { key: "iibb", label: "IIBB" },
-  { key: "seh", label: "Seg. e Hig." },
-];
+const TABS: { key: Subtipo; label: string }[] = SUBTIPOS_IMPUESTOS.map(({ key, label }) => ({ key, label }));
 
 const PAGO_OPTIONS: Record<Subtipo, { value: string; label: string }[]> = {
   iva: [
@@ -58,7 +56,38 @@ const PAGO_OPTIONS: Record<Subtipo, { value: string; label: string }[]> = {
     { value: "pago", label: "Pago" },
     { value: "boleta", label: "Boleta" },
   ],
+  sicore: [
+    { value: "pendiente", label: "Pendiente" },
+    { value: "pago", label: "Pago" },
+    { value: "saldo_a_favor", label: "Saldo a favor" },
+    { value: "enviado", label: "Enviado" },
+  ],
 };
+
+// Lo que aporta la ficha de Impuestos según la pestaña: agencias en IIBB,
+// partidas municipales en Seg. e Hig., apoyo en IVA; otros servicios en todas.
+function DatosFila({ datos, tab }: { datos: DatosImpuestosCliente | null; tab: Subtipo }) {
+  if (!datos) return null;
+  const partes: string[] = [];
+  if (tab === "iibb" && datos.agencias_iibb.length) partes.push(datos.agencias_iibb.join(" / "));
+  if (tab === "seh" && datos.seh_municipios) partes.push(`${datos.seh_municipios} municipio${datos.seh_municipios > 1 ? "s" : ""}`);
+  if (tab === "iva" && datos.apoyo_iva) partes.push(`Subdiarios: ${datos.apoyo_iva}`);
+  const otros = datos.otros_servicios;
+  if (!partes.length && !otros.length) return null;
+  return (
+    <p className="text-[11px] text-blue-600/80 mt-0.5 truncate">
+      {partes.join(" · ")}
+      {otros.length > 0 && (
+        <span
+          className="text-gray-400"
+          title={otros.map((o) => `${o.servicio}${o.detalle ? ` (${o.detalle})` : ""} — ${o.responsable}`).join("\n")}
+        >
+          {partes.length ? " · " : ""}+{otros.length} otro{otros.length > 1 ? "s" : ""}
+        </span>
+      )}
+    </p>
+  );
+}
 
 const PAGO_STYLE: Record<string, string> = {
   pendiente: "text-gray-400",
@@ -391,6 +420,7 @@ export function ImpuestosClient({
                     <p className="text-[11px] text-gray-400 mt-0.5 capitalize">
                       {s.clientes?.tipo_contribuyente ?? ""}
                     </p>
+                    <DatosFila datos={s.datos} tab={activeTab} />
                   </td>
 
                   {/* Responsable */}

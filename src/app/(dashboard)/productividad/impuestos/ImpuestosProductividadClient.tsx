@@ -4,6 +4,7 @@ import { useState } from "react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { ProductividadTabs } from "@/components/ProductividadTabs";
+import { SUBTIPO_IMPUESTO_LABEL } from "@/lib/impuestos";
 
 export interface FilaResponsableImpuestos {
   id: string;
@@ -20,7 +21,7 @@ export interface FilaResponsableImpuestos {
   }[];
 }
 
-const SUBTIPO_LABEL: Record<string, string> = { iva: "IVA", iibb: "IIBB", seh: "Seg. e Hig." };
+const SUBTIPO_LABEL = SUBTIPO_IMPUESTO_LABEL;
 
 function Pill({ value, total }: { value: number; total: number }) {
   if (total === 0) return <span className="text-gray-300 text-xs">—</span>;

@@ -2,10 +2,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentLiquidadora } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ImpuestosProductividadClient, FilaResponsableImpuestos } from "./ImpuestosProductividadClient";
+import { VTO_DIA_IMPUESTO } from "@/lib/impuestos";
 
 // Vencimiento aproximado por subtipo (día del mes siguiente al declarado) —
 // mismo criterio que /impuestos/vencimientos.
-const VTO_DIA: Record<string, number> = { iva: 20, iibb: 15, seh: 10 };
+const VTO_DIA = VTO_DIA_IMPUESTO;
 
 function vto(subtipo: string, anio: number, mes: number): Date {
   const dia = VTO_DIA[subtipo] ?? 20;
@@ -104,6 +105,7 @@ export default async function ProductividadImpuestosPage() {
         iva: { total: 0, presentados: 0 },
         iibb: { total: 0, presentados: 0 },
         seh: { total: 0, presentados: 0 },
+        sicore: { total: 0, presentados: 0 },
       };
 
       for (const { subtipo, tarea } of items) {

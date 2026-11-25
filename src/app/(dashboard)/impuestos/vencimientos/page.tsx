@@ -2,20 +2,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMesTrabajoActual, MESES_NOMBRES } from "@/lib/vencimientos";
 import clsx from "clsx";
 import { MesSelector } from "@/components/MesSelector";
+import { SUBTIPOS_IMPUESTOS, SUBTIPO_IMPUESTO_LABEL, VTO_DIA_IMPUESTO } from "@/lib/impuestos";
 
 // Vencimientos aproximados por subtipo (día del mes siguiente)
 // Estos son genéricos — cada cliente puede tener fechas distintas
-const VTO_DIA: Record<string, number> = {
-  iva: 20,
-  iibb: 15,
-  seh: 10,
-};
-
-const SUBTIPO_LABEL: Record<string, string> = {
-  iva: "IVA",
-  iibb: "IIBB",
-  seh: "Seg. e Hig.",
-};
+const VTO_DIA = VTO_DIA_IMPUESTO;
+const SUBTIPO_LABEL = SUBTIPO_IMPUESTO_LABEL;
 
 function vtoMes(mes: number, anio: number, dia: number): Date {
   // Vencimiento = día del mes SIGUIENTE al mes declarado
@@ -69,7 +61,7 @@ export default async function ImpuestosVencimientosPage({
   const tareasMap = new Map(tareas.map((t) => [`${t.cliente_id}:${t.subtipo}`, t]));
 
   // Agrupar pendientes por subtipo
-  const pendientesPorSubtipo = ["iva", "iibb", "seh"].map((subtipo) => {
+  const pendientesPorSubtipo = SUBTIPOS_IMPUESTOS.map((s) => s.key as string).map((subtipo) => {
     const srvs = servicios.filter((s) => s.subtipo === subtipo);
     const pendientes = srvs.filter((s) => {
       const t = tareasMap.get(`${s.cliente_id}:${subtipo}`);
@@ -93,7 +85,7 @@ export default async function ImpuestosVencimientosPage({
         <MesSelector basePath="/impuestos/vencimientos" options={opciones} currentMes={mes} currentAnio={anio} />
       </div>
       <p className="text-[12px] text-gray-400 mb-6">
-        Fechas indicativas — día {VTO_DIA.iva} (IVA), día {VTO_DIA.iibb} (IIBB), día {VTO_DIA.seh} (Seg. e Hig.) del mes siguiente
+        Fechas indicativas — día {VTO_DIA.iva} (IVA), día {VTO_DIA.iibb} (IIBB), día {VTO_DIA.seh} (Seg. e Hig.), día {VTO_DIA.sicore} (SICORE) del mes siguiente
       </p>
 
       <div className="space-y-5">
