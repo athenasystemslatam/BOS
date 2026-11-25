@@ -1,5 +1,6 @@
 "use server";
 
+import { refrescarMonotributo } from "@/lib/monotributoServer";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireEditorMonotributo } from "@/lib/monotributoServer";
@@ -80,7 +81,7 @@ export async function guardarCalendarioAnio(
   if (error) return { error: error.message };
 
   const historialIds = await registrarHistorial(admin, historial);
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   revalidatePath("/productividad/monotributo");
   return { ok: true, cambios: historial.length, historialIds };
 }

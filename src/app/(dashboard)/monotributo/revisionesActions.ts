@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refrescarMonotributo } from "@/lib/monotributoServer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { DATOS_VACIOS, valorCampo, type DatosMonotributoCliente, type Revision } from "@/lib/monotributo";
 import { conContacto, enTandas, leerContactos, reabrirMarca, requireEditorMonotributo } from "@/lib/monotributoServer";
@@ -93,7 +93,7 @@ export async function confirmarRevisiones(ids: string[], nota: string | null): P
   try {
     const marcas = await marcasPendientes(admin, ids);
     const historialIds = await confirmarMarcas(admin, marcas, yoId, limpiarNota(nota));
-    revalidatePath("/monotributo", "layout");
+    refrescarMonotributo();
     return { ok: true, resueltas: marcas.length, historialIds };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No se pudo confirmar." };
@@ -138,7 +138,7 @@ export async function confirmarSinDeuda(ids: string[], nota: string | null): Pro
       valor_anterior: "sin_verificar", valor_nuevo: "no", usuario_id: yoId, nota: "Confirmar sin deuda",
     })));
     const idsMarcas = await confirmarMarcas(admin, marcas, yoId, limpiarNota(nota) ?? "Sin deuda", "no");
-    revalidatePath("/monotributo", "layout");
+    refrescarMonotributo();
     return { ok: true, resueltas: marcas.length, historialIds: [...idsTareas, ...idsMarcas] };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No se pudo confirmar." };
@@ -155,7 +155,7 @@ export async function reabrirRevision(id: string): Promise<{ error: string } | {
   }
   const r = await reabrirMarca(createAdminClient(), id, yoId);
   if ("error" in r) return r;
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   return { ok: true, historialIds: r.historialIds };
 }
 
@@ -241,7 +241,7 @@ export async function confirmarGrupo(
   try {
     const marcas = (await marcasPendientes(admin, ids)).filter((r) => r.campo === campo && r.gravedad === "amarillo");
     const historialIds = await confirmarMarcas(admin, marcas, yoId, limpiarNota(nota) ?? "Confirmadas en lote");
-    revalidatePath("/monotributo", "layout");
+    refrescarMonotributo();
     return { ok: true, resueltas: marcas.length, historialIds };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "No se pudo confirmar." };

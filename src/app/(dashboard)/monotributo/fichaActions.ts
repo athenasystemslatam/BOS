@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refrescarMonotributo } from "@/lib/monotributoServer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
@@ -206,6 +206,6 @@ export async function guardarFichaMonotributo(
     diferencias({ cliente_id: clienteId, entidad: "ficha", usuario_id: yoId }, antes as unknown as Record<string, unknown>, fila, Object.keys(fila))
   );
 
-  revalidatePath("/monotributo");
+  refrescarMonotributo();
   return { ok: true, ficha: await obtenerFichaMonotributo(clienteId), historialIds };
 }

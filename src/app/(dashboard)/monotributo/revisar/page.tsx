@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { type CampoRevision, type Revision } from "@/lib/monotributo";
-import { sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
+import { sincronizarRevisionesCacheado, traerPaginado } from "@/lib/monotributoServer";
 import { RevisarClient, type FilaRevision } from "./RevisarClient";
 
 // Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
@@ -11,7 +11,7 @@ export default async function MonotributoRevisarPage() {
   const inicio = Date.now();
   const admin = createAdminClient();
   try {
-    await sincronizarRevisionesModulo(admin);
+    await sincronizarRevisionesCacheado();
   } catch {
     // Si la sincronización falla se muestra igual lo que ya está marcado.
   }

@@ -1,5 +1,6 @@
 "use server";
 
+import { refrescarMonotributo } from "@/lib/monotributoServer";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/auth";
@@ -101,7 +102,7 @@ export async function guardarVersionCategorias(vigenteDesde: string, filas: Fila
   const admin = createAdminClient();
   const r = await crearVersion(admin, fecha, limpias, (fuente ?? "").trim() || null, (nota ?? "").trim() || null, yo.id);
   if ("error" in r) return { error: /monotributo_categorias/.test(r.error) ? SIN_SQL : r.error };
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   return { ok: true, historialIds: r.historialIds };
 }
 
@@ -114,7 +115,7 @@ export async function borrarVersionCategorias(id: string): Promise<Resultado> {
     return { error: "Borrar una versión de la tabla de categorías queda solo para administradores." };
   }
   const r = await borrarVersion(createAdminClient(), id, yoId);
-  if ("ok" in r) revalidatePath("/monotributo", "layout");
+  if ("ok" in r) refrescarMonotributo();
   return r;
 }
 
@@ -164,7 +165,7 @@ export async function guardarControles(anio: number, filas: FilaControlEdit[]): 
     }
   }
   const historialIds = await registrarHistorial(admin, historial);
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   return { ok: true, historialIds };
 }
 
@@ -197,7 +198,7 @@ export async function borrarControl(id: string): Promise<Resultado> {
     valor_anterior: { anio: ctrl.anio, mes: ctrl.mes, fecha_corte: ctrl.fecha_corte, es_cierre_semestre: ctrl.es_cierre_semestre, nota: ctrl.nota, cargas: cargas ?? [] },
     valor_nuevo: null, usuario_id: yo.id, ref_id: id, nota: count ? `Tenía ${count} carga(s), borradas con el control` : null,
   }]);
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   return { ok: true, historialIds };
 }
 
@@ -214,6 +215,6 @@ export async function guardarUmbral(umbral: number): Promise<Resultado> {
   const { error } = await admin.from("monotributo_config").upsert({ clave: "umbral_amarillo", valor: umbral, updated_at: new Date().toISOString(), updated_por: yo.id });
   if (error) return { error: error.message };
   const historialIds = await registrarHistorial(admin, [{ cliente_id: null, entidad: "config", campo: "umbral_amarillo", valor_anterior: anterior, valor_nuevo: umbral, usuario_id: yo.id }]);
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   return { ok: true, historialIds };
 }

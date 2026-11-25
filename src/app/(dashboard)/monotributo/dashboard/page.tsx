@@ -11,7 +11,7 @@ import { resumenControlEnCurso } from "@/lib/monotributoFacturacionServer";
 import { armarTableroMonotributo, type Conteo } from "@/lib/monotributoTablero";
 import { FiltrosTablero } from "./FiltrosTablero";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { arrastrarMes } from "@/lib/monotributoServer";
+import { arrastrarMesCacheado } from "@/lib/monotributoServer";
 import { enVentanaRecategorizacion, leerCalendario } from "@/lib/calendarioArca";
 
 
@@ -65,7 +65,7 @@ export default async function MonotributoDashboardPage({
   const esRecategorizacion = enVentanaRecategorizacion(calendario, anio, mes);
 
   try {
-    await arrastrarMes(createAdminClient(), anio, mes, esRecategorizacion);
+    await arrastrarMesCacheado(anio, mes, esRecategorizacion);
   } catch {
     // Si falla, el mes se muestra sin lo arrastrado.
   }

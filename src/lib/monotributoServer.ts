@@ -1,3 +1,4 @@
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAreaOrAdmin } from "@/lib/auth";
 import { registrarHistorial } from "@/lib/monotributoHistorial";
@@ -388,4 +389,34 @@ export async function reabrirAlertaResuelta(admin: Admin, id: string, usuarioId:
     valor_anterior: { estado: "resuelta", valor: a.valor }, valor_nuevo: { estado: "pendiente" }, usuario_id: usuarioId, ref_id: a.id, nota: "Reabierta",
   }]);
   return { historialIds };
+}
+
+// ─── Trabajo automático al abrir pantallas (V2 del diagnóstico) ────────────
+// El arrastre del mes y el recálculo de marcas corren como mucho una vez por
+// hora (por mes), o enseguida después de guardar algo en Monotributo
+// (refrescarMonotributo invalida TAG_MONOTRIBUTO). Antes corrían en cada
+// apertura y era lo más lento del sistema.
+export const TAG_MONOTRIBUTO = "monotributo-automatico";
+
+export const arrastrarMesCacheado = unstable_cache(
+  async (anio: number, mes: number, esRecategorizacion: boolean) => {
+    await arrastrarMes(createAdminClient(), anio, mes, esRecategorizacion);
+    return true;
+  },
+  ["monotributo-arrastre"],
+  { revalidate: 3600, tags: [TAG_MONOTRIBUTO] }
+);
+
+export const sincronizarRevisionesCacheado = unstable_cache(
+  async () => {
+    await sincronizarRevisionesModulo(createAdminClient());
+    return true;
+  },
+  ["monotributo-revisiones"],
+  { revalidate: 3600, tags: [TAG_MONOTRIBUTO] }
+);
+
+export function refrescarMonotributo(ruta = "/monotributo") {
+  revalidateTag(TAG_MONOTRIBUTO);
+  revalidatePath(ruta, "layout");
 }

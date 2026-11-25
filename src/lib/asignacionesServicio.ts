@@ -1,9 +1,8 @@
 "use server";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
-import { requireEditorMonotributo, sincronizarRevisionesCliente } from "@/lib/monotributoServer";
+import { refrescarMonotributo, requireEditorMonotributo, sincronizarRevisionesCliente } from "@/lib/monotributoServer";
 import { sendEmailAsignacionServicio } from "@/lib/email";
 import { SERVICIOS_CONFIG } from "@/lib/modulos";
 import { registrarHistorial } from "@/lib/monotributoHistorial";
@@ -114,7 +113,7 @@ export async function crearAsignacionServicio(
   // Igual que en Equipo: revalidar todo el sitio de una, no listar rutas
   // (esta lista se recibía como parámetro y se quedaba corta apenas se
   // agregaba una sub-página nueva a un módulo).
-  revalidatePath("/", "layout");
+  refrescarMonotributo("/");
   return { success: true, historialIds };
 }
 
@@ -182,7 +181,7 @@ export async function revertirResponsableMonotributo(historialId: string): Promi
     cliente_id: h.cliente_id, anio: h.anio, mes: h.mes, entidad: "responsable", campo: "responsable_id",
     valor_anterior: actual, valor_nuevo: h.valor_anterior, usuario_id: yoId, revierte_id: h.id, ref_id: h.ref_id, nota: "Revertido",
   }]);
-  revalidatePath("/", "layout");
+  refrescarMonotributo("/");
   return { ok: true, historialIds };
 }
 

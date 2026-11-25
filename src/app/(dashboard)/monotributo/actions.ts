@@ -1,7 +1,7 @@
 "use server";
 
+import { refrescarMonotributo } from "@/lib/monotributoServer";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { revalidatePath } from "next/cache";
 import { ESTADOS_MES, type EstadoMes } from "@/lib/monotributo";
 import { CAMPOS_ARRASTRE, arrastreDesde, requireEditorMonotributo, ultimaFilaAnterior } from "@/lib/monotributoServer";
 import { diferencias, registrarHistorial } from "@/lib/monotributoHistorial";
@@ -159,6 +159,6 @@ export async function upsertMonotributoTarea(clienteId: string, anio: number, me
   );
   historialIds.push(...(await propagarAMesesSiguientes(admin, clienteId, anio, mes, antes, updates as Record<string, unknown>, yoId)));
 
-  revalidatePath("/", "layout");
+  refrescarMonotributo("/");
   return { ok: true, estado_cambiado_en: cambiaEstado ? ahora : null, historialIds };
 }

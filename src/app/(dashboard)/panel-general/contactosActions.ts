@@ -1,10 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { registrarHistorial } from "@/lib/monotributoHistorial";
-import { sincronizarRevisionesCliente } from "@/lib/monotributoServer";
+import { refrescarMonotributo, sincronizarRevisionesCliente } from "@/lib/monotributoServer";
 import {
   ERROR_TELEFONOS_DETALLE,
   columnasContacto,
@@ -70,6 +69,6 @@ export async function guardarContactosCliente(
     historialIds = await registrarHistorial(admin, entradas);
     await sincronizarRevisionesCliente(admin, clienteId, yo.id).catch(() => undefined);
   }
-  revalidatePath("/", "layout");
+  refrescarMonotributo("/");
   return { ok: true, historialIds };
 }

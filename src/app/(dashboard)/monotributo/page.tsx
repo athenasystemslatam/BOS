@@ -4,7 +4,7 @@ import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentes } from "@/lib/asignacionesServicio";
 import { hoyArgentina, puedeSerResponsable, type Gravedad } from "@/lib/monotributo";
 import { avisoCalendarioFaltante, enVentanaRecategorizacion, leerCalendario, vencimientoDe } from "@/lib/calendarioArca";
-import { arrastrarMes, sincronizarRevisionesModulo, traerPaginado } from "@/lib/monotributoServer";
+import { arrastrarMesCacheado, sincronizarRevisionesCacheado, traerPaginado } from "@/lib/monotributoServer";
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { MonotributoClient, type FichaResumen } from "./MonotributoClient";
@@ -29,12 +29,12 @@ export default async function MonotributoPage({
   const esRecategorizacion = enVentanaRecategorizacion(calendario, anio, mes);
   // Primero el arrastre de deuda/intimación/categoría al mes, después las reglas de revisión.
   try {
-    await arrastrarMes(admin, anio, mes, esRecategorizacion);
+    await arrastrarMesCacheado(anio, mes, esRecategorizacion);
   } catch {
     // Si falla, el mes se muestra sin lo arrastrado.
   }
   try {
-    await sincronizarRevisionesModulo(admin);
+    await sincronizarRevisionesCacheado();
   } catch {
     // Si falla, se muestra igual lo que ya está marcado.
   }

@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refrescarMonotributo } from "@/lib/monotributoServer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { reabrirAlertaResuelta, reabrirMarca, requireEditorMonotributo, sincronizarRevisionesCliente } from "@/lib/monotributoServer";
@@ -129,12 +129,12 @@ export async function revertirCambio(
       cliente_id: e.cliente_id, entidad: "ficha", campo: e.campo, valor_anterior: actual, valor_nuevo: nuevo,
       usuario_id: yo.id, revierte_id: e.id, nota: "Revertido",
     }]);
-    revalidatePath("/", "layout");
+    refrescarMonotributo("/");
     return { ok: true, historialIds };
   }
   if (e.entidad === "facturacion" || e.entidad === "control" || e.entidad === "categorias" || e.entidad === "config") {
     const r = await revertirFacturacion(admin, e, { id: yo.id, isAdmin: yo.isAdmin }, forzar);
-    if ("ok" in r) revalidatePath("/monotributo", "layout");
+    if ("ok" in r) refrescarMonotributo();
     return r;
   }
   // Marca o alerta resuelta: revertir = reabrirla (vuelve a pendiente, queda en el historial).
@@ -143,7 +143,7 @@ export async function revertirCambio(
     if (nuevoEstado !== "resuelta" || !e.ref_id) return { error: "Eso ya está pendiente: no hay nada que reabrir." };
     const r = e.entidad === "revision" ? await reabrirMarca(admin, e.ref_id, yo.id) : await reabrirAlertaResuelta(admin, e.ref_id, yo.id);
     if ("error" in r) return r;
-    revalidatePath("/monotributo", "layout");
+    refrescarMonotributo();
     return { ok: true, historialIds: r.historialIds };
   }
   const permitidos = e.entidad === "tarea" ? CAMPOS_TAREA : e.entidad === "ficha" ? CAMPOS_FICHA : CAMPOS_CALENDARIO;
@@ -180,7 +180,7 @@ export async function revertirCambio(
     cliente_id: e.cliente_id, anio: e.anio, mes: e.mes, entidad: e.entidad, campo: e.campo,
     valor_anterior: actual, valor_nuevo: nuevo, usuario_id: yo.id, revierte_id: e.id, nota: "Revertido",
   }]);
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   return { ok: true, historialIds };
 }
 

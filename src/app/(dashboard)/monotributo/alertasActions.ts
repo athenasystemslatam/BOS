@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refrescarMonotributo } from "@/lib/monotributoServer";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { reabrirAlertaResuelta, requireEditorMonotributo } from "@/lib/monotributoServer";
 import { registrarHistorial } from "@/lib/monotributoHistorial";
@@ -40,7 +40,7 @@ export async function marcarAlertaResuelta(
     valor_anterior: { estado: "pendiente" }, valor_nuevo: { estado: "resuelta", valor: r.valor },
     usuario_id: yoId, ref_id: r.id, nota: notaLimpia,
   })));
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   return { ok: true, historialIds };
 }
 
@@ -54,6 +54,6 @@ export async function reabrirAlerta(id: string): Promise<{ error: string } | { o
   }
   const r = await reabrirAlertaResuelta(createAdminClient(), id, yoId);
   if ("error" in r) return r;
-  revalidatePath("/monotributo", "layout");
+  refrescarMonotributo();
   return { ok: true, historialIds: r.historialIds };
 }

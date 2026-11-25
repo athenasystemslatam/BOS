@@ -5,7 +5,7 @@ import { resumenControlEnCurso } from "@/lib/monotributoFacturacionServer";
 import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { AlertasClient } from "./AlertasClient";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { arrastrarMes } from "@/lib/monotributoServer";
+import { arrastrarMesCacheado } from "@/lib/monotributoServer";
 import { enVentanaRecategorizacion, leerCalendario } from "@/lib/calendarioArca";
 
 // Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
@@ -23,7 +23,7 @@ export default async function MonotributoAlertasPage({
 
   try {
     const calendario = await leerCalendario([anio]);
-    await arrastrarMes(createAdminClient(), anio, mes, enVentanaRecategorizacion(calendario, anio, mes));
+    await arrastrarMesCacheado(anio, mes, enVentanaRecategorizacion(calendario, anio, mes));
   } catch {
     // Si falla, el mes se muestra sin lo arrastrado.
   }
