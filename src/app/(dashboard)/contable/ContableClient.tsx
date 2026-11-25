@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, ChevronDown, Check, Minus, MoreHorizontal } from "lucide-react";
+import { Plus, ChevronDown, Check, Square, MoreHorizontal } from "lucide-react";
 import clsx from "clsx";
 import { updateBalance, getFichaCliente, actualizarFechasPresentacion } from "./actions";
 import { NuevoBalanceModal } from "./NuevoBalanceModal";
@@ -106,7 +106,7 @@ function FormBadge({ estado, options }: {
   if (estado === "presenta_cliente") return <span className="text-blue-400 text-[10px] font-semibold">Cliente</span>;
   if (estado === "presentado" || estado === "enviada")
     return <Check size={14} className="text-emerald-500" strokeWidth={2.5} />;
-  return <Minus size={14} className="text-gray-300" />;
+  return <Square size={14} className="text-gray-300" strokeWidth={2} />;
   void options;
 }
 
