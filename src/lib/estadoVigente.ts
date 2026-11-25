@@ -26,3 +26,10 @@ export function estaVigenteHoy(
   if (!fechaBaja) return false;
   return diaAR(hoy) < fechaANumero(fechaBaja);
 }
+
+/** Fecha de hoy en Argentina (no la del huso del navegador/servidor), en
+ * formato YYYY-MM-DD — el que entiende <input type="date">. Default del
+ * selector de fecha de baja en los modales de cada módulo. */
+export function hoyAR(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+}

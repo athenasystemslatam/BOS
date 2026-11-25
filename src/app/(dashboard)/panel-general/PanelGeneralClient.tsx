@@ -8,6 +8,7 @@ import { NuevoClienteModal } from "./NuevoClienteModal";
 import { EditarClienteModal } from "./EditarClienteModal";
 import { darDeBajaServicio, darDeBajaCliente, reactivarCliente, getFichaCliente } from "./actions";
 import { useBackdropClose } from "@/lib/useBackdropClose";
+import { hoyAR } from "@/lib/estadoVigente";
 import { FichaClienteBoton } from "@/components/FichaClienteBoton";
 import { BackupButton } from "@/components/BackupButton";
 import { GuardarBackupStorageButton } from "@/components/GuardarBackupStorageButton";
@@ -68,13 +69,6 @@ function sigla(nombre: string) {
 // código fuente) para no correr riesgo de que el rango termine
 // guardado/pegado como los caracteres combinantes reales.
 const DIACRITICOS = new RegExp("[" + String.fromCharCode(0x300) + "-" + String.fromCharCode(0x36f) + "]", "g");
-
-// Fecha de hoy en Argentina (no la del huso del navegador) para el default
-// del selector de fecha de baja, en formato YYYY-MM-DD (el que entiende
-// <input type="date">).
-function hoyAR(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
-}
 
 function normalizar(t: string) {
   // Sin esto, "lanus" no encontraba "Textiles Lanús".

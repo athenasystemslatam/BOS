@@ -2,10 +2,11 @@
 
 import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, CheckCircle2, Circle, History } from "lucide-react";
+import { ChevronDown, CheckCircle2, Circle, History, UserMinus } from "lucide-react";
 import clsx from "clsx";
 import { MESES_NOMBRES } from "@/lib/vencimientos";
 import { AsignacionServicioModal } from "@/components/AsignacionServicioModal";
+import { DarDeBajaServicioModal } from "@/components/DarDeBajaServicioModal";
 import { EquipoModuloPanel, EquipoModuloBoton } from "@/components/EquipoModuloPanel";
 import { ClavesModuloPopover } from "@/components/ClavesModuloPopover";
 import type { ClaveAcceso } from "@/types";
@@ -106,6 +107,7 @@ export function ImpuestosClient({
   const [filterResp, setFilterResp] = useState("");
   const [soloPendientes, setSoloPendientes] = useState(false);
   const [reasignando, setReasignando] = useState<Servicio | null>(null);
+  const [bajandoServicio, setBajandoServicio] = useState<Servicio | null>(null);
   const [mostrarEquipo, setMostrarEquipo] = useState(false);
 
   const [tareasMap, setTareasMap] = useState<Map<string, Tarea>>(() => {
@@ -407,6 +409,15 @@ export function ImpuestosClient({
                           <History size={13} />
                         </button>
                       )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => setBajandoServicio(s)}
+                          title="Dar de baja este servicio"
+                          className="text-gray-300 hover:text-danger transition-colors shrink-0"
+                        >
+                          <UserMinus size={13} />
+                        </button>
+                      )}
                     </div>
                   </td>
 
@@ -499,6 +510,17 @@ export function ImpuestosClient({
         responsableActual={reasignando.responsable_nombre}
         creadoPor={creadoPor}
         onClose={() => setReasignando(null)}
+      />
+    )}
+    {bajandoServicio && (
+      <DarDeBajaServicioModal
+        clienteId={bajandoServicio.cliente_id}
+        clienteNombre={bajandoServicio.clientes?.nombre ?? ""}
+        servicio="impuestos"
+        subtipo={bajandoServicio.subtipo}
+        servicioLabel={`Impuestos — ${TABS.find((t) => t.key === bajandoServicio.subtipo)?.label ?? bajandoServicio.subtipo}`}
+        onClose={() => setBajandoServicio(null)}
+        onConfirmado={() => router.refresh()}
       />
     )}
     {mostrarEquipo && (
