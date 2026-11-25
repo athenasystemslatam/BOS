@@ -546,7 +546,12 @@ export function ContableClient({
                 encabezado sticky, el fondo del tr no siempre "viaja" bien
                 con las celdas y dejaba ver las filas del cuerpo pasando por
                 detrás de esta fila al scrollear. */}
-            <tr className="sticky top-7 z-20 border-b border-gray-200">
+            {/* top-[27px], no top-7 (28px): a ciertos niveles de zoom el
+                redondeo de subpíxeles dejaba un hueco de 1px entre esta fila
+                y la de arriba, por el que se veía asomar la primera fila de
+                datos — con 1px de superposición nunca queda hueco, redondee
+                como redondee el navegador. */}
+            <tr className="sticky top-[27px] z-20 border-b border-gray-200">
               {/* Cliente — columna fijada, scrollea horizontal con el resto */}
               <th className="sticky left-0 z-30 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
               {/* Fechas */}
