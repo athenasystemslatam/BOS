@@ -2,10 +2,10 @@ import { SeguimientoClient } from "./SeguimientoClient";
 import { obtenerSeguimientoSueldos } from "./datos";
 
 // Ruta dinámica: usa cookies para saber qué empresas mostrar.
-export default async function SeguimientoPage() {
+export default async function SeguimientoPage({ searchParams }: { searchParams: { ver?: string } }) {
   const inicio = Date.now();
-  const { clientes, tareas, periodos, periodo, liquidadoras, isAdmin, puedeEditar, recordatoriosPrevios, fal } =
-    await obtenerSeguimientoSueldos();
+  const { clientes, tareas, periodos, periodo, liquidadoras, isAdmin, puedeEditar, recordatoriosPrevios, fal, vista } =
+    await obtenerSeguimientoSueldos({ verTodos: searchParams.ver === "todos" });
 
   console.info(`[tiempo] /seguimiento ${Date.now() - inicio} ms`);
   return (
@@ -19,6 +19,7 @@ export default async function SeguimientoPage() {
       puedeEditar={puedeEditar}
       recordatoriosPrevios={recordatoriosPrevios}
       fal={fal}
+      vista={vista}
     />
   );
 }

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NavWrapper } from "@/components/NavWrapper";
 import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { MODULO_LABELS } from "@/lib/modulos";
+import { misModulos } from "@/lib/permisos";
 
 // Secciones colapsables del menú (ver Sidebar.tsx) — las mismas que usan
 // MODULO_LABELS.x como section.label.
@@ -21,6 +22,7 @@ export default async function DashboardLayout({
   const yo = await getCurrentLiquidadora();
   // Un admin ve todo igual — no hace falta pedir sus áreas.
   const areas = yo && !yo.isAdmin ? await getAreasDelUsuario() : [];
+  const mios = await misModulos();
 
   // Secciones del sidebar que el usuario dejó colapsadas (cookie escrita
   // desde el cliente). Se lee acá para renderizarlas cerradas ya en el
@@ -39,6 +41,8 @@ export default async function DashboardLayout({
       nombre={yo?.nombre ?? null}
       rol={yo?.rol}
       areas={areas}
+      misModulos={mios}
+      verTodo={!!yo}
       cerradosInicial={seccionesCerradas}
     >
       {children}

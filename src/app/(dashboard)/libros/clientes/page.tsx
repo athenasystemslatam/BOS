@@ -1,9 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import { foliosLibres, vencimientoFinal } from "@/lib/libros";
 import { configLibros } from "@/lib/librosAutomaticos";
 import type { ClienteSocietario, Libro, LibroCatalogo } from "@/types";
 import { ClientesLibrosClient, type FilaClienteLibros } from "./ClientesLibrosClient";
+import { permisos } from "@/lib/permisos";
 
 export default async function LibrosClientesPage() {
   const admin = createAdminClient();
@@ -103,9 +103,7 @@ export default async function LibrosClientesPage() {
     .filter((f): f is FilaClienteLibros => f !== null)
     .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
 
-  const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
   return (
-    <ClientesLibrosClient filas={filas} puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))} />
+    <ClientesLibrosClient filas={filas} puedeEditar={(await permisos()).puedeEditar("libros")} />
   );
 }

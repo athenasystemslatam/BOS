@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import type { LibroIncidencia, LibroMovimiento } from "@/types";
 import { MovimientosClient, type LibroParaMovimiento, type ResumenUbicacion } from "./MovimientosClient";
+import { permisos } from "@/lib/permisos";
 
 type ServicioRaw = {
   cliente_id: string;
@@ -24,8 +24,6 @@ type MovimientoRaw = LibroMovimiento & {
 
 export default async function MovimientosPage() {
   const admin = createAdminClient();
-  const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
 
   const [
     { data: serviciosRaw },
@@ -157,7 +155,7 @@ export default async function MovimientosPage() {
       incidencias={incidencias}
       resumen={resumen}
       equipo={equipo}
-      puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}
+      puedeEditar={(await permisos()).puedeEditar("libros")}
     />
   );
 }

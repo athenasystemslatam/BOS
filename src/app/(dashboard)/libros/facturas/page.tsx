@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
 import type { CopiadoFactura } from "@/types";
 import { FacturasClient, type CopiadoItem, type FacturaVista } from "./FacturasClient";
+import { permisos } from "@/lib/permisos";
 
 type ServicioRaw = {
   cliente_id: string;
@@ -25,8 +25,6 @@ type TareaRaw = {
 
 export default async function FacturasPage() {
   const admin = createAdminClient();
-  const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
 
   const [
     { data: facturasRaw },
@@ -117,7 +115,7 @@ export default async function FacturasPage() {
       vinculadosPorFactura={vinculadosPorFactura}
       disponiblesPorCliente={disponiblesPorCliente}
       tieneLibrosTexto={!errLibrosTexto}
-      puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}
+      puedeEditar={(await permisos()).puedeEditar("libros")}
     />
   );
 }

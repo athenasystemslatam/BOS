@@ -9,6 +9,7 @@ import { calcularAlertasMonotributo } from "@/lib/monotributoAlertas";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { MonotributoClient, type FichaResumen } from "./MonotributoClient";
 import { cantidadClaves, sinSensibles } from "@/lib/clavesServer";
+import { permisos } from "@/lib/permisos";
 
 // Siempre datos frescos: un cambio (estado, deuda, etc.) se ve al instante, sin caché del servidor.
 export const dynamic = "force-dynamic";
@@ -113,6 +114,13 @@ export default async function MonotributoPage({
       };
     });
 
+  // Importes (deuda, VEP): solo quien es de Monotributo o admin (DIAGNOSTICO D1).
+  const verImportes = (await permisos()).puedeVerSensibles("monotributo");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tareasVisibles = ((tareas as any[]) ?? []).map((t) =>
+    verImportes ? t : { ...t, deuda_monto: null, vep_importe: null, deuda_texto_original: null, deuda_periodos: null }
+  );
+
   // Tiempo de armado en el servidor (se ve en los registros de Vercel).
   console.info(`[tiempo] /monotributo ${Date.now() - inicio} ms`);
   return (
@@ -120,7 +128,7 @@ export default async function MonotributoPage({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       servicios={servicios as any[]}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      tareas={(tareas as any[]) ?? []}
+      tareas={tareasVisibles}
       equipoMonotributo={equipoMonotributo}
       mes={mes}
       anio={anio}

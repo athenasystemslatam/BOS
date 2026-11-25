@@ -137,6 +137,8 @@ export function Sidebar({
   nombre,
   rol,
   areas,
+  misModulos = [],
+  verTodo = false,
   cerradosInicial,
   onClose,
 }: {
@@ -144,6 +146,10 @@ export function Sidebar({
   nombre: string | null;
   rol?: Rol;
   areas: string[];
+  // Módulos donde trabaja: van primero en el menú (DIAGNOSTICO D2).
+  misModulos?: string[];
+  // Todo el equipo ve el seguimiento de todos los módulos (DIAGNOSTICO D1).
+  verTodo?: boolean;
   cerradosInicial?: string[];
   onClose?: () => void;
 }) {
@@ -240,8 +246,14 @@ export function Sidebar({
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-[19px]">
         {SECTIONS.filter(
-          (section) => section.modulo === null || isAdmin || areas.includes(section.modulo)
-        ).map((section, si) => {
+          (section) => section.modulo === null || isAdmin || verTodo || areas.includes(section.modulo)
+        )
+          .map((section, orden) => ({ section, orden }))
+          .sort((a, b) => {
+            const peso = (m: string | null) => (m === null ? -1 : misModulos.includes(m) ? misModulos.indexOf(m) : 100);
+            return peso(a.section.modulo) - peso(b.section.modulo) || a.orden - b.orden;
+          })
+          .map(({ section }, si) => {
           const visibleItems = section.items.filter((item) => {
             if (item.adminOnly) return isAdmin;
             if (item.areaOnly) return isAdmin || areas.includes(item.areaOnly);

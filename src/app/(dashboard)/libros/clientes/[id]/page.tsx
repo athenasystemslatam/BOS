@@ -1,14 +1,12 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
 import { configLibros } from "@/lib/librosAutomaticos";
 import type { AutoridadCliente, ClienteSocietario, Libro, LibroCatalogo } from "@/types";
 import { FichaSocietarioClient } from "./FichaSocietarioClient";
+import { permisos } from "@/lib/permisos";
 
 export default async function FichaLibrosPage({ params }: { params: { id: string } }) {
   const admin = createAdminClient();
-  const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
 
   const [
     { data: cliente },
@@ -83,7 +81,7 @@ export default async function FichaLibrosPage({ params }: { params: { id: string
       autoridades={(autoridadesRaw ?? []) as AutoridadCliente[]}
       umbralFolios={config.umbralFolios}
       primerAvisoMandato={config.avisosMandato[0] ?? 90}
-      puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}
+      puedeEditar={(await permisos()).puedeEditar("libros")}
     />
   );
 }

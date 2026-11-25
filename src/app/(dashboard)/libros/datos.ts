@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
+import { getCurrentLiquidadora } from "@/lib/auth";
 import {
   diasHasta,
   vencimientoFinal,
@@ -22,6 +22,7 @@ import type {
 } from "./SeguimientoLibrosClient";
 import type { Persona } from "./NuevaTareaModal";
 import { paginado } from "@/lib/paginado";
+import { permisos } from "@/lib/permisos";
 
 type ServicioRaw = {
   cliente_id: string;
@@ -59,7 +60,6 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
 
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
   const hoy = hoyISO();
 
   const [
@@ -328,7 +328,7 @@ export async function obtenerColaLibros(): Promise<DatosColaLibros> {
     clientesAgregar,
     estados: estados.filter((e) => e.activo),
     equipo,
-    puedeEditar: !yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros")),
+    puedeEditar: (await permisos()).puedeEditar("libros"),
     esAdmin: !!yo?.isAdmin,
   };
 }

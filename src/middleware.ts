@@ -134,14 +134,22 @@ export async function middleware(request: NextRequest) {
   if (!autenticadoYPermitido && !isLogin && !isAuthCallback) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
     if (blockReason) url.searchParams.set("error", blockReason);
+    // Recordar adónde iba (ej. un favorito) para volver ahí después del login.
+    else if (request.method === "GET" && !request.nextUrl.pathname.startsWith("/api/") && request.nextUrl.pathname !== "/") {
+      url.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+    }
     return NextResponse.redirect(url);
   }
 
-  // Si ya tiene sesión válida y va al login → redirigir al dashboard
+  // Si ya tiene sesión válida y va al login → a donde iba, o a su inicio
   if (autenticadoYPermitido && isLogin) {
+    const next = request.nextUrl.searchParams.get("next");
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.search = "";
+    url.pathname = next && next.startsWith("/") && !next.startsWith("//") ? next.split("?")[0] : "/";
+    if (next && url.pathname !== "/" && next.includes("?")) url.search = next.slice(next.indexOf("?"));
     return NextResponse.redirect(url);
   }
 

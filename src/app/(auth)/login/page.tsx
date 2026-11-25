@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+// Pantalla a la que iba antes de que le pidieran entrar (?next=), solo rutas internas.
+function destinoLogin(): string | null {
+  if (typeof window === "undefined") return null;
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/login") ? next : null;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -39,7 +46,8 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        // Si venía de un favorito con la sesión vencida, vuelve ahí después de entrar.
+        emailRedirectTo: `${window.location.origin}/auth/callback${destinoLogin() ? `?next=${encodeURIComponent(destinoLogin()!)}` : ""}`,
       },
     });
 
@@ -68,7 +76,7 @@ export default function LoginPage() {
       setErrorCodigo("Código incorrecto o vencido. Verificalo e intentá de nuevo.");
       return;
     }
-    router.push("/dashboard");
+    router.push(destinoLogin() ?? "/");
   };
 
   return (

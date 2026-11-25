@@ -3,6 +3,7 @@ import { getCurrentLiquidadora } from "@/lib/auth";
 import { Cliente, Liquidadora } from "@/types";
 import { EmpresasClient } from "./EmpresasClient";
 import { sinSensibles } from "@/lib/clavesServer";
+import { permisos } from "@/lib/permisos";
 
 /** Todas las filas de una consulta, de a 1000: PostgREST corta en 1000 por
  * defecto y las tareas con rúbrica LSD (de todos los meses) crecen cada mes. */
@@ -89,7 +90,7 @@ export default async function EmpresasPage() {
       isAdmin={yo?.isAdmin ?? false}
       creadoPor={yo?.id ?? null}
       lsdHasta={lsdHasta}
-      puedeEditar={!yo?.esCobranzas}
+      puedeEditar={(await permisos()).puedeEditar("sueldos")}
       // Cualquier liquidador del área Sueldos (ya filtrada arriba) puede dar
       // de alta un cliente nuevo, no solo un admin — mismo criterio que ya
       // regía para editar (puedeEditar).

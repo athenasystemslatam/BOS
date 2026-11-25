@@ -1,9 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getAreasDelUsuario, getCurrentLiquidadora } from "@/lib/auth";
+import { getCurrentLiquidadora } from "@/lib/auth";
 import { sincronizarLibrosAutomaticos } from "@/lib/librosAutomaticos";
 import { TIPOS_PEDIDO } from "@/lib/libros";
 import type { LibroPedido, LibroPedidoSeguimiento, TipoPedido } from "@/types";
 import { PedidosClient, type ClienteConLibros } from "./PedidosClient";
+import { permisos } from "@/lib/permisos";
 
 type PedidoRaw = LibroPedido & {
   responsable: { nombre: string } | null;
@@ -18,7 +19,6 @@ export default async function PedidosPage({
   await sincronizarLibrosAutomaticos();
   const admin = createAdminClient();
   const yo = await getCurrentLiquidadora();
-  const areas = await getAreasDelUsuario();
 
   const hace7 = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
 
@@ -130,7 +130,7 @@ export default async function PedidosPage({
       seguimientosPorPedido={seguimientosPorPedido}
       clientes={clientes}
       equipo={equipo}
-      puedeEditar={!yo?.esCobranzas && (!!yo?.isAdmin || areas.includes("libros"))}
+      puedeEditar={(await permisos()).puedeEditar("libros")}
       yoId={yo?.id ?? null}
       pedidosSin7d={pedidosSin7d}
     />

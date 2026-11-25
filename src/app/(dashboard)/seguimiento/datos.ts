@@ -8,13 +8,14 @@ import { aplicarDefaultFal, getFilasFal } from "@/lib/falServer";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { paginado } from "@/lib/paginado";
 import { cantidadClaves, sinSensibles } from "@/lib/clavesServer";
+import { permisos } from "@/lib/permisos";
 
 export type ClienteConLiq = Cliente & { liquidadora: { id: string; nombre: string } };
 
 // Extraído de page.tsx (antes todo esto vivía ahí adentro) para que
 // /api/exportar/sueldos/seguimiento pueda generar el Excel con los mismos
 // clientes y tareas del período de trabajo actual que ve la pantalla (ítem 147).
-export async function obtenerSeguimientoSueldos() {
+export async function obtenerSeguimientoSueldos({ verTodos = false }: { verTodos?: boolean } = {}) {
   const admin = createAdminClient();
   const { mes, anio } = getMesTrabajoActual();
 
@@ -61,10 +62,16 @@ export async function obtenerSeguimientoSueldos() {
   // No-admin: solo ve sus propios clientes — antes era .eq("liquidador_id",
   // yo.id) contra la columna de `clientes`; ahora se resuelve el mismo
   // conjunto contra servicios_cliente.responsable_id.
-  const esRestringido = !yo?.isAdmin && !yo?.esCobranzas && !yo?.esAdministrativo && !!yo;
-  const idsVisibles = esRestringido
-    ? serviciosVigentes.filter((s) => s.responsable_id === yo!.id).map((s) => s.cliente_id)
-    : idsSueldos;
+  // Desde "ver todo" (DIAGNOSTICO D1) arranca en sus clientes pero puede pasar a
+  // "Todos". Sin ficha activa (modo consulta o dada de baja) no ve clientes de
+  // Sueldos: antes una liquidadora dada de baja quedaba viendo todos.
+  const puedeElegirVista = !!yo && !yo.isAdmin && !yo.esCobranzas && !yo.esAdministrativo;
+  const esRestringido = puedeElegirVista && !verTodos;
+  const idsVisibles = !yo
+    ? []
+    : esRestringido
+      ? serviciosVigentes.filter((s) => s.responsable_id === yo.id).map((s) => s.cliente_id)
+      : idsSueldos;
 
   // Sin .eq("estado", "activo"): mismo criterio de vigencia por fecha que
   // arriba, aplicado también a la baja del cliente entero (no solo del
@@ -136,7 +143,8 @@ export async function obtenerSeguimientoSueldos() {
     periodo: periodo as Periodo | null,
     liquidadoras: (liquidadoras as Pick<Liquidadora, "id" | "nombre">[]) ?? [],
     isAdmin: yo?.isAdmin ?? false,
-    puedeEditar: !!yo && !yo.esCobranzas && !yo.esAdministrativo,
+    puedeEditar: (await permisos()).puedeEditar("sueldos"),
+    vista: (puedeElegirVista ? (esRestringido ? "mios" : "todos") : null) as "mios" | "todos" | null,
     recordatoriosPrevios,
     fal: { fechaCorte: objetivoSueldos.fal_fecha_corte, filas: filasFal },
   };

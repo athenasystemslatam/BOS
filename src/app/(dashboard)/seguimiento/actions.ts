@@ -253,14 +253,18 @@ export async function updateLegajos(
   return errorResto ? { error: errorResto.message } : { success: true };
 }
 
-// A propósito sin requireLiquidadoraOrAdmin: cualquier usuario autenticado y
-// permitido (ver middleware.ts) puede dejar una observación, incluidos los
-// de modo consulta. Es la única escritura habilitada para ese modo.
+// Antes cualquiera con sesión podía cambiarlas (incluido el modo consulta).
+// Desde "editar solo lo propio" (DIAGNOSTICO D1) piden ser de Sueldos o admin.
 export async function updateObservaciones(
   clienteId: string,
   periodoId: string,
   observaciones: string
 ) {
+  try {
+    await requireAreaOrAdmin("sueldos");
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "No autorizado." };
+  }
   const admin = createAdminClient();
   const { error } = await admin
     .from("tareas")

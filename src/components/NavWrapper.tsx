@@ -11,6 +11,8 @@ export function NavWrapper({
   nombre,
   rol,
   areas,
+  misModulos = [],
+  verTodo = false,
   cerradosInicial,
   children,
 }: {
@@ -18,6 +20,8 @@ export function NavWrapper({
   nombre: string | null;
   rol?: Rol;
   areas: string[];
+  misModulos?: string[];
+  verTodo?: boolean;
   cerradosInicial?: string[];
   children: React.ReactNode;
 }) {
@@ -97,6 +101,8 @@ export function NavWrapper({
           nombre={nombre}
           rol={rol}
           areas={areas}
+          misModulos={misModulos}
+          verTodo={verTodo}
           cerradosInicial={cerradosInicial}
           onClose={() => setOpen(false)}
         />

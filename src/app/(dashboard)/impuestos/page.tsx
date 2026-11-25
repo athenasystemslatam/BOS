@@ -1,11 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
+import { getCurrentLiquidadora } from "@/lib/auth";
 import { getMesTrabajoActual } from "@/lib/vencimientos";
 import { resolverResponsablesVigentesTodos } from "@/lib/asignacionesServicio";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { ImpuestosClient } from "./ImpuestosClient";
 import { cantidadClaves, sinSensibles } from "@/lib/clavesServer";
 import type { DatosImpuestosCliente } from "@/lib/impuestos";
+import { permisos } from "@/lib/permisos";
 
 export default async function ImpuestosPage({
   searchParams,
@@ -23,7 +24,6 @@ export default async function ImpuestosPage({
   // vigente por período con la tabla asignaciones).
   const [
     yo,
-    areas,
     vigentesPorSubtipo,
     { data: serviciosRaw },
     { data: tareas },
@@ -32,7 +32,6 @@ export default async function ImpuestosPage({
     { data: datosRaw },
   ] = await Promise.all([
     getCurrentLiquidadora(),
-    getAreasDelUsuario(),
     resolverResponsablesVigentesTodos("impuestos", anio, mes),
     // Sin .eq("estado", true): la vigencia ahora también depende de
     // fecha_baja (baja programada a futuro sigue viéndose) — se filtra
@@ -98,7 +97,7 @@ export default async function ImpuestosPage({
       mes={mes}
       anio={anio}
       isAdmin={yo?.isAdmin ?? false}
-      puedeEditar={!yo?.esCobranzas && !yo?.esAdministrativo && (!!yo?.isAdmin || areas.includes("impuestos"))}
+      puedeEditar={(await permisos()).puedeEditar("impuestos")}
       creadoPor={yo?.id ?? null}
     />
   );

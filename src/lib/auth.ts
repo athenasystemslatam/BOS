@@ -86,7 +86,7 @@ export async function requireAdminOrAdministrativo(): Promise<CurrentLiquidadora
  * seguimiento — marcar tareas, sync de Drive, etc. */
 export async function requireLiquidadoraOrAdmin(): Promise<CurrentLiquidadora> {
   const liquidadora = await getCurrentLiquidadora();
-  if (!liquidadora || liquidadora.esCobranzas || liquidadora.esAdministrativo) {
+  if (!liquidadora || liquidadora.esCobranzas || liquidadora.esAdministrativo || liquidadora.rol === "viewer") {
     throw new Error("No tenés permiso para editar — estás en modo consulta.");
   }
   return liquidadora;
@@ -121,7 +121,8 @@ export const getAreasDelUsuario = cache(async (): Promise<string[]> => {
  * generalizado a Impuestos/Contable/Monotributo. */
 export async function requireAreaOrAdmin(modulo: string): Promise<CurrentLiquidadora> {
   const liquidadora = await getCurrentLiquidadora();
-  if (!liquidadora || liquidadora.esCobranzas) {
+  // Solo lectura (viewer) nunca edita, en ningún módulo (DIAGNOSTICO D1).
+  if (!liquidadora || liquidadora.esCobranzas || liquidadora.rol === "viewer") {
     throw new Error("No tenés permiso para editar — estás en modo consulta.");
   }
   // Ítem 119/154: administrativo ve todos los módulos (ver

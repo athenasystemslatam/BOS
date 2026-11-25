@@ -71,6 +71,8 @@ interface Props {
   puedeEditar: boolean;
   recordatoriosPrevios: Record<string, string>;
   fal: { fechaCorte: string; filas: FilaFal[] };
+  /** "mios" / "todos" para quien puede elegir; null para admin y quien ya ve todo. */
+  vista?: "mios" | "todos" | null;
 }
 
 type TareaState = {
@@ -620,6 +622,7 @@ export function SeguimientoClient({
   puedeEditar,
   recordatoriosPrevios: initialRecordatoriosPrevios,
   fal,
+  vista = null,
 }: Props) {
   const router = useRouter();
 
@@ -1109,6 +1112,19 @@ export function SeguimientoClient({
 
         {/* Right side: sync + period nav */}
         <div className="flex items-center gap-2 flex-wrap">
+          {vista && (
+            <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-xs font-medium">
+              {([["mios", "Mis clientes", "/seguimiento"], ["todos", "Todos", "/seguimiento?ver=todos"]] as const).map(([k, label, href]) => (
+                <a
+                  key={k}
+                  href={href}
+                  className={clsx("px-2.5 py-1 rounded-md transition-colors", vista === k ? "bg-bordo text-white" : "text-gray-500 hover:text-gray-800")}
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          )}
           {/* Ítem 147: Excel del checklist completo del período (recibos,
               F.931, etc.), distinto de "Exportar nómina" (facturación). */}
           {isAdmin && (

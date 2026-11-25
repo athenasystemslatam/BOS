@@ -1,10 +1,11 @@
 import { getAniosContables } from "@/lib/aniosContables";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentLiquidadora, getAreasDelUsuario } from "@/lib/auth";
+import { getCurrentLiquidadora } from "@/lib/auth";
 import { getContextoVencimientos } from "@/lib/vencimientosContablesServer";
 import { estaVigenteHoy } from "@/lib/estadoVigente";
 import { ContableClient } from "./ContableClient";
 import { paginado } from "@/lib/paginado";
+import { permisos } from "@/lib/permisos";
 
 export default async function ContablePage({
   searchParams,
@@ -16,7 +17,6 @@ export default async function ContablePage({
   const admin = createAdminClient();
   const [
     yo,
-    areas,
     { data: balancesRaw },
     { data: clientesContable },
     { data: equipoTodos },
@@ -26,7 +26,6 @@ export default async function ContablePage({
     { data: cambiosCierre },
   ] = await Promise.all([
     getCurrentLiquidadora(),
-    getAreasDelUsuario(),
     admin
       .from("balances")
       .select(
@@ -126,7 +125,7 @@ export default async function ContablePage({
       miId={yo?.id ?? null}
       // Ítem 119: administrativo ve Contable (si tiene el área asignada)
       // pero no edita acá, solo consulta.
-      puedeEditar={!yo?.esCobranzas && !yo?.esAdministrativo && (!!yo?.isAdmin || areas.includes("contable"))}
+      puedeEditar={(await permisos()).puedeEditar("contable")}
       equipo={equipo}
       equipoModulos={equipoModulosTodos ?? []}
     />
