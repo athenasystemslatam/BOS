@@ -577,7 +577,7 @@ export function ContableClient({
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-14">Tasa</th>
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-20">Nº IGJ</th>
               {/* Obs + acciones */}
-              <th className="bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Obs.</th>
+              <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3">Obs.</th>
               <th className="bg-gray-50 px-3 py-3 w-10" />
             </tr>
           </thead>
@@ -822,10 +822,10 @@ export function ContableClient({
                         placeholder="—"
                         title={b.observaciones ?? undefined}
                         onBlur={(e) => update(b.id, { observaciones: e.target.value || null })}
-                        className="w-full text-[12px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-300 rounded px-1 placeholder:text-gray-200 truncate"
+                        className="w-full text-[12px] text-gray-600 border-0 bg-transparent focus:outline-none focus:ring-1 focus:ring-emerald-300 rounded px-1 placeholder:text-gray-200 truncate text-center"
                       />
                     ) : (
-                      <span title={b.observaciones ?? undefined} className="text-[12px] text-gray-500 truncate block">{b.observaciones ?? "—"}</span>
+                      <span title={b.observaciones ?? undefined} className="text-[12px] text-gray-500 truncate block text-center">{b.observaciones ?? "—"}</span>
                     )}
                   </td>
 
