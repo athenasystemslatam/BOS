@@ -522,8 +522,8 @@ export function ContableClient({
           <thead>
             {/* Franja de grupos — una por bloque, nombres y color suave para
                 orientarse rápido en una tabla ancha. */}
-            <tr className="sticky top-0 z-20 h-7 border-b border-gray-200">
-              <th className="sticky left-0 z-30 bg-gray-50 px-6 py-1.5" />
+            <tr className="sticky top-0 z-40 h-7 border-b border-gray-200">
+              <th className="sticky left-0 z-50 bg-gray-50 px-6 py-1.5" />
               <th colSpan={3} className={clsx(GRUPO.fechas, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
                 Fechas
               </th>
@@ -551,9 +551,9 @@ export function ContableClient({
                 y la de arriba, por el que se veía asomar la primera fila de
                 datos — con 1px de superposición nunca queda hueco, redondee
                 como redondee el navegador. */}
-            <tr className="sticky top-[27px] z-20 border-b border-gray-200">
+            <tr className="sticky top-[27px] z-40 border-b border-gray-200">
               {/* Cliente — columna fijada, scrollea horizontal con el resto */}
-              <th className="sticky left-0 z-30 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
+              <th className="sticky left-0 z-50 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
               {/* Fechas */}
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24">Cierre</th>
               <th className="bg-gray-50 text-center text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 py-3 w-24 whitespace-normal leading-tight">Vto balance</th>
@@ -1119,7 +1119,7 @@ function AccionesMenu({
         <>
           <div className="fixed inset-0 z-10" onClick={() => setAbierto(false)} />
           <div
-            className="fixed z-20 w-44 flex flex-col whitespace-normal bg-white border border-gray-200 rounded-lg shadow-lg py-1"
+            className="fixed z-[60] w-44 flex flex-col whitespace-normal bg-white border border-gray-200 rounded-lg shadow-lg py-1"
             style={{ top: pos.top, right: pos.right }}
           >
             {noCorresponde ? (
