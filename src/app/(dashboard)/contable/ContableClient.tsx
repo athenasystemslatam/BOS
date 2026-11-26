@@ -522,7 +522,7 @@ export function ContableClient({
           <thead>
             {/* Franja de grupos — una por bloque, nombres y color suave para
                 orientarse rápido en una tabla ancha. */}
-            <tr className="sticky top-0 z-40 h-7 border-b border-gray-200">
+            <tr className="sticky top-0 z-40 h-7 shadow-[0_1px_0_0_#e5e7eb]">
               <th className="sticky left-0 z-50 bg-gray-50 px-6 py-1.5" />
               <th colSpan={3} className={clsx(GRUPO.fechas, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
                 Fechas
@@ -551,7 +551,7 @@ export function ContableClient({
                 y la de arriba, por el que se veía asomar la primera fila de
                 datos — con 1px de superposición nunca queda hueco, redondee
                 como redondee el navegador. */}
-            <tr className="sticky top-[27px] z-40 border-b border-gray-200">
+            <tr className="sticky top-[27px] z-40 shadow-[0_1px_0_0_#e5e7eb]">
               {/* Cliente — columna fijada, scrollea horizontal con el resto */}
               <th className="sticky left-0 z-50 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
               {/* Fechas */}
