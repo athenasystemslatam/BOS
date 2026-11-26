@@ -511,6 +511,7 @@ export function ContableClient({
             <col className="w-14" />
             <col className="w-14" />
             <col className="w-44" />
+            <col className="w-48" />
             <col className="w-10" />
           </colgroup>
           {/* Cada fila del encabezado es sticky por sí misma (no alcanza con
