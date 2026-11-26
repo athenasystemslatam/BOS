@@ -1105,7 +1105,7 @@ function AccionesMenu({
   }, [abierto]);
 
   return (
-    <div className="relative inline-block">
+    <div className="relative flex justify-center">
       <button
         ref={botonRef}
         type="button"
