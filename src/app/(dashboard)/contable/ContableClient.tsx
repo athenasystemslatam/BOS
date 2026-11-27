@@ -552,7 +552,7 @@ export function ContableClient({
                 y la de arriba, por el que se veía asomar la primera fila de
                 datos — con 1px de superposición nunca queda hueco, redondee
                 como redondee el navegador. */}
-            <tr className="sticky top-[27px] z-40 shadow-[0_1px_0_0_#e5e7eb]">
+            <tr className="sticky top-[27px] z-40 h-9 shadow-[0_1px_0_0_#e5e7eb]">
               {/* Cliente — columna fijada, scrollea horizontal con el resto */}
               <th className="sticky left-0 z-50 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
               {/* Fechas */}
