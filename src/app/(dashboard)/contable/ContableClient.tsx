@@ -517,13 +517,18 @@ export function ContableClient({
           {/* Cada fila del encabezado es sticky por sí misma (no alcanza con
               sticky solo en el thead): si no, en algunos navegadores la
               segunda fila no queda realmente pegada a la primera y se ve el
-              cuerpo de la tabla moviéndose entre ambas al scrollear. h-7 en
-              la primera fila + top-7 en la segunda: la segunda arranca
-              justo donde termina la primera, sin superposición ni hueco. */}
+              cuerpo de la tabla moviéndose entre ambas al scrollear. h-8 en
+              la primera fila + top-[31px] en la segunda: la primera mide
+              32px de verdad (medido en vivo con getBoundingClientRect, no
+              los 28px que parecía sugerir h-7) — con ese desfase, la
+              segunda fila arrancaba en su posición normal (pegada a los
+              32px reales) y al activarse el sticky saltaba a los 27-28px
+              asumidos, un corrimiento visible justo al empezar a
+              scrollear. */}
           <thead>
             {/* Franja de grupos — una por bloque, nombres y color suave para
                 orientarse rápido en una tabla ancha. */}
-            <tr className="sticky top-0 z-40 h-7 shadow-[0_1px_0_0_#e5e7eb]">
+            <tr className="sticky top-0 z-40 h-8 shadow-[0_1px_0_0_#e5e7eb]">
               <th className="sticky left-0 z-50 bg-gray-50 px-6 py-1.5" />
               <th colSpan={3} className={clsx(GRUPO.fechas, "text-[10px] font-semibold text-gray-500 uppercase tracking-wide px-3 py-1.5 text-center")}>
                 Fechas
@@ -547,12 +552,11 @@ export function ContableClient({
                 encabezado sticky, el fondo del tr no siempre "viaja" bien
                 con las celdas y dejaba ver las filas del cuerpo pasando por
                 detrás de esta fila al scrollear. */}
-            {/* top-[27px], no top-7 (28px): a ciertos niveles de zoom el
-                redondeo de subpíxeles dejaba un hueco de 1px entre esta fila
-                y la de arriba, por el que se veía asomar la primera fila de
-                datos — con 1px de superposición nunca queda hueco, redondee
-                como redondee el navegador. */}
-            <tr className="sticky top-[27px] z-40 h-9 shadow-[0_1px_0_0_#e5e7eb]">
+            {/* top-[31px], no top-8 (32px): 1px de superposición deliberada
+                con la fila de arriba (que mide 32px reales) para que el
+                redondeo de subpíxeles en ciertos zooms nunca deje un hueco
+                de 1px entre ambas. */}
+            <tr className="sticky top-[31px] z-40 h-9 shadow-[0_1px_0_0_#e5e7eb]">
               {/* Cliente — columna fijada, scrollea horizontal con el resto */}
               <th className="sticky left-0 z-50 bg-gray-50 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-6 py-3 w-56">Cliente</th>
               {/* Fechas */}
