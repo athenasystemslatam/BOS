@@ -1,0 +1,643 @@
+table_name,column_name,data_type,character_maximum_length,numeric_precision,is_nullable,column_default,llaves
+accesos_bloqueados,email,text,null,null,NO,null,PRIMARY KEY (accesos_bloqueados_pkey)
+accesos_bloqueados,motivo,text,null,null,YES,null,null
+accesos_bloqueados,bloqueado_por,text,null,null,YES,null,null
+accesos_bloqueados,bloqueado_en,timestamp with time zone,null,null,NO,now(),null
+alertas_postcierre,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (alertas_postcierre_pkey)
+alertas_postcierre,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (alertas_postcierre_cliente_id_fkey)
+alertas_postcierre,periodo_id,uuid,null,null,NO,null,FOREIGN KEY (alertas_postcierre_periodo_id_fkey)
+alertas_postcierre,campo,text,null,null,NO,null,null
+alertas_postcierre,modificado_at,timestamp with time zone,null,null,NO,now(),null
+asignaciones,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (asignaciones_pkey)
+asignaciones,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (asignaciones_cliente_id_fkey)
+asignaciones,liquidador_id,uuid,null,null,NO,null,FOREIGN KEY (asignaciones_liquidador_id_fkey)
+asignaciones,desde_anio,integer,null,32,NO,null,null
+asignaciones,desde_mes,integer,null,32,NO,null,null
+asignaciones,creado_por,uuid,null,null,YES,null,FOREIGN KEY (asignaciones_creado_por_fkey)
+asignaciones,creado_en,timestamp with time zone,null,null,NO,now(),null
+asignaciones,motivo,text,null,null,YES,null,null
+asignaciones_servicio,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (asignaciones_servicio_pkey)
+asignaciones_servicio,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (asignaciones_servicio_cliente_id_fkey), UNIQUE (asignaciones_servicio_cliente_id_servicio_subtipo_desde_ani_key)"
+asignaciones_servicio,servicio,text,null,null,NO,null,UNIQUE (asignaciones_servicio_cliente_id_servicio_subtipo_desde_ani_key)
+asignaciones_servicio,subtipo,text,null,null,NO,'general'::text,UNIQUE (asignaciones_servicio_cliente_id_servicio_subtipo_desde_ani_key)
+asignaciones_servicio,responsable_id,uuid,null,null,NO,null,FOREIGN KEY (asignaciones_servicio_responsable_id_fkey)
+asignaciones_servicio,desde_anio,integer,null,32,NO,null,UNIQUE (asignaciones_servicio_cliente_id_servicio_subtipo_desde_ani_key)
+asignaciones_servicio,desde_mes,integer,null,32,NO,null,UNIQUE (asignaciones_servicio_cliente_id_servicio_subtipo_desde_ani_key)
+asignaciones_servicio,motivo,text,null,null,YES,null,null
+asignaciones_servicio,creado_por,text,null,null,YES,null,null
+asignaciones_servicio,creado_en,timestamp with time zone,null,null,NO,now(),null
+backup_contactos_20261118,cliente_id,uuid,null,null,YES,null,null
+backup_contactos_20261118,telefono,text,null,null,YES,null,null
+backup_contactos_20261118,emails_contacto,ARRAY,null,null,YES,null,null
+backup_contactos_20261118,emails_contacto_detalle,jsonb,null,null,YES,null,null
+backup_contactos_20261118,mono_mails,ARRAY,null,null,YES,null,null
+backup_contactos_20261118,mono_whatsapp,text,null,null,YES,null,null
+backup_contactos_20261118,copiado_en,timestamp with time zone,null,null,YES,null,null
+backup_historial,id,bigint,null,64,NO,nextval('backup_historial_id_seq'::regclass),PRIMARY KEY (backup_historial_pkey)
+backup_historial,tipo,text,null,null,NO,null,null
+backup_historial,modulo,text,null,null,NO,null,null
+backup_historial,tamanio_bytes,bigint,null,64,NO,null,null
+backup_historial,creado_en,timestamp with time zone,null,null,NO,now(),null
+balance_frenados,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (balance_frenados_pkey)
+balance_frenados,balance_id,uuid,null,null,NO,null,FOREIGN KEY (balance_frenados_balance_id_fkey)
+balance_frenados,desde,timestamp with time zone,null,null,NO,null,null
+balance_frenados,hasta,timestamp with time zone,null,null,YES,null,null
+balance_frenados,creado_en,timestamp with time zone,null,null,NO,now(),null
+balances,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (balances_pkey)
+balances,cliente_id,uuid,null,null,NO,null,"UNIQUE (balances_cliente_id_anio_fiscal_key), FOREIGN KEY (balances_cliente_id_fkey)"
+balances,anio_fiscal,integer,null,32,NO,null,UNIQUE (balances_cliente_id_anio_fiscal_key)
+balances,fecha_cierre,date,null,null,NO,null,null
+balances,responsable_id,uuid,null,null,YES,null,FOREIGN KEY (balances_responsable_id_fkey)
+balances,responsable2_id,uuid,null,null,YES,null,FOREIGN KEY (balances_responsable2_id_fkey)
+balances,estado,text,null,null,NO,'sin_asignar'::text,null
+balances,avance,integer,null,32,NO,0,null
+balances,envio1,boolean,null,null,NO,false,null
+balances,envio1_fecha,timestamp with time zone,null,null,YES,null,null
+balances,envio2,boolean,null,null,NO,false,null
+balances,envio2_fecha,date,null,null,YES,null,null
+balances,envio3,boolean,null,null,NO,false,null
+balances,envio3_fecha,date,null,null,YES,null,null
+balances,info_recibida,boolean,null,null,NO,false,null
+balances,estado_eecc,text,null,null,NO,'pendiente'::text,null
+balances,f855_estado,text,null,null,NO,'pendiente'::text,null
+balances,f899_estado,text,null,null,NO,'pendiente'::text,null
+balances,f713_estado,text,null,null,NO,'pendiente'::text,null
+balances,f657_estado,text,null,null,NO,'pendiente'::text,null
+balances,igj_presentacion,text,null,null,NO,'pendiente'::text,null
+balances,igj_tasa,text,null,null,NO,'pendiente'::text,null
+balances,observaciones,text,null,null,YES,null,null
+balances,updated_at,timestamp with time zone,null,null,NO,now(),null
+balances,info_recibida_fecha,timestamp with time zone,null,null,YES,null,null
+balances,legalizado_fecha,timestamp with time zone,null,null,YES,null,null
+balances,presentado_fecha,timestamp with time zone,null,null,YES,null,null
+balances,frenado_desde,timestamp with time zone,null,null,YES,null,null
+balances,f855_fecha,timestamp with time zone,null,null,YES,null,null
+balances,asignado_fecha,timestamp with time zone,null,null,YES,null,null
+balances,en_proceso_fecha,timestamp with time zone,null,null,YES,null,null
+balances,pendiente_pago_fecha,timestamp with time zone,null,null,YES,null,null
+balances,vto_ganancias,date,null,null,YES,null,null
+balances,no_corresponde_motivo,text,null,null,YES,null,null
+balances,no_corresponde_desde,timestamp with time zone,null,null,YES,null,null
+balances,presentado_fecha_real,boolean,null,null,NO,false,null
+balances,f855_fecha_real,boolean,null,null,NO,false,null
+balances,igj_numero,text,null,null,YES,null,null
+calendario_arca,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (calendario_arca_pkey)
+calendario_arca,anio,integer,null,32,NO,null,UNIQUE (calendario_arca_anio_mes_key)
+calendario_arca,mes,integer,null,32,NO,null,UNIQUE (calendario_arca_anio_mes_key)
+calendario_arca,fecha_vencimiento_cuota,date,null,null,NO,null,null
+calendario_arca,fecha_limite_recategorizacion,date,null,null,YES,null,null
+calendario_arca,recategoriza_desde,date,null,null,YES,null,null
+calendario_arca,nota,text,null,null,YES,null,null
+calendario_arca,updated_at,timestamp with time zone,null,null,NO,now(),null
+calendario_arca,updated_por,uuid,null,null,YES,null,FOREIGN KEY (calendario_arca_updated_por_fkey)
+clientes,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (clientes_pkey)
+clientes,nombre,text,null,null,NO,null,null
+clientes,cuit,text,null,null,NO,null,UNIQUE (clientes_cuit_key)
+clientes,terminacion_cuit,integer,null,32,NO,null,null
+clientes,liquidador_id,uuid,null,null,YES,null,FOREIGN KEY (clientes_liquidador_id_fkey)
+clientes,tipo,text,null,null,NO,'mensual'::text,null
+clientes,tiene_sindicato,boolean,null,null,YES,false,null
+clientes,sindicato_nombre,text,null,null,YES,null,null
+clientes,tiene_rubrica_lsd,boolean,null,null,YES,false,null
+clientes,jurisdiccion,text,null,null,YES,null,null
+clientes,art,text,null,null,YES,null,null
+clientes,red_bancaria,text,null,null,YES,null,null
+clientes,estado,text,null,null,NO,'activo'::text,null
+clientes,observaciones,text,null,null,YES,null,null
+clientes,fecha_alta,timestamp with time zone,null,null,YES,now(),null
+clientes,fecha_baja,timestamp with time zone,null,null,YES,null,null
+clientes,fecha_modificacion,timestamp with time zone,null,null,YES,now(),null
+clientes,creado_por,uuid,null,null,YES,null,FOREIGN KEY (clientes_creado_por_fkey)
+clientes,claves_acceso,jsonb,null,null,YES,'[]'::jsonb,null
+clientes,cuil_arca,text,null,null,YES,null,null
+clientes,fecha_alta_empleador,date,null,null,YES,null,null
+clientes,tipo_contribuyente,text,null,null,YES,'empresa'::text,null
+clientes,es_quincenal,boolean,null,null,YES,false,null
+clientes,drive_folder_id,text,null,null,YES,null,null
+clientes,lsd_desde_anio,integer,null,32,YES,null,null
+clientes,lsd_desde_mes,integer,null,32,YES,null,null
+clientes,lsd_hasta_anio,integer,null,32,YES,null,null
+clientes,lsd_hasta_mes,integer,null,32,YES,null,null
+clientes,alicuota_art,text,null,null,YES,null,null
+clientes,emails_contacto,ARRAY,null,null,NO,'{}'::text[],null
+clientes,fecha_inicio_liquidacion,date,null,null,YES,null,null
+clientes,telefono,text,null,null,YES,null,null
+clientes,jurisdiccion_empresa,text,null,null,YES,null,null
+clientes,domicilio_fiscal,text,null,null,YES,null,null
+clientes,domicilio_legal,text,null,null,YES,null,null
+clientes,jurisdiccion_fiscal,text,null,null,YES,null,null
+clientes,jurisdiccion_legal,text,null,null,YES,null,null
+clientes,tiene_locales,boolean,null,null,YES,false,null
+clientes,locales,jsonb,null,null,YES,'[]'::jsonb,null
+clientes,emails_contacto_detalle,jsonb,null,null,YES,'[]'::jsonb,null
+clientes,cierre_ejercicio_mes,integer,null,32,YES,null,null
+clientes,cierre_ejercicio_dia,integer,null,32,YES,null,null
+clientes,fecha_alta_estudio,date,null,null,YES,null,null
+clientes,id_fal,text,null,null,YES,null,null
+clientes,telefonos_detalle,jsonb,null,null,NO,'[]'::jsonb,null
+clientes_autoridades,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (clientes_autoridades_pkey)
+clientes_autoridades,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (clientes_autoridades_cliente_id_fkey)
+clientes_autoridades,cargo,text,null,null,NO,null,null
+clientes_autoridades,nombre,text,null,null,NO,null,null
+clientes_autoridades,dni_cuit,text,null,null,YES,null,null
+clientes_autoridades,fecha_desde,date,null,null,YES,null,null
+clientes_autoridades,fecha_hasta,date,null,null,YES,null,null
+clientes_autoridades,vigente,boolean,null,null,NO,true,null
+clientes_autoridades,renovacion_id,uuid,null,null,YES,null,FOREIGN KEY (clientes_autoridades_renovacion_id_fkey)
+clientes_autoridades,observaciones,text,null,null,YES,null,null
+clientes_autoridades,creado_en,timestamp with time zone,null,null,NO,now(),null
+clientes_autoridades,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+clientes_cierre_cambios,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (clientes_cierre_cambios_pkey)
+clientes_cierre_cambios,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (clientes_cierre_cambios_cliente_id_fkey)
+clientes_cierre_cambios,mes_anterior,integer,null,32,YES,null,null
+clientes_cierre_cambios,dia_anterior,integer,null,32,YES,null,null
+clientes_cierre_cambios,mes_nuevo,integer,null,32,YES,null,null
+clientes_cierre_cambios,dia_nuevo,integer,null,32,YES,null,null
+clientes_cierre_cambios,motivo,text,null,null,NO,null,null
+clientes_cierre_cambios,creado_en,timestamp with time zone,null,null,NO,now(),null
+clientes_cierre_cambios,creado_por,uuid,null,null,YES,null,FOREIGN KEY (clientes_cierre_cambios_creado_por_fkey)
+clientes_fal,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (clientes_fal_cliente_id_fkey), PRIMARY KEY (clientes_fal_pkey)"
+clientes_fal,aviso_enviado,boolean,null,null,NO,false,null
+clientes_fal,aviso_enviado_en,timestamp with time zone,null,null,YES,null,null
+clientes_fal,aviso_enviado_por,uuid,null,null,YES,null,FOREIGN KEY (clientes_fal_aviso_enviado_por_fkey)
+clientes_fal,respondio,boolean,null,null,NO,false,null
+clientes_fal,respondio_en,timestamp with time zone,null,null,YES,null,null
+clientes_fal,respondio_por,uuid,null,null,YES,null,FOREIGN KEY (clientes_fal_respondio_por_fkey)
+clientes_fal,id_fal_en,timestamp with time zone,null,null,YES,null,null
+clientes_fal,id_fal_por,uuid,null,null,YES,null,FOREIGN KEY (clientes_fal_id_fal_por_fkey)
+clientes_fal,confirmado_arca,boolean,null,null,NO,false,null
+clientes_fal,confirmado_arca_en,timestamp with time zone,null,null,YES,null,null
+clientes_fal,confirmado_arca_por,uuid,null,null,YES,null,FOREIGN KEY (clientes_fal_confirmado_arca_por_fkey)
+clientes_fal,asignado_default,boolean,null,null,NO,false,null
+clientes_fal,default_motivo,text,null,null,YES,null,null
+clientes_fal,default_aplicado_en,timestamp with time zone,null,null,YES,null,null
+clientes_fal,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+clientes_fal,actualizado_por,uuid,null,null,YES,null,FOREIGN KEY (clientes_fal_actualizado_por_fkey)
+clientes_societario,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (clientes_societario_cliente_id_fkey), PRIMARY KEY (clientes_societario_pkey)"
+clientes_societario,tipo_societario,text,null,null,YES,null,null
+clientes_societario,organismo,text,null,null,YES,null,null
+clientes_societario,nro_inscripcion,text,null,null,YES,null,null
+clientes_societario,libros_digitales,boolean,null,null,NO,false,null
+clientes_societario,contacto_libros,text,null,null,YES,null,null
+clientes_societario,mandato_designacion,date,null,null,YES,null,null
+clientes_societario,mandato_anios,integer,null,32,YES,null,null
+clientes_societario,observaciones,text,null,null,YES,null,null
+clientes_societario,actualizado_por,uuid,null,null,YES,null,FOREIGN KEY (clientes_societario_actualizado_por_fkey)
+clientes_societario,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+clientes_societario,mandato_vence_preciso,date,null,null,YES,null,null
+contable_vto_manual,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (contable_vto_manual_pkey)
+contable_vto_manual,balance_id,uuid,null,null,NO,null,"FOREIGN KEY (contable_vto_manual_balance_id_fkey), UNIQUE (contable_vto_manual_balance_id_tipo_key)"
+contable_vto_manual,tipo,text,null,null,NO,null,UNIQUE (contable_vto_manual_balance_id_tipo_key)
+contable_vto_manual,fecha,date,null,null,NO,null,null
+contable_vto_manual,motivo,text,null,null,NO,null,null
+contable_vto_manual,creado_en,timestamp with time zone,null,null,NO,now(),null
+contable_vto_manual,creado_por,uuid,null,null,YES,null,FOREIGN KEY (contable_vto_manual_creado_por_fkey)
+contable_vto_prorrogas,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (contable_vto_prorrogas_pkey)
+contable_vto_prorrogas,tipo,text,null,null,NO,null,null
+contable_vto_prorrogas,cierre_desde,date,null,null,NO,null,null
+contable_vto_prorrogas,cierre_hasta,date,null,null,NO,null,null
+contable_vto_prorrogas,fecha,date,null,null,NO,null,null
+contable_vto_prorrogas,motivo,text,null,null,NO,null,null
+contable_vto_prorrogas,creado_en,timestamp with time zone,null,null,NO,now(),null
+contable_vto_prorrogas,creado_por,uuid,null,null,YES,null,FOREIGN KEY (contable_vto_prorrogas_creado_por_fkey)
+copiadora_facturas,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (copiadora_facturas_pkey)
+copiadora_facturas,proveedor,text,null,null,NO,'Arena Mattioni'::text,null
+copiadora_facturas,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (copiadora_facturas_cliente_id_fkey)
+copiadora_facturas,nro_factura,text,null,null,YES,null,null
+copiadora_facturas,fecha_factura,date,null,null,YES,null,null
+copiadora_facturas,mes,date,null,null,YES,null,null
+copiadora_facturas,monto,numeric,null,14,YES,null,null
+copiadora_facturas,factura_recibida,boolean,null,null,NO,false,null
+copiadora_facturas,reenviada_cliente,boolean,null,null,NO,false,null
+copiadora_facturas,pagado,boolean,null,null,NO,false,null
+copiadora_facturas,comprobante_enviado,boolean,null,null,NO,false,null
+copiadora_facturas,observaciones,text,null,null,YES,null,null
+copiadora_facturas,creado_por,uuid,null,null,YES,null,FOREIGN KEY (copiadora_facturas_creado_por_fkey)
+copiadora_facturas,creado_en,timestamp with time zone,null,null,NO,now(),null
+copiadora_facturas,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+copiadora_facturas,libros_texto,text,null,null,YES,null,null
+copiadora_facturas_tareas,factura_id,uuid,null,null,NO,null,"FOREIGN KEY (copiadora_facturas_tareas_factura_id_fkey), PRIMARY KEY (copiadora_facturas_tareas_pkey)"
+copiadora_facturas_tareas,tarea_id,uuid,null,null,NO,null,"PRIMARY KEY (copiadora_facturas_tareas_pkey), FOREIGN KEY (copiadora_facturas_tareas_tarea_id_fkey)"
+drive_log,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (drive_log_pkey)
+drive_log,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (drive_log_cliente_id_fkey)
+drive_log,periodo_id,uuid,null,null,NO,null,FOREIGN KEY (drive_log_periodo_id_fkey)
+drive_log,archivo_nombre,text,null,null,NO,null,null
+drive_log,archivo_url,text,null,null,YES,null,null
+drive_log,tarea_detectada,text,null,null,NO,null,null
+drive_log,fecha_deteccion,timestamp with time zone,null,null,YES,now(),null
+equipo_legacy,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (equipo_pkey)
+equipo_legacy,nombre,text,null,null,NO,null,null
+equipo_legacy,activo,boolean,null,null,YES,true,null
+equipo_modulos,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (equipo_modulos_pkey)
+equipo_modulos,equipo_id,uuid,null,null,NO,null,"FOREIGN KEY (equipo_modulos_equipo_id_fkey), UNIQUE (equipo_modulos_equipo_id_modulo_key)"
+equipo_modulos,modulo,text,null,null,NO,null,UNIQUE (equipo_modulos_equipo_id_modulo_key)
+historial_asignaciones,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (historial_asignaciones_pkey)
+historial_asignaciones,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (historial_asignaciones_cliente_id_fkey)
+historial_asignaciones,liquidador_anterior_id,uuid,null,null,YES,null,FOREIGN KEY (historial_asignaciones_liquidador_anterior_id_fkey)
+historial_asignaciones,liquidador_nuevo_id,uuid,null,null,NO,null,FOREIGN KEY (historial_asignaciones_liquidador_nuevo_id_fkey)
+historial_asignaciones,fecha_cambio,timestamp with time zone,null,null,YES,now(),null
+historial_asignaciones,cambiado_por,uuid,null,null,NO,null,FOREIGN KEY (historial_asignaciones_cambiado_por_fkey)
+historial_asignaciones,motivo,text,null,null,YES,null,null
+impuestos_tareas,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (impuestos_tareas_pkey)
+impuestos_tareas,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (impuestos_tareas_cliente_id_fkey), UNIQUE (impuestos_tareas_cliente_id_subtipo_anio_mes_key)"
+impuestos_tareas,subtipo,text,null,null,NO,null,UNIQUE (impuestos_tareas_cliente_id_subtipo_anio_mes_key)
+impuestos_tareas,anio,integer,null,32,NO,null,UNIQUE (impuestos_tareas_cliente_id_subtipo_anio_mes_key)
+impuestos_tareas,mes,integer,null,32,NO,null,UNIQUE (impuestos_tareas_cliente_id_subtipo_anio_mes_key)
+impuestos_tareas,estado,text,null,null,NO,'pendiente'::text,null
+impuestos_tareas,fecha_presentacion,date,null,null,YES,null,null
+impuestos_tareas,pago_estado,text,null,null,NO,'pendiente'::text,null
+impuestos_tareas,observaciones,text,null,null,YES,null,null
+impuestos_tareas,updated_at,timestamp with time zone,null,null,NO,now(),null
+libros,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_pkey)
+libros,cliente_id,uuid,null,null,NO,null,"UNIQUE (libros_cliente_id_catalogo_id_tomo_key), FOREIGN KEY (libros_cliente_id_fkey)"
+libros,catalogo_id,uuid,null,null,NO,null,"FOREIGN KEY (libros_catalogo_id_fkey), UNIQUE (libros_cliente_id_catalogo_id_tomo_key)"
+libros,tomo,integer,null,32,NO,1,UNIQUE (libros_cliente_id_catalogo_id_tomo_key)
+libros,soporte,text,null,null,NO,'fisico'::text,null
+libros,estado,text,null,null,NO,'activo'::text,null
+libros,rubrica_nro,text,null,null,YES,null,null
+libros,rubrica_fecha,date,null,null,YES,null,null
+libros,folios_totales,integer,null,32,YES,null,null
+libros,folios_usados,integer,null,32,NO,0,null
+libros,ultimo_periodo_copiado,date,null,null,YES,null,null
+libros,periodicidad,text,null,null,YES,null,null
+libros,ubicacion,text,null,null,NO,'estudio'::text,null
+libros,ubicacion_detalle,text,null,null,YES,null,null
+libros,observaciones,text,null,null,YES,null,null
+libros,creado_en,timestamp with time zone,null,null,NO,now(),null
+libros,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+libros,extraviado,boolean,null,null,NO,false,null
+libros_avisos_mandato,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (libros_avisos_mandato_cliente_id_fkey), PRIMARY KEY (libros_avisos_mandato_pkey)"
+libros_avisos_mandato,mandato_vence,date,null,null,NO,null,PRIMARY KEY (libros_avisos_mandato_pkey)
+libros_avisos_mandato,umbral,integer,null,32,NO,null,PRIMARY KEY (libros_avisos_mandato_pkey)
+libros_avisos_mandato,enviado_en,timestamp with time zone,null,null,NO,now(),null
+libros_catalogo,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_catalogo_pkey)
+libros_catalogo,tipo_societario,text,null,null,NO,null,UNIQUE (libros_catalogo_tipo_societario_codigo_key)
+libros_catalogo,codigo,text,null,null,NO,null,UNIQUE (libros_catalogo_tipo_societario_codigo_key)
+libros_catalogo,nombre,text,null,null,NO,null,null
+libros_catalogo,orden,integer,null,32,NO,0,null
+libros_catalogo,dispara_con_balance,boolean,null,null,NO,false,null
+libros_catalogo,periodicidad,text,null,null,NO,'evento'::text,null
+libros_catalogo,activo,boolean,null,null,NO,true,null
+libros_config,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_config_pkey)
+libros_config,umbral_folios,integer,null,32,NO,10,null
+libros_config,mandato_avisos,ARRAY,null,null,NO,"'{90,60,30}'::integer[]",null
+libros_config,fecha_meta_puesta,date,null,null,YES,null,null
+libros_config,mail_diario_excluidos,ARRAY,null,null,NO,'{}'::uuid[],null
+libros_config,mail_semanal_ids,ARRAY,null,null,YES,null,null
+libros_config,mail_semanal_dia,integer,null,32,NO,5,null
+libros_estados,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_estados_pkey)
+libros_estados,nombre,text,null,null,NO,null,null
+libros_estados,orden,integer,null,32,NO,0,null
+libros_estados,es_final,boolean,null,null,NO,false,null
+libros_estados,codigo,text,null,null,YES,null,UNIQUE (libros_estados_codigo_key)
+libros_estados,activo,boolean,null,null,NO,true,null
+libros_incidencias,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_incidencias_pkey)
+libros_incidencias,libro_id,uuid,null,null,YES,null,FOREIGN KEY (libros_incidencias_libro_id_fkey)
+libros_incidencias,fecha,date,null,null,NO,CURRENT_DATE,null
+libros_incidencias,tipo,text,null,null,NO,'extravio'::text,null
+libros_incidencias,situacion,text,null,null,NO,null,null
+libros_incidencias,resolucion,text,null,null,YES,null,null
+libros_incidencias,resuelto,boolean,null,null,NO,false,null
+libros_incidencias,registrado_por,uuid,null,null,YES,null,FOREIGN KEY (libros_incidencias_registrado_por_fkey)
+libros_incidencias,creado_en,timestamp with time zone,null,null,NO,now(),null
+libros_incidencias,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+libros_incidencias,cliente_id,uuid,null,null,YES,null,FOREIGN KEY (libros_incidencias_cliente_id_fkey)
+libros_incidencias,libros_texto,text,null,null,YES,null,null
+libros_incidencias,importado,boolean,null,null,NO,false,null
+libros_movimientos,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_movimientos_pkey)
+libros_movimientos,libro_id,uuid,null,null,YES,null,FOREIGN KEY (libros_movimientos_libro_id_fkey)
+libros_movimientos,tarea_id,uuid,null,null,YES,null,FOREIGN KEY (libros_movimientos_tarea_id_fkey)
+libros_movimientos,fecha,date,null,null,NO,CURRENT_DATE,null
+libros_movimientos,tipo,text,null,null,NO,null,null
+libros_movimientos,destino,text,null,null,NO,null,null
+libros_movimientos,persona,text,null,null,YES,null,null
+libros_movimientos,es_mensajeria,boolean,null,null,NO,false,null
+libros_movimientos,comentario,text,null,null,YES,null,null
+libros_movimientos,registrado_por,uuid,null,null,YES,null,FOREIGN KEY (libros_movimientos_registrado_por_fkey)
+libros_movimientos,creado_en,timestamp with time zone,null,null,NO,now(),null
+libros_movimientos,cliente_id,uuid,null,null,YES,null,FOREIGN KEY (libros_movimientos_cliente_id_fkey)
+libros_movimientos,libros_texto,text,null,null,YES,null,null
+libros_movimientos,importado,boolean,null,null,NO,false,null
+libros_movimientos,acta_numero,text,null,null,YES,null,null
+libros_objetivos,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_objetivos_pkey)
+libros_objetivos,nombre,text,null,null,NO,null,null
+libros_objetivos,metrica,text,null,null,NO,null,null
+libros_objetivos,meta,numeric,null,5,NO,null,null
+libros_objetivos,fecha_limite,date,null,null,YES,null,null
+libros_objetivos,estado,text,null,null,NO,'actual'::text,null
+libros_objetivos,fecha_cumplimiento,date,null,null,YES,null,null
+libros_objetivos,orden,integer,null,32,NO,0,null
+libros_objetivos,creado_en,timestamp with time zone,null,null,NO,now(),null
+libros_objetivos,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+libros_pedidos,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_pedidos_pkey)
+libros_pedidos,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (libros_pedidos_cliente_id_fkey)
+libros_pedidos,libro_id,uuid,null,null,YES,null,FOREIGN KEY (libros_pedidos_libro_id_fkey)
+libros_pedidos,tipo,text,null,null,NO,null,null
+libros_pedidos,descripcion,text,null,null,YES,null,null
+libros_pedidos,fecha_pedido,date,null,null,NO,CURRENT_DATE,null
+libros_pedidos,fecha_limite,date,null,null,YES,null,null
+libros_pedidos,estado,text,null,null,NO,'abierto'::text,null
+libros_pedidos,ultimo_seguimiento,date,null,null,YES,null,null
+libros_pedidos,proximo_seguimiento,date,null,null,YES,null,null
+libros_pedidos,monto,numeric,null,14,YES,null,null
+libros_pedidos,respuesta,text,null,null,YES,null,null
+libros_pedidos,automatico,boolean,null,null,NO,false,null
+libros_pedidos,creado_por,uuid,null,null,YES,null,FOREIGN KEY (libros_pedidos_creado_por_fkey)
+libros_pedidos,creado_en,timestamp with time zone,null,null,NO,now(),null
+libros_pedidos,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+libros_pedidos,responsable_id,uuid,null,null,YES,null,FOREIGN KEY (libros_pedidos_responsable_id_fkey)
+libros_pedidos,solicitante,text,null,null,YES,null,null
+libros_pedidos,prioridad,text,null,null,YES,null,null
+libros_pedidos,checklist,jsonb,null,null,NO,'[]'::jsonb,null
+libros_pedidos,mandato_vence,date,null,null,YES,null,null
+libros_pedidos,fecha_envio_cliente,date,null,null,YES,null,null
+libros_pedidos,fecha_respuesta,date,null,null,YES,null,null
+libros_pedidos,orden_manual,integer,null,32,NO,0,null
+libros_pedidos_seguimientos,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_pedidos_seguimientos_pkey)
+libros_pedidos_seguimientos,pedido_id,uuid,null,null,NO,null,FOREIGN KEY (libros_pedidos_seguimientos_pedido_id_fkey)
+libros_pedidos_seguimientos,fecha,date,null,null,NO,CURRENT_DATE,null
+libros_pedidos_seguimientos,nota,text,null,null,NO,null,null
+libros_pedidos_seguimientos,proximo_seguimiento,date,null,null,YES,null,null
+libros_pedidos_seguimientos,registrado_por,uuid,null,null,YES,null,FOREIGN KEY (libros_pedidos_seguimientos_registrado_por_fkey)
+libros_pedidos_seguimientos,creado_en,timestamp with time zone,null,null,NO,now(),null
+libros_preferencias,email,text,null,null,NO,null,PRIMARY KEY (libros_preferencias_pkey)
+libros_preferencias,dashboard_orden,ARRAY,null,null,NO,'{}'::text[],null
+libros_preferencias,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+libros_relevamiento,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_relevamiento_pkey)
+libros_relevamiento,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (libros_relevamiento_cliente_id_fkey), UNIQUE (libros_relevamiento_cliente_id_key)"
+libros_relevamiento,estado,text,null,null,NO,'pendiente'::text,null
+libros_relevamiento,fecha,date,null,null,YES,null,null
+libros_relevamiento,relevado_por,uuid,null,null,YES,null,FOREIGN KEY (libros_relevamiento_relevado_por_fkey)
+libros_relevamiento,notas,text,null,null,YES,null,null
+libros_relevamiento,creado_en,timestamp with time zone,null,null,NO,now(),null
+libros_relevamiento,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+libros_snapshot,fecha,date,null,null,NO,null,PRIMARY KEY (libros_snapshot_pkey)
+libros_snapshot,es_base,boolean,null,null,NO,false,null
+libros_snapshot,periodos_pendientes,integer,null,32,NO,null,null
+libros_snapshot,libros_atrasados,integer,null,32,NO,null,null
+libros_snapshot,libros_al_dia,integer,null,32,NO,null,null
+libros_snapshot,libros_sin_dato,integer,null,32,NO,null,null
+libros_snapshot,libros_sin_libro,integer,null,32,NO,null,null
+libros_snapshot,envios_pendientes,integer,null,32,NO,0,null
+libros_snapshot,por_libro,jsonb,null,null,NO,'{}'::jsonb,null
+libros_snapshot,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+libros_tareas,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (libros_tareas_pkey)
+libros_tareas,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (libros_tareas_cliente_id_fkey)
+libros_tareas,libro_id,uuid,null,null,NO,null,FOREIGN KEY (libros_tareas_libro_id_fkey)
+libros_tareas,origen,text,null,null,NO,'manual'::text,null
+libros_tareas,balance_id,uuid,null,null,YES,null,FOREIGN KEY (libros_tareas_balance_id_fkey)
+libros_tareas,pedido_id,uuid,null,null,YES,null,FOREIGN KEY (libros_tareas_pedido_id_fkey)
+libros_tareas,periodo_desde,date,null,null,YES,null,null
+libros_tareas,periodo_hasta,date,null,null,YES,null,null
+libros_tareas,estado_id,uuid,null,null,NO,null,FOREIGN KEY (libros_tareas_estado_id_fkey)
+libros_tareas,fecha_limite,date,null,null,YES,null,null
+libros_tareas,material_listo,boolean,null,null,NO,false,null
+libros_tareas,prioridad_manual,text,null,null,YES,null,null
+libros_tareas,prioridad_motivo,text,null,null,YES,null,null
+libros_tareas,prioridad_cambiada_por,uuid,null,null,YES,null,FOREIGN KEY (libros_tareas_prioridad_cambiada_por_fkey)
+libros_tareas,prioridad_cambiada_en,timestamp with time zone,null,null,YES,null,null
+libros_tareas,orden_manual,integer,null,32,NO,0,null
+libros_tareas,insistencias,integer,null,32,NO,0,null
+libros_tareas,responsable_id,uuid,null,null,YES,null,FOREIGN KEY (libros_tareas_responsable_id_fkey)
+libros_tareas,fecha_envio_copiar,date,null,null,YES,null,null
+libros_tareas,fecha_retiro,date,null,null,YES,null,null
+libros_tareas,fecha_fin,date,null,null,YES,null,null
+libros_tareas,folios_usados,integer,null,32,YES,null,null
+libros_tareas,requiere_reformateo,boolean,null,null,NO,false,null
+libros_tareas,observaciones,text,null,null,YES,null,null
+libros_tareas,creado_por,uuid,null,null,YES,null,FOREIGN KEY (libros_tareas_creado_por_fkey)
+libros_tareas,creado_en,timestamp with time zone,null,null,NO,now(),null
+libros_tareas,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+libros_tareas,quitada_en,timestamp with time zone,null,null,YES,null,null
+libros_tareas,quitada_por,uuid,null,null,YES,null,FOREIGN KEY (libros_tareas_quitada_por_fkey)
+libros_tareas,quitada_motivo,text,null,null,YES,null,null
+liquidadoras,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (liquidadoras_pkey)
+liquidadoras,user_id,uuid,null,null,YES,null,"FOREIGN KEY (liquidadoras_user_id_fkey), UNIQUE (liquidadoras_user_id_unique)"
+liquidadoras,nombre,text,null,null,NO,null,null
+liquidadoras,email,text,null,null,YES,null,UNIQUE (liquidadoras_email_key)
+liquidadoras,rol,text,null,null,NO,'liquidadora'::text,null
+liquidadoras,activa,boolean,null,null,YES,true,null
+liquidadoras,fecha_alta,timestamp with time zone,null,null,YES,now(),null
+liquidadoras,fecha_baja,timestamp with time zone,null,null,YES,null,null
+liquidadoras,equipo_id,uuid,null,null,YES,null,FOREIGN KEY (liquidadoras_equipo_id_fkey)
+monitoreo_crecimiento,id,bigint,null,64,NO,nextval('monitoreo_crecimiento_id_seq'::regclass),PRIMARY KEY (monitoreo_crecimiento_pkey)
+monitoreo_crecimiento,tabla,text,null,null,NO,null,null
+monitoreo_crecimiento,filas,integer,null,32,NO,null,null
+monitoreo_crecimiento,creado_en,timestamp with time zone,null,null,NO,now(),null
+monotributo_alertas_resueltas,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_alertas_resueltas_pkey)
+monotributo_alertas_resueltas,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (monotributo_alertas_resueltas_cliente_id_fkey)
+monotributo_alertas_resueltas,tipo,text,null,null,NO,null,null
+monotributo_alertas_resueltas,anio,integer,null,32,NO,null,null
+monotributo_alertas_resueltas,mes,integer,null,32,NO,null,null
+monotributo_alertas_resueltas,valor,text,null,null,YES,null,null
+monotributo_alertas_resueltas,nota,text,null,null,YES,null,null
+monotributo_alertas_resueltas,resuelta_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_alertas_resueltas_resuelta_por_fkey)
+monotributo_alertas_resueltas,resuelta_at,timestamp with time zone,null,null,NO,now(),null
+monotributo_alertas_resueltas,reabierta_at,timestamp with time zone,null,null,YES,null,null
+monotributo_alertas_resueltas,reabierta_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_alertas_resueltas_reabierta_por_fkey)
+monotributo_categorias,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_categorias_pkey)
+monotributo_categorias,version_id,uuid,null,null,NO,null,"UNIQUE (monotributo_categorias_version_id_categoria_key), FOREIGN KEY (monotributo_categorias_version_id_fkey)"
+monotributo_categorias,categoria,text,null,null,NO,null,UNIQUE (monotributo_categorias_version_id_categoria_key)
+monotributo_categorias,tope_anual,numeric,null,16,NO,null,null
+monotributo_categorias,cuota_servicios,numeric,null,14,YES,null,null
+monotributo_categorias,cuota_venta,numeric,null,14,YES,null,null
+monotributo_categorias_versiones,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_categorias_versiones_pkey)
+monotributo_categorias_versiones,vigente_desde,date,null,null,NO,null,UNIQUE (monotributo_categorias_versiones_vigente_desde_key)
+monotributo_categorias_versiones,fuente,text,null,null,YES,null,null
+monotributo_categorias_versiones,nota,text,null,null,YES,null,null
+monotributo_categorias_versiones,creado_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_categorias_versiones_creado_por_fkey)
+monotributo_categorias_versiones,creado_en,timestamp with time zone,null,null,NO,now(),null
+monotributo_clientes,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_clientes_pkey)
+monotributo_clientes,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (monotributo_clientes_cliente_id_fkey), UNIQUE (monotributo_clientes_cliente_id_key)"
+monotributo_clientes,forma_pago,text,null,null,YES,null,null
+monotributo_clientes,paga_desde_cliente_id,uuid,null,null,YES,null,FOREIGN KEY (monotributo_clientes_paga_desde_cliente_id_fkey)
+monotributo_clientes,paga_desde_texto,text,null,null,YES,null,null
+monotributo_clientes,avisa,boolean,null,null,NO,false,null
+monotributo_clientes,envia_vep,boolean,null,null,NO,false,null
+monotributo_clientes,medio,text,null,null,YES,null,null
+monotributo_clientes,destinatario,text,null,null,YES,null,null
+monotributo_clientes,mails,ARRAY,null,null,NO,'{}'::text[],null
+monotributo_clientes,whatsapp,text,null,null,YES,null,null
+monotributo_clientes,empresa_grupo,text,null,null,YES,null,null
+monotributo_clientes,saldo_a_favor,numeric,null,null,YES,null,null
+monotributo_clientes,resolucion_arba,text,null,null,YES,null,null
+monotributo_clientes,alta_por_importacion,boolean,null,null,NO,false,null
+monotributo_clientes,observaciones,text,null,null,YES,null,null
+monotributo_clientes,updated_at,timestamp with time zone,null,null,NO,now(),null
+monotributo_clientes,updated_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_clientes_updated_por_fkey)
+monotributo_config,id,uuid,null,null,NO,gen_random_uuid(),null
+monotributo_config,clave,text,null,null,NO,null,PRIMARY KEY (monotributo_config_pkey)
+monotributo_config,valor,jsonb,null,null,NO,null,null
+monotributo_config,updated_at,timestamp with time zone,null,null,NO,now(),null
+monotributo_config,updated_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_config_updated_por_fkey)
+monotributo_controles,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_controles_pkey)
+monotributo_controles,anio,integer,null,32,NO,null,UNIQUE (monotributo_controles_anio_mes_key)
+monotributo_controles,mes,integer,null,32,NO,null,UNIQUE (monotributo_controles_anio_mes_key)
+monotributo_controles,fecha_corte,date,null,null,NO,null,null
+monotributo_controles,es_cierre_semestre,boolean,null,null,NO,false,null
+monotributo_controles,nota,text,null,null,YES,null,null
+monotributo_controles,updated_at,timestamp with time zone,null,null,NO,now(),null
+monotributo_controles,updated_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_controles_updated_por_fkey)
+monotributo_eventos,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_eventos_pkey)
+monotributo_eventos,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (monotributo_eventos_cliente_id_fkey)
+monotributo_eventos,anio,integer,null,32,NO,null,null
+monotributo_eventos,mes,integer,null,32,NO,null,null
+monotributo_eventos,estado_anterior,text,null,null,YES,null,null
+monotributo_eventos,estado_nuevo,text,null,null,NO,null,null
+monotributo_eventos,canal,text,null,null,YES,null,null
+monotributo_eventos,origen,text,null,null,NO,'manual'::text,null
+monotributo_eventos,nota,text,null,null,YES,null,null
+monotributo_eventos,creado_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_eventos_creado_por_fkey)
+monotributo_eventos,creado_en,timestamp with time zone,null,null,NO,now(),null
+monotributo_facturacion,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_facturacion_pkey)
+monotributo_facturacion,cliente_id,uuid,null,null,NO,null,"UNIQUE (monotributo_facturacion_cliente_id_control_id_key), FOREIGN KEY (monotributo_facturacion_cliente_id_fkey)"
+monotributo_facturacion,control_id,uuid,null,null,NO,null,"UNIQUE (monotributo_facturacion_cliente_id_control_id_key), FOREIGN KEY (monotributo_facturacion_control_id_fkey)"
+monotributo_facturacion,total_facturado,numeric,null,16,YES,null,null
+monotributo_facturacion,origen,text,null,null,NO,'manual'::text,null
+monotributo_facturacion,archivo_id,uuid,null,null,YES,null,FOREIGN KEY (monotributo_facturacion_archivo_id_fkey)
+monotributo_facturacion,ficha_enviada,boolean,null,null,NO,false,null
+monotributo_facturacion,ficha_enviada_fecha,date,null,null,YES,null,null
+monotributo_facturacion,nota,text,null,null,YES,null,null
+monotributo_facturacion,updated_at,timestamp with time zone,null,null,NO,now(),null
+monotributo_facturacion,updated_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_facturacion_updated_por_fkey)
+monotributo_facturacion_archivos,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_facturacion_archivos_pkey)
+monotributo_facturacion_archivos,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (monotributo_facturacion_archivos_cliente_id_fkey)
+monotributo_facturacion_archivos,control_id,uuid,null,null,NO,null,FOREIGN KEY (monotributo_facturacion_archivos_control_id_fkey)
+monotributo_facturacion_archivos,nombre_archivo,text,null,null,YES,null,null
+monotributo_facturacion_archivos,comprobantes,integer,null,32,YES,null,null
+monotributo_facturacion_archivos,total_facturas,numeric,null,16,YES,null,null
+monotributo_facturacion_archivos,total_notas_credito,numeric,null,16,YES,null,null
+monotributo_facturacion_archivos,total_neto,numeric,null,16,YES,null,null
+monotributo_facturacion_archivos,subido_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_facturacion_archivos_subido_por_fkey)
+monotributo_facturacion_archivos,subido_en,timestamp with time zone,null,null,NO,now(),null
+monotributo_historial,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_historial_pkey)
+monotributo_historial,cliente_id,uuid,null,null,YES,null,FOREIGN KEY (monotributo_historial_cliente_id_fkey)
+monotributo_historial,anio,integer,null,32,YES,null,null
+monotributo_historial,mes,integer,null,32,YES,null,null
+monotributo_historial,entidad,text,null,null,NO,null,null
+monotributo_historial,campo,text,null,null,NO,null,null
+monotributo_historial,valor_anterior,jsonb,null,null,YES,null,null
+monotributo_historial,valor_nuevo,jsonb,null,null,YES,null,null
+monotributo_historial,usuario_id,uuid,null,null,YES,null,FOREIGN KEY (monotributo_historial_usuario_id_fkey)
+monotributo_historial,creado_en,timestamp with time zone,null,null,NO,now(),null
+monotributo_historial,revierte_id,uuid,null,null,YES,null,FOREIGN KEY (monotributo_historial_revierte_id_fkey)
+monotributo_historial,ref_id,uuid,null,null,YES,null,null
+monotributo_historial,nota,text,null,null,YES,null,null
+monotributo_revisiones,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_revisiones_pkey)
+monotributo_revisiones,cliente_id,uuid,null,null,NO,null,FOREIGN KEY (monotributo_revisiones_cliente_id_fkey)
+monotributo_revisiones,anio,integer,null,32,YES,null,null
+monotributo_revisiones,mes,integer,null,32,YES,null,null
+monotributo_revisiones,campo,text,null,null,NO,null,null
+monotributo_revisiones,motivo,text,null,null,NO,null,null
+monotributo_revisiones,gravedad,text,null,null,NO,null,null
+monotributo_revisiones,estado,text,null,null,NO,'pendiente'::text,null
+monotributo_revisiones,origen,text,null,null,NO,null,null
+monotributo_revisiones,detectada_at,timestamp with time zone,null,null,NO,now(),null
+monotributo_revisiones,resuelta_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_revisiones_resuelta_por_fkey)
+monotributo_revisiones,resuelta_at,timestamp with time zone,null,null,YES,null,null
+monotributo_revisiones,resolucion,text,null,null,YES,null,null
+monotributo_revisiones,nota,text,null,null,YES,null,null
+monotributo_revisiones,valor_confirmado,text,null,null,YES,null,null
+monotributo_tareas,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (monotributo_tareas_pkey)
+monotributo_tareas,cliente_id,uuid,null,null,NO,null,"UNIQUE (monotributo_tareas_cliente_id_anio_mes_key), FOREIGN KEY (monotributo_tareas_cliente_id_fkey)"
+monotributo_tareas,anio,integer,null,32,NO,null,UNIQUE (monotributo_tareas_cliente_id_anio_mes_key)
+monotributo_tareas,mes,integer,null,32,NO,null,UNIQUE (monotributo_tareas_cliente_id_anio_mes_key)
+monotributo_tareas,cuota_estado,text,null,null,NO,'pendiente'::text,null
+monotributo_tareas,cuota_fecha,date,null,null,YES,null,null
+monotributo_tareas,recategorizacion,text,null,null,NO,'no_corresponde'::text,null
+monotributo_tareas,categoria,text,null,null,YES,null,null
+monotributo_tareas,observaciones,text,null,null,YES,null,null
+monotributo_tareas,updated_at,timestamp with time zone,null,null,NO,now(),null
+monotributo_tareas,deuda_monto,numeric,null,null,YES,null,null
+monotributo_tareas,deuda_aviso,boolean,null,null,NO,false,null
+monotributo_tareas,deuda_aviso_fecha,date,null,null,YES,null,null
+monotributo_tareas,estado_cambiado_en,timestamp with time zone,null,null,YES,null,null
+monotributo_tareas,estado_cambiado_por,uuid,null,null,YES,null,FOREIGN KEY (monotributo_tareas_estado_cambiado_por_fkey)
+monotributo_tareas,canal,text,null,null,YES,null,null
+monotributo_tareas,origen,text,null,null,NO,'manual'::text,null
+monotributo_tareas,vep_drive_file_id,text,null,null,YES,null,null
+monotributo_tareas,vep_importe,numeric,null,null,YES,null,null
+monotributo_tareas,vep_vencimiento,date,null,null,YES,null,null
+monotributo_tareas,deuda_estado,text,null,null,NO,'sin_verificar'::text,null
+monotributo_tareas,deuda_periodos,text,null,null,YES,null,null
+monotributo_tareas,deuda_texto_original,text,null,null,YES,null,null
+monotributo_tareas,deuda_resuelta,boolean,null,null,NO,false,null
+monotributo_tareas,deuda_resuelta_fecha,date,null,null,YES,null,null
+monotributo_tareas,intimacion_estado,text,null,null,YES,null,null
+monotributo_tareas,intimacion_fecha,date,null,null,YES,null,null
+monotributo_tareas,deuda_nota,text,null,null,YES,null,null
+objetivos_area,area,text,null,null,NO,null,PRIMARY KEY (objetivos_area_pkey)
+objetivos_area,config,jsonb,null,null,NO,'{}'::jsonb,null
+objetivos_area,updated_at,timestamp with time zone,null,null,NO,now(),null
+objetivos_area,updated_by,uuid,null,null,YES,null,FOREIGN KEY (objetivos_area_updated_by_fkey)
+objetivos_excepcion_cliente,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (objetivos_excepcion_cliente_pkey)
+objetivos_excepcion_cliente,cliente_id,uuid,null,null,NO,null,"UNIQUE (objetivos_excepcion_cliente_cliente_id_area_key), FOREIGN KEY (objetivos_excepcion_cliente_cliente_id_fkey)"
+objetivos_excepcion_cliente,area,text,null,null,NO,null,UNIQUE (objetivos_excepcion_cliente_cliente_id_area_key)
+objetivos_excepcion_cliente,config,jsonb,null,null,NO,'{}'::jsonb,null
+objetivos_excepcion_cliente,creado_en,timestamp with time zone,null,null,NO,now(),null
+objetivos_excepcion_cliente,creado_por,uuid,null,null,YES,null,FOREIGN KEY (objetivos_excepcion_cliente_creado_por_fkey)
+periodos,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (periodos_pkey)
+periodos,anio,integer,null,32,NO,null,UNIQUE (periodos_anio_mes_key)
+periodos,mes,integer,null,32,NO,null,UNIQUE (periodos_anio_mes_key)
+periodos,nombre_mes,text,null,null,NO,null,null
+servicios_cliente,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (servicios_cliente_pkey)
+servicios_cliente,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (servicios_cliente_cliente_id_fkey), UNIQUE (servicios_cliente_cliente_id_servicio_subtipo_key)"
+servicios_cliente,servicio,text,null,null,NO,null,UNIQUE (servicios_cliente_cliente_id_servicio_subtipo_key)
+servicios_cliente,subtipo,text,null,null,NO,'general'::text,UNIQUE (servicios_cliente_cliente_id_servicio_subtipo_key)
+servicios_cliente,responsable_id,uuid,null,null,YES,null,FOREIGN KEY (servicios_cliente_responsable_id_fkey)
+servicios_cliente,fecha_alta,timestamp with time zone,null,null,NO,now(),null
+servicios_cliente,estado,boolean,null,null,YES,true,null
+servicios_cliente,fecha_baja,timestamp with time zone,null,null,YES,null,null
+sueldos_notas,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (sueldos_notas_pkey)
+sueldos_notas,tema,text,null,null,NO,null,null
+sueldos_notas,contenido,text,null,null,NO,''::text,null
+sueldos_notas,importante,boolean,null,null,NO,false,null
+sueldos_notas,creado_por,uuid,null,null,YES,null,FOREIGN KEY (sueldos_notas_creado_por_fkey)
+sueldos_notas,creado_en,timestamp with time zone,null,null,NO,now(),null
+sueldos_notas,actualizado_en,timestamp with time zone,null,null,NO,now(),null
+sueldos_notas,contactos,jsonb,null,null,NO,'[]'::jsonb,null
+tareas,id,uuid,null,null,NO,gen_random_uuid(),PRIMARY KEY (tareas_pkey)
+tareas,cliente_id,uuid,null,null,NO,null,"FOREIGN KEY (tareas_cliente_id_fkey), UNIQUE (tareas_cliente_id_periodo_id_key)"
+tareas,periodo_id,uuid,null,null,NO,null,"UNIQUE (tareas_cliente_id_periodo_id_key), FOREIGN KEY (tareas_periodo_id_fkey)"
+tareas,rec_q1,boolean,null,null,YES,false,null
+tareas,recibos,boolean,null,null,YES,false,null
+tareas,f931,boolean,null,null,YES,false,null
+tareas,bol_sind,boolean,null,null,YES,false,null
+tareas,rub_lsd,boolean,null,null,YES,false,null
+tareas,sac,boolean,null,null,YES,false,null
+tareas,legajos_cantidad,integer,null,32,YES,0,null
+tareas,rec_q1_manual,boolean,null,null,YES,false,null
+tareas,recibos_manual,boolean,null,null,YES,false,null
+tareas,f931_manual,boolean,null,null,YES,false,null
+tareas,bol_sind_manual,boolean,null,null,YES,false,null
+tareas,rub_lsd_manual,boolean,null,null,YES,false,null
+tareas,sac_manual,boolean,null,null,YES,false,null
+tareas,rec_q1_drive,boolean,null,null,YES,false,null
+tareas,recibos_drive,boolean,null,null,YES,false,null
+tareas,f931_drive,boolean,null,null,YES,false,null
+tareas,bol_sind_drive,boolean,null,null,YES,false,null
+tareas,rub_lsd_drive,boolean,null,null,YES,false,null
+tareas,sac_drive,boolean,null,null,YES,false,null
+tareas,observaciones,text,null,null,YES,null,null
+tareas,recordatorio,text,null,null,YES,null,null
+tareas,f931_manual_en,timestamp with time zone,null,null,YES,null,null
+tareas,recibos_manual_en,timestamp with time zone,null,null,YES,null,null
+tareas,drive_error,text,null,null,YES,null,null
+tareas,preliquidado,boolean,null,null,NO,false,null
+tareas,preliquidado_fecha,timestamp with time zone,null,null,YES,null,null
+tareas,novedades_recibidas,boolean,null,null,NO,false,null
+tareas,novedades_recibidas_fecha,timestamp with time zone,null,null,YES,null,null
+vista_empresas,id,uuid,null,null,YES,null,null
+vista_empresas,nombre,text,null,null,YES,null,null
+vista_empresas,cuit,text,null,null,YES,null,null
+vista_empresas,estado,text,null,null,YES,null,null
+vista_empresas,responsable_sueldos,text,null,null,YES,null,null
+vista_empresas,responsable_impuestos_iva,text,null,null,YES,null,null
+vista_empresas,responsable_impuestos_iibb,text,null,null,YES,null,null
+vista_empresas,responsable_impuestos_seh,text,null,null,YES,null,null
+vista_empresas,responsable_contable,text,null,null,YES,null,null
+vista_empresas,responsable_libros,text,null,null,YES,null,null
+vista_empresas,responsable_monotributo,text,null,null,YES,null,null
+vista_empresas,emails_contacto,ARRAY,null,null,YES,null,null
+vista_empresas,fecha_inicio_liquidacion,date,null,null,YES,null,null
+vista_empresas,tipo_contribuyente,text,null,null,YES,null,null
