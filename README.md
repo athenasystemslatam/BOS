@@ -323,6 +323,19 @@ El archivo tiene dos hojas: **Clientes** (una fila por empresa, todos los campos
 
 ---
 
+## Backup de estructura de la base (primera versión)
+
+`supabase/estructura_backup_<fecha>.sql` + `..._raw.csv`: una foto de la **estructura** de la base (tablas, columnas, tipos, largos, primary/foreign keys) sin ningún dato real adentro. Existe porque el plan actual de Supabase no incluye backups automáticos propios (Database → Backups), y porque los backups de datos (Backup/Guardar copia, ver más arriba) no guardan la estructura — solo contenido. Combinando ambos (estructura acá + datos ahí) se podría reconstruir el sistema en un Supabase nuevo si hiciera falta.
+
+Es manual y un punto de partida, no una solución definitiva:
+- Se arma a mano (export desde el SQL Editor de Supabase + pedirle a Claude que lo convierta a `CREATE TABLE`), no hay ningún proceso automático todavía.
+- No se actualiza solo — hay que volver a generarlo cada tanto si cambia la estructura.
+- El `.sql` no trae a qué tabla/columna apunta cada FOREIGN KEY (ver aviso al principio del propio archivo), ni políticas RLS, funciones, triggers o índices — para eso hay que revisar los scripts en `supabase/*.sql`.
+
+Pendiente a futuro (si se decide invertir en esto): automatizarlo con un cron propio, fuera de Supabase (ej. GitHub Actions + `pg_dump`), para no depender de acordarse de regenerarlo a mano.
+
+---
+
 ## Manuales de uso
 
 Este README es la referencia técnica/arquitectura. Para el paso a paso operativo hay dos manuales aparte (para no duplicar contenido en dos lugares que se puedan desactualizar distinto):
